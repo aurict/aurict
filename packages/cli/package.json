@@ -1,5 +1,5 @@
 {
-  "name": "@omnicod/cli",
+  "name": "omnicod",
   "version": "1.0.1",
   "private": false,
   "description": "OmniCod — Terminal AI coding assistant",
@@ -31,11 +31,6 @@
     "@omnicod/cli-darwin-x64": "1.0.1",
     "@omnicod/cli-darwin-arm64": "1.0.1"
   },
-  "dependencies": {
-    "@omnicod/core": "workspace:*",
-    "ink": "^5.2.1",
-    "react": "^18.3.1"
-  },
   "scripts": {
     "dev": "bun run ../cli/src/index.ts"
   },
@@ -43,8 +38,11 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@omnicod/core": "workspace:*",
     "@types/bun": "latest",
     "@types/react": "^18.3.0",
+    "ink": "^5.2.1",
+    "react": "^18.3.1",
     "typescript": "^5.8.0"
   }
 }
