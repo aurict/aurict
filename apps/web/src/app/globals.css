@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+:root {
+  --bg:           #0a0a0a;
+  --bg-subtle:    #111111;
+  --bg-card:      #141414;
+  --border:       #262626;
+  --border-bright:#333333;
+  --text:         #f5f5f5;
+  --text-dim:     #a1a1aa;
+  --text-muted:   #52525b;
+  --accent:       #818cf8;
+  --accent-alt:   #a78bfa;
+  --accent-glow:  rgba(129,140,248,0.15);
+  --success:      #4eba65;
+  --warning:      #f59e0b;
+  --error:        #ff6b6b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body { overflow-x: hidden; background: var(--bg); }
+
+::selection { background: var(--accent); color: #fff; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(129,140,248,0.08); }
+  50%       { box-shadow: 0 0 50px rgba(129,140,248,0.22); }
+}
+@keyframes scan {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.blink { animation: blink 1s step-end infinite; }
+
+.gradient-text {
+  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c4b5fd 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-x 4s ease infinite;
+}
+
+.glow { animation: glow-pulse 3s ease-in-out infinite; }
+
+.dim-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.dim-link:hover { color: var(--text-dim); }
+
+.docs-sidebar-link {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+  display: block;
+  padding: 2px 0;
+}
+.docs-sidebar-link:hover { color: var(--text); }
+
+.hover-card {
+  transition: border-color 0.2s;
+}
+.hover-card:hover { border-color: var(--border-bright) !important; }

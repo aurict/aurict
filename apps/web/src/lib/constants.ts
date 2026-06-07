@@ -1,0 +1,102 @@
+export const TERMINAL_SCENARIOS = [
+  {
+    label: "Refactor",
+    lines: [
+      { delay: 0,    type: "input",  text: "❯ refactor the auth module to use JWT properly" },
+      { delay: 800,  type: "system", text: "● Analyzing project structure..." },
+      { delay: 1400, type: "tool",   text: "◆ glob  src/auth/**/*.ts  ✓  0.2s" },
+      { delay: 1800, type: "tool",   text: "◆ read  src/auth/middleware.ts  ✓  0.1s" },
+      { delay: 2200, type: "tool",   text: "◆ read  src/auth/service.ts  ✓  0.1s" },
+      { delay: 2700, type: "output", text: "│ Found 3 issues in the auth layer:" },
+      { delay: 3000, type: "output", text: "│ 1. Token stored in localStorage (XSS risk)" },
+      { delay: 3300, type: "output", text: "│ 2. Missing expiry validation in middleware" },
+      { delay: 3600, type: "output", text: "│ 3. Secret key hardcoded in service.ts" },
+      { delay: 4100, type: "tool",   text: "◆ edit  src/auth/middleware.ts  ✓  0.4s" },
+      { delay: 4600, type: "tool",   text: "◆ edit  src/auth/service.ts  ✓  0.3s" },
+      { delay: 5000, type: "output", text: "│ ✓ Refactor complete. 2 files updated." },
+    ],
+  },
+  {
+    label: "Bug Fix",
+    lines: [
+      { delay: 0,    type: "input",  text: "❯ TypeError: Cannot read properties of undefined (reading 'map')" },
+      { delay: 700,  type: "system", text: "● Searching for root cause..." },
+      { delay: 1300, type: "tool",   text: "◆ grep  \"Cannot read.*map\"  ✓  0.1s" },
+      { delay: 1700, type: "tool",   text: "◆ read  src/components/UserList.tsx  ✓  0.1s" },
+      { delay: 2200, type: "output", text: "│ Found it — line 42: users.map(...)" },
+      { delay: 2600, type: "output", text: "│ The API returns { data: [...] } not an array" },
+      { delay: 3000, type: "tool",   text: "◆ edit  src/components/UserList.tsx  ✓  0.2s" },
+      { delay: 3400, type: "tool",   text: "◆ bash  bun test UserList  ✓  1.2s" },
+      { delay: 4000, type: "output", text: "│ ✓ 6 tests passed. Bug fixed." },
+    ],
+  },
+  {
+    label: "New Feature",
+    lines: [
+      { delay: 0,    type: "input",  text: "❯ add dark mode toggle to the settings page" },
+      { delay: 600,  type: "system", text: "● Planning implementation..." },
+      { delay: 1200, type: "tool",   text: "◆ read  src/app/settings/page.tsx  ✓  0.1s" },
+      { delay: 1600, type: "tool",   text: "◆ glob  src/**/*theme*  ✓  0.2s" },
+      { delay: 2000, type: "output", text: "│ Plan: 3 steps" },
+      { delay: 2300, type: "output", text: "│ 1. Add ThemeContext provider" },
+      { delay: 2600, type: "output", text: "│ 2. Create DarkModeToggle component" },
+      { delay: 2900, type: "output", text: "│ 3. Persist preference to localStorage" },
+      { delay: 3400, type: "tool",   text: "◆ write  src/context/ThemeContext.tsx  ✓  0.3s" },
+      { delay: 3900, type: "tool",   text: "◆ write  src/components/DarkModeToggle.tsx  ✓  0.2s" },
+      { delay: 4400, type: "tool",   text: "◆ edit  src/app/settings/page.tsx  ✓  0.2s" },
+      { delay: 4900, type: "output", text: "│ ✓ Feature complete. 3 files created/updated." },
+    ],
+  },
+]
+
+export const FEATURES = [
+  {
+    icon: "🤖",
+    title: "Multi-Agent Orchestration",
+    description: "9 specialist agents running in isolated worker threads. Explore, code, review, test, docs, security, debug, performance, analytics — each a domain expert.",
+    tag: "Architecture",
+    color: "#818cf8",
+  },
+  {
+    icon: "🧠",
+    title: "218+ Contextual Skills",
+    description: "OmniCod scans your project before you say a word — framework, language, config, conventions. The right context is injected automatically.",
+    tag: "Intelligence",
+    color: "#a78bfa",
+  },
+  {
+    icon: "🛡️",
+    title: "Bash Classifier",
+    description: "Every shell command is analyzed before execution. Safe commands run instantly. Dangerous ones (rm -rf, format) trigger strict confirmation with red warnings.",
+    tag: "Security",
+    color: "#f59e0b",
+  },
+  {
+    icon: "📦",
+    title: "Sandbox Execution",
+    description: "Risky executables — node scripts, python, ruby, bash — run in Docker isolation. Your machine stays safe regardless of what the AI tries to run.",
+    tag: "Security",
+    color: "#ff6b6b",
+  },
+  {
+    icon: "🔌",
+    title: "MCP Client",
+    description: "Drop your claude_desktop_config.json and every MCP server you already use works immediately — filesystem, GitHub, Postgres, Slack, browser automation.",
+    tag: "Integration",
+    color: "#4eba65",
+  },
+  {
+    icon: "🎨",
+    title: "Design Agent Wizard",
+    description: "150+ design systems, 111 skill templates. Describe your UI idea, pick a system and skill, and a complete implementation prompt is built for you.",
+    tag: "Design",
+    color: "#06b6d4",
+  },
+]
+
+export const PRO_FEATURES = [
+  { title: "Cloud sync", description: "Sessions and memories synced across machines" },
+  { title: "Team workspace", description: "Shared context, skills, and agents for your team" },
+  { title: "Analytics dashboard", description: "Token usage, cost tracking, agent performance" },
+  { title: "Priority support", description: "Direct access to the team" },
+]
