@@ -1,4 +1,4 @@
-import { createApp, ProviderRegistry, mcpManager } from "@omnicod/core"
+import { createApp, ProviderRegistry, mcpManager, loadCustomTools } from "@omnicod/core"
 import { getOrCreateToken, setActiveToken } from "@omnicod/core"
 import type { OmniCodConfig } from "./config/types.js"
 
@@ -31,6 +31,9 @@ export async function bootstrap(cfg: OmniCodConfig = {}): Promise<{ defaultProvi
 
   // MCP server'larını başlat
   mcpManager.init(process.cwd()).catch(() => {})
+
+  // Custom tool'ları yükle: ~/.omnicod/tools/ + .omnicod/tools/
+  loadCustomTools(process.cwd()).catch(() => {})
 
   return { defaultProvider, serverToken }
 }

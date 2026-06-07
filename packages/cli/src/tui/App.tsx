@@ -25,6 +25,7 @@ import {
   snapshotManager,
   depSentinel,
   PlanGate,
+  setDefault,
 } from "@omnicod/core"
 import type { PermissionRequest, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest } from "@omnicod/core"
 
@@ -435,11 +436,15 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
   // ── Setters ───────────────────────────────────────────────────────────────
   const setProvider = useCallback((p: string, m: string) => {
-    setProviderState(p); setModelState(m); addSystemMsg(`Provider changed: ${p} / ${m}`)
+    setProviderState(p); setModelState(m)
+    setDefault("provider", p); setDefault("model", m)
+    addSystemMsg(`Provider changed: ${p} / ${m}`)
   }, [])
 
   const setModel = useCallback((m: string) => {
-    setModelState(m); addSystemMsg(`Model changed: ${m}`)
+    setModelState(m)
+    setDefault("model", m)
+    addSystemMsg(`Model changed: ${m}`)
   }, [])
 
   const addSystemMsg = (content: string) => {

@@ -1,5 +1,5 @@
 import { detectSkills } from "./detector.js"
-import { loadSkills } from "./loader.js"
+import { loadSkills, loadSkill } from "./loader.js"
 import { SkillRegistry } from "./registry.js"
 import { autoInvoker } from "./auto-invoke.js"
 import { hooks } from "../hook/emitter.js"
@@ -8,6 +8,9 @@ import { FULL_SYSTEM_PROMPT } from "../agent/system.js"
 import { memoryStore } from "../memory/store.js"
 import { pinStore } from "../pin/store.js"
 import { execSync } from "child_process"
+import { join } from "node:path"
+import { homedir } from "node:os"
+import { readdirSync, existsSync } from "node:fs"
 import type { LoadedSkill, SkillDef } from "./types.js"
 
 const MAX_SKILL_TOKENS = 6_000   // tüm skill'ler için toplam token bütçesi
@@ -62,6 +65,38 @@ function buildMemorySection(workdir: string): string {
   } catch { return "" }
 }
 
+async function loadCustomSkills(projectDir: string): Promise<LoadedSkill[]> {
+  const dirs = [
+    join(homedir(), ".omnicod", "skills"),   // global
+    join(projectDir, ".omnicod", "skills"),  // project (override)
+  ]
+  const results: LoadedSkill[] = []
+  const seen = new Set<string>()
+
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue
+    let files: string[]
+    try { files = readdirSync(dir).filter(f => f.endsWith(".md")) } catch { continue }
+
+    for (const file of files) {
+      const id = `custom:${file.replace(/\.md$/, "")}`
+      const def: SkillDef = {
+        id, name: file.replace(/\.md$/, ""),
+        description: `Custom skill: ${file.replace(/\.md$/, "")}`,
+        detector: {}, contentPath: join(dir, file),
+        priority: 50, tags: ["custom"], requires: [],
+      }
+      const loaded = await loadSkill(def)
+      // Project-level overrides global — replace if same id
+      const existing = results.findIndex(s => s.id === id)
+      if (existing >= 0) results[existing] = loaded
+      else results.push(loaded)
+      seen.add(id)
+    }
+  }
+  return results
+}
+
 export async function getSkillsForProject(projectDir: string): Promise<LoadedSkill[]> {
   const now    = Date.now()
   const cached = cache.get(projectDir)
@@ -79,8 +114,11 @@ export async function getSkillsForProject(projectDir: string): Promise<LoadedSki
 
   const loaded = await loadSkills(finalDefs)
 
+  // Custom skills: ~/.omnicod/skills/ + <workdir>/.omnicod/skills/
+  const custom = await loadCustomSkills(projectDir)
+
   // Token bütçesine sığacak şekilde filtrele (önce yüksek öncelikli)
-  const selected = selectWithinBudget(loaded)
+  const selected = selectWithinBudget([...loaded, ...custom])
 
   cache.set(projectDir, { skills: selected, expiresAt: now + CACHE_TTL_MS })
   return selected

@@ -114,3 +114,4 @@ export type { PlanRequest, PlanStep, PlanDecision } from "./plan/gate.js"
 // Design agent
 export { DesignLoader, matchDesign, extractProjectBrand, brandToContext, loadDesignPrefs, saveDesignPrefs, recordSystemUsed, recordSkillUsed, buildDesignPrompt, buildDesignOutputDir, slugify } from "./design/index.js"
 export type { DesignSystem, Skill, MatchResult, ProjectBrand, DesignPrefs, DesignJobSpec } from "./design/index.js"
+export { loadCustomTools } from "./tool/custom-loader.js"
