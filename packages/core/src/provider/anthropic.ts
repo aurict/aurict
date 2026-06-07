@@ -7,9 +7,10 @@ export class AnthropicPlugin extends ProviderPlugin {
   readonly name    = "Anthropic"
   readonly sdkType = "anthropic" as const
 
-  private client = createAnthropic({
-    apiKey: process.env["ANTHROPIC_API_KEY"] ?? "",
-  })
+  private get client() {
+    const key = process.env["ANTHROPIC_API_KEY"]
+    return createAnthropic({ ...(key !== undefined ? { apiKey: key } : {}) })
+  }
 
   getModel(modelId: string): LanguageModel {
     return this.client(modelId) as LanguageModel

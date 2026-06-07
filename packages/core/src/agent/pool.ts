@@ -10,6 +10,25 @@ const WORKER_TIMEOUT  = 300_000   // 5 dakika — heartbeat'le reset edilir
 const HEARTBEAT_GRACE = 45_000    // heartbeat gelmezse bu kadar sonra timeout
 const MAX_WORKERS     = 4
 
+const ENV_VAR_KEYS = [
+  "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY",
+  "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY",
+  "OPENCODE_API_KEY", "XAI_API_KEY",
+  "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_DEPLOYMENT",
+  "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_REGION",
+  "OLLAMA_HOST", "OLLAMA_BASE_URL", "OLLAMA_DEFAULT_MODEL",
+  "OMNICOD_PROVIDER",
+] as const
+
+function collectEnvVars(): Record<string, string> {
+  const vars: Record<string, string> = {}
+  for (const k of ENV_VAR_KEYS) {
+    const v = process.env[k]
+    if (v) vars[k] = v
+  }
+  return vars
+}
+
 export interface AgentInfo {
   id:              string
   name:            string   // human-readable role name (routing için)
@@ -220,6 +239,7 @@ class AgentPool {
         allowedTools:  opts.allowedTools ?? AGENT_TYPE_TOOLS[opts.agentType],
         sessionId:     subSessionId,
         workspacePath,
+        envVars:       collectEnvVars(),
       }
       worker.postMessage(req)
     })

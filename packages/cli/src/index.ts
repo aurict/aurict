@@ -6,7 +6,7 @@ EventEmitter.defaultMaxListeners = 50
 import React from "react"
 import { render } from "ink"
 import { bootstrap } from "./bootstrap.js"
-import { runAgent, ProviderRegistry, mcpManager } from "@omnicod/core"
+import { runAgent, ProviderRegistry, mcpManager, loadPlugins } from "@omnicod/core"
 import { loadConfig as loadOmniConfig } from "@omnicod/core"
 import { loadConfig, parseFlags, applyFlags } from "./config/loader.js"
 import { App } from "./tui/App.js"
@@ -105,6 +105,9 @@ Ortam değişkenleri:
 `)
   process.exit(0)
 }
+
+// Plugin'leri yükle (tool + provider eklentileri ~/.omnicod/plugins/)
+await loadPlugins()
 
 // Config yükle: global < proje < CLI flags
 const cfg      = applyFlags(loadConfig(workdir), flags)

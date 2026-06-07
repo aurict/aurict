@@ -43,6 +43,14 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
 
   const req = event.data as WorkerRequest
 
+  // Parent'tan gelen API key'leri env'e uygula — lazy provider getter'lar
+  // bu değerleri getModel() çağrısında okuyacak
+  if (req.envVars) {
+    for (const [k, v] of Object.entries(req.envVars)) {
+      if (v) process.env[k] = v
+    }
+  }
+
   // Heartbeat başlat — pool 5dk timeout'u heartbeat'e göre uzatıyor
   heartbeatTimer = setInterval(() => {
     send({ type: "heartbeat" })
@@ -83,6 +91,8 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
             signal:      abort.signal,
             sendMessage: ctxSendMessage,
             isSubagent:  true,
+            provider:    req.provider,
+            model:       req.model,
           }
           const res = await executeTool(captured, args, ctx)
           return res.error ? `ERROR: ${res.error}\n${res.output}` : res.output
@@ -91,7 +101,18 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
     }
 
     const maxSteps = AGENT_MAX_STEPS[req.agentType] ?? 30
+    // Anthropic prompt caching: system'ı cache_control ile messages'a inject et
+    let workerSystem: string | undefined = system
     let messages: CoreMessage[] = [{ role: "user", content: req.prompt }]
+    if (plugin.sdkType === "anthropic") {
+      const sysMsg: CoreMessage = {
+        role: "system",
+        content: system,
+        providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+      }
+      messages = [sysMsg, ...messages]
+      workerSystem = undefined
+    }
     let finalText  = ""
     let totalInput = 0
     let totalOutput = 0
@@ -107,7 +128,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = streamText({
         model,
-        system,
+        ...(workerSystem ? { system: workerSystem } : {}),
         messages,
         tools,
         maxSteps,

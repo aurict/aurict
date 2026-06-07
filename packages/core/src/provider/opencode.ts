@@ -9,10 +9,13 @@ export class OpenCodePlugin extends ProviderPlugin {
   readonly name    = "OpenCode (Zen)"
   readonly sdkType = "openai-compatible" as const
 
-  private client = createOpenAI({
-    apiKey: process.env["OPENCODE_API_KEY"] ?? "",
-    baseURL: "https://opencode.ai/zen/v1",
-  })
+  private get client() {
+    const key = process.env["OPENCODE_API_KEY"]
+    return createOpenAI({
+      ...(key !== undefined ? { apiKey: key } : {}),
+      baseURL: "https://opencode.ai/zen/v1",
+    })
+  }
 
   getModel(modelId: string): LanguageModel {
     return this.client(modelId) as LanguageModel

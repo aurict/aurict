@@ -7,9 +7,10 @@ export class GooglePlugin extends ProviderPlugin {
   readonly name    = "Google"
   readonly sdkType = "google" as const
 
-  private client = createGoogleGenerativeAI({
-    apiKey: process.env["GOOGLE_GENERATIVE_AI_API_KEY"] ?? process.env["GOOGLE_API_KEY"] ?? "",
-  })
+  private get client() {
+    const key = process.env["GOOGLE_GENERATIVE_AI_API_KEY"] ?? process.env["GOOGLE_API_KEY"]
+    return createGoogleGenerativeAI({ ...(key !== undefined ? { apiKey: key } : {}) })
+  }
 
   getModel(modelId: string): LanguageModel {
     return this.client(modelId) as LanguageModel

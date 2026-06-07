@@ -32,6 +32,7 @@ interface Props {
   taskCount?:       number | undefined
   taskPanelOpen?:   boolean | undefined
   effort?:          number | undefined
+  autopilotMode?:   boolean | undefined
 }
 
 function fmtK(n: number): string {
@@ -51,7 +52,7 @@ function effortLabel(effort: number | undefined): string | null {
 export function StatusBar({
   provider, model, tokens, contextTokens, workdir, skills = [],
   contextWindow, isUndercover, coordinatorMode, branch, wasCompacted,
-  activeAgent, agentColor, bgTaskCount, taskCount, taskPanelOpen, effort,
+  activeAgent, agentColor, bgTaskCount, taskCount, taskPanelOpen, effort, autopilotMode,
 }: Props) {
   const theme = useTheme()
   const dir   = workdir.replace(process.env["HOME"] ?? "", "~")
@@ -103,6 +104,7 @@ export function StatusBar({
           <HStack gap="md">
             {isUndercover   && <Badge tone="muted" variant="ghost">undercover</Badge>}
             {coordinatorMode && <Badge tone="accent" variant="ghost">coordinator</Badge>}
+            {autopilotMode  && <Badge tone="warning" variant="solid">⚡ auto</Badge>}
             {cumTotal > 0 && (
               <>
                 <Text color={theme.textDim}>{fmtK(cumTotal)}</Text>

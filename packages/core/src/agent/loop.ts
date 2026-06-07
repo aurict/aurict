@@ -109,12 +109,24 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     system = [system, getUndercoverInstructions()].filter(Boolean).join("\n\n---\n\n")
   }
 
+  // Anthropic prompt caching: system prompt'u mesaj dizisine cache_control ile inject et
+  let systemParam: string | undefined = system || undefined
+  if (system && plugin.sdkType === "anthropic") {
+    const sysMsg: CoreMessage = {
+      role: "system",
+      content: system,
+      providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+    }
+    messages = [sysMsg, ...messages]
+    systemParam = undefined
+  }
+
   const shared = {
     model,
     messages,
     tools:    aiTools,
     maxSteps: MAX_STEPS,
-    ...(system ? { system } : {}),
+    ...(systemParam ? { system: systemParam } : {}),
     ...(opts.signal !== undefined ? { abortSignal: opts.signal } : {}),
     ...(opts.effort ? (() => {
       const thinkOpts = plugin.buildThinkingOptions(modelId, opts.effort!)

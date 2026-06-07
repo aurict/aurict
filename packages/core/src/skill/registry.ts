@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync, statSync } from "fs"
 import { join } from "path"
+import { homedir } from "os"
 import { parseFrontmatter } from "./frontmatter.js"
 import type { SkillDef, SkillDetector } from "./types.js"
+
+const USER_SKILLS_DIR = join(homedir(), ".omnicod", "skills")
 
 const LIBRARY = new URL("./library", import.meta.url).pathname
 
@@ -115,11 +118,42 @@ function scanLibrary(): Map<string, SkillDef> {
 
 const SKILLS = scanLibrary()
 
+// Kullanıcının ~/.omnicod/skills/ klasöründeki .md dosyalarını tarar
+function scanUserSkills(): void {
+  let files: string[]
+  try { files = readdirSync(USER_SKILLS_DIR) } catch { return }
+
+  for (const f of files) {
+    if (!f.endsWith(".md")) continue
+    const id          = f.replace(/\.md$/, "")
+    const contentPath = join(USER_SKILLS_DIR, f)
+
+    let raw = ""
+    try { raw = readFileSync(contentPath, "utf8") } catch { continue }
+
+    const { meta } = parseFrontmatter(raw)
+    const def: SkillDef = {
+      id,
+      name:        meta.name || id.replace(/-/g, " "),
+      description: meta.description || "",
+      detector:    buildDetector(meta.triggers),
+      contentPath,
+      priority:    meta.priority ?? 5,
+      tags:        meta.tags ?? [],
+      ...(meta.agent !== undefined ? { agent: meta.agent } : {}),
+    }
+    SKILLS.set(id, def)
+  }
+}
+
+scanUserSkills()
+
 export const SkillRegistry = {
   all():                   SkillDef[]          { return [...SKILLS.values()] },
   get(id: string):         SkillDef | undefined { return SKILLS.get(id) },
   has(id: string):         boolean              { return SKILLS.has(id) },
   count():                 number               { return SKILLS.size },
+  reload():                void                 { scanUserSkills() },
 }
 
 // Frontmatter tipini burada da kullanmak için — döngüsel import önlemek adına re-export değil

@@ -59,6 +59,7 @@ import { SettingsPanel }     from "./SettingsPanel.js"
 import { DesignWizard }      from "./DesignWizard.js"
 import type { DesignWizardResult } from "./DesignWizard.js"
 import { readClipboard }     from "../util/clipboard.js"
+import { useMouseEvents }    from "./mouse.js"
 import { buildDesignPrompt, recordSystemUsed, recordSkillUsed, slugify } from "@omnicod/core"
 import { saveDraft, loadDraft, clearDraft, hasPendingCrashReport, writeCrashReport } from "../util/draft.js"
 
@@ -118,6 +119,23 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
   // Floating Task Panel
   const [taskPanelOpen, setTaskPanelOpen] = useState(false)
+
+  // Autopilot mode — tüm permission'ları otomatik onayla
+  const [autopilotMode, setAutopilotMode] = useState(false)
+  const autopilotRef = useRef(false)
+  useEffect(() => { autopilotRef.current = autopilotMode }, [autopilotMode])
+
+  // Mouse scroll — scrolls through Picker items when picker is open
+  useMouseEvents((e) => {
+    if (e.type !== "scroll") return
+    // Picker navigasyonu: scroll ile item seçimini değiştir
+    // (Picker kendi state'ini yönetiyor — burada sadece synthetic arrow key simule et)
+    if (e.button === "scroll-up") {
+      process.stdin.emit("data", "\x1b[A")  // up arrow
+    } else if (e.button === "scroll-down") {
+      process.stdin.emit("data", "\x1b[B")  // down arrow
+    }
+  })
 
   // Quick Search (Ctrl+F)
   const [quickSearchOpen, setQuickSearchOpen] = useState(false)
@@ -195,7 +213,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
   useEffect(() => questionService.onQuestion((req) => setQuestion(req)), [])
   useEffect(() => ExecutorEvents.on((e) => {
-    if (e.type === "permission_ask") setPermission(e.request)
+    if (e.type === "permission_ask") {
+      // Autopilot modda izin isteklerini otomatik onayla
+      if (autopilotRef.current) {
+        PermissionGate.respond(e.request.id, "allow")
+        return
+      }
+      setPermission(e.request)
+    }
   }), [])
   useEffect(() => {
     getSkillsForProject(workdir)
@@ -504,6 +529,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
   // ── Command context ───────────────────────────────────────────────────────
   const buildCtx = useCallback(() => ({
+    sessionId:       mainSessionId.current,
     provider, model, workdir: workdirState,
     ...(effort !== undefined ? { effort } : {}),
     skills:          skillNames,
@@ -521,6 +547,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     setWorkdir:        (path: string) => setWorkdirState(path),
     toggleUndercover:  () => setIsUndercover((v) => !v),
     toggleCoordinator: () => setCoordinatorMode((v) => !v),
+    autopilotMode,
+    toggleAutopilot: () => {
+      setAutopilotMode((v) => {
+        const next = !v
+        addSystemMsg(next ? "⚡ Autopilot ON — all permissions auto-approved" : "⚡ Autopilot OFF — manual confirmation restored")
+        return next
+      })
+    },
     sendToBackground: () => {
       if (!loading) return
       setLoading(false); setIsStreaming(false); setActiveTool(undefined)
@@ -720,8 +754,27 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   // ── Chat submit ───────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (userInput: string) => {
     if (skipSubmitRef.current) { skipSubmitRef.current = false; return }
-    const text = userInput.trim()
+    let text = userInput.trim()
     if (!text) return
+
+    // @path.ext syntax — inline file attachments
+    const atRe = /@([\w./~-]+\.[a-zA-Z]{2,6})/g
+    const atMatches = [...text.matchAll(atRe)]
+    if (atMatches.length > 0) {
+      for (const m of atMatches) {
+        const rawPath = m[1]!
+        const fullPath = rawPath.startsWith("~")
+          ? rawPath.replace("~", process.env["HOME"] ?? "~")
+          : rawPath.startsWith("/") ? rawPath : `${workdirState}/${rawPath}`
+        try {
+          const att = await readAttachmentFromPath(fullPath)
+          setAttachments((prev) => [...prev, att])
+        } catch { /* ignore — leave @path in message */ }
+      }
+      // Remove @path references from message text
+      text = text.replace(atRe, "").replace(/\s{2,}/g, " ").trim()
+    }
+
     setInput("")
     clearDraft()
     if (loading) { setQueuedInput(text); return }
@@ -1203,6 +1256,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           taskCount={tasks.length || undefined}
           taskPanelOpen={taskPanelOpen}
           effort={effort}
+          autopilotMode={autopilotMode}
           {...(branch !== undefined ? { branch } : {})}
           {...(() => {
             try {

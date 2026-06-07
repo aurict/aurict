@@ -11,8 +11,12 @@
 import React, { useState, useEffect, memo } from "react"
 import { Box, Text } from "ink"
 import { Markdown } from "./Markdown.js"
-import { DiffView, looksLikeDiff } from "./Diff.js"
-import { DiffView as EditDiffView } from "./DiffView.js"
+import { DiffRenderer } from "./DiffRenderer/index.js"
+
+function looksLikeDiff(text: string): boolean {
+  const first10 = text.split("\n").slice(0, 10)
+  return first10.some((l) => l.startsWith("---") || l.startsWith("+++") || /^@@.*@@/.test(l))
+}
 import { useTheme } from "../utils/theme.js"
 import { HStack, VStack, Typo, Badge, useSpinnerFrame } from "./design-system/index.js"
 
@@ -297,7 +301,7 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
           if (diffMatch && message.tool === "edit") {
             return (
               <Box marginLeft={3} marginRight={2}>
-                <EditDiffView oldText={diffMatch[1]!} newText={diffMatch[2]!} />
+                <DiffRenderer oldText={diffMatch[1]!} newText={diffMatch[2]!} enableModeToggle enableHunkNav />
               </Box>
             )
           }
@@ -310,7 +314,7 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
               paddingLeft={1}
             >
               {looksLikeDiff(message.resultContent)
-                ? <DiffView content={message.resultContent} />
+                ? <DiffRenderer rawDiff={message.resultContent} enableModeToggle enableHunkNav />
                 : (<>
                     {visible.map((line, i) => (
                       <Text key={i} color={isError ? theme.error : theme.textSecondary}>{line || " "}</Text>

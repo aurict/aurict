@@ -2,7 +2,7 @@ import { MCPClient } from "./client.js"
 import { registerMCPTools } from "./bridge.js"
 import { loadMCPConfig, enabledServers } from "./config.js"
 import { hooks } from "../hook/emitter.js"
-import type { MCPServerConfig } from "./types.js"
+import type { MCPServerConfig, MCPResourceInfo, MCPResourceContent } from "./types.js"
 
 interface ServerEntry {
   client:     MCPClient
@@ -60,6 +60,30 @@ class MCPManager {
       toolCount: e.toolIds.length,
       ...(e.error !== undefined ? { error: e.error } : {}),
     }))
+  }
+
+  async listResources(serverName?: string): Promise<MCPResourceInfo[]> {
+    const targets = serverName
+      ? [this.servers.get(serverName)].filter(Boolean) as ServerEntry[]
+      : [...this.servers.values()]
+    const results = await Promise.allSettled(
+      targets.map((e) => e.client.listResources())
+    )
+    return results.flatMap((r) => r.status === "fulfilled" ? r.value : [])
+  }
+
+  async readResource(uri: string, serverName?: string): Promise<MCPResourceContent[]> {
+    if (serverName) {
+      const entry = this.servers.get(serverName)
+      if (!entry) throw new Error(`MCP server '${serverName}' not found`)
+      return entry.client.readResource(uri)
+    }
+    // URI'ye göre ilk bağlı sunucuda dene
+    for (const entry of this.servers.values()) {
+      if (entry.status !== "connected") continue
+      try { return await entry.client.readResource(uri) } catch { continue }
+    }
+    throw new Error(`No MCP server could read resource: ${uri}`)
   }
 
   isConnected(name: string): boolean {

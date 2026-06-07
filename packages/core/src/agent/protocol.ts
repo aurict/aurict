@@ -64,6 +64,7 @@ export interface WorkerRequest {
   allowedTools:  string[]    // AGENT_TYPE_TOOLS[type] veya config'den
   sessionId:     string      // worker'ın kendi session ID'si
   workspacePath: string      // shared workspace dizini (multi-agent iletişim)
+  envVars?:      Record<string, string>  // API keys from parent process
 }
 
 // Parent → Worker (control)

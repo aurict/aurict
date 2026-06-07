@@ -21,6 +21,7 @@ export interface CommandDef {
 }
 
 export interface CommandContext {
+  sessionId:        string
   provider:         string
   model:            string
   effort?:          number
@@ -39,6 +40,8 @@ export interface CommandContext {
   openBtw:          (question: string) => void
   toggleUndercover:  () => void
   toggleCoordinator: () => void
+  autopilotMode:     boolean
+  toggleAutopilot:   () => void
   sendToBackground:  () => void
   bgTasks:           Array<{ id: string; prompt: string; startedAt: number; status: string; output?: string }>
   showBgTask:        (id: string) => void

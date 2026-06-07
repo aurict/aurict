@@ -7,9 +7,10 @@ export class OpenAIPlugin extends ProviderPlugin {
   readonly name    = "OpenAI"
   readonly sdkType = "openai" as const
 
-  private client = createOpenAI({
-    apiKey: process.env["OPENAI_API_KEY"] ?? "",
-  })
+  private get client() {
+    const key = process.env["OPENAI_API_KEY"]
+    return createOpenAI({ ...(key !== undefined ? { apiKey: key } : {}) })
+  }
 
   getModel(modelId: string): LanguageModel {
     return this.client(modelId) as LanguageModel

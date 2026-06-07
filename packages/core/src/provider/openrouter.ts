@@ -16,14 +16,17 @@ export class OpenRouterPlugin extends ProviderPlugin {
   readonly name    = "OpenRouter"
   readonly sdkType = "openai-compatible" as const
 
-  private client = createOpenAI({
-    apiKey: process.env["OPENROUTER_API_KEY"] ?? "",
-    baseURL: "https://openrouter.ai/api/v1",
-    headers: {
-      "HTTP-Referer": "https://github.com/omnicod",
-      "X-Title": "OmniCod",
-    },
-  })
+  private get client() {
+    const key = process.env["OPENROUTER_API_KEY"]
+    return createOpenAI({
+      ...(key !== undefined ? { apiKey: key } : {}),
+      baseURL: "https://openrouter.ai/api/v1",
+      headers: {
+        "HTTP-Referer": "https://github.com/omnicod",
+        "X-Title": "OmniCod",
+      },
+    })
+  }
 
   getModel(modelId: string): LanguageModel {
     return this.client(modelId) as LanguageModel

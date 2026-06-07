@@ -1,4 +1,4 @@
-import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager } from "@omnicod/core"
+import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR } from "@omnicod/core"
 import { writeFileSync } from "fs"
 import { resolve } from "path"
 import { THEMES, THEME_NAMES } from "../utils/theme.js"
@@ -136,6 +136,9 @@ const commands: CommandDef[] = [
             openrouter: "OpenRouter API Key (sk-or-...)",
             google:     "Google AI API Key",
             opencode:   "OpenCode API Key",
+            xai:        "xAI API Key (xai-...)",
+            azure:      "Azure OpenAI API Key  (set AZURE_OPENAI_ENDPOINT separately)",
+            bedrock:    "AWS Access Key ID  (set AWS_SECRET_ACCESS_KEY + AWS_REGION separately)",
           }
 
           ctx.showPicker(
@@ -519,6 +522,17 @@ const commands: CommandDef[] = [
     },
   },
 
+  // ── /autopilot ────────────────────────────────────────────────────────────
+  {
+    name:        "autopilot",
+    aliases:     ["auto"],
+    description: "Toggle autopilot mode — auto-approve all permission requests",
+    handler: (_args, ctx): CommandResult => {
+      ctx.toggleAutopilot()
+      return { type: "text", content: "" }
+    },
+  },
+
   // ── /coordinator ──────────────────────────────────────────────────────────
   {
     name:        "coordinator",
@@ -532,6 +546,65 @@ const commands: CommandDef[] = [
           ? "Coordinator mode DISABLED"
           : "Coordinator mode ENABLED — AI uses plan + delegate workflow",
       }
+    },
+  },
+
+  // ── /plugins ──────────────────────────────────────────────────────────────
+  {
+    name:        "plugins",
+    aliases:     ["plugin"],
+    description: "List loaded plugins from ~/.omnicod/plugins/",
+    handler: (): CommandResult => {
+      const loaded = getLoadedPlugins()
+      if (loaded.length === 0) {
+        return { type: "text", content: `No plugins loaded.\nDrop .js/.mjs files in: ${PLUGIN_DIR}` }
+      }
+      const lines = loaded.map((p) =>
+        p.error
+          ? `  ✗ ${p.file.padEnd(30)} ERROR: ${p.error}`
+          : `  ✓ ${p.name.padEnd(28)} ${p.tools}t ${p.provs}p  (${p.file})`
+      )
+      return { type: "text", content: `Plugins (${loaded.length}):\n${lines.join("\n")}\n\nDir: ${PLUGIN_DIR}` }
+    },
+  },
+
+  // ── /skill ────────────────────────────────────────────────────────────────
+  {
+    name:        "skill",
+    aliases:     ["skills"],
+    description: "Manage skills: add from URL/path, list, remove",
+    usage:       "/skill add <url|path> | list | remove <id>",
+    handler: async (args): Promise<CommandResult> => {
+      const sub = args[0]?.toLowerCase()
+
+      if (!sub || sub === "list") {
+        const installed = listInstalledSkills()
+        if (installed.length === 0) return { type: "text", content: "No user-installed skills. Use /skill add <url> to install one." }
+        const lines = installed.map((s) => `  ${s.id.padEnd(24)} ${s.name}  (${s.source})`)
+        return { type: "text", content: `Installed skills (${installed.length}):\n${lines.join("\n")}` }
+      }
+
+      if (sub === "add") {
+        const url = args[1]
+        if (!url) return { type: "error", message: "Usage: /skill add <url>" }
+        try {
+          const meta = await installRemoteSkill(url)
+          return { type: "text", content: `Skill installed: ${meta.id} (${meta.name})\nRestart OmniCod to activate.` }
+        } catch (e) {
+          return { type: "error", message: `Install failed: ${e instanceof Error ? e.message : String(e)}` }
+        }
+      }
+
+      if (sub === "remove" || sub === "rm") {
+        const id = args[1]
+        if (!id) return { type: "error", message: "Usage: /skill remove <id>" }
+        const ok = uninstallSkill(id)
+        return ok
+          ? { type: "text", content: `Skill removed: ${id}` }
+          : { type: "error", message: `Skill not found: ${id}` }
+      }
+
+      return { type: "error", message: "Usage: /skill add <url|path> | list | remove <id>" }
     },
   },
 
@@ -648,6 +721,65 @@ const commands: CommandDef[] = [
     },
   },
 
+  // ── /share ────────────────────────────────────────────────────────────────
+  {
+    name:        "share",
+    description: "Export session as HTML and optionally upload to transfer.sh",
+    usage:       "/share [local|upload]",
+    handler: async (args, ctx): Promise<CommandResult> => {
+      const html     = exportToHtml(ctx.messages, "OmniCod Session")
+      const filename = defaultExportFilename("html")
+      const filepath = resolve(ctx.workdir, filename)
+      writeFileSync(filepath, html, "utf8")
+
+      const sub = (args[0] ?? "").toLowerCase()
+
+      if (sub === "local") {
+        return { type: "text", content: `Saved: ${filepath}` }
+      }
+
+      if (sub === "upload") {
+        try {
+          const blob = new Blob([html], { type: "text/html" })
+          const form = new FormData()
+          form.append("file", blob, filename)
+          const res = await fetch(`https://transfer.sh/${filename}`, {
+            method:  "PUT",
+            body:    html,
+            headers: { "Content-Type": "text/html", "Max-Downloads": "10", "Max-Days": "7" },
+          })
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const url = (await res.text()).trim()
+          return { type: "text", content: `Shared! URL (expires in 7 days):\n${url}` }
+        } catch (e) {
+          return { type: "error", message: `Upload failed: ${e instanceof Error ? e.message : String(e)}\nFile saved locally: ${filepath}` }
+        }
+      }
+
+      // Default: ask
+      return {
+        type:  "picker",
+        title: "Share session",
+        items: [
+          { id: "local",  label: "Save locally",       hint: filepath },
+          { id: "upload", label: "Upload to transfer.sh", hint: "Generates a temporary URL (7 days)" },
+        ],
+        onSelect: async (item) => {
+          if (item.id === "local") return
+          try {
+            const res = await fetch(`https://transfer.sh/${filename}`, {
+              method:  "PUT",
+              body:    html,
+              headers: { "Content-Type": "text/html", "Max-Downloads": "10", "Max-Days": "7" },
+            })
+            const url = (await res.text()).trim()
+            ctx.openBtw(`Session shared: ${url}`)
+          } catch { ctx.openBtw(`Upload failed. File saved locally: ${filepath}`) }
+        },
+      }
+    },
+  },
+
   // ── /export ───────────────────────────────────────────────────────────────
   {
     name:        "export",
@@ -735,6 +867,41 @@ const commands: CommandDef[] = [
         `  ${i + 1}. ${c.label}  (${c.history.length} messages)`
       )
       return { type: "text", content: "Checkpoints:\n" + lines.join("\n") }
+    },
+  },
+
+  // ── /fork ─────────────────────────────────────────────────────────────────
+  {
+    name:        "fork",
+    description: "Fork current session — create a copy that continues independently",
+    usage:       "/fork [label]",
+    handler: (args, ctx): CommandResult => {
+      const label = args.join(" ").trim() || `Fork of session ${ctx.sessionId.slice(0, 8)}`
+      // Mevcut mesajları al (user+assistant rolleri)
+      const history = ctx.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
+
+      // Yeni session oluştur — mevcut session'u parentId olarak kaydet
+      const forkId = SessionManager.create(
+        { provider: ctx.provider, model: ctx.model },
+        { title: label, parentId: ctx.sessionId }
+      )
+
+      // Mesajları fork session'ına kopyala
+      for (const msg of history) {
+        SessionManager.addPart({
+          sessionId: forkId,
+          role:      msg.role,
+          type:      "text",
+          content:   msg.content,
+        })
+      }
+
+      return {
+        type:    "text",
+        content: `Fork created: ${forkId.slice(0, 12)}…  (${history.length} messages copied)\nUse /session ${forkId.slice(0, 8)} to restore it later.`,
+      }
     },
   },
 

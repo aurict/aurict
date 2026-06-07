@@ -70,6 +70,9 @@ export function setApiKey(provider: string, apiKey: string): void {
     openrouter: "OPENROUTER_API_KEY",
     google:     "GOOGLE_GENERATIVE_AI_API_KEY",
     opencode:   "OPENCODE_API_KEY",
+    xai:        "XAI_API_KEY",
+    azure:      "AZURE_OPENAI_API_KEY",
+    bedrock:    "AWS_ACCESS_KEY_ID",
   }
   const envVar = envMap[provider]
   if (envVar) process.env[envVar] = apiKey

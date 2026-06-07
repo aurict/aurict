@@ -19,6 +19,8 @@ import { subagentTool }    from "./built-in/subagent.js"
 import { worktreeTool }    from "./built-in/worktree.js"
 import { memoryTool }      from "./built-in/memory-tool.js"
 import { gitTool }         from "./built-in/git.js"
+import { svnTool }         from "./built-in/svn.js"
+import { perforceTool }    from "./built-in/perforce.js"
 import { sendMessageTool } from "./built-in/send_message.js"
 
 const tools = new Map<string, ToolDef>()
@@ -30,6 +32,7 @@ for (const t of [
   taskCreateTool, taskUpdateTool, taskCompleteTool,
   planEnterTool, planVerifyTool,
   lspTool, notebookEditTool, subagentTool, worktreeTool, memoryTool, gitTool,
+  svnTool, perforceTool,
   sendMessageTool,
 ]) {
   tools.set(t.id, t)
