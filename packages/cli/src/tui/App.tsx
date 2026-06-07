@@ -76,6 +76,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [provider,   setProviderState] = useState(initialProvider)
   const [model,      setModelState]    = useState(initialModel)
   const [effort,     setEffort]        = useState<number | undefined>(undefined)
+  const [termCols,   setTermCols]      = useState(() => process.stdout.columns ?? 80)
   const [messages,   setMessages]      = useState<DisplayMessage[]>([])
   const [input,      setInput]         = useState("")
   const [loading,    setLoading]       = useState(false)
@@ -186,6 +187,12 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const activeMsgs = useMemo(() => messages.filter(m => m.pending), [messages])
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = () => setTermCols(process.stdout.columns ?? 80)
+    process.stdout.on("resize", handler)
+    return () => { process.stdout.off("resize", handler) }
+  }, [])
+
   useEffect(() => questionService.onQuestion((req) => setQuestion(req)), [])
   useEffect(() => ExecutorEvents.on((e) => {
     if (e.type === "permission_ask") setPermission(e.request)
@@ -1195,6 +1202,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           bgTaskCount={bgTasks.filter(t => t.status === "running").length || undefined}
           taskCount={tasks.length || undefined}
           taskPanelOpen={taskPanelOpen}
+          effort={effort}
           {...(branch !== undefined ? { branch } : {})}
           {...(() => {
             try {

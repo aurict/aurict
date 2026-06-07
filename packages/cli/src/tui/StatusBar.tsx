@@ -31,6 +31,7 @@ interface Props {
   bgTaskCount?:     number | undefined
   taskCount?:       number | undefined
   taskPanelOpen?:   boolean | undefined
+  effort?:          number | undefined
 }
 
 function fmtK(n: number): string {
@@ -39,18 +40,27 @@ function fmtK(n: number): string {
   return String(n)
 }
 
+function effortLabel(effort: number | undefined): string | null {
+  if (effort === undefined) return null
+  if (effort <= 4000)  return "think:low"
+  if (effort <= 10000) return "think:med"
+  if (effort <= 20000) return "think:high"
+  return "think:max"
+}
+
 export function StatusBar({
   provider, model, tokens, contextTokens, workdir, skills = [],
   contextWindow, isUndercover, coordinatorMode, branch, wasCompacted,
-  activeAgent, agentColor, bgTaskCount, taskCount, taskPanelOpen,
+  activeAgent, agentColor, bgTaskCount, taskCount, taskPanelOpen, effort,
 }: Props) {
   const theme = useTheme()
   const dir   = workdir.replace(process.env["HOME"] ?? "", "~")
   const cw    = contextWindow ?? 200_000
-  const ctxUsed = contextTokens ?? 0
-  const pct     = ctxUsed > 0 ? Math.min(1, ctxUsed / cw) : 0
+  const ctxUsed  = contextTokens ?? 0
+  const pct      = ctxUsed > 0 ? Math.min(1, ctxUsed / cw) : 0
   const barColor = pct >= 0.85 ? theme.error : pct >= 0.6 ? theme.warning : theme.success
   const cumTotal = tokens.input + tokens.output
+  const thinkTag = effortLabel(effort)
 
   return (
     <VStack gap="none">
@@ -93,6 +103,19 @@ export function StatusBar({
           <HStack gap="md">
             {isUndercover   && <Badge tone="muted" variant="ghost">undercover</Badge>}
             {coordinatorMode && <Badge tone="accent" variant="ghost">coordinator</Badge>}
+            {cumTotal > 0 && (
+              <>
+                <Text color={theme.textDim}>{fmtK(cumTotal)}</Text>
+                <Text color={theme.borderBright} dimColor>tok</Text>
+                <Text color={theme.borderBright}>·</Text>
+              </>
+            )}
+            {thinkTag && (
+              <>
+                <Text color={theme.accent} dimColor>{thinkTag}</Text>
+                <Text color={theme.borderBright}>·</Text>
+              </>
+            )}
             <Text color={theme.textPrimary}>{provider}</Text>
             <Text color={theme.borderBright}>/</Text>
             <Text color={theme.warning}>{model}</Text>

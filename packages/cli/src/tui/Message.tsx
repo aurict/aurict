@@ -38,7 +38,13 @@ const MAX_TOOL_LINES   = 6
 const MAX_STREAM_LINES = 8   // streaming sırasında gösterilecek max satır
 
 function useTerminalCols(): number {
-  return process.stdout.columns ?? 80
+  const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
+  useEffect(() => {
+    const handler = () => setCols(process.stdout.columns ?? 80)
+    process.stdout.on("resize", handler)
+    return () => { process.stdout.off("resize", handler) }
+  }, [])
+  return cols
 }
 
 function stripAnsi(s: string): string {

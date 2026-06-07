@@ -1,9 +1,15 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { Box, Text } from "ink"
 import { tokenizeLine, detectLang, C, type Lang } from "../utils/highlight.js"
 
 function useTerminalCols(): number {
-  return process.stdout.columns ?? 80
+  const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
+  useEffect(() => {
+    const handler = () => setCols(process.stdout.columns ?? 80)
+    process.stdout.on("resize", handler)
+    return () => { process.stdout.off("resize", handler) }
+  }, [])
+  return cols
 }
 
 interface Props { content: string }
