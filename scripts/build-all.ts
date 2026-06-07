@@ -17,13 +17,29 @@
  */
 
 import { join } from "node:path"
-import { mkdirSync, copyFileSync, chmodSync } from "node:fs"
+import { mkdirSync, copyFileSync, chmodSync, writeFileSync } from "node:fs"
 
 const ROOT  = join(import.meta.dir, "..")
 const ENTRY = join(ROOT, "packages/cli/src/index.ts")
 const DIST  = join(ROOT, "dist")
 
 mkdirSync(DIST, { recursive: true })
+
+// Patch ink's devtools.js to a no-op so react-devtools-core is never imported.
+// ink loads devtools only when process.env.DEV === 'true'; Bun 1.3.x doesn't
+// tree-shake dynamic imports even when the guard is statically false, so we
+// stub the file directly instead of relying on --define.
+const { stdout: findOut } = Bun.spawnSync(
+  ["find", "node_modules", "-path", "*/ink/build/devtools.js"],
+  { cwd: ROOT, stderr: "pipe" },
+)
+const devtoolsPaths = findOut.toString().trim().split("\n").filter(Boolean)
+for (const p of devtoolsPaths) {
+  writeFileSync(join(ROOT, p), "// production no-op — react-devtools-core not needed\n")
+}
+if (devtoolsPaths.length > 0) {
+  console.log(`Patched ink devtools (${devtoolsPaths.length} file(s))`)
+}
 
 const TARGETS = [
   { id: "linux-x64",    bunTarget: "bun-linux-x64" },
@@ -53,7 +69,6 @@ for (const { id, bunTarget } of targets) {
     "--target",  bunTarget,
     "--outfile", outFile,
     "--minify",
-    "--define", "process.env.DEV=\"false\"",
     "--external", "fsevents",
   ], {
     cwd:    ROOT,
