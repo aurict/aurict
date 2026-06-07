@@ -4,7 +4,7 @@
 
 set -e
 
-DOMAIN="omnicod.dev"
+DOMAIN="aurict.com"
 APP_DIR="/var/www/omnicod-web"
 REPO="https://github.com/omnicod-dev/omnicod.git"
 
