@@ -42,14 +42,15 @@ for (const pkg of ["cli", "omnicod"]) {
 }
 
 // Platform packages first, then wrappers last
-const PACKAGES = [
+const PLATFORM_PACKAGES = [
   "cli-linux-x64",
   "cli-linux-arm64",
   "cli-darwin-x64",
   "cli-darwin-arm64",
-  "cli",      // @omnicod/cli
-  "omnicod",  // omnicod (unscoped, user-facing)
+  "cli-win32-x64",
+  "cli",        // @omnicod/cli
 ]
+const MAIN_PACKAGE = "omnicod"
 
 function npm(args: string[], cwd: string): boolean {
   const cmd = ["npm", ...args, ...(DRY_RUN ? ["--dry-run"] : [])]
@@ -64,11 +65,28 @@ function npm(args: string[], cwd: string): boolean {
   return result.exitCode === 0
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+async function publishWithRetry(pkg: string, retries = 3, delayMs = 30_000): Promise<boolean> {
+  const dir = join(ROOT, "packages", pkg)
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const ok = npm(["publish", "--access", "public"], dir)
+    if (ok) return true
+    if (attempt < retries) {
+      console.error(`✗ Attempt ${attempt} failed, retrying in ${delayMs / 1000}s...`)
+      await sleep(delayMs)
+    }
+  }
+  return false
+}
+
 let allOk = true
 
-for (const pkg of PACKAGES) {
-  const dir = join(ROOT, "packages", pkg)
-  const ok  = npm(["publish", "--access", "public"], dir)
+// Publish platform packages with a short gap between each
+for (const pkg of PLATFORM_PACKAGES) {
+  const ok = npm(["publish", "--access", "public"], join(ROOT, "packages", pkg))
   if (!ok) {
     console.error(`✗ Failed to publish ${pkg}`)
     allOk = false
@@ -76,6 +94,22 @@ for (const pkg of PACKAGES) {
     const name = pkg === "omnicod" ? "omnicod" : `@omnicod/${pkg}`
     console.log(`✓ Published ${name}`)
   }
+  if (!DRY_RUN) await sleep(5_000)
+}
+
+// Wait for npm registry to fully process platform packages
+if (!DRY_RUN) {
+  console.log("\nWaiting 30s for npm registry to index platform packages...")
+  await sleep(30_000)
+}
+
+// Publish main package with retry
+const mainOk = await publishWithRetry(MAIN_PACKAGE)
+if (!mainOk) {
+  console.error(`✗ Failed to publish ${MAIN_PACKAGE} after retries`)
+  allOk = false
+} else {
+  console.log(`✓ Published ${MAIN_PACKAGE}`)
 }
 
 if (!allOk) {

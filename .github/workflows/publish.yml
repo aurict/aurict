@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (e.g. 1.0.1)"
+        description: "Version to publish (e.g. 1.0.3)"
         required: true
-        default: "1.0.1"
+        default: "1.0.3"
 
 jobs:
   build-and-publish:
@@ -27,12 +27,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      # Cross-compile all 4 platform binaries from a single Linux runner.
-      # Bun downloads the target-platform executable automatically.
       - name: Build all platform binaries
         run: bun run scripts/build-all.ts
 
-      # Verify the Linux x64 binary actually runs on this runner
       - name: Smoke test (linux-x64)
         run: ./dist/omnicod-linux-x64 --version
 
@@ -42,7 +39,6 @@ jobs:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
-      # Sync the version from the git tag (or workflow_dispatch input)
       - name: Sync version from tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -50,32 +46,48 @@ jobs:
           else
             VERSION="${GITHUB_REF_NAME#v}"
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Publishing version $VERSION"
-          for pkg in packages/omnicod packages/cli-linux-x64 packages/cli-linux-arm64 packages/cli-darwin-x64 packages/cli-darwin-arm64; do
+          for pkg in packages/omnicod packages/cli-linux-x64 packages/cli-linux-arm64 packages/cli-darwin-x64 packages/cli-darwin-arm64 packages/cli-win32-x64; do
             bun x json -I -f $pkg/package.json -e "this.version='$VERSION'"
           done
-          # Sync optionalDependencies in the wrapper package to match
           bun x json -I -f packages/omnicod/package.json -e "
             Object.keys(this.optionalDependencies || {}).forEach(k => {
               this.optionalDependencies[k] = '$VERSION'
             })
           "
 
-      # Platform packages first, main package last
       - name: Publish platform packages
         run: |
-          for pkg in cli-linux-x64 cli-linux-arm64 cli-darwin-x64 cli-darwin-arm64; do
+          for pkg in cli-linux-x64 cli-linux-arm64 cli-darwin-x64 cli-darwin-arm64 cli-win32-x64; do
+            echo "Publishing @omnicod/$pkg..."
             cd packages/$pkg
             npm publish --access public
             cd ../..
+            sleep 5
           done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish main package
+      # Give npm registry time to fully index the platform packages
+      # before the wrapper package resolves its optionalDependencies.
+      - name: Wait for npm registry
+        run: sleep 30
+
+      - name: Publish main package (with retry)
         run: |
           cd packages/omnicod
-          npm publish --access public
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt..."
+            npm publish --access public && break
+            if [ $attempt -lt 3 ]; then
+              echo "Publish failed, retrying in 30s..."
+              sleep 30
+            else
+              echo "All attempts failed."
+              exit 1
+            fi
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -88,4 +100,5 @@ jobs:
             dist/omnicod-linux-arm64
             dist/omnicod-darwin-x64
             dist/omnicod-darwin-arm64
+            dist/omnicod-win32-x64.exe
           generate_release_notes: true

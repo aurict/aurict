@@ -14,7 +14,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/omnicod/omnicod"
+    "url": "git+https://github.com/omnicod-dev/omnicod.git"
   },
   "homepage": "https://github.com/omnicod/omnicod",
   "bin": {
