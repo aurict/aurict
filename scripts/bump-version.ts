@@ -27,6 +27,7 @@ const PACKAGES = [
   "packages/cli-linux-arm64/package.json",
   "packages/cli-darwin-x64/package.json",
   "packages/cli-darwin-arm64/package.json",
+  "packages/cli-win32-x64/package.json",
 ]
 
 // Source files with hardcoded version strings
