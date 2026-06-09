@@ -5,7 +5,6 @@ import { ensureWorkspace } from "./workspace.js"
 import type { WorkerRequest, WorkerMessage, WorkerControl, AgentType } from "./protocol.js"
 import { AGENT_TYPE_TOOLS } from "./protocol.js"
 
-const WORKER_URL      = new URL("./worker.ts", import.meta.url).href
 const WORKER_TIMEOUT  = 300_000   // 5 dakika — heartbeat'le reset edilir
 const HEARTBEAT_GRACE = 45_000    // heartbeat gelmezse bu kadar sonra timeout
 const MAX_WORKERS     = 4
@@ -182,7 +181,7 @@ class AgentPool {
     })
 
     return new Promise<string>((resolve, reject) => {
-      const worker = new Worker(WORKER_URL, { type: "module" })
+      const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" })
 
       const info: AgentInfo = {
         id:              opts.id,
