@@ -45,10 +45,10 @@ export function clearLoaderCache(): void { memCache.clear() }
 // ─── Sistem prompt çıkarımı ───────────────────────────────────────────────────
 
 const SECTION_PRIORITIES = [
-  ["Quick Reference",   "Hızlı Referans",  "Quick Ref"],
-  ["Anti-Patterns",     "❌",              "Avoid",      "Kaçınılacaklar"],
-  ["Decision Tree",     "Karar Ağacı",     "When to use"],
-  ["Key Rules",         "Core Rules",      "Rules",      "Kurallar"],
+  ["Quick Reference",   "Quick Ref"],
+  ["Anti-Patterns",     "❌",              "Avoid"],
+  ["Decision Tree",     "When to use"],
+  ["Key Rules",         "Core Rules",      "Rules"],
   ["Implementation",    "Examples",        "Patterns"],
 ]
 

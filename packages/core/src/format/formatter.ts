@@ -59,13 +59,13 @@ export async function formatFile(filePath: string): Promise<boolean> {
 
     if (exitCode !== 0) {
       const stderr = await new Response(proc.stderr).text();
-      console.error(`Formatter hatası (${filePath}):`, stderr);
+      console.error(`Formatter error (${filePath}):`, stderr);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error(`Formatter çalıştırılamadı (${filePath}):`, error);
+    console.error(`Formatter failed (${filePath}):`, error);
     return false;
   }
 }

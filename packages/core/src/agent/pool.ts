@@ -109,7 +109,7 @@ class AgentPool {
       const entry = this.entries.get(id)
       if (!entry) return
       this.terminate(id, "timeout")
-      entry.reject(new Error(`Agent ${id} zaman aşımı`))
+      entry.reject(new Error(`Agent ${id} timed out`))
     }, ms)
   }
 
@@ -165,7 +165,7 @@ class AgentPool {
     onText?:         (delta: string) => void
   }): Promise<string> {
     if (this.entries.size >= MAX_WORKERS) {
-      return Promise.reject(new Error(`Worker pool dolu (max ${MAX_WORKERS})`))
+      return Promise.reject(new Error(`Worker pool full (max ${MAX_WORKERS})`))
     }
 
     const subSessionId = SessionManager.create(

@@ -36,7 +36,7 @@ class SnapshotManager {
           timestamp: Date.now(),
         });
       } else {
-        console.error(`Snapshot alınamadı (${filePath}):`, err);
+        console.error(`Snapshot failed (${filePath}):`, err);
       }
     }
   }
@@ -60,7 +60,7 @@ class SnapshotManager {
       }
       return last.filePath;
     } catch (err) {
-      console.error(`Geri yükleme başarısız (${last.filePath}):`, err);
+      console.error(`Restore failed (${last.filePath}):`, err);
       return null;
     }
   }

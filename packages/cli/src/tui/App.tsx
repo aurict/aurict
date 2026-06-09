@@ -579,7 +579,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         setBtwState((s) => s ? { ...s, answer: r.text, loading: false } : s)
       }).catch((err) => {
         clearInterval(interval); btwFrameRef.current = null
-        setBtwState((s) => s ? { ...s, answer: `Hata: ${err instanceof Error ? err.message : String(err)}`, loading: false } : s)
+        setBtwState((s) => s ? { ...s, answer: `Error: ${err instanceof Error ? err.message : String(err)}`, loading: false } : s)
       })
     },
     showPicker:  (title: string, items: any[], onSelect: any) => setPicker({ title, items, onSelect }),

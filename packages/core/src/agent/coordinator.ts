@@ -43,13 +43,13 @@ Spawn immediately (do NOT start reading files yourself) when the request:
 - Mentions 2+ independent dimensions: "security, performance, architecture" → one agent per
 - Says "analyze/audit/scan/review the whole project/codebase/system"
 - Says "find all [X]" across the whole repo
-- Lists topics separated by comma: "kalite, güvenlik, mimari, performans"
+- Lists topics separated by comma: "quality, security, architecture, performance"
 
 Dimension → agent type mapping:
-- security / güvenlik → type: "security"
-- performance / performans → type: "performance"
-- architecture / mimari / structure / yapı → type: "review"
-- code quality / kod kalitesi → type: "review"
+- security → type: "security"
+- performance → type: "performance"
+- architecture / structure → type: "review"
+- code quality → type: "review"
 - codebase scan / exploration → type: "explore"
 - testing / test coverage → type: "test"
 - documentation → type: "docs"
@@ -73,7 +73,7 @@ glob("**/*.ts") → count
 For multi-dim tasks, spawn ALL subagents at once (not sequentially).
 **Do NOT use task_create to plan before spawning — just spawn directly.**
 
-**Example** — "projeyi güvenlik, performans ve mimari açıdan incele":
+**Example** — "analyze the project for security, performance and architecture":
 \`\`\`
 subagent(type: "security",     role: "Security Auditor",      prompt: "Scan the entire codebase...")
 subagent(type: "performance",  role: "Performance Analyst",   prompt: "Analyze for performance bottlenecks...")

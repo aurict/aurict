@@ -57,7 +57,7 @@ function BriefStep({ onNext, onClose }: { onNext: (brief: string) => void; onClo
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>1/4 — Brief</Text></Text>
-      <Text color={theme.textSecondary}>Ne tasarlamak istiyorsun? Kısa bir açıklama yaz:</Text>
+      <Text color={theme.textSecondary}>What do you want to design? Write a brief description:</Text>
       <Box borderStyle="single" borderColor={theme.accent} paddingX={1} width={70}>
         <Text>
           {before}
@@ -65,9 +65,9 @@ function BriefStep({ onNext, onClose }: { onNext: (brief: string) => void; onClo
           {after}
         </Text>
       </Box>
-      <Text color={theme.textDim} dimColor>Enter ile devam · Esc ile iptal</Text>
+      <Text color={theme.textDim} dimColor>Enter to continue · Esc to cancel</Text>
       <Text color={theme.textDim} dimColor italic>
-        Örn: "Linear tarzı SaaS landing page"  ·  "Koyu dashboard, analytics"  ·  "Stripe stili pricing"
+        e.g. "Linear-style SaaS landing page"  ·  "Dark dashboard, analytics"  ·  "Stripe-style pricing"
       </Text>
     </Box>
   )
@@ -103,11 +103,11 @@ function SkillStep({
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>2/4 — Skill (template tipi)</Text></Text>
+      <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>2/4 — Skill (template type)</Text></Text>
       <Box>
-        <Text color={theme.textDim}>Önerilen: </Text>
+        <Text color={theme.textDim}>Suggested: </Text>
         <Text color={theme.accent} bold>{match.skill.name}</Text>
-        <Text color={theme.textDim}> — Enter ile kabul, ya da aşağıdan başkasını seç</Text>
+        <Text color={theme.textDim}> — Enter to accept, or pick another below</Text>
       </Box>
       <Box borderStyle="single" borderColor={theme.borderDim} paddingX={1} width={50}>
         <Text color={theme.textDim}>/ </Text>
@@ -127,9 +127,9 @@ function SkillStep({
             </Box>
           )
         })}
-        {total > 10 && <Text color={theme.textDim} dimColor>  …{total - 10} daha ({total} toplam)</Text>}
+        {total > 10 && <Text color={theme.textDim} dimColor>  …{total - 10} more ({total} total)</Text>}
       </Box>
-      <Text color={theme.textDim} dimColor>↑↓ hareket · / filtrele · Enter seç · Esc geri</Text>
+      <Text color={theme.textDim} dimColor>↑↓ navigate · / filter · Enter select · Esc back</Text>
     </Box>
   )
 }
@@ -175,7 +175,7 @@ function SystemStep({
     <Box flexDirection="column" gap={1}>
       <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>3/4 — Design System (brand)</Text></Text>
       <Box>
-        <Text color={theme.textDim}>Önerilen: </Text>
+        <Text color={theme.textDim}>Suggested: </Text>
         <Text color={theme.accent} bold>{match.system.name}</Text>
         <Text color={theme.textDim}> · {match.system.category}</Text>
       </Box>
@@ -201,7 +201,7 @@ function SystemStep({
               </Box>
             )
           })}
-          {total > 12 && <Text color={theme.textDim} dimColor>  …{total - 12} daha</Text>}
+          {total > 12 && <Text color={theme.textDim} dimColor>  …{total - 12} more</Text>}
         </Box>
 
         {/* Önizleme */}
@@ -213,7 +213,7 @@ function SystemStep({
           </Box>
         )}
       </Box>
-      <Text color={theme.textDim} dimColor>↑↓ hareket · / filtrele · Enter seç · Esc geri</Text>
+      <Text color={theme.textDim} dimColor>↑↓ navigate · / filter · Enter select · Esc back</Text>
     </Box>
   )
 }
@@ -236,7 +236,7 @@ function ConfirmStep({
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>4/4 — Onayla</Text></Text>
+      <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>4/4 — Confirm</Text></Text>
       <Box flexDirection="column" borderStyle="round" borderColor={theme.accent} paddingX={2} paddingY={1} gap={0}>
         <Box gap={2}>
           <Text color={theme.textDim} dimColor>{"Brief      "}</Text>
@@ -253,13 +253,13 @@ function ConfirmStep({
           <Text color={theme.textDim} dimColor>{system?.category}</Text>
         </Box>
         <Box gap={2}>
-          <Text color={theme.textDim} dimColor>{"Çıktı      "}</Text>
+          <Text color={theme.textDim} dimColor>{"Output     "}</Text>
           <Text color={theme.textSecondary}>~/.omnicod/designs/…/index.html</Text>
         </Box>
       </Box>
       <Box gap={2}>
-        <Text color={theme.success} bold>Enter</Text><Text color={theme.textSecondary}>— başlat</Text>
-        <Text color={theme.textDim} bold>Esc</Text><Text color={theme.textDim} dimColor>— geri</Text>
+        <Text color={theme.success} bold>Enter</Text><Text color={theme.textSecondary}>— launch</Text>
+        <Text color={theme.textDim} bold>Esc</Text><Text color={theme.textDim} dimColor>— back</Text>
       </Box>
     </Box>
   )

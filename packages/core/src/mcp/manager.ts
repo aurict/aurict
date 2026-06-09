@@ -33,11 +33,11 @@ class MCPManager {
       this.servers.set(name, { client, toolIds, status: "connected" })
 
       await hooks.emit("v1.mcp.connected", { serverName: name, tools: toolIds })
-      console.error(`[mcp] ${name}: ${toolIds.length} tool bağlandı`)
+      console.error(`[mcp] ${name}: ${toolIds.length} tool(s) connected`)
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err)
       this.servers.set(name, { client, toolIds: [], status: "error", error })
-      console.error(`[mcp] ${name}: bağlantı hatası — ${error}`)
+      console.error(`[mcp] ${name}: connection error — ${error}`)
     }
   }
 
