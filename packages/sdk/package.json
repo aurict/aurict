@@ -1,6 +1,6 @@
 {
   "name": "@omnicod/sdk",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": false,
   "type": "module",
   "main": "./src/index.ts",

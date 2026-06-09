@@ -1,6 +1,6 @@
 {
   "name": "@omnicod/cli",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": false,
   "description": "OmniCod — Terminal AI coding assistant",
   "keywords": [
@@ -26,10 +26,10 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@omnicod/cli-linux-x64": "1.0.4",
-    "@omnicod/cli-linux-arm64": "1.0.4",
-    "@omnicod/cli-darwin-x64": "1.0.4",
-    "@omnicod/cli-darwin-arm64": "1.0.4"
+    "@omnicod/cli-linux-x64": "1.0.5",
+    "@omnicod/cli-linux-arm64": "1.0.5",
+    "@omnicod/cli-darwin-x64": "1.0.5",
+    "@omnicod/cli-darwin-arm64": "1.0.5"
   },
   "scripts": {
     "dev": "bun run ../cli/src/index.ts"

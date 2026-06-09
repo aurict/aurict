@@ -72,14 +72,14 @@ for (const [provider, val] of Object.entries(omniCfg.providers ?? {})) {
 
 // --version
 if (flags.version) {
-  console.log("OmniCod v1.0.4")
+  console.log("OmniCod v1.0.5")
   process.exit(0)
 }
 
 // --help
 if (flags.help) {
   console.log(`
-OmniCod v1.0.4 — Terminal AI assistant
+OmniCod v1.0.5 — Terminal AI assistant
 
 Usage:
   omnicod [options]

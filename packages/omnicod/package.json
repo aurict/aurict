@@ -1,6 +1,6 @@
 {
   "name": "omnicod",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "OmniCod — Terminal AI coding assistant",
   "keywords": [
     "ai",
@@ -25,11 +25,11 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@omnicod/cli-linux-x64": "1.0.4",
-    "@omnicod/cli-linux-arm64": "1.0.4",
-    "@omnicod/cli-darwin-x64": "1.0.4",
-    "@omnicod/cli-darwin-arm64": "1.0.4",
-    "@omnicod/cli-win32-x64": "1.0.4"
+    "@omnicod/cli-linux-x64": "1.0.5",
+    "@omnicod/cli-linux-arm64": "1.0.5",
+    "@omnicod/cli-darwin-x64": "1.0.5",
+    "@omnicod/cli-darwin-arm64": "1.0.5",
+    "@omnicod/cli-win32-x64": "1.0.5"
   },
   "engines": {
     "node": ">=20"

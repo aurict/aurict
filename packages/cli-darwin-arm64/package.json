@@ -1,6 +1,6 @@
 {
   "name": "@omnicod/cli-darwin-arm64",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "OmniCod CLI binary for macOS arm64 (Apple Silicon)",
   "license": "MIT",
   "repository": {
