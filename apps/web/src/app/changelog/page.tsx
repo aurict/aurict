@@ -4,7 +4,7 @@ import type { Metadata } from "next"
 
 export const metadata: Metadata = {
   title:       "Changelog — Release History",
-  description: "Aurict version history and release notes. Latest: v1.0.5 — setup wizard, /cost cache breakdown, UI polish, and QuickSearch recency.",
+  description: "Aurict version history and release notes. Latest: v1.0.6 — setup wizard, /cost cache breakdown, UI polish, and QuickSearch recency.",
   alternates:  { canonical: "https://aurict.dev/changelog" },
   openGraph: {
     title:       "Aurict Changelog — Release History",

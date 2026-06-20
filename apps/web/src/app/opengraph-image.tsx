@@ -86,7 +86,7 @@ export default function OgImage() {
               display:      "flex",
             }}
           >
-            v1.0.5 · Open Source
+            v1.0.6 · Open Source
           </div>
         </div>
 
