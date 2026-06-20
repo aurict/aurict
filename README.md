@@ -116,7 +116,7 @@ Aurict from CI, or build your own tooling on top.
 Produces a single self-contained binary with the Bun runtime embedded — no runtime dependencies.
 
 ```bash
-git clone https://github.com/aurict-dev/aurict
+git clone https://github.com/aurict/aurict
 cd aurict
 bun install
 bun run build

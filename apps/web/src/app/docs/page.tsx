@@ -28,7 +28,7 @@ const articleJsonLd = {
   "headline":    "Aurict Documentation — Getting Started",
   "description": "Complete installation, configuration, and extension guide for Aurict terminal AI coding assistant.",
   "url":         "https://aurict.dev/docs",
-  "author": { "@type": "Organization", "name": "aurict-dev", "url": "https://github.com/aurict-dev" },
+  "author": { "@type": "Organization", "name": "aurict", "url": "https://github.com/aurict" },
   "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.dev" },
   "datePublished": "2026-06-07",
   "dateModified":  "2026-06-09",
@@ -52,7 +52,7 @@ const DOCS_SECTIONS = [
       {
         heading: "Build from source",
         body: "Clone the repo and build with Bun. Requires Bun >= 1.1.",
-        code: "git clone https://github.com/aurict-dev/aurict\ncd aurict\nbun install\nbun run build",
+        code: "git clone https://github.com/aurict/aurict\ncd aurict\nbun install\nbun run build",
       },
     ],
   },

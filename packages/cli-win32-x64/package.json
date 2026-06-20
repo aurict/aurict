@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aurict-dev/aurict"
+    "url": "https://github.com/aurict/aurict"
   },
   "os": [
     "win32"

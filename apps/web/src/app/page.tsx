@@ -98,8 +98,8 @@ const jsonLd = {
       "license":             "https://opensource.org/licenses/MIT",
       "author": {
         "@type": "Organization",
-        "name":  "aurict-dev",
-        "url":   "https://github.com/aurict-dev",
+        "name":  "aurict",
+        "url":   "https://github.com/aurict",
       },
       "offers": {
         "@type":         "Offer",
@@ -127,10 +127,10 @@ const jsonLd = {
     },
     {
       "@type":  "Organization",
-      "name":   "aurict-dev",
+      "name":   "aurict",
       "url":    "https://aurict.dev",
       "sameAs": [
-        "https://github.com/aurict-dev/aurict",
+        "https://github.com/aurict/aurict",
         "https://www.npmjs.com/package/aurict",
       ],
     },

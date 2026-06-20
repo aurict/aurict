@@ -23,11 +23,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aurict-dev/aurict.git"
+    "url": "git+https://github.com/aurict/aurict.git"
   },
   "homepage": "https://aurict.dev",
   "bugs": {
-    "url": "https://github.com/aurict-dev/aurict/issues"
+    "url": "https://github.com/aurict/aurict/issues"
   },
   "bin": {
     "aurict": "./bin/aurict"

@@ -6,7 +6,7 @@ set -e
 
 DOMAIN="aurict.com"
 APP_DIR="/var/www/aurict-web"
-REPO="https://github.com/aurict-dev/aurict.git"
+REPO="https://github.com/aurict/aurict.git"
 
 echo "==> Repo klonlanıyor..."
 if [ -d "$APP_DIR" ]; then

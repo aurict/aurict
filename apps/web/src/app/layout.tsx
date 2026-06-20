@@ -33,9 +33,9 @@ export const metadata: Metadata = {
     "aurict",
   ],
 
-  authors:   [{ name: "aurict-dev", url: "https://github.com/aurict-dev" }],
-  creator:   "aurict-dev",
-  publisher: "aurict-dev",
+  authors:   [{ name: "aurict", url: "https://github.com/aurict" }],
+  creator:   "aurict",
+  publisher: "aurict",
 
   robots: {
     index:  true,

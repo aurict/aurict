@@ -5,7 +5,7 @@
 ### From source (recommended — single binary, no runtime dependencies)
 
 ```bash
-git clone https://github.com/aurict-dev/aurict
+git clone https://github.com/aurict/aurict
 cd aurict
 bun install
 bun run build

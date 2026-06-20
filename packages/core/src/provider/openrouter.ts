@@ -22,7 +22,7 @@ export class OpenRouterPlugin extends ProviderPlugin {
       ...(key !== undefined ? { apiKey: key } : {}),
       baseURL: "https://openrouter.ai/api/v1",
       headers: {
-        "HTTP-Referer": "https://github.com/aurict-dev",
+        "HTTP-Referer": "https://github.com/aurict",
         "X-Title": "Aurict",
       },
     })

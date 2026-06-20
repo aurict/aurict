@@ -78,7 +78,7 @@ export function Nav() {
             <NavLink href="/docs">Docs</NavLink>
             <NavLink href="/changelog">Changelog</NavLink>
             <a
-              href="https://github.com/aurict-dev/aurict"
+              href="https://github.com/aurict/aurict"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "var(--text-dim)", textDecoration: "none", fontSize: 14, transition: "color 0.2s" }}
@@ -134,7 +134,7 @@ export function Nav() {
         <div className="nav-drawer" onClick={() => setMenuOpen(false)}>
           <Link href="/docs"      onClick={() => setMenuOpen(false)}>Docs</Link>
           <Link href="/changelog" onClick={() => setMenuOpen(false)}>Changelog</Link>
-          <a href="https://github.com/aurict-dev/aurict" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://github.com/aurict/aurict" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="#waitlist" onClick={() => setMenuOpen(false)} style={{ color: "var(--accent)", fontWeight: 600 }}>
             Join waitlist →
           </a>
