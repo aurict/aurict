@@ -1,6 +1,8 @@
 import { join } from "path"
 import { homedir } from "os"
+import { existsSync, mkdirSync, writeFileSync } from "fs"
 import type { MCPConfig, MCPServerConfig } from "./types.js"
+import { DEFAULT_MCP_SERVERS } from "./defaults.js"
 
 export function loadMCPConfig(workdir: string): MCPConfig {
   const merged: MCPConfig = { mcpServers: {} }
@@ -22,6 +24,38 @@ export function loadMCPConfig(workdir: string): MCPConfig {
   }
 
   return merged
+}
+
+/**
+ * İlk çalıştırmada default MCP server'ları aktifleştir.
+ * Eğer mcp.json yoksa, default server'larla oluşturur.
+ * @returns true eğer yeni oluşturulduysa (kullanıcıya gösterilecek mesaj için)
+ */
+export function ensureDefaultMCPServers(workdir: string): boolean {
+  const globalPath = join(homedir(), ".aurict", "mcp.json")
+  const projectPath = join(workdir, ".aurict", "mcp.json")
+
+  // Eğer herhangi bir mcp.json varsa, müdahale etme
+  if (existsSync(globalPath) || existsSync(projectPath)) {
+    return false
+  }
+
+  // Global config oluştur
+  try {
+    const globalDir = join(homedir(), ".aurict")
+    if (!existsSync(globalDir)) {
+      mkdirSync(globalDir, { recursive: true })
+    }
+
+    const defaultConfig: MCPConfig = {
+      mcpServers: { ...DEFAULT_MCP_SERVERS },
+    }
+
+    writeFileSync(globalPath, JSON.stringify(defaultConfig, null, 2), "utf8")
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function enabledServers(cfg: MCPConfig): Record<string, MCPServerConfig> {

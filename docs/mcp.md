@@ -2,6 +2,20 @@
 
 Aurict supports MCP servers using the same `claude_desktop_config.json`-compatible format.
 
+## Default MCP Servers
+
+On first run, Aurict automatically enables these MCP servers:
+
+| Server | Description | Command |
+|--------|-------------|---------|
+| **filesystem** | File operations — read, write, search, directory management | `npx -y @modelcontextprotocol/server-filesystem` |
+| **git** | Git operations — status, diff, commit, branch, log | `uvx mcp-server-git` |
+| **fetch** | Web content fetching — HTTP requests, HTML to markdown | `uvx mcp-server-fetch` |
+
+These servers are configured in `~/.aurict/mcp.json` and start automatically. You can manage them with `/mcp` commands.
+
+---
+
 ## Adding an MCP server
 
 ```bash

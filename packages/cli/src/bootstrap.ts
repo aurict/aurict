@@ -1,5 +1,7 @@
 import { createApp, ProviderRegistry, mcpManager, loadCustomTools, loadUserHooks } from "@aurict/core"
 import { getOrCreateToken, setActiveToken } from "@aurict/core"
+import { ensureDefaultMCPServers } from "@aurict/core"
+import { getMcpActivationMessage, DEFAULT_MCP_SERVERS } from "@aurict/core"
 import type { AurictConfig } from "./config/types.js"
 
 const DEFAULT_PORT = 7777
@@ -31,6 +33,12 @@ export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvid
 
   // Load user-defined hooks from ~/.aurict/hooks.json + .aurict/hooks.json
   loadUserHooks(process.cwd())
+
+  // İlk çalıştırmada default MCP server'ları aktifleştir
+  const mcpActivated = ensureDefaultMCPServers(process.cwd())
+  if (mcpActivated) {
+    console.error(`\n${getMcpActivationMessage(DEFAULT_MCP_SERVERS)}\n`)
+  }
 
   // MCP server'larını başlat
   mcpManager.init(process.cwd()).catch(() => {})

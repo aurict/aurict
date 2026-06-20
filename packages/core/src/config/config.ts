@@ -6,6 +6,12 @@ import type { FallbackTrigger } from "../provider/fallback.js"
 export type CompactionStrategy  = "aggressive" | "balanced" | "conservative"
 export type TruncationStrategy = "head" | "tail" | "head_tail" | "smart"
 
+export interface McpServerConfig {
+  command: string
+  args?: string[]
+  env?: Record<string, string>
+}
+
 export interface OmniConfig {
   providers?:  Record<string, { apiKey?: string; baseUrl?: string }>
   defaults?:   { provider?: string; model?: string; effort?: number }
@@ -37,6 +43,8 @@ export interface OmniConfig {
     budgetThresholdUsd?: number
     maxSessionCostUsd?: number
   }
+  /** MCP (Model Context Protocol) server yapılandırmaları */
+  mcpServers?: Record<string, McpServerConfig>
 }
 
 const GLOBAL_PATH = join(homedir(), ".aurict", "config.json")
@@ -67,6 +75,7 @@ function merge(a: OmniConfig, b: OmniConfig): OmniConfig {
     agents: { ...(a.agents ?? {}), ...(b.agents ?? {}) },
     fallback: { ...(a.fallback ?? {}), ...(b.fallback ?? {}) },
     routing: { ...(a.routing ?? {}), ...(b.routing ?? {}) },
+    mcpServers: { ...(a.mcpServers ?? {}), ...(b.mcpServers ?? {}) },
   }
 }
 
