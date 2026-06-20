@@ -1,5 +1,8 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
+import { ScrollProgress } from "@/components/ui/ScrollProgress"
+import { BackToTop } from "@/components/ui/BackToTop"
+import { CommandPalette } from "@/components/ui/CommandPalette"
 import "./globals.css"
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
@@ -101,8 +104,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body style={{ background: "var(--bg)", color: "var(--text)", minHeight: "100vh" }}>
+        <ScrollProgress />
+        <CommandPalette />
         <div className="noise" aria-hidden="true" />
         {children}
+        <BackToTop />
       </body>
     </html>
   )

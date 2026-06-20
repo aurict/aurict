@@ -4,6 +4,8 @@ import { MotionProvider } from "@/components/MotionProvider"
 import { Hero } from "@/components/sections/Hero"
 import { WhyAurict } from "@/components/sections/WhyAurict"
 import { Features } from "@/components/sections/Features"
+import { ProviderGrid } from "@/components/ui/ProviderGrid"
+import { IntegrationGrid } from "@/components/ui/IntegrationGrid"
 import { Install } from "@/components/sections/Install"
 import { Waitlist } from "@/components/sections/Waitlist"
 import { FAQ } from "@/components/sections/FAQ"
@@ -93,7 +95,7 @@ const jsonLd = {
       "url":                 "https://aurict.dev",
       "downloadUrl":         "https://www.npmjs.com/package/aurict",
       "installUrl":          "https://www.npmjs.com/package/aurict",
-      "softwareVersion":     "1.0.6",
+      "softwareVersion":     "1.0.7",
       "releaseNotes":        "https://aurict.dev/changelog",
       "license":             "https://opensource.org/licenses/MIT",
       "author": {
@@ -149,6 +151,8 @@ export default function Home() {
           <Hero />
           <WhyAurict />
           <Features />
+          <ProviderGrid />
+          <IntegrationGrid />
           <Install />
           <Waitlist />
           <FAQ />

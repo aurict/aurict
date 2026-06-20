@@ -69,13 +69,14 @@ export function Nav() {
                 letterSpacing: "0.05em",
               }}
             >
-              v1.0.6
+              v1.0.7
             </span>
           </Link>
 
           {/* Desktop links */}
           <div className="nav-links">
             <NavLink href="/docs">Docs</NavLink>
+            <NavLink href="/blog">Blog</NavLink>
             <NavLink href="/changelog">Changelog</NavLink>
             <a
               href="https://github.com/aurict/aurict"
@@ -133,6 +134,7 @@ export function Nav() {
       {menuOpen && (
         <div className="nav-drawer" onClick={() => setMenuOpen(false)}>
           <Link href="/docs"      onClick={() => setMenuOpen(false)}>Docs</Link>
+          <Link href="/blog"      onClick={() => setMenuOpen(false)}>Blog</Link>
           <Link href="/changelog" onClick={() => setMenuOpen(false)}>Changelog</Link>
           <a href="https://github.com/aurict/aurict" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="#waitlist" onClick={() => setMenuOpen(false)} style={{ color: "var(--accent)", fontWeight: 600 }}>

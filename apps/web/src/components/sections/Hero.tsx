@@ -64,7 +64,7 @@ export function Hero() {
                 boxShadow: "0 0 8px var(--accent)",
               }}
             />
-            v1.0.6 — Open Source
+            v1.0.7 — Open Source
           </span>
         </m.div>
 

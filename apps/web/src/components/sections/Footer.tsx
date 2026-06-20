@@ -37,11 +37,13 @@ export function Footer() {
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>© 2026 aurict</span>
         </div>
 
-        <div style={{ display: "flex", gap: 32 }}>
+        <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
           {[
             { label: "GitHub", href: "https://github.com/aurict/aurict" },
             { label: "npm", href: "https://www.npmjs.com/package/aurict" },
             { label: "Docs", href: "/docs" },
+            { label: "Blog", href: "/blog" },
+            { label: "Use Cases", href: "/use-cases" },
             { label: "Changelog", href: "/changelog" },
           ].map((link) => (
             <a
