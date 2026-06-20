@@ -37,7 +37,7 @@ Build the DAG:
 - Max 3 levels of depth (flatten if deeper)
 
 ### Step 4: Mission Memo Generation
-Write each task to `.omnirule/missions/{uuid}.json`:
+Write each task to `.aurict/missions/{uuid}.json`:
 ```json
 {
   "id": "task-001",
@@ -93,6 +93,6 @@ Proceed? (Yes / Adjust)
 
 ## 6. Inter-Agent Protocol
 After plan approval:
-1. Write all mission memos to `.omnirule/missions/`
+1. Write all mission memos to `.aurict/missions/`
 2. Signal orchestrator: "Plan ready — N missions queued"
 3. Orchestrator dispatches phase by phase

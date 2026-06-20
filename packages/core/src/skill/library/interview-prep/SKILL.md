@@ -4,7 +4,7 @@ description: "Davranışsal ve teknik mülakat soruları, STAR metodu, soru bank
 triggers:
   keywords: ["interview prep", "mülakat hazırlığı", "star metodu", "soru bankası", "aday değerlendirme"]
 auto_load_when: "Kullanıcı mülakat sorusu hazırlama, aday değerlendirme kriterleri veya mülakat planı ister"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "grep", "glob"]
 ---
 
@@ -216,6 +216,3 @@ aday_değerlendirme
 | 3 (Orta) | Yeterli | İletişim var | Uyumlu | Değerlendir |
 | 2 (Zayıf) | Sınırlı | Zorlanıyor | Belirsiz | Riskli |
 | 1 (Yetersiz) | Yok | İletişim yok | Uyumsuz | Red |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

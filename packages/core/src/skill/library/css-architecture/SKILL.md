@@ -165,6 +165,96 @@ When to refactor:
 | Responsive | Mobile-first breakpoints | Progressive enhancement |
 | Specificity | Flat selectors (0,1,0) | Predictable override |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Which CSS methodology?
+├── Component-based app (React/Vue)    → CSS Modules (scoped by default, no bleed)
+├── Utility-driven, design system      → Tailwind CSS (zero dead CSS, no naming)
+├── Legacy HTML / server-rendered      → BEM naming (block__element--modifier)
+└── Design token driven theming        → CSS Custom Properties + any of the above
+
+Dark mode strategy?
+├── System preference + user toggle    → [data-theme="dark"] on <html>
+├── Tailwind                           → dark: variant (class or media strategy)
+└── CSS-in-JS                          → context-based theme tokens
+
+Handling variants (size, color, state)?
+├── 1-2 variants                       → BEM modifier: .button--primary
+├── Many composed variants             → cva() from class-variance-authority
+└── Purely state (disabled, active)    → data-* attributes (data-state="open")
+
+Specificity problem?
+├── Third-party override               → add specificity (use :where() to reset to 0)
+├── Own code conflict                  → flatten cascade, avoid nesting
+└── Tempted to add !important          → refactor — extract to separate selector
+```
+
+---
+
+## Key Rules
+
+1. Flat selectors only — max specificity (0,1,0); no `.nav ul li a` chains
+2. CSS Modules or Tailwind for component styles — global `.button` bleeds everywhere
+3. CSS custom properties for all design tokens (colors, spacing, radii) — runtime themeable
+4. Never `!important` in product code — fix the cascade instead
+5. Co-locate styles with the component: `Button.tsx` + `Button.module.css` in same folder
+6. Mobile-first: base styles for small screens, `@media (min-width: N)` to layer up
+7. For dark mode: `[data-theme]` attribute on `<html>` — avoids FOUC vs JS theme toggle
+
+---
+
+## Implementation
+
+```css
+/* Button.module.css — CSS Modules with CSS Custom Properties */
+.root {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: background-color 150ms ease-out;
+  cursor: pointer;
+  border: none;
+}
+
+.primary   { background: var(--color-brand);    color: var(--color-on-brand); }
+.secondary { background: var(--color-surface);  color: var(--color-text); border: 1px solid var(--color-border); }
+
+.small  { padding: var(--spacing-1) var(--spacing-3); font-size: 0.875rem; }
+.large  { padding: var(--spacing-3) var(--spacing-6); font-size: 1.125rem; }
+```
+
+```tsx
+// Button.tsx — cva() for variant composition
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
+
+const button = cva(
+  'inline-flex items-center font-medium rounded-md transition-colors',
+  {
+    variants: {
+      variant: {
+        primary:   'bg-blue-600 text-white hover:bg-blue-700',
+        secondary: 'bg-white border border-gray-300 hover:bg-gray-50',
+        ghost:     'hover:bg-gray-100',
+      },
+      size: {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-4 py-2',
+        lg: 'px-6 py-3 text-lg',
+      },
+    },
+    defaultVariants: { variant: 'primary', size: 'md' },
+  }
+)
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof button>
+
+export function Button({ variant, size, className, ...props }: ButtonProps) {
+  return <button className={cn(button({ variant, size }), className)} {...props} />
+}
+```

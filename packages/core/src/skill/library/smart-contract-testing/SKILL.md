@@ -198,6 +198,3 @@ Gas Testing Patterns:
 | Mythril | Formal verification | Symbolic execution |
 | Certora | Formal verification | Property-based |
 | Tenderly | Debugging, simulation | Web-based |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

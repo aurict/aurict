@@ -14,7 +14,7 @@ auto_load_when:
   - renovation_planning
   - maker_skills
   - woodworking
-agent: researcher
+agent: content-ops
 tools:
   - markdown_writer
   - template_generator
@@ -373,6 +373,3 @@ Time Estimation
 | **Klemp** | El yerine alet | Malzemeyi sabit tut, eli serbest bırak |
 | **Drying** | Hızlandırmayın | Isı + fan = çatlama riski |
 | **Test** | Her aşamayı test et | Sonra montaj yap |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

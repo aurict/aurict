@@ -12,7 +12,7 @@ export class MCPClient {
     readonly serverName: string,
     private config: MCPServerConfig,
   ) {
-    this.client = new Client({ name: "omnicod", version: "0.0.1" })
+    this.client = new Client({ name: "aurict", version: "0.0.1" })
   }
 
   async connect(): Promise<void> {
@@ -32,7 +32,7 @@ export class MCPClient {
         return
       } catch {
         // Reset client and try SSE
-        this.client = new Client({ name: "omnicod", version: "0.0.1" })
+        this.client = new Client({ name: "aurict", version: "0.0.1" })
         transport = new SSEClientTransport(url, { requestInit })
       }
     } else {

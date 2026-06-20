@@ -207,6 +207,91 @@ When to use codes:
 | 404 | Not Found | Resource missing |
 | 422 | Unprocessable | Semantic error |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Which HTTP method?
+├── Read data (no side effects)         → GET
+├── Create new resource                 → POST (not idempotent)
+├── Replace full resource               → PUT (idempotent)
+├── Partial update                      → PATCH (usually idempotent)
+└── Remove resource                     → DELETE
+
+Which status code on success?
+├── GET / PUT / PATCH retrieved data   → 200 OK
+├── POST created new resource          → 201 Created + Location header
+└── DELETE with no body to return      → 204 No Content
+
+Which error code?
+├── Missing / invalid input            → 400 Bad Request
+├── No valid credentials               → 401 Unauthorized
+├── Valid auth but wrong permission    → 403 Forbidden
+├── Resource doesn't exist            → 404 Not Found
+├── Duplicate / conflicting state      → 409 Conflict
+├── Business rule violation            → 422 Unprocessable
+└── Server fault                       → 500 + correlation ID in body
+
+Pagination strategy?
+├── User-facing, jump to page N        → offset-based (?page=2&per_page=20)
+├── Real-time feed, large dataset      → cursor-based (?cursor=<opaque>&limit=20)
+└── Admin export, no paging needed     → streaming / bulk endpoint
+```
+
+---
+
+## Key Rules
+
+1. Use nouns for resources: `/users/:id`, not `/getUser/:id`
+2. Never break a versioned contract — add fields, don't remove; bump `/v2/` for breaking changes
+3. Standard envelope: `{ data, meta, error }` — consistent across all endpoints
+4. Correct HTTP status codes — never 200 for errors, never 404 for "no results"
+5. RFC 7807 error body: `{ type, title, status, detail, instance }`
+6. Cursor-based pagination for any list that can exceed 1000 rows
+7. Idempotency-Key header on any POST that triggers side effects (payments, emails)
+
+---
+
+## Implementation
+
+```typescript
+// RFC 7807 error helper
+function problemJson(status: number, title: string, detail: string, extra?: Record<string, unknown>) {
+  return Response.json(
+    { type: `https://api.example.com/errors/${title.toLowerCase().replace(' ', '-')}`,
+      title, status, detail, ...extra },
+    { status, headers: { 'Content-Type': 'application/problem+json' } }
+  )
+}
+
+// Cursor-based pagination (Next.js Route Handler)
+// GET /api/posts?cursor=<id>&limit=20
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const cursor = searchParams.get('cursor')
+  const limit = Math.min(Number(searchParams.get('limit') ?? 20), 100)
+
+  const rows = await db.post.findMany({
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    orderBy: { id: 'desc' },
+  })
+
+  const hasMore = rows.length > limit
+  const items = rows.slice(0, limit)
+  const nextCursor = hasMore ? items[items.length - 1].id : null
+
+  return Response.json({
+    data: items,
+    meta: { limit, hasMore, nextCursor },
+  })
+}
+
+// Standard success response helper
+function ok<T>(data: T, meta?: Record<string, unknown>) {
+  return Response.json({ data, ...(meta ? { meta } : {}) })
+}
+// Usage: return ok(user) → { data: {...} }
+// Usage: return problemJson(404, 'Not Found', 'User not found')
+```

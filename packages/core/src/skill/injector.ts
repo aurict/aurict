@@ -1,19 +1,25 @@
 import { detectSkills } from "./detector.js"
-import { loadSkills, loadSkill } from "./loader.js"
+import { loadSkills, loadSkill, loadSkillAdaptive, detectTaskType } from "./loader.js"
 import { SkillRegistry } from "./registry.js"
 import { autoInvoker } from "./auto-invoke.js"
+import { skillScoreStore } from "./score-store.js"
+import { loadSkillOverride, applyOverride } from "./override.js"
 import { hooks } from "../hook/emitter.js"
 import { countTokens } from "../provider/tokenizer.js"
 import { FULL_SYSTEM_PROMPT } from "../agent/system.js"
 import { memoryStore } from "../memory/store.js"
 import { pinStore } from "../pin/store.js"
+import { readArchitecture } from "../project-context/architecture.js"
+import { readDecisions } from "../project-context/decisions.js"
+import { diagnosticsStore } from "../diagnostics/store.js"
 import { execSync } from "child_process"
 import { join } from "node:path"
 import { homedir } from "node:os"
 import { readdirSync, existsSync, readFileSync } from "node:fs"
 import type { LoadedSkill, SkillDef } from "./types.js"
 
-const MAX_SKILL_TOKENS        = 6_000   // total token budget for all skills
+const MAX_SKILL_TOKENS        = 8_000   // total token budget for all skills
+const MAX_INTENT_SKILL_TOKENS = 6_000   // per-message intent skill budget
 const MAX_PROJECT_INSTRUCTIONS = 8_000  // character cap for CLAUDE.md / AGENTS.md content
 
 // ─── Multi-dir cache ──────────────────────────────────────────────────────────
@@ -30,12 +36,27 @@ export async function buildSystemPrompt(projectDir: string, base?: string, inclu
   const pinSection          = pinStore.toPromptSection(projectDir)
   const gitSection          = includeGit ? buildGitSection(projectDir) : ""
   const instructionsSection = readProjectInstructions(projectDir)
+  const projectContextSection = buildProjectContextSection(projectDir)
 
-  // Project instructions are prepended first — they take highest precedence
-  return [instructionsSection, finalBase, pinSection, gitSection, skillSection, memorySection]
+  // Order: project instructions → project context → base system → pins → git → skills → memory
+  return [instructionsSection, projectContextSection, finalBase, pinSection, gitSection, skillSection, memorySection]
     .filter(Boolean)
     .join("\n\n")
     .trim()
+}
+
+function buildProjectContextSection(workdir: string): string {
+  const architecture  = readArchitecture(workdir)
+  const decisions     = readDecisions(workdir)
+  const diagnostics   = diagnosticsStore.toPromptSection(workdir)
+
+  const parts = [architecture, decisions, diagnostics].filter(Boolean)
+  if (parts.length === 0) return ""
+
+  return [
+    "# Project Context (.aurict/)",
+    parts.join("\n\n"),
+  ].join("\n\n")
 }
 
 /**
@@ -104,8 +125,8 @@ function buildMemorySection(workdir: string): string {
 
 async function loadCustomSkills(projectDir: string): Promise<LoadedSkill[]> {
   const dirs = [
-    join(homedir(), ".omnicod", "skills"),   // global
-    join(projectDir, ".omnicod", "skills"),  // project (override)
+    join(homedir(), ".aurict", "skills"),   // global
+    join(projectDir, ".aurict", "skills"),  // project (override)
   ]
   const results: LoadedSkill[] = []
   const seen = new Set<string>()
@@ -144,18 +165,33 @@ export async function getSkillsForProject(projectDir: string): Promise<LoadedSki
   // Skill dependency graph: her skill'in requires listesini çöz
   const withDeps = resolveSkillDeps(detected)
 
+  // Score boost: proje geçmişinden gelen öncelik artışını uygula
+  const boosted = withDeps.map((def) => {
+    const boost = skillScoreStore.getBoost(projectDir, def.id)
+    return boost !== 0 ? { ...def, priority: def.priority + boost } : def
+  })
+
   // v1.context.inject hook — dış sistemler skill listesini değiştirebilir
-  const injected  = await hooks.emit("v1.context.inject", { skillIds: withDeps.map((s) => s.id) })
+  const injected  = await hooks.emit("v1.context.inject", { skillIds: boosted.map((s) => s.id) })
   const finalIds  = new Set(injected.skillIds)
-  const finalDefs = withDeps.filter((s) => finalIds.has(s.id))
+  const finalDefs = boosted.filter((s) => finalIds.has(s.id))
 
   const loaded = await loadSkills(finalDefs)
 
-  // Custom skills: ~/.omnicod/skills/ + <workdir>/.omnicod/skills/
+  // Custom skills: ~/.aurict/skills/ + <workdir>/.aurict/skills/
   const custom = await loadCustomSkills(projectDir)
 
   // Token bütçesine sığacak şekilde filtrele (önce yüksek öncelikli)
-  const selected = selectWithinBudget([...loaded, ...custom])
+  const preSelected = selectWithinBudget([...loaded, ...custom])
+
+  // Proje-bazlı skill override'larını uygula
+  const selected = preSelected.map((skill) => {
+    const override = loadSkillOverride(projectDir, skill.id)
+    return override ? applyOverride(skill, override) : skill
+  })
+
+  // Usage kaydet (1dk cache'i nedeniyle session'da bir kez çalışır)
+  skillScoreStore.recordInject(projectDir, selected.map((s) => s.id))
 
   cache.set(projectDir, { skills: selected, expiresAt: now + CACHE_TTL_MS })
   return selected
@@ -262,6 +298,66 @@ async function resolveFileMention(mention: string, workdir: string): Promise<str
   } catch {}
 
   return null
+}
+
+// ─── Intent-based per-message skill injection ────────────────────────────────
+
+/**
+ * Kullanıcının mesajını analiz eder, ilgili skill'leri task tipine göre yükler
+ * ve proactive section olarak döndürür. Proje tabanlı skill'lerle çakışmaz.
+ */
+export async function buildIntentSkillSection(
+  userText: string,
+  projectDir: string,
+  existingSkillIds: Set<string> = new Set(),
+): Promise<string> {
+  if (!userText.trim()) return ""
+
+  // Intent + error detection
+  const intentIds = autoInvoker.checkMessage(userText)
+  const errorIds  = autoInvoker.checkError(userText)
+  const allIds    = [...new Set([...intentIds, ...errorIds])]
+  if (allIds.length === 0) return ""
+
+  // Proje tabanlı detection'da zaten olan skill'leri filtrele
+  const newIds = allIds.filter((id) => !existingSkillIds.has(id))
+  if (newIds.length === 0) return ""
+
+  const defs = newIds
+    .map((id) => SkillRegistry.get(id))
+    .filter((d): d is SkillDef => d !== undefined)
+  if (defs.length === 0) return ""
+
+  const taskType = detectTaskType(userText)
+  const loaded   = await Promise.all(defs.map((def) => loadSkillAdaptive(def, taskType)))
+
+  // Token budget'a göre seç: önce priority (yüksek→düşük), eşitte küçük skill önce
+  const selected: LoadedSkill[] = []
+  let total = 0
+  const prioritized = loaded
+    .filter(s => s.systemPrompt)
+    .sort((a, b) => {
+      const pa = SkillRegistry.get(a.id)?.priority ?? 5
+      const pb = SkillRegistry.get(b.id)?.priority ?? 5
+      if (pb !== pa) return pb - pa          // yüksek öncelik önce
+      return a.tokenCount - b.tokenCount     // eşit önceliklide küçük önce (daha fazlası sığsın)
+    })
+  for (const skill of prioritized) {
+    if (total + skill.tokenCount > MAX_INTENT_SKILL_TOKENS) continue
+    selected.push(skill)
+    total += skill.tokenCount
+  }
+  if (selected.length === 0) return ""
+
+  const labels = selected.map((s) => s.id).join(", ")
+  const blocks  = selected
+    .filter((s) => s.systemPrompt.length > 0)
+    .map((s) => `## [${s.name.toUpperCase()}]\n${s.systemPrompt}`)
+
+  return [
+    `# Intent-Activated Skills [task:${taskType}] (${labels})`,
+    blocks.join("\n\n---\n\n"),
+  ].join("\n\n")
 }
 
 // ─── Token bütçesi ile skill seçimi ──────────────────────────────────────────

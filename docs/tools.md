@@ -1,6 +1,6 @@
 # Tools Reference
 
-OmniCod provides a typed, permission-controlled tool layer. Every tool call goes through:
+Aurict provides a typed, permission-controlled tool layer. Every tool call goes through:
 
 1. **Zod schema validation** — args are validated before execution
 2. **GateGuard** — path-based protection rules
@@ -151,7 +151,7 @@ Manage the project-local task list.
 | `text` | string? | Task text (for `add`) |
 | `id` | string? | Task ID (for `done`/`delete`) |
 
-Tasks persist to `<workdir>/.omnicod/todos.json`.
+Tasks persist to `<workdir>/.aurict/todos.json`.
 
 ---
 
@@ -202,12 +202,12 @@ Destructive git commands (`reset --hard`, `push --force`, `branch -D`) require u
 
 ## Custom tools
 
-You can add custom tools in `~/.omnicod/tools/` or `<workdir>/.omnicod/tools/`. Each tool is a TypeScript file exporting a `ToolDef`:
+You can add custom tools in `~/.aurict/tools/` or `<workdir>/.aurict/tools/`. Each tool is a TypeScript file exporting a `ToolDef`:
 
 ```typescript
-// ~/.omnicod/tools/deploy.ts
+// ~/.aurict/tools/deploy.ts
 import { z } from "zod"
-import type { ToolDef } from "@omnicod/core"
+import type { ToolDef } from "@aurict/core"
 
 export const tool: ToolDef = {
   id: "deploy",

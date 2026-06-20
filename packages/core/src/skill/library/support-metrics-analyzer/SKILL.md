@@ -4,7 +4,7 @@ description: "SLA metrikleri. First response time. Resolution time. CSAT trackin
 triggers:
   keywords: ["support metrics analyzer", "destek metrikleri", "SLA analizi", "performans ölçümü", "destek KPI"]
 auto_load_when: "Kullanıcı destek performans metriklerini analiz etmeyi, SLA uyum oranlarını değerlendirmeyi veya rapor oluşturmayı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -425,7 +425,3 @@ interface SupportMetricsConfig {
   };
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -1,6 +1,6 @@
-import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR } from "@omnicod/core"
-import { writeFileSync } from "fs"
-import { resolve } from "path"
+import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore } from "@aurict/core"
+import { writeFileSync, mkdirSync, existsSync } from "fs"
+import { resolve, join } from "path"
 import { THEMES, THEME_NAMES } from "../utils/theme.js"
 import type { CommandDef, CommandResult, PickerItem } from "./types.js"
 
@@ -11,10 +11,26 @@ const commands: CommandDef[] = [
     aliases:     ["h", "?"],
     description: "List all available commands",
     handler: () => {
-      const lines = commands.map(
-        (c) => `  /${c.name.padEnd(14)} ${c.description}${c.usage ? `  (${c.usage})` : ""}`
-      )
-      return { type: "text", content: "OmniCod Commands:\n" + lines.join("\n") }
+      const CATEGORIES: Record<string, string[]> = {
+        "Setup & Config":      ["providers", "models", "config", "theme", "keys", "settings", "version"],
+        "Session & History":   ["session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints"],
+        "Agents & AI":         ["agent", "agents", "coordinator", "autopilot", "undercover", "background", "btw"],
+        "Context & Memory":    ["pin", "memory", "ctx", "compact", "worktree"],
+        "Tools & Integration": ["commit", "watch", "unwatch", "mcp", "skill", "skills", "plugins", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores"],
+        "Info & Misc":         ["help", "cost", "export", "share", "stash", "crashes", "exit", "pet", "name", "companion"],
+      }
+      const cmdMap = new Map(commands.map(c => [c.name, c]))
+      const out: string[] = ["Aurict Commands:\n"]
+      for (const [cat, names] of Object.entries(CATEGORIES)) {
+        out.push(`  ── ${cat} ${"─".repeat(Math.max(0, 40 - cat.length))}`)
+        for (const n of names) {
+          const c = cmdMap.get(n)
+          if (!c) continue
+          out.push(`    /${c.name.padEnd(14)} ${c.description}`)
+        }
+        out.push("")
+      }
+      return { type: "text", content: out.join("\n") }
     },
   },
 
@@ -144,7 +160,7 @@ const commands: CommandDef[] = [
           ctx.showPicker(
             `${provider.name} — No API key configured`,
             [
-              { id: "enter", label: "Enter API key now",   hint: "Save to ~/.omnicod/config.json" },
+              { id: "enter", label: "Enter API key now",   hint: "Save to ~/.aurict/config.json" },
               { id: "skip",  label: "Skip (set env var manually)", hint: `export ${item.id.toUpperCase()}_API_KEY=...` },
             ],
             (choice) => {
@@ -204,9 +220,42 @@ const commands: CommandDef[] = [
   {
     name:        "sessions",
     aliases:     ["ss"],
-    description: "Browse and restore sessions (interactive picker)",
-    usage:       "/sessions [today|week|all]",
+    description: "Browse and restore sessions (interactive picker) — /sessions search <query>",
+    usage:       "/sessions [today|week|all|search <query>]",
     handler: (args, ctx): CommandResult => {
+      // /sessions search <query>
+      if (args[0]?.toLowerCase() === "search") {
+        const query = args.slice(1).join(" ").trim()
+        if (!query) return { type: "error", message: "Usage: /sessions search <query>" }
+
+        const results = SessionManager.search(query, 20)
+        if (!results.length) return { type: "text", content: `No sessions found matching "${query}".` }
+
+        const fmtTs = (ts: number) => {
+          const d = new Date(ts)
+          return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`
+        }
+
+        const items: PickerItem[] = results.map(r => ({
+          id:    r.sessionId,
+          label: `${(r.title ?? "(untitled)").slice(0, 35)}`,
+          hint:  `${fmtTs(r.updatedAt)}  •  ${r.matchCount} match${r.matchCount !== 1 ? "es" : ""}  •  ${r.excerpt.slice(0, 50)}`,
+        }))
+
+        return {
+          type:  "picker",
+          title: `Search: "${query}" — ${results.length} session(s)`,
+          items,
+          onSelect: (item) => {
+            const parts = SessionManager.getParts(item.id)
+            const msgs  = parts
+              .filter(p => p.role === "user" || p.role === "assistant")
+              .map(p => ({ role: p.role as "user" | "assistant", content: p.content }))
+            ctx.restoreSession(msgs)
+          },
+        }
+      }
+
       const filter = args[0]?.toLowerCase() ?? "all"
       const now    = Date.now()
       const DAY    = 86_400_000
@@ -261,10 +310,10 @@ const commands: CommandDef[] = [
   {
     name:        "agents",
     aliases:     ["ag"],
-    description: "List custom agents in .omnicod/agents/",
+    description: "List custom agents in .aurict/agents/",
     handler: (_args, ctx): CommandResult => {
       const agents = loadCustomAgents(ctx.workdir)
-      if (!agents.length) return { type: "text", content: "No custom agents (.omnicod/agents/ is empty)" }
+      if (!agents.length) return { type: "text", content: "No custom agents (.aurict/agents/ is empty)" }
       const lines = agents.map((a) => `  ${a.id.padEnd(18)} ${a.name ?? a.id}`)
       return { type: "text", content: `Custom Agents (${agents.length}):\n` + lines.join("\n") }
     },
@@ -383,7 +432,7 @@ const commands: CommandDef[] = [
   {
     name:        "config",
     aliases:     ["cfg"],
-    description: "Manage API keys and defaults (~/.omnicod/config.json)",
+    description: "Manage API keys and defaults (~/.aurict/config.json)",
     usage:       "/config  |  /config set <provider> <apikey>  |  /config default provider <name>",
     handler: (args, ctx): CommandResult => {
       const sub = args[0]
@@ -553,7 +602,7 @@ const commands: CommandDef[] = [
   {
     name:        "plugins",
     aliases:     ["plugin"],
-    description: "List loaded plugins from ~/.omnicod/plugins/",
+    description: "List loaded plugins from ~/.aurict/plugins/",
     handler: (): CommandResult => {
       const loaded = getLoadedPlugins()
       if (loaded.length === 0) {
@@ -589,7 +638,7 @@ const commands: CommandDef[] = [
         if (!url) return { type: "error", message: "Usage: /skill add <url>" }
         try {
           const meta = await installRemoteSkill(url)
-          return { type: "text", content: `Skill installed: ${meta.id} (${meta.name})\nRestart OmniCod to activate.` }
+          return { type: "text", content: `Skill installed: ${meta.id} (${meta.name})\nRestart Aurict to activate.` }
         } catch (e) {
           return { type: "error", message: `Install failed: ${e instanceof Error ? e.message : String(e)}` }
         }
@@ -622,12 +671,12 @@ const commands: CommandDef[] = [
       if (sub === "enter") {
         const branch = args[1]
         if (!branch) return { type: "error", message: "Usage: /worktree enter <branch>" }
-        const path = `${ctx.workdir}/.omnicod/worktrees/${branch}`
+        const path = `${ctx.workdir}/.aurict/worktrees/${branch}`
         ctx.setWorkdir(path)
         return { type: "text", content: `Worktree: ${path}\nBranch: ${branch}\n\nNote: run 'git worktree add' manually if the branch doesn't exist.` }
       }
       if (sub === "exit") {
-        const parts = ctx.workdir.split("/.omnicod/worktrees/")
+        const parts = ctx.workdir.split("/.aurict/worktrees/")
         if (parts.length < 2) return { type: "error", message: "Already in the main worktree" }
         ctx.setWorkdir(parts[0]!)
         return { type: "text", content: `Returned to main directory: ${parts[0]}` }
@@ -714,7 +763,7 @@ const commands: CommandDef[] = [
       // /memory export
       if (sub === "export") {
         memoryStore.exportToFile(ctx.workdir)
-        return { type: "text", content: `Exported to .omnicod/memory.md` }
+        return { type: "text", content: `Exported to .aurict/memory.md` }
       }
 
       return { type: "error", message: `Unknown subcommand: ${sub}. Try: list, add, forget, search, clear, export` }
@@ -727,7 +776,7 @@ const commands: CommandDef[] = [
     description: "Export session as HTML and optionally upload to transfer.sh",
     usage:       "/share [local|upload]",
     handler: async (args, ctx): Promise<CommandResult> => {
-      const html     = exportToHtml(ctx.messages, "OmniCod Session")
+      const html     = exportToHtml(ctx.messages, "Aurict Session")
       const filename = defaultExportFilename("html")
       const filepath = resolve(ctx.workdir, filename)
       writeFileSync(filepath, html, "utf8")
@@ -793,8 +842,8 @@ const commands: CommandDef[] = [
         const filename = defaultExportFilename(format)
         const filepath = resolve(ctx.workdir, filename)
         const content  = format === "html"
-          ? exportToHtml(ctx.messages, "OmniCod Session")
-          : exportToMarkdown(ctx.messages, "OmniCod Session")
+          ? exportToHtml(ctx.messages, "Aurict Session")
+          : exportToMarkdown(ctx.messages, "Aurict Session")
         writeFileSync(filepath, content, "utf8")
         return { type: "text" as const, content: `✓ Exported to ${filename}` }
       }
@@ -1109,15 +1158,15 @@ const commands: CommandDef[] = [
   {
     name:        "version",
     aliases:     ["v"],
-    description: "Show OmniCod version",
-    handler: (): CommandResult => ({ type: "text", content: "OmniCod v0.0.1" }),
+    description: "Show Aurict version",
+    handler: (): CommandResult => ({ type: "text", content: "Aurict v0.0.1" }),
   },
 
   // ── /exit ─────────────────────────────────────────────────────────────────
   {
     name:        "exit",
     aliases:     ["quit", "q"],
-    description: "Exit OmniCod",
+    description: "Exit Aurict",
     handler: (): CommandResult => ({ type: "exit" }),
   },
 
@@ -1144,36 +1193,62 @@ const commands: CommandDef[] = [
     name:        "cost",
     description: "Show session token usage and estimated cost",
     handler: (args, ctx): CommandResult => {
-      const t = ctx.tokens ?? { input: 0, output: 0 }
+      // DB-backed stats (Faz 1 recordTurn) — kesin maliyet
+      const stats   = SessionManager.getStats(ctx.sessionId)
+      const t       = ctx.tokens ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 }
 
-      // Approximate pricing per 1M tokens (USD) — rough estimates, mid-2025
-      const PRICING: Record<string, { input: number; output: number }> = {
-        "claude-opus-4":      { input: 15,  output: 75  },
-        "claude-sonnet-4":    { input: 3,   output: 15  },
-        "claude-haiku-4":     { input: 0.8, output: 4   },
-        "gpt-4o":             { input: 2.5, output: 10  },
-        "gpt-4o-mini":        { input: 0.15,output: 0.6 },
-        "gemini-1.5-pro":     { input: 1.25,output: 5   },
-        "gemini-1.5-flash":   { input: 0.075,output:0.3 },
-        "default":            { input: 3,   output: 15  },
+      const fmt = (n: number) => n < 0.0001 ? "<$0.0001" : `$${n.toFixed(4)}`
+      const pad = (n: number) => n.toLocaleString().padStart(10)
+
+      if (stats && stats.turnCount > 0) {
+        // Gerçek DB verisi mevcut
+        const totalTok  = stats.totalInputTokens + stats.totalOutputTokens + stats.totalCacheTokens
+        const hasCaching = stats.totalCacheTokens > 0
+        const lines = [
+          `Session cost  (${stats.lastModel ?? ctx.model})  •  ${stats.turnCount} turn${stats.turnCount !== 1 ? "s" : ""}`,
+          ``,
+          `  Input tokens:   ${pad(stats.totalInputTokens)}`,
+          `  Output tokens:  ${pad(stats.totalOutputTokens)}`,
+          ...(hasCaching ? [`  Cache tokens:   ${pad(stats.totalCacheTokens)}`] : []),
+          `  ─────────────────────────────────────────────────`,
+          `  Total tokens:   ${pad(totalTok)}`,
+          ``,
+          `  Accumulated cost: ${fmt(stats.accumulatedCostUsd)}  (exact, from cost table)`,
+        ]
+        return { type: "text", content: lines.join("\n") }
       }
 
+      // Fallback: in-memory estimation (no DB data yet)
+      const PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
+        "claude-opus-4":    { input: 15,    output: 75,   cacheRead: 1.5,   cacheWrite: 18.75 },
+        "claude-sonnet-4":  { input: 3,     output: 15,   cacheRead: 0.3,   cacheWrite: 3.75  },
+        "claude-haiku-4":   { input: 0.8,   output: 4,    cacheRead: 0.08,  cacheWrite: 1.0   },
+        "gpt-4o":           { input: 2.5,   output: 10,   cacheRead: 1.25,  cacheWrite: 2.5   },
+        "gpt-4o-mini":      { input: 0.15,  output: 0.6,  cacheRead: 0.075, cacheWrite: 0.15  },
+        "gemini-2.5-pro":   { input: 1.25,  output: 10,   cacheRead: 0.31,  cacheWrite: 1.25  },
+        "gemini-2.5-flash": { input: 0.15,  output: 0.6,  cacheRead: 0.0375,cacheWrite: 0.15  },
+        "default":          { input: 3,     output: 15,   cacheRead: 0.3,   cacheWrite: 3.75  },
+      }
       const modelKey = Object.keys(PRICING).find(k => ctx.model.toLowerCase().includes(k.replace(/-/g,"").slice(0,8))) ?? "default"
       const price    = PRICING[modelKey]!
-      const inputCost  = (t.input  / 1_000_000) * price.input
-      const outputCost = (t.output / 1_000_000) * price.output
-      const totalCost  = inputCost + outputCost
-
-      const fmt = (n: number) => n < 0.001 ? "<$0.001" : `$${n.toFixed(3)}`
+      const freshCost = (t.input      / 1_000_000) * price.input
+      const outCost   = (t.output     / 1_000_000) * price.output
+      const readCost  = ((t.cacheRead  ?? 0) / 1_000_000) * price.cacheRead
+      const writeCost = ((t.cacheWrite ?? 0) / 1_000_000) * price.cacheWrite
+      const totalCost = freshCost + outCost + readCost + writeCost
+      const hasCaching = (t.cacheRead ?? 0) + (t.cacheWrite ?? 0) > 0
 
       const lines = [
-        `Session token usage (${ctx.model}):`,
+        `Session token usage (${ctx.model})  [estimated — no DB data yet]:`,
         ``,
-        `  Input:   ${t.input.toLocaleString().padStart(10)} tokens   ${fmt(inputCost)}`,
-        `  Output:  ${t.output.toLocaleString().padStart(10)} tokens   ${fmt(outputCost)}`,
-        `  Total:   ${(t.input+t.output).toLocaleString().padStart(10)} tokens   ${fmt(totalCost)}`,
-        ``,
-        `  Pricing: $${price.input}/M input · $${price.output}/M output  (estimate)`,
+        `  Fresh input:  ${pad(t.input)}  tokens   ${fmt(freshCost)}`,
+        `  Output:       ${pad(t.output)}  tokens   ${fmt(outCost)}`,
+        ...(hasCaching ? [
+          `  Cache reads:  ${pad(t.cacheRead ?? 0)}  tokens   ${fmt(readCost)}`,
+          `  Cache writes: ${pad(t.cacheWrite ?? 0)}  tokens   ${fmt(writeCost)}`,
+        ] : []),
+        `  ──────────────────────────────────────────────────`,
+        `  Total:        ${pad(t.input + t.output + (t.cacheRead??0) + (t.cacheWrite??0))}  tokens   ${fmt(totalCost)}`,
       ]
       return { type: "text", content: lines.join("\n") }
     },
@@ -1329,7 +1404,7 @@ const commands: CommandDef[] = [
       const { tmpdir }  = await import("node:os")
 
       const editor = process.env["EDITOR"] ?? process.env["VISUAL"] ?? "vi"
-      const tmp    = join(tmpdir(), `omnicod-input-${Date.now()}.md`)
+      const tmp    = join(tmpdir(), `aurict-input-${Date.now()}.md`)
       writeFileSync(tmp, "", "utf8")
 
       try {
@@ -1355,7 +1430,7 @@ const commands: CommandDef[] = [
       const { join } = await import("node:path")
       const { homedir } = await import("node:os")
 
-      const dir = join(homedir(), ".omnicod", "templates")
+      const dir = join(homedir(), ".aurict", "templates")
       mkdirSync(dir, { recursive: true })
 
       const sub = args[0]?.toLowerCase()
@@ -1422,6 +1497,138 @@ const commands: CommandDef[] = [
   },
 
   // ── /crashes ──────────────────────────────────────────────────────────────
+  {
+    name:        "adr",
+    description: "Manage architecture decision records in .aurict/decisions/",
+    usage:       "/adr  |  /adr new <title>  |  /adr list",
+    handler: async (args, ctx): Promise<CommandResult> => {
+      const workdir    = ctx.workdir
+      const decisionsDir = join(workdir, ".aurict", "decisions")
+      const sub        = args[0]?.toLowerCase()
+
+      if (sub === "new") {
+        const titleWords = args.slice(1)
+        if (titleWords.length === 0) {
+          return { type: "text", content: "Usage: /adr new <title>\nExample: /adr new Use Bun instead of Node.js" }
+        }
+        const title = titleWords.join(" ")
+
+        mkdirSync(decisionsDir, { recursive: true })
+        const files   = existsSync(decisionsDir)
+          ? (await import("fs")).readdirSync(decisionsDir).filter((f: string) => f.endsWith(".md"))
+          : []
+        const num     = String(files.length + 1).padStart(3, "0")
+        const slug    = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+        const filename = `${num}-${slug}.md`
+        const template = [
+          `# ADR-${num}: ${title}`,
+          "",
+          `**Problem:** `,
+          `**Karar:** `,
+          `**Neden:** `,
+          `**Trade-off:** `,
+          `**Durum:** active`,
+        ].join("\n")
+
+        writeFileSync(join(decisionsDir, filename), template, "utf8")
+        return { type: "text", content: `Created .aurict/decisions/${filename}\n\nEdit the file to fill in the details.` }
+      }
+
+      // list (default)
+      if (!existsSync(decisionsDir)) {
+        return { type: "text", content: "No decisions yet. Create one with: /adr new <title>" }
+      }
+      const { readdirSync, readFileSync } = await import("fs")
+      const files = readdirSync(decisionsDir).filter((f: string) => f.endsWith(".md")).sort()
+      if (files.length === 0) {
+        return { type: "text", content: "No decisions yet. Create one with: /adr new <title>" }
+      }
+
+      const lines = files.map((f: string) => {
+        try {
+          const content = readFileSync(join(decisionsDir, f), "utf8")
+          const titleMatch  = content.match(/^# (.+)$/m)
+          const statusMatch = content.match(/^\*\*Durum:\*\*\s*(.+)$/m)
+          const title  = titleMatch?.[1]  ?? f
+          const status = statusMatch?.[1]?.trim() ?? "active"
+          const marker = status === "active" ? "✓" : status === "deprecated" ? "✗" : "~"
+          return `  ${marker} ${f.replace(/\.md$/, "")} — ${title}`
+        } catch { return `  ? ${f}` }
+      })
+
+      return { type: "text", content: `Architecture Decisions (${files.length}):\n\n${lines.join("\n")}\n\n/adr new <title> — create a new decision` }
+    },
+  },
+
+  {
+    name:        "diag",
+    aliases:     ["diagnostics"],
+    description: "View and resolve project diagnostics (.aurict/diagnostics/)",
+    usage:       "/diag  |  /diag resolve <id>  |  /diag clear",
+    handler: async (args, ctx): Promise<CommandResult> => {
+      const workdir = ctx.workdir
+      const sub     = args[0]?.toLowerCase()
+
+      if (sub === "resolve") {
+        const id = args[1]
+        if (!id) return { type: "text", content: "Usage: /diag resolve <id>" }
+        const resolution = args.slice(2).join(" ") || undefined
+        const ok = diagnosticsStore.resolve(workdir, id, resolution)
+        return ok
+          ? { type: "text", content: `Marked [${id}] as resolved.${resolution ? ` Resolution: ${resolution}` : ""}` }
+          : { type: "text", content: `No entry found matching id: ${id}` }
+      }
+
+      if (sub === "clear") {
+        const all = diagnosticsStore.list(workdir)
+        all.forEach(e => diagnosticsStore.resolve(workdir, e.id, "bulk clear"))
+        return { type: "text", content: `Cleared ${all.length} diagnostics entries.` }
+      }
+
+      // list (default)
+      const unresolved = diagnosticsStore.getUnresolved(workdir, 20)
+      if (unresolved.length === 0) {
+        return { type: "text", content: "No unresolved diagnostics. Project is clean." }
+      }
+
+      const lines = unresolved.map((e) => {
+        const date = new Date(e.ts).toISOString().slice(0, 16).replace("T", " ")
+        const tool = e.tool ? `[${e.tool}] ` : ""
+        return `  [${e.id.slice(0, 8)}] ${date}  ${tool}${e.error.slice(0, 100)}`
+      })
+
+      return {
+        type: "text",
+        content: `Unresolved diagnostics (${unresolved.length}):\n\n${lines.join("\n")}\n\n/diag resolve <id> [resolution note]\n/diag clear — mark all resolved`,
+      }
+    },
+  },
+
+  {
+    name:        "skill-scores",
+    aliases:     ["skillscores"],
+    description: "Show per-project skill effectiveness scores and priority boosts",
+    usage:       "/skill-scores  |  /skill-scores reset",
+    handler: async (args, ctx): Promise<CommandResult> => {
+      const workdir = ctx.workdir ?? process.cwd()
+      if (args[0] === "reset") {
+        const { join } = await import("node:path")
+        const { existsSync, unlinkSync } = await import("node:fs")
+        const path = join(workdir, ".aurict", "skill-scores.json")
+        if (existsSync(path)) { unlinkSync(path); return { type: "text", content: "Skill scores reset." } }
+        return { type: "text", content: "No skill scores file found." }
+      }
+      const scores = skillScoreStore.getAll(workdir)
+      const entries = Object.entries(scores).sort((a, b) => b[1].injectCount - a[1].injectCount)
+      if (entries.length === 0) return { type: "text", content: "No skill usage data yet for this project." }
+      const lines = entries.map(([id, s]) => {
+        const boost = s.boost > 0 ? ` +${s.boost}` : s.boost < 0 ? ` ${s.boost}` : ""
+        return `${id.padEnd(32)} injects:${s.injectCount}  success:${s.successCount}  rate:${(s.successRate * 100).toFixed(0)}%  boost:${boost || "0"}`
+      })
+      return { type: "text", content: `Skill scores (${entries.length} skills):\n\n${lines.join("\n")}\n\n/skill-scores reset — clear all scores` }
+    },
+  },
+
   {
     name:        "crashes",
     description: "View crash reports",

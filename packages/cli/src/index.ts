@@ -6,10 +6,12 @@ EventEmitter.defaultMaxListeners = 50
 import React from "react"
 import { render } from "ink"
 import { bootstrap } from "./bootstrap.js"
-import { runAgent, ProviderRegistry, mcpManager, loadPlugins } from "@omnicod/core"
-import { loadConfig as loadOmniConfig } from "@omnicod/core"
+import { runAgent, ProviderRegistry, mcpManager, loadPlugins, runRecipe, parseRecipeFile } from "@aurict/core"
+import { loadConfig as loadOmniConfig } from "@aurict/core"
 import { loadConfig, parseFlags, applyFlags } from "./config/loader.js"
 import { App } from "./tui/App.js"
+import { SetupWizard } from "./tui/SetupWizard.js"
+import { checkForUpdate } from "./util/update-check.js"
 
 // ─── Terminal Güvenlik Katmanı ────────────────────────────────────────────────
 function restoreTerminal() {
@@ -45,7 +47,7 @@ process.on("unhandledRejection", (r) => {
 const flags   = parseFlags()
 const workdir = process.cwd()
 
-// Load API keys from ~/.omnicod/config.json into process.env (only if not already set by shell)
+// Load API keys from ~/.aurict/config.json into process.env (only if not already set by shell)
 const omniCfg = loadOmniConfig(workdir)
 const PROVIDER_ENV_MAP: Record<string, string[]> = {
   anthropic:  ["ANTHROPIC_API_KEY"],
@@ -72,17 +74,18 @@ for (const [provider, val] of Object.entries(omniCfg.providers ?? {})) {
 
 // --version
 if (flags.version) {
-  console.log("OmniCod v1.0.5")
+  console.log("Aurict v1.0.5")
   process.exit(0)
 }
 
 // --help
 if (flags.help) {
   console.log(`
-OmniCod v1.0.5 — Terminal AI assistant
+Aurict v1.0.5 — Terminal AI assistant
 
 Usage:
-  omnicod [options]
+  aurict [options]
+  aurict run <recipe.yaml>   Run a recipe (automated multi-step task)
 
 Options:
   -p, --provider <id>   Select provider (anthropic, openai, openrouter, google, opencode, ollama, xai, azure, bedrock)
@@ -111,12 +114,49 @@ Environment variables:
   XAI_API_KEY                 xAI (Grok)
   AZURE_OPENAI_API_KEY        Azure OpenAI
   AWS_ACCESS_KEY_ID           AWS Bedrock
-  OMNICOD_PROVIDER            Default provider override
+  AURICT_PROVIDER            Default provider override
 `)
   process.exit(0)
 }
 
-// Plugin'leri yükle (tool + provider eklentileri ~/.omnicod/plugins/)
+// ─── aurict run <recipe.yaml> ────────────────────────────────────────────────
+const [subCmd, recipeFile] = process.argv.slice(2)
+if (subCmd === "run") {
+  if (!recipeFile) {
+    console.error("Usage: aurict run <recipe.yaml|recipe.json>")
+    process.exit(1)
+  }
+  await loadPlugins()
+  let recipe
+  try {
+    recipe = await parseRecipeFile(recipeFile)
+  } catch (err) {
+    console.error(`[aurict run] Failed to load recipe: ${err instanceof Error ? err.message : err}`)
+    process.exit(1)
+  }
+  console.log(`\n▶  ${recipe.name}${recipe.description ? `\n   ${recipe.description}` : ""}\n`)
+  const result = await runRecipe({
+    recipe,
+    workdir,
+    onStepStart: (i, step) => {
+      const label = step.name ?? (step.bash ? `bash: ${step.bash.slice(0, 50)}` : `prompt ${i + 1}`)
+      process.stdout.write(`\n[${ i + 1}] ${label}\n`)
+    },
+    onText: (text) => process.stdout.write(text),
+    onStepFinish: (_i, _step, _out) => { process.stdout.write("\n") },
+  })
+  const failed = result.steps.filter(s => s.error)
+  if (failed.length > 0) {
+    console.error(`\n✗ ${failed.length} step(s) failed:`)
+    for (const s of failed) console.error(`  [${s.index + 1}] ${s.name}: ${s.error}`)
+    process.exit(1)
+  }
+  console.log(`\n✓ Recipe complete — ${result.steps.length} step(s)`)
+  process.exit(0)
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Plugin'leri yükle (tool + provider eklentileri ~/.aurict/plugins/)
 await loadPlugins()
 
 // Config yükle: global < proje < CLI flags
@@ -130,21 +170,55 @@ const model      = cfg.model ?? savedModel ?? plugin.defaultModel()
 
 if (process.stdin.isTTY) {
   // İnteraktif mod — Ink TUI
-  const { waitUntilExit } = render(
-    React.createElement(App, {
-      initialProvider: provider,
-      initialModel:    model,
-      workdir,
-      ...(cfg.system !== undefined ? { system: cfg.system } : {}),
-      ...(cfg.undercover !== undefined ? { undercover: cfg.undercover } : {}),
-    }),
-    { exitOnCtrlC: false },  // Ctrl+C'yi App.tsx'te useInput ile yönetiyoruz
-  )
-  await waitUntilExit()
+  const updatePromise = checkForUpdate()  // fire-and-forget, non-blocking
+
+  // Hiçbir provider'ın key'i yoksa onboarding wizard göster
+  const noKeyConfigured = ProviderRegistry.available().every(p => !p.hasKey)
+  const needsSetup      = noKeyConfigured && !cfg.provider
+
+  if (needsSetup) {
+    // Wizard tamamlanınca App'i render et
+    await new Promise<void>((resolve) => {
+      const { unmount } = render(
+        React.createElement(SetupWizard, {
+          onComplete: (chosenProvider: string, chosenModel: string) => {
+            unmount()
+            const appProps = {
+              initialProvider: chosenProvider,
+              initialModel:    chosenModel,
+              workdir,
+              updatePromise,
+              ...(cfg.system !== undefined ? { system: cfg.system } : {}),
+              ...(cfg.undercover !== undefined ? { undercover: cfg.undercover } : {}),
+            }
+            const { waitUntilExit: wait } = render(
+              React.createElement(App, appProps),
+              { exitOnCtrlC: false },
+            )
+            wait().then(resolve)
+          },
+        }),
+        { exitOnCtrlC: false },
+      )
+    })
+  } else {
+    const { waitUntilExit } = render(
+      React.createElement(App, {
+        initialProvider: provider,
+        initialModel:    model,
+        workdir,
+        updatePromise,
+        ...(cfg.system !== undefined ? { system: cfg.system } : {}),
+        ...(cfg.undercover !== undefined ? { undercover: cfg.undercover } : {}),
+      }),
+      { exitOnCtrlC: false },  // Ctrl+C'yi App.tsx'te useInput ile yönetiyoruz
+    )
+    await waitUntilExit()
+  }
 } else {
   // Pipe modu — tek seferlik
   const input = (await Bun.stdin.text()).trim()
-  if (!input) { console.error("[omnicod] No input received"); process.exit(1) }
+  if (!input) { console.error("[aurict] No input received"); process.exit(1) }
 
   process.stdout.write("\n")
   try {

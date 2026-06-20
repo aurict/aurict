@@ -13,6 +13,72 @@ import {
   extractFilePaths,
 } from "./context-compactor.js"
 
+// ─── Faz 3: Error Chain Detection ─────────────────────────────────────────────
+export interface ErrorChain {
+  error: string      // orijinal hata mesajı (verbatim)
+  fix: string        // nasıl çözüldüğü
+  files: string[]    // ilgili dosyalar
+  lesson: string     // LLM'e özet
+}
+
+/**
+ * Messages içindeki error→fix çiftlerini tespit eder.
+ * Compaction sırasında bu zincirler korunur.
+ */
+export function extractErrorChains(messages: CoreMessage[]): ErrorChain[] {
+  const chains: ErrorChain[] = []
+  let currentError: string | null = null
+  let errorFiles: string[] = []
+  let errorMsgStart = -1
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]!
+    const text = extractText(msg)
+
+    // Error detection (sadece tool result'ta, assistant'ın "I see the error" gibi mesajlarında değil)
+    if (/error|failed|exception|cannot find|unable to/i.test(text)) {
+      if (msg.role === "tool") {
+        currentError = text.slice(0, 500)
+        errorFiles = extractFilePaths(text)
+        errorMsgStart = i
+      }
+    }
+
+    // Fix detection (assistant mesajında, error'dan sonra)
+    // "fixed" kelimesi tek başına yeterli değil, "fixed the" veya "fixed by" gibi kalıplar ara
+    if (currentError && msg.role === "assistant" && i > errorMsgStart) {
+      if (/fixed the|fixed by|resolved the|solved the|now works|corrected the/i.test(text)) {
+        chains.push({
+          error: currentError,
+          fix: text.slice(0, 500),
+          files: errorFiles,
+          lesson: `Error "${currentError.slice(0, 100)}..." was fixed by: ${text.slice(0, 200)}`,
+        })
+        currentError = null
+        errorFiles = []
+        errorMsgStart = -1
+      }
+    }
+  }
+
+  return chains
+}
+
+/**
+ * Error chain'leri summary'ye ekler.
+ * Compaction sonrası agent bu hataları tekrarlamaz.
+ */
+export function addProtectedErrors(summary: string, chains: ErrorChain[]): string {
+  if (chains.length === 0) return summary
+
+  const section = [
+    "\n\n[PROTECTED ERROR CHAINS — DO NOT FORGET]",
+    ...chains.slice(0, 5).map((c, i) => `${i + 1}. ${c.lesson}`),
+  ].join("\n")
+
+  return summary + section
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const COMPACTION_BUFFER     = 20_000
 export const TOOL_OUTPUT_MAX_CHARS =  2_000
@@ -30,6 +96,7 @@ export interface CompactionConfig {
   provider:               string
   model:                  string
   workdir?:               string
+  sessionId?:             string
   strategy?:              CompactionStrategy
   messageCountThreshold?: number
 }
@@ -257,9 +324,24 @@ async function sessionCompact(
     }
   }
 
+  // Scratchpad re-injection: reasoning state'i compaction'a karşı koru
+  let scratchpadSection = ""
+  if (cfg.sessionId && cfg.workdir) {
+    try {
+      const { scratchpadStore } = await import("../scratchpad/store.js")
+      const state = scratchpadStore.read(cfg.sessionId, cfg.workdir)
+      if (state) scratchpadSection = scratchpadStore.toPromptSection(state)
+    } catch { /* scratchpad hatası compaction'ı durdurmasın */ }
+  }
+
+  // ─── Faz 3: Error chain preservation ────────────────────────────────────────
+  const errorChains = extractErrorChains(messages)
+  const errorSection = addProtectedErrors("", errorChains)
+
   // Boundary marker: compaction noktasını izlenebilir kıl
   const boundaryId = crypto.randomUUID().slice(0, 8)
-  const fullSummary = summary + fileBlocks.join("") + `\n\n[COMPACT:${boundaryId}]`
+  const fullSummary = (scratchpadSection ? scratchpadSection + "\n\n" : "")
+    + summary + fileBlocks.join("") + errorSection + `\n\n[COMPACT:${boundaryId}]`
 
   const compacted: CoreMessage[] = [
     { role: "user",      content: "[Summary of previous conversation]" },
@@ -316,9 +398,10 @@ export async function compact(
 
   const tokensAfter = estimateTokens(result)
 
-  await hooks.emit("v1.compact.before",  { sessionId: "unknown", tokenCount: tokensBefore })
-  await hooks.emit("v1.session.compact", { sessionId: "unknown", tokensBefore, tokensAfter })
-  await hooks.emit("v1.compact.after",   { sessionId: "unknown", tokensBefore, tokensAfter })
+  const sid = cfg.sessionId ?? "unknown"
+  await hooks.emit("v1.compact.before",  { sessionId: sid, tokenCount: tokensBefore })
+  await hooks.emit("v1.session.compact", { sessionId: sid, tokensBefore, tokensAfter })
+  await hooks.emit("v1.compact.after",   { sessionId: sid, tokensBefore, tokensAfter })
 
   return result
 }

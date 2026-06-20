@@ -1,4 +1,3 @@
-
 ---
 name: nextjs-routing
 description: "Next.js 16 App Router: Routing, Parallel/Intercepting Routes, Layouts, Route Groups, Middleware. Complete pattern reference for enterprise routing."
@@ -522,5 +521,87 @@ export function middleware(request: NextRequest) {
 | Error | error.tsx | Error boundary |
 | Not found | not-found.tsx | 404 page |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Which routing feature?
+├── Same route, different layouts per section → route group: (marketing)/, (dashboard)/
+├── Multiple independent widgets on one page  → parallel routes: @analytics/, @sidebar/
+├── Click link shows modal, refresh shows page → intercepting: (..)photo/[id]/page.tsx
+└── Run logic before every request            → middleware.ts at root
+
+Middleware or layout guard?
+├── Auth check / redirect                     → middleware (runs before render, Edge)
+├── Token verification (JWT)                  → middleware (can't use heavy libs)
+├── DB-based permission check                 → layout.tsx Server Component (has Node.js)
+└── A/B / geo / feature flags                → middleware
+
+Dynamic segments?
+├── Single variable part                      → [id]/page.tsx
+├── Any depth path                            → [...slug]/page.tsx (array)
+└── Optional catch-all (includes root)        → [[...slug]]/page.tsx
+```
+
+---
+
+## Key Rules
+
+1. Route groups `(name)` organize code without affecting URL
+2. Parallel routes `@slot` need `default.tsx` — or the slot renders blank on direct nav
+3. Intercepting route must have full-page fallback at the real path (refresh)
+4. Middleware is Edge Runtime — no `fs`, no `crypto` (use `crypto.subtle`), no Prisma
+5. Auth in middleware — never rely on client-side checks
+6. Server Actions for mutations, Route Handlers only for webhooks and file downloads
+7. `useSearchParams()` requires `<Suspense>` wrapper in Client Components
+
+---
+
+## Implementation
+
+```typescript
+// Middleware auth guard — protect /dashboard routes
+// middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  const token    = request.cookies.get('session')?.value
+  const isDash   = request.nextUrl.pathname.startsWith('/dashboard')
+
+  if (isDash && !token) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('from', request.nextUrl.pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+  return NextResponse.next()
+}
+
+export const config = { matcher: ['/dashboard/:path*'] }
+
+// Parallel routes layout — dashboard with independent slots
+// app/dashboard/layout.tsx
+export default function DashboardLayout({
+  children, analytics, notifications,
+}: {
+  children:      React.ReactNode
+  analytics:     React.ReactNode
+  notifications: React.ReactNode
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_300px] gap-4 p-4">
+      <main>{children}</main>
+      <aside className="space-y-4">
+        {analytics}
+        {notifications}
+      </aside>
+    </div>
+  )
+}
+
+// app/dashboard/@analytics/default.tsx — required fallback
+export default function AnalyticsDefault() {
+  return <div>No analytics selected</div>
+}
+```

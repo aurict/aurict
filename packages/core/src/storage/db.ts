@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS sessions (
   config     TEXT,
   status     TEXT    NOT NULL DEFAULT 'active'
 );
+ALTER TABLE sessions ADD COLUMN total_input_tokens  INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sessions ADD COLUMN total_output_tokens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sessions ADD COLUMN total_cache_tokens  INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sessions ADD COLUMN accumulated_cost_usd REAL   NOT NULL DEFAULT 0.0;
+ALTER TABLE sessions ADD COLUMN turn_count          INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sessions ADD COLUMN last_model          TEXT;
 CREATE TABLE IF NOT EXISTS parts (
   id         TEXT    PRIMARY KEY NOT NULL,
   session_id TEXT    NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -51,10 +57,10 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
 `
 
 function createDb() {
-  const dir = join(homedir(), ".omnicod")
+  const dir = join(homedir(), ".aurict")
   mkdirSync(dir, { recursive: true })
 
-  const sqlite = new Database(join(dir, "omnicod.db"), { create: true })
+  const sqlite = new Database(join(dir, "aurict.db"), { create: true })
   sqlite.run("PRAGMA journal_mode = WAL")
   sqlite.run("PRAGMA busy_timeout = 8000")
   sqlite.run("PRAGMA synchronous = NORMAL")

@@ -1,11 +1,12 @@
-export type PermissionAction = "allow" | "ask" | "deny"
-export type PermissionScope  = "session" | "project" | "global"
+export type PermissionAction   = "allow" | "ask" | "deny"
+export type PermissionScope    = "session" | "project" | "global"
+export type CategoryPermission = "allow_session" | "deny"
 
 export interface PermissionRule {
-  tool:    string           // "shell" | "write" | "read" | "*"
-  pattern: string           // glob — "git *", "rm *", "/etc/*"
-  action:  PermissionAction
-  scope:   PermissionScope
+  tool:      string           // "shell" | "write" | "read" | "*"
+  pattern:   string           // glob — "git *", "rm *", "/etc/*"
+  action:    PermissionAction
+  scope:     PermissionScope
 }
 
 export interface PermissionRequest {

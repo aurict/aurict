@@ -11,7 +11,7 @@ export interface Pin {
 }
 
 function globalPath(): string {
-  return join(homedir(), ".omnicod", "pins.json")
+  return join(homedir(), ".aurict", "pins.json")
 }
 
 function load(): Pin[] {
@@ -24,7 +24,7 @@ function load(): Pin[] {
 
 function save(pins: Pin[]): void {
   const p = globalPath()
-  mkdirSync(join(homedir(), ".omnicod"), { recursive: true })
+  mkdirSync(join(homedir(), ".aurict"), { recursive: true })
   writeFileSync(p, JSON.stringify(pins, null, 2), "utf8")
 }
 

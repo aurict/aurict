@@ -61,6 +61,6 @@ export interface CommandContext {
   removeWatch:       (path?: string) => void
   contextWindow:     number
   replayTo:          (idx: number) => void
-  tokens?:           { input: number; output: number }
+  tokens?:           { input: number; output: number; cacheRead?: number; cacheWrite?: number; reasoning?: number }
   openDesign:        () => void
 }

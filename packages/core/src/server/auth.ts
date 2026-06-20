@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
 
-const TOKEN_FILE = join(homedir(), ".omnicod", "server-token")
+const TOKEN_FILE = join(homedir(), ".aurict", "server-token")
 
 function generateToken(): string {
   const bytes = new Uint8Array(32)
@@ -18,7 +18,7 @@ export function getOrCreateToken(): string {
   } catch { /* dosya yok — ilk çalıştırma */ }
 
   const token = generateToken()
-  mkdirSync(join(homedir(), ".omnicod"), { recursive: true })
+  mkdirSync(join(homedir(), ".aurict"), { recursive: true })
   writeFileSync(TOKEN_FILE, token, { mode: 0o600 })
   return token
 }

@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
 import { Typo, HStack, VStack } from "./design-system/index.js"
-import type { PlanRequest, PlanStep } from "@omnicod/core"
+import type { PlanRequest, PlanStep } from "@aurict/core"
 
 interface Props {
   request: PlanRequest

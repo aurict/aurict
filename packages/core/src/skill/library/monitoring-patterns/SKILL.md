@@ -174,7 +174,3 @@ Check types:
 | Availability | Synthetic probe | < 99.9% (30d) |
 | Business KPI | Custom counter | Domain-defined |
 | Traces | Span duration | Outlier detection |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

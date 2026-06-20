@@ -1,11 +1,37 @@
 import { z } from "zod"
+import { join } from "path"
+import { writeFile } from "node:fs/promises"
 import { agentPool } from "../../agent/pool.js"
 import { AGENT_TYPE_TOOLS } from "../../agent/protocol.js"
 import { getAgentPrompt } from "../../agent/agent-prompts.js"
+import { ensureWorkspace } from "../../agent/workspace.js"
 import type { AgentType } from "../../agent/protocol.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
 const AGENT_TYPES = Object.keys(AGENT_TYPE_TOOLS) as [AgentType, ...AgentType[]]
+
+/** "Global Gaming VC Researcher" → "global-gaming-vc-researcher" */
+function roleSlug(role: string): string {
+  return role.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 60)
+}
+
+/**
+ * Subagent sonucunu workspace'e yazar.
+ * LLM'in write çağırıp çağırmadığından bağımsız — her zaman garantili.
+ * Dosya adı role slug'ından türetilir: iki aynı-tip agent çakışmaz.
+ */
+async function persistToWorkspace(
+  workdir:   string,
+  sessionId: string,
+  role:      string,
+  result:    string,
+): Promise<string> {
+  const wsDir   = ensureWorkspace(workdir, sessionId)
+  const slug    = roleSlug(role)
+  const outPath = join(wsDir, `${slug}.md`)
+  await writeFile(outPath, `# ${role}\n\n${result}\n`, "utf8")
+  return outPath
+}
 
 export const subagentTool: ToolDef = {
   id: "subagent",
@@ -50,8 +76,9 @@ Write the prompt as if the subagent has never seen this codebase before.`,
     const agentType = ((args as Record<string, unknown>)["type"] as AgentType | undefined) ?? "explore"
     const allowedTools = AGENT_TYPE_TOOLS[agentType]
 
-    const provider = ctx.provider ?? (process.env["ANTHROPIC_API_KEY"] ? "anthropic" : "opencode")
-    const model    = ctx.model ?? undefined
+    const provider  = ctx.provider ?? (process.env["ANTHROPIC_API_KEY"] ? "anthropic" : "opencode")
+    const model     = ctx.model ?? undefined
+    const sessionId = ctx.sessionId ?? "main"
 
     const id      = `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const session = `${id}-session`
@@ -60,15 +87,19 @@ Write the prompt as if the subagent has never seen this codebase before.`,
       const result = await agentPool.spawn({
         id,
         agentType,
-        desc:           role,
+        desc:            role,
         prompt,
         provider,
-        model:          model ?? "claude-sonnet-4-6",
-        workdir:        ctx.workdir,
-        sessionId:      ctx.sessionId ?? "main",
+        model:           model ?? "claude-sonnet-4-6",
+        workdir:         ctx.workdir,
+        sessionId,
         workerSessionId: session,
         allowedTools,
       })
+
+      // Sonucu dosyaya sessizce yaz — uzun oturumlarda context compaction sigortası.
+      // LLM'e dosya yolu söylenmiyor: koordinatör direkt context'teki sonucu kullanır.
+      persistToWorkspace(ctx.workdir, sessionId, role, result).catch(() => {})
 
       return {
         output: `Subagent [${role}] completed:\n\n${result}`,
@@ -85,6 +116,9 @@ Write the prompt as if the subagent has never seen this codebase before.`,
           system:   getAgentPrompt(agentType),
           messages: [{ role: "user", content: prompt }],
         })
+        try {
+          await persistToWorkspace(ctx.workdir, sessionId, role, r.text)
+        } catch { /* ignore */ }
         return { output: `Subagent [${role}] (direct):\n\n${r.text}` }
       }
       return { output: "", error: `Subagent [${role}] failed: ${msg}` }

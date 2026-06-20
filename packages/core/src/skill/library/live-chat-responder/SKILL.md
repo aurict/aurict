@@ -4,7 +4,7 @@ description: "Canlı destek şablonları. Quick replies. Canned responses. Escal
 triggers:
   keywords: ["live chat responder", "canlı destek şablonları", "hızlı yanıtlar", "sohbet yanıtları", "canned responses"]
 auto_load_when: "Kullanıcı canlı destek sohbeti için hızlı yanıt şablonları, canned response veya eskalasyon tetikleyicileri oluşturmayı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -375,7 +375,3 @@ interface LiveChatResponderConfig {
   };
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

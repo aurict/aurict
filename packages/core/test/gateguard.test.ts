@@ -67,7 +67,7 @@ describe("gateGuard.check — ask (protected patterns)", () => {
   })
 })
 
-describe("gateGuard.check — deny (.git/* and .omnicod/*)", () => {
+describe("gateGuard.check — deny (.git/* and .aurict/*)", () => {
   it("/project/.git/config → deny", () => {
     expect(gateGuard.check("/project/.git/config")).toBe("deny")
   })
@@ -84,16 +84,16 @@ describe("gateGuard.check — deny (.git/* and .omnicod/*)", () => {
     expect(gateGuard.check("/project/.git/refs/heads/main")).toBe("deny")
   })
 
-  it("/project/.omnicod/omnicod.db → deny", () => {
-    expect(gateGuard.check("/project/.omnicod/omnicod.db")).toBe("deny")
+  it("/project/.aurict/aurict.db → deny", () => {
+    expect(gateGuard.check("/project/.aurict/aurict.db")).toBe("deny")
   })
 
-  it("/project/.omnicod/config.json → deny", () => {
-    expect(gateGuard.check("/project/.omnicod/config.json")).toBe("deny")
+  it("/project/.aurict/config.json → deny", () => {
+    expect(gateGuard.check("/project/.aurict/config.json")).toBe("deny")
   })
 
-  it("/project/.omnicod/audit.log → deny", () => {
-    expect(gateGuard.check("/project/.omnicod/audit.log")).toBe("deny")
+  it("/project/.aurict/audit.log → deny", () => {
+    expect(gateGuard.check("/project/.aurict/audit.log")).toBe("deny")
   })
 })
 

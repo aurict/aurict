@@ -4,7 +4,7 @@ description: "ICP oluşturma. Firmographic data, psychographic analysis ve perso
 triggers:
   keywords: ["ICP", "ideal customer profile", "persona", "buyer persona", "customer segmentation", "firmographic"]
 auto_load_when: "Kullanıcı ideal müşteri profili, ICP, persona kartları veya müşteri segmentasyonu talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -466,6 +466,3 @@ Validation:
 | Full review | Quarterly | Data + feedback |
 | Quick update | Monthly | Sales input |
 | Major revision | Annual | Complete refresh |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

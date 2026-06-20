@@ -1,6 +1,13 @@
 ---
 name: flutter-game-expert
-description: Flutter ile oyun geliştirme (Flame Engine vb.) ve karmaşık, büyük ölçekli mimariler kurma rehberi.
+description: "Flutter game development with Flame Engine: game loops, component architecture, sprite caching, collision detection, large-scale Flutter apps."
+triggers:
+  extensions: [".dart"]
+  directories: ["lib/game/", "lib/flame/", "assets/sprites/", "assets/audio/"]
+  keywords: ["flame", "flutter game", "game loop", "sprite", "FlameGame"]
+auto_load_when: "Building Flutter games or apps using Flame Engine"
+agent: code
+tools: ["Read", "Write", "Bash"]
 ---
 
 # Flutter Game & Advanced Development Expert

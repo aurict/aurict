@@ -4,7 +4,7 @@ description: "Yatırım risk derecelendirme. Risk metrikleri (Sharpe, VaR). Risk
 triggers:
   keywords: ["risk değerlendirme", "yatırım riski", "risk analizi", "risk assessor", "VaR", "Sharpe oranı", "risk metrikleri"]
 auto_load_when: "Kullanıcı yatırım risk analizi, risk metrikleri veya portföy risk değerlendirmesi taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -388,6 +388,3 @@ function riskToleransıPortföy(profil) {
 | Sektör | Max %30 bir sektör |
 | Coğrafya | En az 2 farklı |
 | Korelasyon | Ortalama < 0.5 |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -12,7 +12,7 @@ import { tmpdir } from "os"
 let fixtureDir: string
 
 beforeAll(() => {
-  fixtureDir = join(tmpdir(), `omnicod-reread-test-${Date.now()}`)
+  fixtureDir = join(tmpdir(), `aurict-reread-test-${Date.now()}`)
   mkdirSync(fixtureDir, { recursive: true })
 })
 

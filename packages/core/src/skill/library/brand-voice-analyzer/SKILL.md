@@ -5,7 +5,7 @@ triggers:
   keywords: ["marka sesi", "brand voice", "ton analizi", "marka dili", "içerik tutarlılığı", "brand guidelines", "tone of voice", " copywriting audit"]
   extensions: [".md", ".txt", ".pdf"]
 auto_load_when: "Marka sesi analizi, içerik kontrolü veya brand guideline hazırlama talep edildiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash"]
 ---
 
@@ -300,7 +300,3 @@ Brand Voice Guideline Bölümleri:
 | Zamansal | tarihsel karşılaştırma | İçerik güncelleme |
 | Kanal | Kanal bazlı analiz | Kanal rehberi |
 | Kriz | Kriz sonrası analiz | Kriz planı |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -165,6 +165,103 @@ When to use spring:
 | Canvas/game | requestAnimationFrame | Excellent |
 | Reduced motion | prefers-reduced-motion media query | — |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Which animation tool?
+├── Simple hover/focus state           → CSS transition (no JS, GPU-composited)
+├── Enter/exit, keyframes              → CSS @keyframes + class toggle
+├── Complex sequence, physics, gesture → Framer Motion or Web Animations API
+└── Heavy data visualization           → requestAnimationFrame
+
+Which property to animate?
+├── Move element                       → transform: translate (never top/left)
+├── Scale or rotate                    → transform: scale / rotate
+├── Show/hide                          → opacity (not display:none mid-animation)
+├── Background, color                  → OK but costly — use sparingly
+└── width, height, top, left          → avoid — triggers layout reflow
+
+Duration?
+├── Hover/focus microinteraction       → 150–200ms
+├── Standard enter/exit                → 200–300ms
+├── Emphasis or drawer open            → 300–500ms
+└── Full page transition               → 400–600ms
+
+prefers-reduced-motion?
+├── Essential functionality            → keep but simplify (fade vs slide)
+└── Decorative only                    → disable entirely at no-preference check
+```
+
+---
+
+## Key Rules
+
+1. Only animate `transform` and `opacity` — they're GPU-composited and don't trigger reflow
+2. Always wrap motion in `@media (prefers-reduced-motion: no-preference)` or check via JS
+3. Easing: `ease-out` for entries, `ease-in` for exits, `ease-in-out` for emphasis
+4. Fast for UI reactions (≤200ms), slower for narrative/emphasis (300-500ms)
+5. Add `will-change: transform` before animation starts; remove it after (don't set globally)
+6. Spring physics for interactive gestures; CSS easing for one-way state transitions
+7. No auto-playing motion without pause control — respect WCAG 2.2.2
+
+---
+
+## Implementation
+
+```tsx
+// CSS: fade + slide entry (GPU-composited, accessible)
+// styles.css
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: fadeIn 250ms ease-out both;
+  }
+  .slide-up {
+    animation: slideUp 300ms ease-out both;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// Framer Motion: accessible enter/exit
+import { motion, AnimatePresence } from 'framer-motion'
+import { useReducedMotion } from 'framer-motion'
+
+function Drawer({ isOpen, children }: { isOpen: boolean; children: React.ReactNode }) {
+  const shouldReduce = useReducedMotion()
+
+  const variants = {
+    hidden:  { x: shouldReduce ? 0 : '100%', opacity: shouldReduce ? 0 : 1 },
+    visible: { x: 0, opacity: 1 },
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.aside
+          variants={variants}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        >
+          {children}
+        </motion.aside>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// CSS transition for hover (simplest, fastest)
+// .button { transition: background-color 150ms ease-out, transform 150ms ease-out; }
+// .button:hover { transform: translateY(-1px); }
+```

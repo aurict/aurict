@@ -1,8 +1,8 @@
 /**
  * Keybindings — Default bindings
  *
- * OmniCod için varsayılan key eşlemeleri. Context bazlı organize edilmiş.
- * Kullanıcı ~/.omnicod/keybindings.json ile override edebilir.
+ * Aurict için varsayılan key eşlemeleri. Context bazlı organize edilmiş.
+ * Kullanıcı ~/.aurict/keybindings.json ile override edebilir.
  *
  * Her context'te tüm action'lar olmalı (boş array = bağlanmamış). Pratik için
  * `emptyBindings()` ile boş default'ları spread edip sadece override'ları yazıyoruz.

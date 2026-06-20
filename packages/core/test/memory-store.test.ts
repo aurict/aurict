@@ -13,7 +13,7 @@ import type { Memory } from "../src/memory/types.js"
 let workdir: string
 
 beforeEach(() => {
-  workdir = mkdtempSync(join(tmpdir(), "omnicod-mem-"))
+  workdir = mkdtempSync(join(tmpdir(), "aurict-mem-"))
 })
 
 afterEach(() => {
@@ -283,16 +283,16 @@ describe("memoryStore.toMarkdown", () => {
 // ─── exportToFile ─────────────────────────────────────────────────────────────
 
 describe("memoryStore.exportToFile", () => {
-  it("creates .omnicod/memory.md in workdir", () => {
+  it("creates .aurict/memory.md in workdir", () => {
     addProject("exported memory")
     memoryStore.exportToFile(workdir)
-    expect(existsSync(join(workdir, ".omnicod", "memory.md"))).toBe(true)
+    expect(existsSync(join(workdir, ".aurict", "memory.md"))).toBe(true)
   })
 
   it("exported file contains memory content", () => {
     addProject("export test content")
     memoryStore.exportToFile(workdir)
-    const content = require("node:fs").readFileSync(join(workdir, ".omnicod", "memory.md"), "utf8")
+    const content = require("node:fs").readFileSync(join(workdir, ".aurict", "memory.md"), "utf8")
     expect(content).toContain("export test content")
   })
 })

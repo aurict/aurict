@@ -5,7 +5,7 @@ triggers:
   keywords: ["basın bülteni", "press release", "pr", "halkla ilişkiler", "haber bülteni", "mediya", "press kit", "gazete", "gazetecilik"]
   extensions: [".md", ".docx", ".pdf"]
 auto_load_when: "Basın bülteni yazımı, medya ilişkileri veya PR materyalleri talep edildiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch"]
 ---
 
@@ -366,7 +366,3 @@ Follow-up NOT'ları:
 | Takip 1 | 3-5 gün | Samimi, bilgi verici |
 | Takip 2 | 1-2 hafta | Farklı açı |
 | Takip 3 | 3-4 hafta | Kısa, net |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

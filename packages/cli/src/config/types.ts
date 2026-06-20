@@ -1,4 +1,4 @@
-export interface OmniCodConfig {
+export interface AurictConfig {
   provider?: string
   model?:    string
   system?:   string

@@ -4,7 +4,7 @@ description: "Müşteri rol yapma. Price negotiation, value selling, walk-away t
 triggers:
   keywords: ["negotiation simulator", "müzakere", "price negotiation", "roleplay", "BATNA", "walk-away"]
 auto_load_when: "Kullanıcı müzakare simülasyonu, fiyat müzakeresi, rol yapma veya müzakere stratejisi talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -394,6 +394,3 @@ Skills:
 | Timeline | Realistic | Unreasonable |
 | Payment | <60 days | >90 days |
 | Scope | Defined | Undefined |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

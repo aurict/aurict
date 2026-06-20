@@ -197,6 +197,105 @@ Domain Service:
 | Domain Service | Stateless logic | When logic doesn't fit entity |
 | Bounded Context | Linguistic boundary | Each team owns its context |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Apply DDD at all?
+├── Complex business logic, not CRUD   → yes
+├── Multiple domain experts involved   → yes
+├── Long-lived, growing codebase       → yes
+├── Simple CRUD with no invariants     → no (over-engineering)
+└── Tight deadline / MVP               → no (apply later)
+
+Entity or Value Object?
+├── Has unique identity (ID), mutates  → Entity
+├── Defined only by its attributes     → Value Object (immutable record)
+├── Can be shared / has no lifecycle   → Value Object (Money, Address, DateRange)
+└── Has lifecycle + business behavior  → Entity
+
+Aggregate boundary?
+├── Always consistent together         → same aggregate (Order + OrderItems)
+├── Eventually consistent is OK        → separate aggregates + domain event
+├── Only one thing changes at a time   → likely separate aggregates
+└── Large aggregate → always loaded    → split it — keep aggregates small
+
+Domain Service or Entity method?
+├── Logic belongs to one entity        → entity method (user.changeEmail())
+├── Logic spans multiple entities      → Domain Service (stateless)
+└── Crosses bounded contexts           → anti-corruption layer or domain event
+```
+
+---
+
+## Key Rules
+
+1. Aggregate root is the only entry point — never access inner entities from outside
+2. Keep aggregates small — one transaction = one aggregate; avoid "god aggregates"
+3. Collect domain events inside aggregate; dispatch AFTER transaction commits
+4. Rich domain model: entities enforce their own invariants via methods, not data bags
+5. Value Objects are immutable — create new instance on every change
+6. Ubiquitous language: code names must match domain expert vocabulary exactly
+7. One repository per aggregate root — never query aggregate internals directly
+
+---
+
+## Implementation
+
+```typescript
+// Value Object — immutable, equality by attributes
+class Money {
+  private constructor(readonly amount: number, readonly currency: string) {
+    if (amount < 0) throw new Error('Amount must be non-negative')
+  }
+  static of(amount: number, currency: string) { return new Money(amount, currency) }
+  add(other: Money): Money {
+    if (other.currency !== this.currency) throw new Error('Currency mismatch')
+    return new Money(this.amount + other.amount, this.currency)
+  }
+  equals(other: Money) { return this.amount === other.amount && this.currency === other.currency }
+}
+
+// Aggregate root — enforces invariants, collects events
+class Order {
+  private readonly _items: OrderItem[] = []
+  private readonly _events: DomainEvent[] = []
+  private _status: 'pending' | 'placed' | 'cancelled' = 'pending'
+
+  constructor(readonly id: string, readonly customerId: string) {}
+
+  addItem(productId: string, price: Money, qty: number) {
+    if (this._status !== 'pending') throw new Error('Cannot modify placed order')
+    this._items.push(new OrderItem(productId, price, qty))
+  }
+
+  place() {
+    if (this._items.length === 0) throw new Error('Order must have items')
+    this._status = 'placed'
+    this._events.push({ type: 'OrderPlaced', orderId: this.id, at: new Date() })
+  }
+
+  get total() {
+    return this._items.reduce((sum, item) => sum.add(item.subtotal), Money.of(0, 'USD'))
+  }
+
+  collectEvents(): DomainEvent[] {
+    const events = [...this._events]
+    this._events.length = 0
+    return events
+  }
+}
+
+// Application layer — dispatch events after commit
+async function placeOrderUseCase(orderId: string) {
+  const order = await orderRepo.findById(orderId)
+  if (!order) throw new Error('ORDER_NOT_FOUND')
+
+  order.place()
+  await orderRepo.save(order)          // commit first
+
+  const events = order.collectEvents()
+  for (const event of events) await eventBus.publish(event)  // then publish
+}
+```

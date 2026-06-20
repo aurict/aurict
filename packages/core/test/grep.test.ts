@@ -18,7 +18,7 @@ let ctx: ToolContext
 //      utils.js  — "module.exports = { hello: 'world' }"
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), "omnicod-grep-"))
+  tmpDir = mkdtempSync(join(tmpdir(), "aurict-grep-"))
   mkdirSync(join(tmpDir, "src"), { recursive: true })
   mkdirSync(join(tmpDir, "lib"), { recursive: true })
 

@@ -414,5 +414,104 @@ const data = await response.json()
 | Transitions | transition:animate | View Transitions API |
 | Images | <Image /> | Built-in optimization |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Static or SSR?
+├── Blog, docs, marketing, landing pages   → static (output: 'static', default)
+├── User-specific pages / auth             → hybrid (prerender = false per route)
+├── Full dynamic app                       → server (output: 'server')
+└── Both? Per page: export const prerender = false for dynamic, true for static
+
+Which hydration directive for interactive component?
+├── Above fold, critical interactivity     → client:load
+├── Below fold, can wait for idle          → client:idle
+├── Scrolled into view                     → client:visible (default choice)
+├── Browser API, must not SSR              → client:only="react"
+└── No interactivity needed               → no directive (pure HTML island)
+
+Content: Collections or raw fetch?
+├── Markdown/MDX blog posts, docs          → Content Collections with Zod schema
+├── External CMS / Headless API            → fetch in frontmatter (build-time static)
+└── Real-time / user-specific data         → prerender=false + fetch at request time
+```
+
+---
+
+## Key Rules
+
+1. Static by default — add `prerender = false` only for pages that need it
+2. `client:visible` as default hydration — `client:load` only for above-fold critical UI
+3. Content Collections with Zod schema — type-safe frontmatter, auto-validation
+4. `getStaticPaths()` required for all dynamic `[slug].astro` routes
+5. BaseHead component on every page — meta, OG tags, canonical URL
+6. Islands small and focused — don't island an entire page, only interactive parts
+7. Parallel data fetching: `await Promise.all([fetchA(), fetchB()])` in frontmatter
+
+---
+
+## Implementation
+
+```astro
+---
+// src/content/config.ts (Content Collection schema)
+import { defineCollection, z } from 'astro:content'
+
+const blog = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title:       z.string(),
+    description: z.string(),
+    pubDate:     z.coerce.date(),
+    tags:        z.array(z.string()).default([]),
+    draft:       z.boolean().default(false),
+  }),
+})
+export const collections = { blog }
+---
+```
+
+```astro
+---
+// src/pages/blog/[slug].astro — dynamic route with Content Collections
+import { getCollection } from 'astro:content'
+import BaseLayout from '@/layouts/BaseLayout.astro'
+import SearchBox from '@/components/react/SearchBox'
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft)
+  return posts.map((post) => ({ params: { slug: post.slug }, props: { post } }))
+}
+
+const { post } = Astro.props
+const { Content } = await post.render()
+---
+<BaseLayout title={post.data.title} description={post.data.description}>
+  <article>
+    <h1>{post.data.title}</h1>
+    <time datetime={post.data.pubDate.toISOString()}>
+      {post.data.pubDate.toLocaleDateString()}
+    </time>
+
+    <Content />
+
+    <!-- Island: only SearchBox sends JS to the browser -->
+    <SearchBox client:visible />
+  </article>
+</BaseLayout>
+```
+
+```astro
+---
+// src/pages/dashboard.astro — SSR page (user-specific)
+export const prerender = false
+
+const session = Astro.cookies.get('session')
+if (!session?.value) return Astro.redirect('/login')
+
+const data = await fetch(`/api/user/${session.value}`).then(r => r.json())
+---
+<h1>Welcome, {data.name}</h1>
+```

@@ -81,7 +81,7 @@ export function formatAllBindings(overrides: Record<string, string> = {}): strin
   }
 
   lines.push("")
-  lines.push("  ★ = custom override (in ~/.omnicod/keybindings.json)")
+  lines.push("  ★ = custom override (in ~/.aurict/keybindings.json)")
   lines.push("  To override: edit the JSON file with { \"quit\": \"ctrl+q\" } format.")
   return lines.join("\n")
 }

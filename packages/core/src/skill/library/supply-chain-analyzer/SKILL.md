@@ -5,7 +5,7 @@ triggers:
   keywords: ["supply chain", "bottleneck", "stok optimizasyonu", "tedarikçi risk", "logistics", "inventory"]
   contexts: ["supply chain optimization", "vendor management", "logistics planning", "demand planning"]
 auto_load_when: "Kullanıcı tedarik zinciri analizi, bottleneck tespiti veya stok optimizasyonu istediğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
 
@@ -356,6 +356,3 @@ Key Performance Indicators:
 | Vendor development | Performans iyileştirme | Kalite ↑ lead time ↓ |
 | Contracts | Long-term agreements | Fiyat dalgalanması ↓ |
 | Insurance | Risk transfer | Financial exposure ↓ |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

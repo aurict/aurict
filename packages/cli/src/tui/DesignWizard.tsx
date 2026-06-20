@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
-import { DesignLoader, matchDesign, loadDesignPrefs } from "@omnicod/core"
-import type { DesignSystem, Skill, MatchResult } from "@omnicod/core"
+import { DesignLoader, matchDesign, loadDesignPrefs } from "@aurict/core"
+import type { DesignSystem, Skill, MatchResult } from "@aurict/core"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -254,7 +254,7 @@ function ConfirmStep({
         </Box>
         <Box gap={2}>
           <Text color={theme.textDim} dimColor>{"Output     "}</Text>
-          <Text color={theme.textSecondary}>~/.omnicod/designs/…/index.html</Text>
+          <Text color={theme.textSecondary}>~/.aurict/designs/…/index.html</Text>
         </Box>
       </Box>
       <Box gap={2}>

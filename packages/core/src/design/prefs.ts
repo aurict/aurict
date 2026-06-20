@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
 
-const PREFS_FILE = join(homedir(), ".omnicod", "design-prefs.json")
+const PREFS_FILE = join(homedir(), ".aurict", "design-prefs.json")
 
 export interface DesignPrefs {
   lastSystemId?:    string
@@ -27,7 +27,7 @@ export function loadDesignPrefs(): DesignPrefs {
 
 export function saveDesignPrefs(prefs: DesignPrefs): void {
   try {
-    mkdirSync(join(homedir(), ".omnicod"), { recursive: true })
+    mkdirSync(join(homedir(), ".aurict"), { recursive: true })
     writeFileSync(PREFS_FILE, JSON.stringify(prefs, null, 2), "utf8")
   } catch { /* non-fatal */ }
 }

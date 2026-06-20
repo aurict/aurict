@@ -1,10 +1,10 @@
 # Providers
 
-OmniCod supports 9 LLM providers. Set your default:
+Aurict supports 9 LLM providers. Set your default:
 
 ```bash
-omnicod /config set default.provider <name>
-omnicod /config set default.model <model-id>
+aurict /config set default.provider <name>
+aurict /config set default.model <model-id>
 ```
 
 Or switch mid-session with `/model`.
@@ -24,7 +24,7 @@ Or switch mid-session with `/model`.
 
 **Prompt caching:** Git context and proactive file injections are placed in separate uncached system message blocks so they stay fresh every turn.
 
-**Extended thinking:** Enable with `/effort low|med|high|max` or `omnicod --effort high`.
+**Extended thinking:** Enable with `/effort low|med|high|max` or `aurict --effort high`.
 
 ---
 
@@ -50,8 +50,8 @@ Or switch mid-session with `/model`.
 Provides access to 200+ models through a single API key. Use any model ID from [openrouter.ai/models](https://openrouter.ai/models):
 
 ```bash
-omnicod /config set default.provider openrouter
-omnicod /config set default.model meta-llama/llama-3.3-70b-instruct
+aurict /config set default.provider openrouter
+aurict /config set default.model meta-llama/llama-3.3-70b-instruct
 ```
 
 ---
@@ -78,8 +78,8 @@ Run any Ollama model locally:
 
 ```bash
 ollama pull llama3.2
-omnicod /config set default.provider ollama
-omnicod /config set default.model llama3.2
+aurict /config set default.provider ollama
+aurict /config set default.model llama3.2
 ```
 
 List available local models: `ollama list`
@@ -106,8 +106,8 @@ List available local models: `ollama list`
 **Env vars:** `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`
 
 ```bash
-omnicod /config set default.provider azure
-omnicod /config set default.model gpt-4o  # your deployment name
+aurict /config set default.provider azure
+aurict /config set default.model gpt-4o  # your deployment name
 ```
 
 ---

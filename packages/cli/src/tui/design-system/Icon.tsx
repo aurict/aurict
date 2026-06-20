@@ -6,7 +6,7 @@
  * 2. Unicode (varsayılan) — çapraz terminal uyumluluğu
  * 3. ASCII (legacy) — en eski terminal'ler
  *
- * Otomatik algılama: $OMNICOD_ICON_SET veya terminal capability probe.
+ * Otomatik algılama: $AURICT_ICON_SET veya terminal capability probe.
  */
 
 import React from "react"
@@ -23,7 +23,7 @@ let cachedIconSet: IconSet | null = null
 
 export function detectIconSet(): IconSet {
   if (cachedIconSet) return cachedIconSet
-  const env = process.env["OMNICOD_ICON_SET"]?.toLowerCase()
+  const env = process.env["AURICT_ICON_SET"]?.toLowerCase()
   if (env === "nerd" || env === "unicode" || env === "ascii") {
     cachedIconSet = env
     return cachedIconSet

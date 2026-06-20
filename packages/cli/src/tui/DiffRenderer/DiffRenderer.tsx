@@ -138,8 +138,8 @@ export function DiffRenderer({
       <HStack gap="sm" paddingX="xs">
         {fileName && <Typo variant="label" tone="dim">── {fileName} ──</Typo>}
         <Spacer />
-        <Badge tone="success" variant="ghost">+{parsed.additions}</Badge>
-        <Badge tone="error" variant="ghost">-{parsed.deletions}</Badge>
+        <Badge tone="success" variant="ghost">{`+${parsed.additions}`}</Badge>
+        <Badge tone="error" variant="ghost">{`-${parsed.deletions}`}</Badge>
         <Badge tone="muted" variant="outline">{mode}</Badge>
         {hints.map((h) => (
           <KeyHint key={h.action} action={h.label} keys={h.key} />

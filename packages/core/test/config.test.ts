@@ -9,7 +9,7 @@ import {
   loadConfig, setApiKey, setDefault, setCompaction, getConfigPath,
 } from "../src/config/config.js"
 
-const GLOBAL_PATH = join(homedir(), ".omnicod", "config.json")
+const GLOBAL_PATH = join(homedir(), ".aurict", "config.json")
 
 // Env vars setApiKey touches — save + restore around the whole suite
 const TRACKED_ENV = [
@@ -28,7 +28,7 @@ beforeAll(() => {
   }
   // Backup and reset global config
   savedGlobalConfig = existsSync(GLOBAL_PATH) ? readFileSync(GLOBAL_PATH, "utf8") : null
-  mkdirSync(join(homedir(), ".omnicod"), { recursive: true })
+  mkdirSync(join(homedir(), ".aurict"), { recursive: true })
   writeFileSync(GLOBAL_PATH, "{}", "utf8")
 })
 
@@ -68,11 +68,11 @@ describe("loadConfig", () => {
   })
 
   it("reads project-level config from projectDir", () => {
-    const projDir = mkdtempSync(join(tmpdir(), "omnicod-proj-"))
+    const projDir = mkdtempSync(join(tmpdir(), "aurict-proj-"))
     try {
-      mkdirSync(join(projDir, ".omnicod"), { recursive: true })
+      mkdirSync(join(projDir, ".aurict"), { recursive: true })
       writeFileSync(
-        join(projDir, ".omnicod", "config.json"),
+        join(projDir, ".aurict", "config.json"),
         JSON.stringify({ defaults: { provider: "openai", model: "gpt-4o" } }),
         "utf8",
       )
@@ -86,11 +86,11 @@ describe("loadConfig", () => {
 
   it("project config merges with global config (project wins on conflict)", () => {
     writeFileSync(GLOBAL_PATH, JSON.stringify({ defaults: { provider: "anthropic", model: "claude-opus-4-8" } }), "utf8")
-    const projDir = mkdtempSync(join(tmpdir(), "omnicod-proj2-"))
+    const projDir = mkdtempSync(join(tmpdir(), "aurict-proj2-"))
     try {
-      mkdirSync(join(projDir, ".omnicod"), { recursive: true })
+      mkdirSync(join(projDir, ".aurict"), { recursive: true })
       writeFileSync(
-        join(projDir, ".omnicod", "config.json"),
+        join(projDir, ".aurict", "config.json"),
         JSON.stringify({ defaults: { model: "gpt-4o" } }),
         "utf8",
       )
@@ -215,9 +215,9 @@ describe("setCompaction", () => {
 // ─── getConfigPath ───────────────────────────────────────────────────────────
 
 describe("getConfigPath", () => {
-  it("returns a path containing .omnicod and config.json", () => {
+  it("returns a path containing .aurict and config.json", () => {
     const p = getConfigPath()
-    expect(p).toContain(".omnicod")
+    expect(p).toContain(".aurict")
     expect(p).toContain("config.json")
   })
 

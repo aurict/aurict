@@ -203,6 +203,3 @@ Audit Trail Requirements:
 | HIPAA | US health | PHI protection, access controls |
 | PCI DSS | Payment cards | Card data protection |
 | ISO 27001 | Info security | ISMS framework |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

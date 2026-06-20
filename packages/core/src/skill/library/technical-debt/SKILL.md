@@ -1,177 +1,105 @@
 ---
 name: technical-debt
-description: "Technical Debt: Identification, prioritization, payoff strategy, prevention." 
+description: "Technical debt: identification, classification, cost estimation, Strangler Fig, Boy Scout Rule, debt payoff prioritization."
 triggers:
   keywords: ["refactor", "technical debt", "cleanup", "legacy", "TODO", "FIXME", "complexity", "coupling"]
-auto_load_when: "Addressing technical debt or refactoring"
+auto_load_when: "Addressing technical debt or refactoring legacy code"
 agent: architect
 tools: ["Read", "Write", "Bash"]
 ---
 
 # Technical Debt Patterns
 
-**Focus:** Managing, prioritizing, reducing debt over time
-
-## 1. What is Technical Debt
+## Quick Reference
 
 ```
-Debt types:
-├── Code debt (poor code quality)
-├── Architecture debt (bad structure)
-├── Test debt (low coverage)
-├── Documentation debt (missing docs)
-├── Infrastructure debt (outdated ops)
-
-Origin:
-├── Shortcuts for speed
-├── Missing knowledge
-├── Time pressure
-└── Abandoned experiments
+Identify:   High cyclomatic complexity, >300-line functions, >5 levels of nesting, test coverage <50%
+Classify:   Design debt (wrong abstraction) vs Code debt (poor impl) vs Test debt (no coverage)
+Prioritize: Impact on dev velocity × risk of bug × effort to fix
+Boy Scout:  Leave the code slightly better than you found it — no dedicated refactor sprints needed
+Strangler:  Replace legacy incrementally: new code next to old → migrate callers → delete old
+Cost:       "This feature takes 2x longer because of [X]" — translate debt to delivery time for stakeholders
 ```
 
 ---
 
-## 2. Identification
+## Decision Tree
 
 ```
-Signs of debt:
-├── Feature development slows
-├── Bugs increase
-├── Onboarding time grows
-├── Tests are flaky
-├── Fear to change code
-└── CircleCI takes forever
+How to pay off debt?
+├── Small (<2h) → Boy Scout Rule: fix while passing through, commit separately
+├── Medium (2h–1 day) → Schedule in next sprint as a task, not a "debt sprint"
+└── Large (>1 day) → Strangler Fig pattern: don't rewrite, replace incrementally
 
-Tools:
-├── Code coverage
-├── Complexity metrics
-├── Code review patterns
-└── Team retrospective
+Debt type determines approach:
+├── Design debt (wrong abstraction)
+│   └── Strangler Fig: build new interface → migrate callers → deprecate old
+│
+├── Code debt (poor implementation, no tests)
+│   └── Add tests FIRST (characterization tests) → then refactor safely
+│
+├── Test debt (low coverage on critical path)
+│   └── Add tests for the behavior you're about to change → refactor with confidence
+│
+└── Dependency debt (outdated, vulnerable packages)
+    └── Automated: Dependabot / Renovate → auto-merge patch, review minor/major
+
+When to NOT pay off debt?
+├── 2 days before a release
+├── When you don't understand the code well enough yet
+└── When the "debt" is actually stable, working, untouched code
 ```
-
----
-
-## 3. Prioritization
-
-```
-Factors to consider:
-├── Impact on development speed
-├── Risk level
-├── Effort to fix
-├── Dependencies
-└── Business value
-
-Prioritize:
-├── High impact, low effort first
-├── Critical paths over edge cases
-└── Infrastructure before features
-```
-
----
-
-## 4. Payoff Strategies
-
-```
-Strategies:
-├── Dedicated "debt Friday"
-├── Include in estimates
-├── Boy scout rule (leave better)
-├── Rewrite vs refactor
-└── Feature work includes cleanup
-
-Better: Prevent than fix
-```
-
----
-
-## 5. Measurement
-
-```
-Metrics:
-├── Cyclomatic complexity
-├── Coupling (imports)
-├── Test coverage %
-├── Time to run tests
-├── Build times
-
-Track over time to see trends
-```
-
----
-
-## 6. Communication
-
-```
-To stakeholders:
-├── Show impact on velocity
-├── Estimate slowdown %
-├── Link to bugs/delays
-└── Propose investment
-
-Not: "Code is bad, we should fix"
-Yes: "Cleanup gives 20% velocity boost"
-```
-
----
-
-## 7. Prevention
-
-```
-Prevent debt:
-├── Code standards + linter
-├── Pull request reviews
-├── Test requirements (80%+)
-├── Architecture review
-├── Pair programming
-└── Technical spikes before stories
-```
-
----
-
-## Key Patterns
-
-1. **Track** - visible backlog
-2. **Prioritize** - impact vs effort
-3. **Prevent** - standards + review
-4. **Communicate** - business value
-5. **Pay regularly** - small batches
-
-(End of file - 77 lines)
 
 ---
 
 ## Anti-Patterns
 
-```
-❌ "We'll fix it later" with no ticket created
-✅ Log all debt immediately with TODO + ticket reference
-
-❌ Paying all debt in one big refactor sprint
-✅ Boy Scout Rule — leave code cleaner than you found it
-
-❌ Ignoring debt until it causes an outage
-✅ Track debt metric (complexity, coverage) in CI
-
-❌ Rewriting everything instead of targeted refactors
-✅ Strangler Fig: replace incrementally, keep working at all times
-
-❌ Debt that no one owns
-✅ Each debt item has an assigned owner and deadline
-```
+- "We'll fix it later" with no ticket — create a TODO comment with ticket reference: `// TODO(#123): replace with new auth`
+- Big-bang rewrite instead of incremental — rewrites fail; Strangler Fig replaces piece by piece with the system always working
+- Dedicated "debt sprint" every quarter — debt accumulates between sprints; Boy Scout Rule distributes the cost
+- Refactoring without tests — add characterization tests first; refactoring untested code is guessing
+- Paying off debt no one touches — only pay debt on hot paths; leave stable untouched code alone
+- Describing debt as "messy code" to stakeholders — frame as business impact: "this costs us 3 hours per new feature in this module"
 
 ---
 
-## Quick Reference
+## Key Rules
 
-| Debt type | Detection | Remedy |
-|---|---|---|
-| Design debt | Arch review, complexity score | Targeted refactor |
-| Code debt | High cyclomatic complexity | Extract + simplify |
-| Test debt | Low coverage, flaky tests | Add tests before feature |
-| Dependency debt | Outdated/vulnerable packages | Dependency sentinel |
-| Documentation debt | No README, stale docs | docs-agent |
-| Performance debt | CWV regressions | Perf audit + fix |
+1. Always add tests BEFORE refactoring — tests are your safety net, not a reward for finishing
+2. Commit refactors separately from behavior changes — clean git history, easier to revert
+3. Track debt visibly: `// TODO(#ticket)` in code + ticket in backlog — invisible debt never gets paid
+4. Strangler Fig: new code coexists with old, never a hard cutover — system stays deployable at all times
+5. Measure: cyclomatic complexity, test coverage, build time — track trends, not one-time snapshots
+6. Boy Scout Rule: the only sustainable approach — 15 min of cleanup per day beats a 2-week debt sprint
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Implementation
+
+**Characterization test before refactor:**
+```typescript
+// Step 1: capture current behavior (even if wrong)
+it("handles edge case — current behavior", () => {
+  const result = legacyFunction(edgeInput)
+  expect(result).toMatchSnapshot() // lock current output
+})
+// Step 2: refactor
+// Step 3: if snapshot breaks, decide: fix refactor or update expected behavior
+```
+
+**Strangler Fig in TypeScript:**
+```typescript
+// Old: monolithic getUserData()
+// New: incremental replacement
+
+// 1. Add new implementation alongside old
+async function getUserProfile(id: string): Promise<UserProfile> { ... } // new
+
+// 2. In old function, delegate to new for new callers
+async function getUserData(id: string) {
+  if (featureFlags.useNewUserProfile) return getUserProfile(id) // migrate
+  return legacyGetUserData(id) // keep working
+}
+
+// 3. Once all callers migrated, delete legacyGetUserData
+```

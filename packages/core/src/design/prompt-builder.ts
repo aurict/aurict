@@ -9,11 +9,11 @@ export interface DesignJobSpec {
   systemId:    string    // selected design system ID
   skillId:     string    // selected skill ID
   workdir:     string    // project directory
-  outputSlug:  string    // output folder name under ~/.omnicod/designs/
+  outputSlug:  string    // output folder name under ~/.aurict/designs/
 }
 
 export function buildDesignOutputDir(slug: string): string {
-  const dir = join(homedir(), ".omnicod", "designs", slug)
+  const dir = join(homedir(), ".aurict", "designs", slug)
   mkdirSync(dir, { recursive: true })
   return dir
 }

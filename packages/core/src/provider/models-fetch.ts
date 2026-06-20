@@ -16,7 +16,7 @@ interface OpenAIModelsResponse {
 }
 
 function cachePath(providerId: string): string {
-  return join(homedir(), ".omnicod", "cache", `models-${providerId}.json`)
+  return join(homedir(), ".aurict", "cache", `models-${providerId}.json`)
 }
 
 function isFresh(path: string): boolean {
@@ -47,7 +47,7 @@ async function fetchFromEndpoint(url: string, apiKey: string): Promise<ModelInfo
   const timer = setTimeout(() => controller.abort(), 10_000)
   try {
     const res = await fetch(url, {
-      headers: { "Authorization": `Bearer ${apiKey}`, "User-Agent": "OmniCod/0.0.1" },
+      headers: { "Authorization": `Bearer ${apiKey}`, "User-Agent": "Aurict/0.0.1" },
       signal: controller.signal,
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)

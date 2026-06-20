@@ -169,7 +169,3 @@ When to use viewport units:
 | Breakpoints | 640 / 768 / 1024 / 1280 | Tailwind defaults |
 | Images | max-width: 100% | Prevent overflow |
 | Touch targets | min 44px | WCAG 2.5.5 |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

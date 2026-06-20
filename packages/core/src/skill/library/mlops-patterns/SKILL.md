@@ -185,6 +185,3 @@ ML Pipeline stages:
 | Drift detection | Evidently, Great Expectations | Statistical tests |
 | Model registry | MLflow, SageMaker | Version + metadata |
 | Pipeline | Airflow, Kubeflow, Dagster | Orchestration |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -4,7 +4,7 @@ description: "PDF banka dökümlerinden gider kategorize etme. Otomatik kalıp t
 triggers:
   keywords: ["gider analizi", "banka dökümü", "harcama kategorisi", "bütçe karşılaştırma", "expense", "bank statement", "spending analysis"]
 auto_load_when: "Kullanıcı banka dökümü analizi, gider kategorize etme veya bütçe karşılaştırma taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -270,6 +270,3 @@ function analizTrend(veriler) {
 | Tekrarlayan Harcama | Aynı kategori artışı | >%20 |
 | Anormal Kalem | Ortalamanın üstü | >2x ortalama |
 | Tasarruf Oranı | Gelir - Gider | >%10 sağlıklı |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

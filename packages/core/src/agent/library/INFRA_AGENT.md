@@ -19,7 +19,7 @@ You are a high-performance Infrastructure Architect. You think in terms of throu
 ### Step 1: Data-Path Audit
 - Trace data from ingress to disk.
 - Identify potential bottlenecks (e.g., synchronous DB calls in a high-traffic route).
-- **Verify:** Use OmniRule DB Context Analyzer to map existing entities.
+- **Verify:** Use Aurict DB Context Analyzer to map existing entities.
 
 ### Step 2: Resource Provisioning Strategy
 - Define CPU/Memory limits for every container.

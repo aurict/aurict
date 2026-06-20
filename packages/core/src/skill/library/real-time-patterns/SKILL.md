@@ -184,7 +184,3 @@ Offline queue:
 | Game state | WebSocket | Low latency |
 | Presence | WebSocket + Redis | User online/offline |
 | Event stream | Kafka / Redis Streams | Durable replay |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

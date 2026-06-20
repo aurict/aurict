@@ -42,7 +42,7 @@ export const ProviderRegistry = {
 
   // Hangi API key'in set edildiğine göre varsayılan provider
   detectDefault(): string {
-    const override = process.env["OMNICOD_PROVIDER"]
+    const override = process.env["AURICT_PROVIDER"]
     if (override && plugins.has(override)) return override
 
     if (process.env["ANTHROPIC_API_KEY"])                                                              return "anthropic"

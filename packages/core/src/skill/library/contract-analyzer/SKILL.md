@@ -4,7 +4,7 @@ description: "Sözleşme özetleme, risk tespiti, madde analizi, yükümlülük 
 triggers:
   keywords: ["sözleşme analizi", "kontrat analizi", "contract analyzer", "risk analizi", "madde inceleme"]
 auto_load_when: "Kullanıcı sözleşme inceleme, özetleme, risk tespiti veya hukuki değerlendirme talep eder"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "WebFetch", "WebSearch"]
 ---
 
@@ -200,7 +200,3 @@ TARAF YÜKÜMLÜLÜK MATRİSİ (Obligation Tracker)
 ---
 
 *Kritik uyarı: Bu analiz hukuki danışmanlık yerine geçmez. Ticari kararlar için mutlaka yetkili hukuk danışmanına danışılmalıdır.*
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

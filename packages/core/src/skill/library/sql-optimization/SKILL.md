@@ -315,5 +315,85 @@ SQL Server:
 | Offset pagination | Use cursor/keyset | WHERE id > ? |
 | Too many indexes | Monitor, remove unused | pg_stat_user_indexes |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Query is slow — where to start?
+└── EXPLAIN ANALYZE first — always diagnose before acting
+
+Seq scan on large table?
+├── < 1% of rows returned → add B-tree index on WHERE column
+├── > 50% of rows returned → seq scan is fine (index won't help)
+└── Composite query       → composite index (equality cols first, range cols last)
+
+Which index type?
+├── Equality / range on standard columns → B-tree (default)
+├── Full-text search / JSONB / arrays    → GIN
+├── Time-series / append-only (logs)     → BRIN
+└── Geospatial / ranges                  → GiST
+
+Pagination on large table?
+├── Need arbitrary page jumps            → offset (accept perf tradeoff)
+├── Infinite scroll / cursor API         → keyset: WHERE id > $last LIMIT 20
+└── Time-ordered feed                    → cursor on created_at DESC
+
+Multiple queries in a loop?
+└── N+1 → rewrite to single JOIN or IN (...) batch query
+```
+
+---
+
+## Key Rules
+
+1. Run `EXPLAIN (ANALYZE, BUFFERS)` before and after any query change
+2. Index all columns used in WHERE, JOIN, ORDER BY
+3. Composite index: high-cardinality first, equality before range conditions
+4. Covering index with `INCLUDE (col)` eliminates heap lookups for hot queries
+5. Never apply functions on indexed columns in WHERE (`LOWER(email)` breaks index)
+6. Cursor/keyset pagination > OFFSET for tables > 10k rows
+7. Bulk insert always > loop of single INSERTs
+8. Index foreign key columns or JOINs will seq-scan the child table
+
+---
+
+## Implementation
+
+```sql
+-- Covering index — index-only scan, no heap lookup
+CREATE INDEX idx_users_email_cover
+  ON users (email)
+  INCLUDE (id, name, created_at);
+
+-- Composite index — equality first, range last
+CREATE INDEX idx_orders_user_status_date
+  ON orders (user_id, status, created_at DESC);
+
+-- Cursor pagination — O(1) regardless of page number
+-- First page
+SELECT id, title, created_at
+FROM posts
+WHERE status = 'published'
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+
+-- Next page (pass last row's values as cursor)
+SELECT id, title, created_at
+FROM posts
+WHERE status = 'published'
+  AND (created_at, id) < ('2024-01-15 10:30:00', 1050)
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+
+-- Batch fix for N+1
+-- ❌ N+1
+-- for user of users: SELECT * FROM orders WHERE user_id = ?
+
+-- ✅ Single query
+SELECT u.id, u.email, json_agg(o.*) AS orders
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+WHERE u.id = ANY($1::int[])
+GROUP BY u.id;
+```

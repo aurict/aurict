@@ -204,7 +204,3 @@ What to include in messages:
 | Kafka | Event streaming | High throughput, replay |
 | SQS | AWS-native | Managed, DLQ built-in |
 | Inngest | Serverless workflows | Step functions |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

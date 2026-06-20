@@ -4,7 +4,7 @@ import { join } from "path"
 import { hooks } from "../../hook/emitter.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
-const WORKTREE_DIR = ".omnicod/worktrees"
+const WORKTREE_DIR = ".aurict/worktrees"
 
 async function git(args: string[], cwd: string): Promise<{ out: string; err: string; code: number }> {
   const proc = spawn(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" })

@@ -10,13 +10,14 @@
 
 import React from "react"
 import { Text } from "ink"
+import type { TokenBreakdown } from "@aurict/core"
 import { useTheme } from "../utils/theme.js"
 import { HStack, VStack, Surface, ContextBar, KeyHint, Badge } from "./design-system/index.js"
 
 interface Props {
   provider:         string
   model:            string
-  tokens:           { input: number; output: number }
+  tokens:           TokenBreakdown
   contextTokens?:   number | undefined
   workdir:          string
   skills?:          string[] | undefined
@@ -33,6 +34,7 @@ interface Props {
   effort?:          number | undefined
   autopilotMode?:   boolean | undefined
   cols?:            number | undefined
+  draftSavedAt?:    number | undefined
 }
 
 function fmtK(n: number): string {
@@ -77,15 +79,17 @@ export function StatusBar({
   provider, model, tokens, contextTokens, workdir, skills = [],
   contextWindow, isUndercover, coordinatorMode, branch, wasCompacted,
   activeAgent, agentColor, bgTaskCount, taskCount, taskPanelOpen, effort, autopilotMode, cols,
+  draftSavedAt,
 }: Props) {
   const theme    = useTheme()
   const mode     = bp(cols)
   const dir      = workdir.replace(process.env["HOME"] ?? "", "~")
-  const cw       = contextWindow ?? 200_000
-  const ctxUsed  = contextTokens ?? 0
-  const pct      = ctxUsed > 0 ? Math.min(1, ctxUsed / cw) : 0
-  const cumTotal = tokens.input + tokens.output
-  const thinkTag = effortLabel(effort)
+  const cw           = contextWindow ?? 200_000
+  const ctxUsed      = contextTokens ?? 0
+  const pct          = ctxUsed > 0 ? Math.min(1, ctxUsed / cw) : 0
+  const cumTotal     = tokens.input + tokens.output
+  const thinkTag     = effortLabel(effort)
+  const draftFresh   = draftSavedAt !== undefined && Date.now() - draftSavedAt < 3_000
 
   // ── tiny: bare minimum ────────────────────────────────────────────────────
   if (mode === "tiny") {
@@ -153,12 +157,13 @@ export function StatusBar({
               {isUndercover    && <Text color={theme.textDim} dimColor>uc</Text>}
               {coordinatorMode && <Badge tone="accent" variant="ghost">coord</Badge>}
               {autopilotMode   && <Badge tone="warning" variant="solid">⚡ auto</Badge>}
+              {draftFresh      && <Text color={theme.success} dimColor>✓ saved</Text>}
               {cumTotal > 0    && <Text color={theme.textDim}>{fmtK(cumTotal)}tok</Text>}
               {thinkTag        && <Text color={theme.accent} dimColor>{thinkTag}</Text>}
               <Text color={theme.textPrimary}>{provider}</Text>
               <Text color={theme.borderBright}>/</Text>
               <Text color={theme.warning}>{shortModel(model)}</Text>
-              <Text color={theme.textDim}>/ cmd</Text>
+              <Text color={theme.textDim} dimColor>  /cmd</Text>
             </HStack>
           </HStack>
         </Surface>
@@ -206,6 +211,7 @@ export function StatusBar({
             {isUndercover    && <Badge tone="muted"    variant="ghost">undercover</Badge>}
             {coordinatorMode && <Badge tone="accent"   variant="ghost">coordinator</Badge>}
             {autopilotMode   && <Badge tone="warning"  variant="solid">⚡ auto</Badge>}
+            {draftFresh      && <Text color={theme.success} dimColor>✓ saved</Text>}
             {cumTotal > 0 && (
               <>
                 <Text color={theme.textDim}>{fmtK(cumTotal)}</Text>
@@ -225,13 +231,13 @@ export function StatusBar({
             <Text color={theme.borderBright}>·</Text>
             {taskCount && taskCount > 0 ? (
               <HStack gap="xs">
-                <Text color={theme.textDim}>/ commands</Text>
+                <Text color={theme.textDim} dimColor>/ commands</Text>
                 <KeyHint keys="ctrl+t" action={`tasks (${taskCount})`} />
                 <KeyHint keys="esc" action="exit" />
               </HStack>
             ) : (
               <HStack gap="xs">
-                <Text color={theme.textDim}>/ commands</Text>
+                <Text color={theme.textDim} dimColor>/ commands</Text>
                 <KeyHint keys="esc" action="exit" />
                 <KeyHint keys="ctrl+c" action="abort" />
               </HStack>

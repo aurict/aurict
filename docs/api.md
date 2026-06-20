@@ -1,13 +1,13 @@
 # HTTP API Reference
 
-OmniCod exposes a local HTTP API on `localhost:4111` (configurable). All endpoints require a bearer token.
+Aurict exposes a local HTTP API on `localhost:4111` (configurable). All endpoints require a bearer token.
 
 ## Authentication
 
-The token is auto-generated at `~/.omnicod/server-token` on first run.
+The token is auto-generated at `~/.aurict/server-token` on first run.
 
 ```bash
-TOKEN=$(cat ~/.omnicod/server-token)
+TOKEN=$(cat ~/.aurict/server-token)
 curl -H "Authorization: Bearer $TOKEN" http://localhost:4111/health
 ```
 
@@ -195,7 +195,7 @@ List stored memories for a project.
 
 ```bash
 #!/usr/bin/env bash
-TOKEN=$(cat ~/.omnicod/server-token)
+TOKEN=$(cat ~/.aurict/server-token)
 BASE="http://localhost:4111"
 
 # Create a session
@@ -218,7 +218,7 @@ curl -s -X POST "$BASE/sessions/$SESS/messages" \
 ## SDK usage
 
 ```typescript
-import { createApp } from "@omnicod/core"
+import { createApp } from "@aurict/core"
 
 const app = createApp()
 const server = Bun.serve({ port: 4111, fetch: app.fetch })

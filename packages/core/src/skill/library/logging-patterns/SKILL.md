@@ -212,6 +212,89 @@ How to handle logging at scale:
 | service | string | version |
 | user_id | string | — |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Which log level?
+├── Unhandled exception, data loss risk     → error
+├── Degraded / fallback activated          → warn
+├── Business event (signup, purchase)      → info
+├── Diagnostic detail (query timing)       → debug (disabled in production)
+└── Very verbose trace                     → trace (disabled unless profiling)
+
+Structured or plain text?
+├── Production / going to aggregator       → structured JSON always
+├── Dev console readability               → pretty-print (pino-pretty in dev)
+└── Simple script / CLI tool             → plain text ok
+
+Log aggregation?
+├── Already on AWS                         → CloudWatch Logs
+├── Using Grafana/Prometheus stack         → Loki (label-based)
+├── Need full-text search on logs          → Elasticsearch (ELK)
+└── All-in-one APM (logs + traces + APM)  → Datadog
+```
+
+---
+
+## Key Rules
+
+1. Structured JSON in production — never `console.log` string concatenation
+2. `trace_id` + `service` in every log line — link logs to distributed traces
+3. Never log sensitive data: passwords, tokens, credit card numbers, SSNs
+4. Redact sensitive fields at logger config, not by manual filtering
+5. INFO for observable business events; DEBUG only for troubleshooting (off in prod)
+6. Async / buffered logging — never block request thread on log I/O
+7. Include request context (user_id, path, method) in child logger per request
+
+---
+
+## Implementation
+
+```typescript
+// pino — fast structured logger with redaction + request context
+import pino from 'pino'
+
+export const logger = pino({
+  level:  process.env.LOG_LEVEL ?? 'info',
+  base:   { service: 'api', env: process.env.NODE_ENV },
+  // Redact sensitive fields anywhere in the log object
+  redact: ['req.headers.authorization', 'body.password', '*.token', '*.secret'],
+  timestamp: pino.stdTimeFunctions.isoTime,
+  // Pretty-print in dev only
+  transport: process.env.NODE_ENV === 'development'
+    ? { target: 'pino-pretty', options: { colorize: true } }
+    : undefined,
+})
+
+// Request middleware — per-request child logger
+export function requestLogger(req: any, res: any, next: any) {
+  const traceId = (req.headers['x-trace-id'] as string) ?? crypto.randomUUID()
+  // Child logger inherits all fields + adds request context
+  req.log = logger.child({ traceId, userId: req.user?.id, path: req.path })
+  res.setHeader('x-trace-id', traceId)
+
+  const start = Date.now()
+  res.on('finish', () => {
+    const level = res.statusCode >= 500 ? 'error'
+                : res.statusCode >= 400 ? 'warn'
+                : 'info'
+    req.log[level]({ status: res.statusCode, ms: Date.now() - start }, 'request completed')
+  })
+  next()
+}
+
+// Usage in service — attach business context
+async function processPayment(req: any, amount: number) {
+  req.log.info({ amount, currency: 'USD' }, 'payment initiated')
+  try {
+    const result = await stripe.charge(amount)
+    req.log.info({ chargeId: result.id }, 'payment succeeded')
+    return result
+  } catch (err) {
+    req.log.error({ err, amount }, 'payment failed')
+    throw err
+  }
+}
+```

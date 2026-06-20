@@ -4,7 +4,7 @@ description: "Soğuk e-posta yazımı. Hook oluşturma, kişiselleştirme, follo
 triggers:
   keywords: ["cold email", "soğuk e-posta", "cold email writer", "outreach", "spam avoidance", "e-posta açılma oranı"]
 auto_load_when: "Kullanıcı soğuk e-posta kampanyası, outreach stratejisi veya e-posta şablonu talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -276,6 +276,3 @@ Value-first:
 | Best send | Tuesday-Thursday | 7-9am, 11am-1pm |
 | Avoid | Monday, Friday | After 5pm |
 | Follow-up | Day 3, 7, 14 | Same as initial |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

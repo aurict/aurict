@@ -3,7 +3,7 @@ import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
 import { THEMES, THEME_NAMES } from "../utils/theme.js"
 import { Typo, HStack, VStack, Badge } from "./design-system/index.js"
-import { loadConfig } from "@omnicod/core"
+import { loadConfig } from "@aurict/core"
 
 type Tab = "general" | "theme" | "keybindings" | "advanced"
 
@@ -161,11 +161,11 @@ export function SettingsPanel({ provider, model, currentTheme, workdir, onTheme,
             { label: "Compaction strategy",  value: cfg?.compaction?.strategy ?? "balanced" },
             { label: "Tail turns",           value: String(cfg?.compaction?.tailTurns ?? 6) },
             { label: "Max steps",            value: "20" },
-            { label: "Session DB",           value: "~/.omnicod/sessions.db" },
-            { label: "Companion state",      value: "~/.omnicod/companion.json" },
-            { label: "Templates",            value: "~/.omnicod/templates/" },
-            { label: "Stash",               value: "~/.omnicod/stash/stashes.json" },
-            { label: "Crash reports",        value: "~/.omnicod/crash/" },
+            { label: "Session DB",           value: "~/.aurict/sessions.db" },
+            { label: "Companion state",      value: "~/.aurict/companion.json" },
+            { label: "Templates",            value: "~/.aurict/templates/" },
+            { label: "Stash",               value: "~/.aurict/stash/stashes.json" },
+            { label: "Crash reports",        value: "~/.aurict/crash/" },
           ].map((row, i) => (
             <HStack key={i} gap="md">
               <Text color={theme.textDim} dimColor>{row.label.padEnd(22)}</Text>
@@ -173,7 +173,7 @@ export function SettingsPanel({ provider, model, currentTheme, workdir, onTheme,
             </HStack>
           ))}
           <Text color={theme.borderDim} dimColor>{"─".repeat(40)}</Text>
-          <Typo variant="caption" tone="muted">Edit ~/.omnicod/config.json to change advanced settings</Typo>
+          <Typo variant="caption" tone="muted">Edit ~/.aurict/config.json to change advanced settings</Typo>
         </VStack>
       )}
     </Box>

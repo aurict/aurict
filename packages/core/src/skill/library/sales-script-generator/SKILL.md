@@ -4,7 +4,7 @@ description: "Satış scripti oluşturma. Discovery, presentation, closing. Ques
 triggers:
   keywords: ["sales script", "satış scripti", "discovery call", "demo script", "closing script", "sales conversation"]
 auto_load_when: "Kullanıcı satış görüşme scriptleri, discovery soruları, demo akışı veya closing scriptleri talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -345,6 +345,3 @@ Closing:
 | Direct close | After demo | "Ready to move forward?" |
 | Assumptive close | Strong interest | "Let's get you started..." |
 | Referral close | After objection | "Who else might benefit?" |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -1,6 +1,6 @@
 /**
  * Remote skill yükleyici.
- * GitHub raw URL veya HTTP URL'den SKILL.md indirir, ~/.omnicod/skills/ altına kaydeder.
+ * GitHub raw URL veya HTTP URL'den SKILL.md indirir, ~/.aurict/skills/ altına kaydeder.
  */
 
 import { join } from "path"
@@ -8,7 +8,7 @@ import { homedir } from "os"
 import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from "fs"
 import { parseFrontmatter } from "./frontmatter.js"
 
-const REMOTE_SKILLS_DIR = join(homedir(), ".omnicod", "skills")
+const REMOTE_SKILLS_DIR = join(homedir(), ".aurict", "skills")
 
 export interface RemoteSkillMeta {
   id:          string

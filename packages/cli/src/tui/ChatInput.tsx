@@ -14,15 +14,16 @@ import { useTheme } from "../utils/theme.js"
 import { HStack, VStack, Surface, Typo } from "./design-system/index.js"
 
 interface Props {
-  value:    string
-  onChange: (v: string) => void
-  onSubmit: (v: string) => void
-  disabled: boolean
-  history?: string[]
-  queued?:  string | undefined
+  value:              string
+  onChange:           (v: string) => void
+  onSubmit:           (v: string) => void
+  disabled:           boolean
+  history?:           string[]
+  queued?:            string | undefined
+  onPasteTruncated?:  (originalLen: number, truncatedLen: number) => void
 }
 
-export function ChatInput({ value, onChange, onSubmit, disabled, history = [], queued }: Props) {
+export function ChatInput({ value, onChange, onSubmit, disabled, history = [], queued, onPasteTruncated }: Props) {
   const theme = useTheme()
   const promptChar = "❯"
   const borderColor = disabled ? theme.borderBright : theme.accent
@@ -60,6 +61,7 @@ export function ChatInput({ value, onChange, onSubmit, disabled, history = [], q
               onSubmit={onSubmit}
               disabled={disabled}
               history={history}
+              {...(onPasteTruncated !== undefined ? { onPasteTruncated } : {})}
             />
           </Box>
           {disabled && <Typo variant="body" tone="muted" dimColor>⟳</Typo>}

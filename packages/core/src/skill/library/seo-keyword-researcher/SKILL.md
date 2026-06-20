@@ -5,7 +5,7 @@ triggers:
   keywords: ["seo", "anahtar kelime", "keyword research", "arama hacmi", "serp", "sıralama", "google", "sitemaps"]
   extensions: [".md", ".csv", ".xlsx"]
 auto_load_when: "SEO optimizasyonu, içerik stratejisi veya anahtar kelime araştırması talep edildiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch"]
 ---
 
@@ -292,7 +292,3 @@ Ana Araçlar:
 | Ahrefs | Backlink + keyword | Ücretli |
 | Ubersuggest | Alternatif | Freemium |
 | AnswerThePublic | Soru keşfi | Freemium |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

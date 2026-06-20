@@ -4,7 +4,7 @@ description: "Eğitim dokümanı oluşturma, öğrenme hedefleri, MOD modeli, te
 triggers:
   keywords: ["training module creator", "eğitim modülü", "öğrenme hedefleri", "MOD model", "test hazırlama"]
 auto_load_when: "Kullanıcı eğitim dokümanı, öğrenme modülü veya test sorusu ister"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "grep", "glob"]
 ---
 
@@ -207,6 +207,3 @@ test_hazırlama
 | Bilgi | %30 | Kavram anlama |
 | Beceri | %50 | Uygulama |
 | Tutum | %20 | Davranış değişikliği |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

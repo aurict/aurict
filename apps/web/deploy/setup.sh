@@ -1,21 +1,21 @@
 #!/bin/bash
-# OmniCod website — sunucu kurulum scripti
+# Aurict website — sunucu kurulum scripti
 # Gereksinimler: bun, pm2, apache2 (mod_proxy, mod_rewrite)
 
 set -e
 
 DOMAIN="aurict.com"
-APP_DIR="/var/www/omnicod-web"
-REPO="https://github.com/omnicod-dev/omnicod.git"
+APP_DIR="/var/www/aurict-web"
+REPO="https://github.com/aurict-dev/aurict.git"
 
 echo "==> Repo klonlanıyor..."
 if [ -d "$APP_DIR" ]; then
   git -C "$APP_DIR" pull origin main
 else
-  git clone "$REPO" /tmp/omnicod-clone
+  git clone "$REPO" /tmp/aurict-clone
   mkdir -p "$APP_DIR"
-  cp -r /tmp/omnicod-clone/apps/web/. "$APP_DIR/"
-  rm -rf /tmp/omnicod-clone
+  cp -r /tmp/aurict-clone/apps/web/. "$APP_DIR/"
+  rm -rf /tmp/aurict-clone
 fi
 
 echo "==> Bağımlılıklar kuruluyor..."
@@ -36,12 +36,12 @@ pm2 start "$APP_DIR/ecosystem.config.js" --env production
 pm2 save
 
 echo "==> Apache config kopyalanıyor..."
-cp "$APP_DIR/deploy/apache.conf" /etc/apache2/sites-available/omnicod.conf
-a2ensite omnicod.conf
+cp "$APP_DIR/deploy/apache.conf" /etc/apache2/sites-available/aurict.conf
+a2ensite aurict.conf
 a2enmod proxy proxy_http proxy_wstunnel rewrite
 systemctl reload apache2
 
 echo ""
 echo "✓ Kurulum tamamlandı!"
 echo "  SSL için: certbot --apache -d $DOMAIN"
-echo "  Loglar  : pm2 logs omnicod-web"
+echo "  Loglar  : pm2 logs aurict-web"

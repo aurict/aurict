@@ -243,6 +243,92 @@ Where to put state:
 | Polymorphic `as` prop | Semantic element flex | Type complexity |
 | Slot pattern | Content projection | Like Vue slots in React |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Split this component?
+├── Does it have multiple responsibilities? → split (single responsibility)
+├── Is it used in 2+ different contexts?    → split + make it generic
+├── > 150 lines with mixed concerns?        → split
+└── First use, no reuse yet                → keep flat (no premature abstraction)
+
+Props or children?
+├── Content is caller-controlled (text, icon, arbitrary) → children / slot
+├── Configuration / behavior                             → props
+├── Complex structure with multiple sections             → compound components (Header, Body)
+└── Style variants (primary/secondary/ghost)             → single variant prop (not booleans)
+
+Which composition pattern?
+├── Simple variants (Button, Badge)         → cva() variant prop
+├── Complex related parts (Select, Tabs)   → compound components (Parent.Child)
+├── Inject cross-cutting (auth, analytics) → HOC or custom hook
+└── Reusable logic without UI              → custom hook
+```
+
+---
+
+## Key Rules
+
+1. Single responsibility — one reason to change per component
+2. Wait for second actual use before extracting an abstraction
+3. `variant="primary" | "secondary"` over `isPrimary`, `isSecondary`, `isLarge` booleans
+4. `children` for content (variable), props for configuration (fixed)
+5. State in lowest common ancestor — no lower, no higher
+6. Container = data fetching; Presentational = rendering only — never mix in one file
+7. forwardRef at every wrapper to preserve ref access
+
+---
+
+## Implementation
+
+```typescript
+// Compound component — Select with Sub-Components
+interface SelectContextValue { value: string; onChange: (v: string) => void }
+const SelectCtx = React.createContext<SelectContextValue | null>(null)
+
+function Select({ value, onChange, children }: {
+  value: string; onChange: (v: string) => void; children: React.ReactNode
+}) {
+  return <SelectCtx.Provider value={{ value, onChange }}>{children}</SelectCtx.Provider>
+}
+
+function SelectTrigger({ children }: { children: React.ReactNode }) {
+  const ctx = React.useContext(SelectCtx)!
+  return <button onClick={() => {}}>{children}</button>
+}
+
+function SelectItem({ value, children }: { value: string; children: React.ReactNode }) {
+  const ctx = React.useContext(SelectCtx)!
+  return (
+    <div
+      onClick={() => ctx.onChange(value)}
+      data-selected={ctx.value === value}
+    >
+      {children}
+    </div>
+  )
+}
+
+Select.Trigger = SelectTrigger
+Select.Item    = SelectItem
+
+// Usage — caller composes the structure
+<Select value={selected} onChange={setSelected}>
+  <Select.Trigger>{selected || 'Choose…'}</Select.Trigger>
+  <Select.Item value="a">Option A</Select.Item>
+  <Select.Item value="b">Option B</Select.Item>
+</Select>
+
+// Variant prop — cva() + discriminated type (see tailwind-expert for full cva setup)
+type CardVariant = 'default' | 'outlined' | 'elevated'
+function Card({ variant = 'default', children }: { variant?: CardVariant; children: React.ReactNode }) {
+  const styles: Record<CardVariant, string> = {
+    default:  'bg-white shadow-sm',
+    outlined: 'border border-gray-200',
+    elevated: 'bg-white shadow-lg',
+  }
+  return <div className={cn('rounded-lg p-4', styles[variant])}>{children}</div>
+}
+```

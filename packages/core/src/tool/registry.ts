@@ -22,6 +22,20 @@ import { gitTool }         from "./built-in/git.js"
 import { svnTool }         from "./built-in/svn.js"
 import { perforceTool }    from "./built-in/perforce.js"
 import { sendMessageTool } from "./built-in/send_message.js"
+import { symbolsTool }     from "./built-in/symbols.js"
+import { codeMapTool }     from "./built-in/code_map.js"
+import { loadSkillTool }   from "./built-in/load-skill.js"
+import { httpRequestTool } from "./built-in/http-request.js"
+import { jwtDecodeTool }   from "./built-in/jwt-decode.js"
+import { regexTestTool }   from "./built-in/regex-test.js"
+import { jqTool }          from "./built-in/jq.js"
+import { pptxTool }        from "./built-in/pptx.js"
+import { renderPdfTool }   from "./built-in/render-pdf.js"
+import { chartTool }       from "./built-in/chart.js"
+import { mermaidTool }     from "./built-in/mermaid-tool.js"
+import { verifyTool }      from "./built-in/verify.js"
+import { scratchpadTool }  from "./built-in/scratchpad.js"
+import { critiqueTool }    from "./built-in/critique.js"
 
 const tools = new Map<string, ToolDef>()
 
@@ -34,6 +48,11 @@ for (const t of [
   lspTool, notebookEditTool, subagentTool, worktreeTool, memoryTool, gitTool,
   svnTool, perforceTool,
   sendMessageTool,
+  symbolsTool, codeMapTool,
+  loadSkillTool,
+  httpRequestTool, jwtDecodeTool, regexTestTool, jqTool,
+  pptxTool, renderPdfTool, chartTool, mermaidTool,
+  verifyTool, scratchpadTool, critiqueTool,
 ]) {
   tools.set(t.id, t)
 

@@ -4,7 +4,7 @@ description: "Müşteri itirazları. Fiyat, zamanlama, güven itirazları. Scrip
 triggers:
   keywords: ["objection handling", "itiraz yönetimi", "sales objection", "price objection", "negotiation", "customer concerns"]
 auto_load_when: "Kullanıcı müşteri itirazları, fiyat müzakere, red karşıları veya rol yapma talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -340,6 +340,3 @@ Skills:
 | Objection resolution rate | >70% | <40% |
 | Second meeting rate after objection | >50% | <20% |
 | Average handling time | <5 min | >10 min |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -194,5 +194,102 @@ AWS Cost Patterns:
 | EventBridge | Event bus | Decoupling |
 | API Gateway | REST APIs | Rate limiting |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Compute: which service?
+├── Event-driven, bursty, < 15min runtime  → Lambda (pay per invocation)
+├── Long-running API / worker / batch      → ECS Fargate (pay per vCPU·hour)
+├── Full Kubernetes ecosystem needed       → EKS
+└── Legacy / specific hardware (GPU)       → EC2
+
+Database: which service?
+├── High scale, single-digit ms, variable  → DynamoDB (on-demand billing)
+├── Complex queries, relational, SQL       → Aurora PostgreSQL Serverless v2
+├── Read-heavy with fixed load             → RDS PostgreSQL + read replica
+└── Session store / caching               → ElastiCache Redis
+
+Async messaging?
+├── Durable queue, guaranteed delivery    → SQS (FIFO for ordering)
+├── Fan-out to multiple consumers         → SNS → SQS (fan-out pattern)
+├── Complex event routing / schedules     → EventBridge
+└── Real-time streaming, replay           → Kinesis
+
+IaC tool?
+├── AWS-only, prefer code over YAML       → CDK (TypeScript/Python)
+├── Serverless functions + SAM local test → SAM
+└── Multi-cloud or team knows Terraform   → Terraform
+```
+
+---
+
+## Key Rules
+
+1. Serverless-first: start with Lambda, move to containers only when Lambda limits hit
+2. DynamoDB: design access patterns first, define GSIs at schema design time — not retroactively
+3. Configure DLQ on every SQS queue and Lambda async invocation — failed messages must not vanish
+4. Multi-AZ for all production workloads — never single-AZ for databases or load balancers
+5. Never use long-lived IAM credentials in code — use IAM roles (Lambda execution role, EC2 instance profile)
+6. Immutable infra: all changes via IaC (CDK/Terraform) — no manual console edits in prod
+7. Cost: enable AWS Cost Anomaly Detection + budget alerts before going to prod
+
+---
+
+## Implementation
+
+```typescript
+// AWS CDK: Lambda + SQS + DLQ pattern (TypeScript)
+import * as cdk from 'aws-cdk-lib'
+import * as lambda from 'aws-cdk-lib/aws-lambda'
+import * as sqs from 'aws-cdk-lib/aws-sqs'
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources'
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
+
+export class WorkerStack extends cdk.Stack {
+  constructor(scope: cdk.App, id: string) {
+    super(scope, id)
+
+    const dlq = new sqs.Queue(this, 'DLQ', {
+      retentionPeriod: cdk.Duration.days(14),
+    })
+
+    const queue = new sqs.Queue(this, 'WorkQueue', {
+      visibilityTimeout: cdk.Duration.seconds(30),
+      deadLetterQueue: { queue: dlq, maxReceiveCount: 3 },
+    })
+
+    const worker = new NodejsFunction(this, 'Worker', {
+      entry: 'src/worker.ts',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,   // 20% cheaper
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(25),
+      environment: { TABLE_NAME: 'my-table' },
+    })
+
+    worker.addEventSource(new SqsEventSource(queue, { batchSize: 10 }))
+  }
+}
+
+// Lambda handler with proper error handling
+// src/worker.ts
+import type { SQSEvent } from 'aws-lambda'
+
+export const handler = async (event: SQSEvent) => {
+  const results = await Promise.allSettled(
+    event.Records.map(async (record) => {
+      const body = JSON.parse(record.body)
+      await processJob(body)
+    })
+  )
+
+  // Return failed items so SQS can retry them
+  const failures = results
+    .map((r, i) => r.status === 'rejected' ? { itemIdentifier: event.Records[i].messageId } : null)
+    .filter(Boolean)
+
+  return { batchItemFailures: failures }
+}
+```

@@ -4,7 +4,7 @@ description: "Hisse senedi ve kripto portföy takibi. Piyasa analizi. Teknik ana
 triggers:
   keywords: ["portföy takibi", "hisse senedi", "yatırım", "borsa", "portfolio", "stock tracker", "investment", "crypto portfolio"]
 auto_load_when: "Kullanıcı portföy takibi, hisse senedi analizi veya yatırım portföyü yönetimi taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -258,6 +258,3 @@ if (Date.now() - sonRebalance > 365 * 24 * 60 * 60 * 1000) {
 | MA (50/200) | Trend | Altüst kesişim |
 | Bollinger | Volatilite | Band dışı hareket |
 | ADX | Trend gücü | >25 güçlü trend |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

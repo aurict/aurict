@@ -432,7 +432,7 @@ h2 {
   </div>
   
   <div class="cover-footer-bar">
-    <span>OmniRule Analytics</span>
+    <span>Aurict Analytics</span>
   </div>
 </div>
 ```
@@ -555,6 +555,3 @@ async function generatePDF(html: string, outputPath: string, options: PDFOptions
 | Screen-only @media for print | Write print-first CSS by default |
 | PNG for charts at 72 DPI | Use SVG or 300 DPI PNG |
 | External fonts via @import | Embed as base64 WOFF2 |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

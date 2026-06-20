@@ -5,7 +5,7 @@ triggers:
   keywords: ["fiyat izleme", "price tracking", "e-ticaret", "competitor monitoring", "dynamic pricing", "fiyat optimizasyonu", "price elasticity", "rakip fiyat"]
   extensions: [".md", ".csv", ".xlsx", ".json"]
 auto_load_when: "Fiyat analizi, rakip fiyat takibi veya e-ticaret fiyat stratejisi talep edildiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch"]
 ---
 
@@ -297,7 +297,3 @@ Optimizasyon Stratejileri:
 | Mid-market | Standart tüketici | Hacim + marj dengesi |
 | Economy | Fiyat duyarlı | Düşük marj, yüksek hacim |
 | Value leader | Her iki segment | "En iyi değer" konumu |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -4,7 +4,7 @@ description: "İlk 30-60-90 günlük oryantasyon planı, buddy atama, eğitim ta
 triggers:
   keywords: ["onboarding planner", "oryantasyon planı", "30-60-90 gün", "yeni çalışan", "buddy atama"]
 auto_load_when: "Kullanıcı yeni çalışan oryantasyon planı, eğitim takvimi veya onboarding süreci ister"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "grep", "glob"]
 ---
 
@@ -212,6 +212,3 @@ kpi_tanımlama
 | Proje | - | 1 | 2+ |
 | Bağımsızlık | %25 | %50 | %80 |
 | Performans | - | 3/5 | 4/5 |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

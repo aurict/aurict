@@ -19,7 +19,7 @@ function sendNative(title: string, body: string, level: NotifyLevel): void {
     } else if (platform() === "linux") {
       const urgency = level === "error" ? "critical" : "normal"
       execSync(
-        `notify-send -u ${urgency} "OmniCod: ${title}" "${body.replace(/"/g, "'")}"`,
+        `notify-send -u ${urgency} "Aurict: ${title}" "${body.replace(/"/g, "'")}"`,
         { stdio: "ignore", timeout: 3000 }
       )
     }

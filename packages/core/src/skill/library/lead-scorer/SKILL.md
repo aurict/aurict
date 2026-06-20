@@ -4,7 +4,7 @@ description: "Lead puanlama sistemi. Behavioral scoring, fit scoring, priority s
 triggers:
   keywords: ["lead scoring", "lead puanlama", "BANT", "MQL", "SQL", "lead qualification", "prioritization"]
 auto_load_when: "Kullanıcı lead qualification, MQL/SDR süreç optimizasyonu veya puanlama modeli talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -370,6 +370,3 @@ Validation:
 | Precision | >70% | <50% |
 | Recall | >80% | <60% |
 | Lead-to-Opportunity | >25% | <15% |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

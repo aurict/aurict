@@ -2,8 +2,8 @@ import React, { useState, useMemo } from "react"
 import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
 import { Typo } from "./design-system/index.js"
-import { SessionManager } from "@omnicod/core"
-import type { Session } from "@omnicod/core"
+import { SessionManager } from "@aurict/core"
+import type { Session } from "@aurict/core"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -130,7 +130,7 @@ export function QuickSearch({ onSelect, onClose }: Props) {
         return { session, snippet, score }
       })
       .filter(h => h.score > 0 || !query)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score || b.session.updatedAt - a.session.updatedAt)
       .slice(0, 12)
   }, [tabFiltered, query])
 

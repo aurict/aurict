@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { m, AnimatePresence } from "framer-motion"
 import { PRO_FEATURES } from "@/lib/constants"
 
 const WAITLIST_COUNT_BASE = 847
@@ -53,15 +53,14 @@ export function Waitlist() {
       }}
     >
       <div
+        className="resp-grid-2"
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
           gap: 60,
           alignItems: "start",
         }}
       >
         {/* left — form */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, x: -24 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
@@ -93,12 +92,12 @@ export function Waitlist() {
             <span className="gradient-text">Shape the product.</span>
           </h2>
           <p style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.7, marginBottom: 36 }}>
-            OmniCod is free and open source. Pro features are coming — early members get founding pricing, priority access, and a direct line to the team.
+            Aurict is free and open source. Pro features are coming — early members get founding pricing, priority access, and a direct line to the team.
           </p>
 
           <AnimatePresence mode="wait">
             {submitted ? (
-              <motion.div
+              <m.div
                 key="success"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -121,9 +120,9 @@ export function Waitlist() {
                     #{count} — we&apos;ll email you when Pro launches.
                   </p>
                 </div>
-              </motion.div>
+              </m.div>
             ) : (
-              <motion.form
+              <m.form
                 key="form"
                 onSubmit={handleSubmit}
                 style={{ display: "flex", flexDirection: "column", gap: 12 }}
@@ -190,13 +189,13 @@ export function Waitlist() {
                   />
                   {count.toLocaleString()} developers already joined
                 </p>
-              </motion.form>
+              </m.form>
             )}
           </AnimatePresence>
-        </motion.div>
+        </m.div>
 
         {/* right — pro preview (blurred) */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, x: 24 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
@@ -222,7 +221,7 @@ export function Waitlist() {
               }}
             >
               <div>
-                <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>OmniCod Pro</p>
+                <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Aurict Pro</p>
                 <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Coming soon</p>
               </div>
               <span
@@ -300,7 +299,7 @@ export function Waitlist() {
               </span>
             </div>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </section>
   )

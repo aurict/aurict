@@ -526,7 +526,7 @@ import PptxGenJS from 'pptxgenjs';
 async function generateExecutiveDeck() {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16x9';
-  pptx.author = 'OmniRule Analytics';
+  pptx.author = 'Aurict Analytics';
   pptx.title = 'Digital Transformation Initiative 2024';
   pptx.subject = 'Strategic Assessment';
   
@@ -586,6 +586,3 @@ async function generateExecutiveDeck() {
   await pptx.writeFile({ fileName: 'Executive_Deck_2024.pptx' });
 }
 ```
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

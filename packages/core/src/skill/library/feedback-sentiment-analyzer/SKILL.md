@@ -4,7 +4,7 @@ description: "Yorum duygu analizi. Sentiment scoring. Trend identification. Acti
 triggers:
   keywords: ["feedback sentiment analyzer", "duygu analizi", "sentiment analizi", "yorum analizi", "metin analizi"]
 auto_load_when: "Kullanıcı müşteri yorumlarında/geribildirimlerde duygu analizi yapmayı, sentiment skorlaması oluşturmayı veya trendleri belirlemeyi talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -441,7 +441,3 @@ interface SentimentAnalyzerConfig {
   };
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

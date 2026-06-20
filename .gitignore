@@ -7,8 +7,8 @@ dist/
 *.db-wal
 
 # Platform binary files — built at CI time, not committed
-packages/cli-*/bin/omnicod
+packages/cli-*/bin/aurict
 
 # Runtime data
-.omnicod/
+.aurict/
 

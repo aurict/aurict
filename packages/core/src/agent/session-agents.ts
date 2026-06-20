@@ -16,7 +16,7 @@ export const BUILT_IN_SESSION_AGENTS: SessionAgentDef[] = [
   {
     id:          "omni",
     name:        "Omni",
-    description: "Full capabilities — the standard OmniCod assistant",
+    description: "Full capabilities — the standard Aurict assistant",
     system:      "",            // Ek prompt yok — FULL_SYSTEM_PROMPT yeterli
     color:       "#06b6d4",
     native:      true,

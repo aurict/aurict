@@ -197,5 +197,80 @@ export default async function PostsPage() {
 ✅ superjson handles Date, Map, Set serialization automatically
 ```
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish.
+---
+
+## Decision Tree
+
+```
+query or mutation?
+├── Reading data (no side effects)          → .query(async ({ ctx, input }) => ...)
+└── Writing / deleting / mutating          → .mutation(async ({ ctx, input }) => ...)
+
+public or protected procedure?
+├── Public endpoint (no auth required)     → publicProcedure
+└── Requires logged-in user               → protectedProcedure (throws UNAUTHORIZED)
+
+Server Component or Client Component?
+├── SSR / initial load (no interactivity) → createCallerFactory → direct in-process call
+└── Client component (useQuery, mutate)   → createTRPCReact + api.router.proc.useQuery()
+
+Pagination?
+├── Finite list, simple UI                → take + skip
+└── Infinite scroll / load more           → cursor-based: take: limit+1, nextCursor
+```
+
+---
+
+## Key Rules
+
+1. Always `.input(z.schema())` on every procedure — tRPC validates automatically
+2. `protectedProcedure` for all authenticated operations — never check session manually
+3. `createCallerFactory` in Server Components — avoids HTTP round-trip
+4. Split routers by domain (postRouter, userRouter), merge in `appRouter`
+5. `superjson` transformer — handles Date, Map, Set, bigint serialization
+6. After mutation: `utils.router.procedure.invalidate()` to refresh React Query cache
+7. Cursor pagination: `take: limit + 1`, return `posts.pop()!.id` as nextCursor
+
+---
+
+## Implementation
+
+```ts
+// Infinite cursor query — full pattern
+// server/trpc/routers/post.ts
+export const postRouter = createTRPCRouter({
+  list: publicProcedure
+    .input(z.object({
+      cursor: z.string().optional(),
+      limit:  z.number().min(1).max(100).default(20),
+    }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db.post.findMany({
+        take:   input.limit + 1,
+        cursor: input.cursor ? { id: input.cursor } : undefined,
+        skip:   input.cursor ? 1 : 0,
+        orderBy: { createdAt: 'desc' },
+      })
+      const nextCursor = rows.length > input.limit ? rows.pop()!.id : undefined
+      return { posts: rows, nextCursor }
+    }),
+})
+
+// Client — useInfiniteQuery
+'use client'
+import { api } from '@/lib/trpc/client'
+
+export function PostFeed() {
+  const { data, fetchNextPage, hasNextPage } = api.post.list.useInfiniteQuery(
+    { limit: 20 },
+    { getNextPageParam: (lastPage) => lastPage.nextCursor }
+  )
+  const posts = data?.pages.flatMap((p) => p.posts) ?? []
+  return (
+    <>
+      {posts.map((p) => <PostCard key={p.id} post={p} />)}
+      {hasNextPage && <button onClick={() => fetchNextPage()}>Load more</button>}
+    </>
+  )
+}
+```

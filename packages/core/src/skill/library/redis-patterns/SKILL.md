@@ -181,7 +181,3 @@ AOF (append-only):
 | Pub/sub | Pub/Sub | PUBLISH / SUBSCRIBE |
 | Leaderboard | Sorted Set | ZADD / ZRANGE |
 | Distributed lock | String + NX | SET lock nx ex 30 |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

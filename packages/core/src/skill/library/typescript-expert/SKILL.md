@@ -210,6 +210,87 @@ How to type modules:
 | Infer | infer R in conditional | Extract inner type |
 | Satisfies | value satisfies Type | Validate without widen |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Type or interface?
+├── Extending / implementing in class    → interface
+├── Union, intersection, mapped, conditional → type
+└── Everything else                      → either (prefer type for consistency)
+
+Annotate or infer?
+├── Function parameters                  → always annotate
+├── API/IO boundaries (incoming data)    → annotate + validate with Zod
+├── Local variables with obvious type   → let inference work
+└── Complex generic return types         → annotate
+
+unknown or any?
+├── Data from external source / JSON    → unknown (narrow before use)
+├── Truly dynamic (no control)          → unknown + type guard
+└── any                                 → never (it's a type error escape hatch)
+
+Runtime validation needed?
+├── User input / API body               → Zod .parse() or .safeParse()
+├── Want TS types from schema           → z.infer<typeof Schema>
+└── Optional fields                     → z.optional() / .nullish()
+```
+
+---
+
+## Key Rules
+
+1. `"strict": true` in tsconfig.json — catches null/undefined at compile time
+2. Prefer inference for locals; always annotate function parameters
+3. `unknown` over `any` — forces type checking before use
+4. `satisfies` over `as` — validates without widening the type
+5. Discriminated unions for API responses and state machines (status field as discriminant)
+6. Generate types from schema — `z.infer<typeof Schema>` — single source of truth
+7. Never use `as Type` to silence real errors; fix the underlying type instead
+8. Export types with `export type { ... }` — prevents accidental value imports
+
+---
+
+## Implementation
+
+```typescript
+// Discriminated union — exhaustive state machine
+type AsyncState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: Error }
+
+function render<T>(state: AsyncState<T>) {
+  switch (state.status) {
+    case 'idle':    return null
+    case 'loading': return <Spinner />
+    case 'success': return <Data data={state.data} />   // TS knows data exists
+    case 'error':   return <Err msg={state.error.message} />
+  }
+}
+
+// Zod schema → inferred type (single source of truth)
+import { z } from 'zod'
+
+const CreateUserSchema = z.object({
+  name:  z.string().min(1),
+  email: z.string().email(),
+  role:  z.enum(['admin', 'user']).default('user'),
+})
+type CreateUserInput = z.infer<typeof CreateUserSchema>
+
+// API handler — validate at boundary, use typed downstream
+async function createUser(raw: unknown): Promise<User> {
+  const input = CreateUserSchema.parse(raw)  // throws on invalid
+  return db.user.create({ data: input })
+}
+
+// satisfies — validate shape without widening
+const config = {
+  port: 3000,
+  host: 'localhost',
+} satisfies Record<string, string | number>
+// config.port is still 3000 (literal), not number
+```

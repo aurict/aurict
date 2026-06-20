@@ -10,7 +10,7 @@
  * Çıktı: normalize edilmiş "Hunk" listesi — renderer bunu tüketir.
  */
 
-import { computeDiff } from "@omnicod/core"
+import { computeDiff } from "@aurict/core"
 
 // ── Tipler ───────────────────────────────────────────────────────────────────
 

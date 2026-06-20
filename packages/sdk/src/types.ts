@@ -19,7 +19,7 @@ export interface SendMessageOptions {
   onDone?: (tokens: { input: number; output: number }) => void
 }
 
-export interface OmniCodClientOptions {
+export interface AurictClientOptions {
   baseUrl?: string
   token?: string
 }

@@ -7,7 +7,7 @@ import { snapshotManager } from "../src/snapshot/snapshot.js"
 let tmpDir: string
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), "omnicod-snap-"))
+  tmpDir = mkdtempSync(join(tmpdir(), "aurict-snap-"))
   snapshotManager.clear()
 })
 

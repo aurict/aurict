@@ -56,8 +56,8 @@ interface DDGResponse {
 }
 
 async function searchDDG(query: string, num: number, signal: AbortSignal): Promise<SearchResult[]> {
-  const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1&t=omnicod`
-  const res = await fetch(url, { signal, headers: { "User-Agent": "OmniCod/1.0" } })
+  const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1&t=aurict`
+  const res = await fetch(url, { signal, headers: { "User-Agent": "Aurict/1.0" } })
   if (!res.ok) throw new Error(`DDG ${res.status}`)
   const data = await res.json() as DDGResponse
   const results: SearchResult[] = []
@@ -83,7 +83,7 @@ async function searchDDG(query: string, num: number, signal: AbortSignal): Promi
 
 async function searchWikipedia(query: string, num: number, signal: AbortSignal): Promise<SearchResult[]> {
   const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=${num}&format=json&origin=*`
-  const res = await fetch(url, { signal, headers: { "User-Agent": "OmniCod/1.0" } })
+  const res = await fetch(url, { signal, headers: { "User-Agent": "Aurict/1.0" } })
   if (!res.ok) throw new Error(`Wikipedia ${res.status}`)
   const data = await res.json() as { query?: { search?: Array<{ title: string; snippet: string; pageid: number }> } }
   return (data.query?.search ?? []).map((r) => ({
@@ -95,7 +95,7 @@ async function searchWikipedia(query: string, num: number, signal: AbortSignal):
 
 async function searchBrave(query: string, num: number, signal: AbortSignal): Promise<SearchResult[]> {
   const url = `https://search.brave.com/api/suggest?q=${encodeURIComponent(query)}&rich=true&source=web&count=${num}`
-  const res = await fetch(url, { signal, headers: { "User-Agent": "OmniCod/1.0", Accept: "application/json" } })
+  const res = await fetch(url, { signal, headers: { "User-Agent": "Aurict/1.0", Accept: "application/json" } })
   if (!res.ok) throw new Error(`Brave ${res.status}`)
   const data = await res.json() as unknown[]
   const suggestions = data[1] as string[] | undefined

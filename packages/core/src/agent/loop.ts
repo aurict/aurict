@@ -11,11 +11,49 @@ import { attachmentToAIContent } from "../util/attachments.js"
 import { createThinkTagFilter } from "../util/think-tag-filter.js"
 import { getUndercoverInstructions } from "./undercover.js"
 import { loadConfig } from "../config/config.js"
-import { extractAndStoreMemories } from "../memory/extractor.js"
-import { buildGitSection, buildProactiveFileSection } from "../skill/injector.js"
-import type { AgentRunOptions, AgentFinishResult } from "./types.js"
+import { setTruncationConfig } from "../tool/truncation.js"
+import { calculateCostUsd } from "../provider/costs.js"
+import { extractAndStoreMemories, extractPerTurnMemories } from "../memory/extractor.js"
+import { buildGitSection, buildProactiveFileSection, buildIntentSkillSection, getSkillsForProject } from "../skill/injector.js"
+import { skillScoreStore } from "../skill/score-store.js"
+import { ProviderFallback, loadFallbackFromConfig } from "../provider/fallback.js"
+import { ModelRouter, loadRouterFromConfig } from "../provider/router.js"
+import { metrics } from "../util/metrics.js"
+import { extractText } from "../session/context-compactor.js"
+import type { AgentRunOptions, AgentFinishResult, TokenBreakdown } from "./types.js"
 
-const MAX_STEPS = 20
+const DEFAULT_MAX_STEPS = 40
+
+// ─── Faz 3: Adaptive Step Limit ───────────────────────────────────────────────
+/**
+ * Task complexity'ye göre max steps hesaplar.
+ * Basit sorular için az step, karmaşık görevler için çok step.
+ */
+function computeAdaptiveMaxSteps(
+  messages: CoreMessage[],
+  hasAttachments: boolean,
+): number {
+  const lastUserMsg = [...messages].reverse().find(m => m.role === "user")
+  const text = lastUserMsg ? extractText(lastUserMsg) : ""
+
+  // Çok kısa mesaj + tool yok + ek yok → trivial (10 step)
+  if (text.length < 100 && !hasAttachments) {
+    return 10
+  }
+
+  // Kısa mesaj + az tool → simple (20 step)
+  if (text.length < 500) {
+    return 20
+  }
+
+  // Orta uzunluk → moderate (35 step)
+  if (text.length < 2000) {
+    return 35
+  }
+
+  // Uzun mesaj → complex (50 step)
+  return 50
+}
 
 // AI SDK tool() fonksiyonunun dönüş tipiyle exactOptionalPropertyTypes çakışıyor
 // — ToolSet cast'i kullanıyoruz
@@ -24,6 +62,7 @@ function buildAITools(
   sessionId: string,
   provider: string,
   model: string,
+  signal?: AbortSignal,
   onChunk?: (chunk: string) => void,
   failureTracker?: Map<string, number>,
   recentReads?: Map<string, number>,
@@ -49,7 +88,11 @@ function buildAITools(
             const isFresh   = lastRead !== undefined && (currentIdx - lastRead) <= 10
             if (!isFresh) {
               try {
-                const content = await Bun.file(absPath).text()
+                // 2s timeout — yavaş FS'de re-read gate'in tool çağrısını bloklamasını önler
+                const readP = Bun.file(absPath).text()
+                const timeoutP = new Promise<string>((_, rej) =>
+                  setTimeout(() => rej(new Error("timeout")), 2_000))
+                const content = await Promise.race([readP, timeoutP])
                 const excerpt = content.slice(0, 6_000)
                 const trunc   = content.length > 6_000 ? "\n... [truncated]" : ""
                 const staleness = lastRead !== undefined
@@ -63,8 +106,12 @@ function buildAITools(
           }
         }
 
+        // ctx.signal, loop'un signal'ine bağlı: Ctrl+C veya dışarıdan iptal
+        // tool'a kadar ulaşır; executor da timeout'ta bu signal'i abort eder.
         const ctx = {
-          sessionId, workdir, signal: new AbortController().signal, provider, model,
+          sessionId, workdir,
+          signal: signal ?? new AbortController().signal,
+          provider, model,
           ...(onChunk !== undefined ? { onChunk } : {}),
         }
         const res = await executeTool(captured, args, ctx)
@@ -118,8 +165,34 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     }
   }
 
+  // --- Config yükle + truncation init ---
+  const cfg              = loadConfig(workdir)
+  setTruncationConfig(cfg.truncation ?? {})
+
+  // --- Provider fallback init ---
+  if (cfg.fallback) {
+    loadFallbackFromConfig({
+      enabled: cfg.fallback.enabled ?? false,
+      providers: cfg.fallback.providers ?? [],
+      triggerOn: cfg.fallback.triggerOn ?? ["429", "503", "timeout"],
+      maxRetries: cfg.fallback.maxRetries ?? 2,
+      retryDelayMs: cfg.fallback.retryDelayMs ?? 15_000,
+      circuitBreakerThreshold: cfg.fallback.circuitBreakerThreshold ?? 3,
+      circuitBreakerResetMs: cfg.fallback.circuitBreakerResetMs ?? 60_000,
+    })
+  }
+
+  // --- Model router init ---
+  if (cfg.routing) {
+    loadRouterFromConfig({
+      enabled: cfg.routing.enabled ?? false,
+      budgetThresholdUsd: cfg.routing.budgetThresholdUsd ?? 1.0,
+      maxSessionCostUsd: cfg.routing.maxSessionCostUsd ?? 10.0,
+    })
+  }
+
   // --- Compaction kontrolü ---
-  const compCfg          = loadConfig(workdir).compaction
+  const compCfg          = cfg.compaction
   const tailTurns        = compCfg?.tailTurns            ?? DEFAULT_TAIL_TURNS
   const strategy         = compCfg?.strategy             ?? "balanced"
   const msgThreshold     = compCfg?.messageCountThreshold
@@ -132,13 +205,14 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     provider:              providerName,
     model:                 modelId,
     workdir,
+    ...(sessionId !== undefined ? { sessionId } : {}),
     ...(msgThreshold !== undefined ? { messageCountThreshold: msgThreshold } : {}),
   }
   if (modelInfo && (isOverflow(messages, compCfgFull) || isOverflowByMessages(messages, compCfgFull))) {
     // Extract memories from messages about to be lost to compaction (fire-and-forget)
     extractAndStoreMemories(providerName, modelId, messages, workdir).catch(() => {})
     const compacted = await compact(messages, compCfgFull)
-    if (!compacted) return { text: "", tokens: { input: 0, output: 0 }, newMessages: [], ...(sessionId !== undefined ? { sessionId } : {}) }
+    if (!compacted) return { text: "", tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 }, newMessages: [], ...(sessionId !== undefined ? { sessionId } : {}) }
     messages  = compacted
     opts.onCompaction?.()
   }
@@ -149,7 +223,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
   const recentReads      = new Map<string, number>()
   const toolCallIndexRef = { current: 0 }
   const rawTools = hasToolSupport
-    ? buildAITools(workdir, sessionId ?? "", providerName, modelId, opts.onChunk, failureTracker, recentReads, toolCallIndexRef)
+    ? buildAITools(workdir, sessionId ?? "", providerName, modelId, opts.signal, opts.onChunk, failureTracker, recentReads, toolCallIndexRef)
     : ({} as ToolSet)
 
   // toolsOverride: session agent kısıtlaması — sadece izin verilen tool'lar
@@ -164,12 +238,19 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
   const lastUserText = lastUserMsg
     ? (typeof lastUserMsg.content === "string" ? lastUserMsg.content : "")
     : ""
-  const proactiveSection = await buildProactiveFileSection(lastUserText, workdir).catch(() => "")
 
   // --- Skill injection (otomatik proje tespiti) ---
   // Git context buildSystemPrompt dışında tutulur — Anthropic'te ayrı uncached blok olarak inject edilir
-  const baseSystem = await buildSystemPrompt(workdir, opts.system, false)
-  const extraSystem = [proactiveSection].filter(Boolean).join("\n\n")
+  const baseSystem      = await buildSystemPrompt(workdir, opts.system, false)
+  const projectSkills   = await getSkillsForProject(workdir).catch(() => [])
+  const projectSkillIds = new Set(projectSkills.map((s) => s.id))
+
+  const [proactiveSection, intentSection] = await Promise.all([
+    buildProactiveFileSection(lastUserText, workdir).catch(() => ""),
+    buildIntentSkillSection(lastUserText, workdir, projectSkillIds).catch(() => ""),
+  ])
+
+  const extraSystem = [proactiveSection, intentSection].filter(Boolean).join("\n\n")
   let system = extraSystem ? `${baseSystem}\n\n${extraSystem}` : baseSystem
 
   if (opts.undercover) {
@@ -204,11 +285,15 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     systemParam = fullSystem || undefined
   }
 
+  // ─── Faz 3: Adaptive step limit ─────────────────────────────────────────────
+  const maxSteps = computeAdaptiveMaxSteps(messages, !!opts.attachments)
+
   const shared = {
     model,
     messages,
     tools:    aiTools,
-    maxSteps: MAX_STEPS,
+    maxSteps,
+    experimental_continueSteps: true,
     ...(systemParam ? { system: systemParam } : {}),
     ...(opts.signal !== undefined ? { abortSignal: opts.signal } : {}),
     ...(opts.effort ? (() => {
@@ -217,9 +302,8 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     })() : {})
   }
 
-  let fullText     = ""
-  let inputTokens  = 0
-  let outputTokens = 0
+  let fullText = ""
+  let breakdown: TokenBreakdown = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 }
 
   // opts.stream=false → pipe/non-interactive mod, kesinlikle generate
   // opts.stream=true veya undefined → provider'ın streaming desteğine bak
@@ -228,7 +312,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
 
   if (useStream) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = streamText(shared as any) as any
+    const result = await withRetry(() => Promise.resolve(streamText(shared as any))) as any
     const seenToolResults  = new Set<string>()
     const toolCallTimes    = new Map<string, number>()
     // Embedded <think>...</think> tag'lerini text stream'den ayıran filter
@@ -260,8 +344,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
       } else if (part.type === "reasoning-start" || part.type === "reasoning-end") {
         // lifecycle sinyalleri — delta taşımaz, ignore
       } else if (part.type === "error") {
-        const errMsg = `API Error: ${(part as any).error?.message || String((part as any).error)}`
-        throw new Error(errMsg)
+        throw new Error(parseProviderError((part as any).error))
       } else if (part.type === "tool-call") {
         toolCallTimes.set(part.toolCallId, Date.now())
         opts.onToolCall?.({ id: part.toolCallId, tool: part.toolName, args: part.args })
@@ -285,15 +368,15 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     if (tail.thinking) opts.onText?.(tail.thinking, true)
     if (tail.text) { fullText += tail.text; opts.onText?.(tail.text, false) }
 
-    const u      = await result.usage as Record<string, unknown>
-    inputTokens  = normalizeTokens(u, "input")
-    outputTokens = normalizeTokens(u, "output")
+    const u    = await result.usage as Record<string, unknown>
+    const meta = await (result as any).experimental_providerMetadata as Record<string, unknown> | undefined
+    breakdown  = extractTokenBreakdown(u, meta)
 
     const finalResponse = await result.response
     newMessages = finalResponse.messages
   } else {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await generateText(shared as any)
+    const result = await withRetry(() => generateText(shared as any))
     fullText      = result.text
     opts.onText?.(fullText)
 
@@ -307,31 +390,120 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
       }
     }
 
-    const u      = result.usage as Record<string, unknown>
-    inputTokens  = normalizeTokens(u, "input")
-    outputTokens = normalizeTokens(u, "output")
-    newMessages  = result.response.messages
+    const u    = result.usage as Record<string, unknown>
+    const meta = (result as any).experimental_providerMetadata as Record<string, unknown> | undefined
+    breakdown  = extractTokenBreakdown(u, meta)
+    newMessages = result.response.messages
   }
 
   if (sessionId !== undefined && fullText) {
     SessionManager.ensureExists(sessionId, { provider: providerName, model: modelId })
-    SessionManager.addPart({ sessionId, role: "assistant", type: "text", content: fullText, tokens: outputTokens })
+    SessionManager.addPart({ sessionId, role: "assistant", type: "text", content: fullText, tokens: breakdown.output })
+    SessionManager.recordTurn(sessionId, {
+      inputTokens:  breakdown.input,
+      outputTokens: breakdown.output,
+      cacheTokens:  (breakdown.cacheRead ?? 0) + (breakdown.cacheWrite ?? 0),
+      costUsd:      calculateCostUsd(modelId, breakdown),
+      model:        modelId,
+    })
   }
 
   const finish: AgentFinishResult = {
     text:      fullText,
-    tokens:    { input: inputTokens, output: outputTokens },
+    tokens:    breakdown,
     newMessages,
     ...(sessionId !== undefined ? { sessionId } : {}),
   }
 
   opts.onFinish?.(finish)
+
+  // Agent başarıyla tamamlandı — aktif skill'lerin success skorunu artır (fire-and-forget)
+  if (fullText && projectSkills.length > 0) {
+    try { skillScoreStore.recordSuccess(workdir, projectSkills.map((s) => s.id)) } catch { /* optional */ }
+  }
+
+  // ─── Faz 3: Per-turn memory extraction ──────────────────────────────────────
+  // Her turn sonunda memory extraction yap (fire-and-forget)
+  // Compaction'dan daha sık çalışır, sadece son birkaç mesaja bakar
+  if (fullText && messages.length >= 2) {
+    extractPerTurnMemories(providerName, modelId, messages, workdir).catch(() => {})
+  }
+
   return finish
 }
 
-// Eski buildThinkingOptions kaldırıldı — her plugin kendi buildThinkingOptions()'ını implemente eder
+function extractTokenBreakdown(
+  u:    Record<string, unknown>,
+  meta: Record<string, unknown> | undefined,
+): TokenBreakdown {
+  const am = (meta?.["anthropic"] ?? {}) as Record<string, unknown>
 
-function normalizeTokens(u: Record<string, unknown>, side: "input" | "output"): number {
-  if (side === "input") return Number(u["promptTokens"]     ?? u["inputTokens"]  ?? u["prompt_tokens"]     ?? 0)
-  return                       Number(u["completionTokens"] ?? u["outputTokens"] ?? u["completion_tokens"] ?? 0)
+  const input  = Number(u["promptTokens"]     ?? u["inputTokens"]     ?? u["prompt_tokens"]      ?? 0)
+  const output = Number(u["completionTokens"] ?? u["outputTokens"]    ?? u["completion_tokens"]   ?? 0)
+
+  // Cache tokens — Anthropic native fields (via AI SDK providerMetadata)
+  const cacheRead  = Number(am["cacheReadInputTokens"]      ?? u["cacheReadInputTokens"]       ?? 0)
+  const cacheWrite = Number(am["cacheCreationInputTokens"]  ?? u["cacheCreationInputTokens"]   ?? 0)
+
+  // Reasoning tokens — extended thinking (Anthropic, may come via usage or providerMetadata)
+  const reasoning  = Number(am["reasoningOutputTokens"] ?? u["reasoningTokens"] ?? 0)
+
+  return { input, output, cacheRead, cacheWrite, reasoning }
+}
+
+// 429 için basit retry — Retry-After header'ı yoksa 15s bekle, max 2 deneme
+// Provider fallback aktifse, fallback zincirini dener
+export async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+  let attempt = 0
+  while (true) {
+    try {
+      return await fn()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const isRateLimit = /429|rate.?limit|too.many/i.test(msg)
+      if (!isRateLimit || attempt >= maxRetries) throw err
+      attempt++
+      const waitMs = parseRetryAfter(msg) ?? 15_000
+      await new Promise(r => setTimeout(r, waitMs))
+    }
+  }
+}
+
+// Provider fallback ile retry — fallback aktifse provider değiştirir
+export async function withFallback<T>(
+  primaryProvider: string,
+  fn: (provider: string) => Promise<T>,
+  maxRetries = 2,
+): Promise<{ result: T; provider: string }> {
+  // Fallback devre dışıysa mevcut withRetry mantığını kullan
+  const { providerFallback } = await import("../provider/fallback.js")
+  
+  try {
+    const { result, provider } = await providerFallback.execute(
+      primaryProvider,
+      async (plugin) => fn(plugin.id),
+    )
+    return { result, provider }
+  } catch (err) {
+    // Fallback başarısız — orijinal hatayı fırlat
+    throw err
+  }
+}
+
+function parseRetryAfter(msg: string): number | undefined {
+  const m = msg.match(/retry.{0,10}after[:\s]+(\d+)/i)
+  return m ? Number(m[1]) * 1000 : undefined
+}
+
+export function parseProviderError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err)
+  if (/401|unauthorized|invalid.{0,20}key/i.test(raw))
+    return `Invalid API key — update with /config set <provider> <key>`
+  if (/429|rate.?limit|too.many/i.test(raw))
+    return `Rate limited — wait a moment or switch provider (/providers)`
+  if (/503|502|overload|unavailable/i.test(raw))
+    return `Provider unavailable — try again or switch with /providers`
+  if (/ECONNREFUSED|ENOTFOUND|network|timeout/i.test(raw))
+    return `Network error — check your internet connection`
+  return raw
 }

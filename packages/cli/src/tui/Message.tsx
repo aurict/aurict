@@ -36,10 +36,8 @@ export interface DisplayMessage {
 
 // ── Yardımcı ──────────────────────────────────────────────────────────────────
 
-const THINK_COLOR    = "#4e6e8d"
-const THINK_BORDER   = "#2d4a5e"
-const MAX_TOOL_LINES   = 6
-const MAX_STREAM_LINES = 8   // streaming sırasında gösterilecek max satır
+const MAX_TOOL_LINES   = 8
+const MAX_STREAM_LINES = 8
 
 function useTerminalCols(): number {
   const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
@@ -118,20 +116,21 @@ function toolColor(tool: string | undefined, isError: boolean, isPending: boolea
 // ── Thinking bloğu ────────────────────────────────────────────────────────────
 
 function ThinkingBlock({ content }: { content: string }) {
+  const theme  = useTheme()
   const all    = content.split("\n").filter((l) => l.trim())
   const total  = all.length
   const shown  = all.slice(-3)
   return (
     <VStack gap="none" marginBottom="sm">
-      <HStack gap="xs">
-        <Text color={THINK_BORDER}>∴</Text>
-        <Text color={THINK_COLOR} italic dimColor>thought · {total} lines</Text>
+      <HStack gap="sm">
+        <Text color={theme.borderDim}>∴</Text>
+        <Text color={theme.accent} italic dimColor>thought · {total} lines</Text>
       </HStack>
       <VStack marginLeft="md">
         {shown.map((line, i) => (
           <HStack key={i}>
-            <Text color={THINK_BORDER} dimColor>┊ </Text>
-            <Text color={THINK_COLOR} italic dimColor wrap="wrap">{line}</Text>
+            <Text color={theme.borderDim} dimColor>┊ </Text>
+            <Text color={theme.accent} italic dimColor wrap="wrap">{line}</Text>
           </HStack>
         ))}
       </VStack>
@@ -159,8 +158,8 @@ function PendingToolCall({
     : null
 
   return (
-    <VStack marginBottom="sm" paddingX="xs">
-      <HStack gap="xs">
+    <VStack marginBottom="md" paddingX="xs">
+      <HStack gap="sm">
         <Text color={theme.accent}>{spin}</Text>
         <Typo variant="bodyEmphasis" tone="primary">{tool}</Typo>
         <Typo variant="body" tone="muted">{command.slice(0, 65)}{command.length > 65 ? "…" : ""}</Typo>
@@ -202,7 +201,7 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
   if (message.role === "user") {
     return (
       <VStack marginBottom="sm" paddingX="xs">
-        <HStack gap="xs">
+        <HStack gap="sm">
           <Text color={theme.userColor} bold>❯</Text>
           <Text wrap="wrap" color={theme.textPrimary}>{message.content}</Text>
           {message.timestamp && <Timestamp ts={message.timestamp} />}
@@ -226,7 +225,7 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
         )}
 
         {/* ● + sol kenar dikey bar */}
-        <HStack gap="xs">
+        <HStack gap="sm">
           <Box width={2} flexShrink={0}>
             <Text color={pending && !hasText ? theme.accent : theme.assistantDot}>
               {pending && !hasText ? "○" : "●"}
@@ -276,9 +275,9 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
     const visible = lines.slice(0, MAX_TOOL_LINES)
 
     return (
-      <VStack marginBottom="sm" paddingX="xs">
+      <VStack marginBottom="md" paddingX="xs">
         {/* Header: ◆ tool  arg  ✓ done  0.3s */}
-        <HStack gap="xs">
+        <HStack gap="sm">
           <Text color={color}>◆</Text>
           <Typo variant="bodyEmphasis" tone="primary">{message.tool ?? "tool"}</Typo>
           <Typo variant="body" tone="muted">{summary}</Typo>
@@ -336,7 +335,7 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
   // ── System ────────────────────────────────────────────────────────────────────
   if (message.role === "system") {
     return (
-      <HStack marginBottom="sm" paddingX="md" gap="xs">
+      <HStack marginBottom="sm" paddingX="md" gap="sm">
         <Text color={theme.borderBright} dimColor>◆</Text>
         <Typo variant="body" tone="secondary">{message.content}</Typo>
         {message.timestamp && <Timestamp ts={message.timestamp} />}
@@ -347,14 +346,13 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
   // ── Error ─────────────────────────────────────────────────────────────────────
   if (message.role === "error") {
     return (
-      <HStack marginBottom="sm" paddingX="md" gap="xs">
+      <HStack marginBottom="sm" paddingX="md" gap="sm">
         <Text color={theme.error} bold>✗</Text>
         <Text color={theme.error} wrap="wrap">{message.content}</Text>
       </HStack>
     )
   }
 
-  if (message.role === "tool_result") return null
   return null
 })
 

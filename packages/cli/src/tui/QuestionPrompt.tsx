@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react"
 import { Box, Text, useInput } from "ink"
-import type { QuestionRequest, QuestionAnswer } from "@omnicod/core"
+import type { QuestionRequest, QuestionAnswer } from "@aurict/core"
 
 interface Props {
   request:  QuestionRequest

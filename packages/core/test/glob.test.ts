@@ -31,7 +31,7 @@ let ctx: ToolContext
 //      mod.pyc       ← must be skipped
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), "omnicod-glob-"))
+  tmpDir = mkdtempSync(join(tmpdir(), "aurict-glob-"))
   mkdirSync(join(tmpDir, "src", "sub"),           { recursive: true })
   mkdirSync(join(tmpDir, "lib"),                  { recursive: true })
   mkdirSync(join(tmpDir, "node_modules", "react"),{ recursive: true })
@@ -174,7 +174,7 @@ describe("globTool — MAX_FILES truncation", () => {
 
 describe("globTool — edge cases", () => {
   it("empty directory returns '(no matches)'", async () => {
-    const emptyDir = mkdtempSync(join(tmpdir(), "omnicod-empty-"))
+    const emptyDir = mkdtempSync(join(tmpdir(), "aurict-empty-"))
     try {
       const emptyCtx: ToolContext = {
         sessionId: "test",

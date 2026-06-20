@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Publish all OmniCod packages to npm.
+ * Publish all Aurict packages to npm.
  *
  * Usage:
  *   NPM_TOKEN=npm_xxx bun run scripts/publish.ts
@@ -37,7 +37,7 @@ if (TOKEN) {
 
 // Copy root README into packages that expose it to npm
 const README_SRC = join(ROOT, "README.md")
-for (const pkg of ["cli", "omnicod"]) {
+for (const pkg of ["cli", "aurict"]) {
   copyFileSync(README_SRC, join(ROOT, "packages", pkg, "README.md"))
 }
 
@@ -48,9 +48,9 @@ const PLATFORM_PACKAGES = [
   "cli-darwin-x64",
   "cli-darwin-arm64",
   "cli-win32-x64",
-  "cli",        // @omnicod/cli
+  "cli",        // @aurict/cli
 ]
-const MAIN_PACKAGE = "omnicod"
+const MAIN_PACKAGE = "aurict"
 
 function npm(args: string[], cwd: string): boolean {
   const cmd = ["npm", ...args, ...(DRY_RUN ? ["--dry-run"] : [])]
@@ -91,7 +91,7 @@ for (const pkg of PLATFORM_PACKAGES) {
     console.error(`✗ Failed to publish ${pkg}`)
     allOk = false
   } else {
-    const name = pkg === "omnicod" ? "omnicod" : `@omnicod/${pkg}`
+    const name = pkg === "aurict" ? "aurict" : `@aurict/${pkg}`
     console.log(`✓ Published ${name}`)
   }
   if (!DRY_RUN) await sleep(5_000)

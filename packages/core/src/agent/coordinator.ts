@@ -113,7 +113,7 @@ Every subagent prompt must include:
 ### Step 4 — Synthesize from shared workspace
 
 Each subagent automatically writes its findings to the shared workspace:
-  .omnicod/sessions/{parentId}/workspace/{agentType}.md
+  .aurict/sessions/{parentId}/workspace/{agentType}.md
 
 After all subagents complete, read their findings:
 \`\`\`
@@ -129,7 +129,7 @@ Synthesis rules:
 ---
 
 ### Cross-worker state
-Workspace: .omnicod/sessions/{sessionId}/workspace/
+Workspace: .aurict/sessions/{sessionId}/workspace/
 Each agent writes: workspace/{agentType}.md  (security.md, performance.md, ...)
 You can read these DURING execution too — don't wait for all to finish.
 

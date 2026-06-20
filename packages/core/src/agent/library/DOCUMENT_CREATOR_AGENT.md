@@ -103,7 +103,7 @@ After generation, confirm:
 ```markdown
 # Report Title
 
-> **Client:** Acme Corp | **Date:** {{date}} | **Author:** OmniRule
+> **Client:** Acme Corp | **Date:** {{date}} | **Author:** Aurict
 
 ## Executive Summary
 [3-5 sentence key findings]

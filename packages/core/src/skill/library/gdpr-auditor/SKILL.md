@@ -4,7 +4,7 @@ description: "GDPR/KVKK uyumluluk denetimi, veri envanteri, düzenleme matris, r
 triggers:
   keywords: ["KVKK", "GDPR", "veri koruma", "kişisel veri", "uyumluluk denetimi", "veri envanteri", "privacy audit"]
 auto_load_when: "Kullanıcı kişisel verilerin korunması, KVKK/GDPR uyumluluk denetimi, veri işleme envanteri veya politika oluşturma talep eder"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "WebFetch", "WebSearch"]
 ---
 
@@ -234,7 +234,3 @@ DOKÜMAN ŞABLONLARI - GEREKLİ DOKÜMANLAR
 ---
 
 *Uyarı: Bu denetim rehberi KVKK ve GDPR uyumluluğu için rehberlik sağlar. Hukuki danışmanlık yerine geçmez. Büyük ölçekli veya hassas veri işleme faaliyetleri için uzman denetçi ile çalışılmalıdır.*
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -177,6 +177,94 @@ Version strategy:
 | Deploy staging | Helm/Terraform apply | Smoke tests pass |
 | Deploy prod | Same image, prod values | Manual approval |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Pipeline model?
+├── Fast iteration, small team             → trunk-based (short-lived branches, merge daily)
+├── Scheduled releases, enterprise         → GitFlow (long-lived release branches)
+└── Multiple versions in production        → release branches per version
+
+Deployment strategy?
+├── Zero downtime required                 → blue-green (instant traffic switch)
+├── Test with real traffic gradually       → canary (1% → 10% → 50% → 100%)
+├── Simple, stateless service              → rolling (replace instances one by one)
+└── Decouple deploy from release           → feature flags (deploy dark, enable gradually)
+
+Test stage gate?
+├── Every commit (< 1min)                  → lint + typecheck + unit tests
+├── Every PR (< 10min)                     → + integration + smoke tests
+├── Before staging deploy                  → + E2E critical paths
+└── Before prod deploy                    → + performance + security scan
+```
+
+---
+
+## Key Rules
+
+1. Run CI on every PR branch — never only on main
+2. Build once → deploy same artifact to staging then prod (immutable)
+3. No secrets in YAML — inject from secrets manager (GitHub Secrets, Vault)
+4. Fail fast: lint/typecheck first, E2E last
+5. Staging environment as close to prod as possible (same Docker image, similar data)
+6. Always have a rollback procedure tested before deployment
+7. Quarantine flaky tests immediately — never ignore or re-run silently
+
+---
+
+## Implementation
+
+```yaml
+# .github/workflows/ci.yml — fail-fast pipeline
+name: CI/CD
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck          # fail fast — type errors
+      - run: bun run lint               # lint
+      - run: bun run test --coverage    # unit + integration
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: ${{ github.actor }}, password: ${{ secrets.GITHUB_TOKEN }} }
+      - uses: docker/build-push-action@v5
+        with:
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          # Deploy same image built above
+          docker pull ghcr.io/${{ github.repository }}:${{ github.sha }}
+          # ... helm upgrade / kubectl rollout
+
+  deploy-prod:
+    needs: deploy-staging
+    environment: production   # requires manual approval in GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploy ${{ github.sha }} to production"
+```

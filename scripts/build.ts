@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * OmniCod build script
- * Çıktı: dist/omnicod (tek çalıştırılabilir binary, --compile ile gömülü Bun runtime)
+ * Aurict build script
+ * Çıktı: dist/aurict (tek çalıştırılabilir binary, --compile ile gömülü Bun runtime)
  */
 
 import { join } from "node:path"
@@ -10,9 +10,9 @@ import { mkdirSync, existsSync } from "node:fs"
 const ROOT    = join(import.meta.dir, "..")
 const ENTRY   = join(ROOT, "packages/cli/src/index.ts")
 const OUTDIR  = join(ROOT, "dist")
-const OUTFILE = join(OUTDIR, "omnicod")
+const OUTFILE = join(OUTDIR, "aurict")
 
-console.log("Building OmniCod…")
+console.log("Building Aurict…")
 
 if (!existsSync(OUTDIR)) mkdirSync(OUTDIR, { recursive: true })
 
@@ -42,4 +42,4 @@ const size = ((await stat.arrayBuffer()).byteLength / 1024 / 1024).toFixed(1)
 console.log(`\nBuild successful!`)
 console.log(`  Output : ${OUTFILE}`)
 console.log(`  Size   : ${size} MB`)
-console.log(`  Usage  : ./dist/omnicod`)
+console.log(`  Usage  : ./dist/aurict`)

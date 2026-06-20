@@ -208,6 +208,3 @@ router.push('/modal');
 ❌ Deep nested folders for simple routes
 ✅ Groups () are invisible in URL — use for layout only, not nesting depth
 ```
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish.

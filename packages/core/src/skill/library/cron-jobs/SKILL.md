@@ -227,6 +227,94 @@ How to handle time zones:
 | Inngest | Serverless | Managed |
 | GitHub Actions schedule | CI | Simple periodic |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Use cron or event-driven queue?
+├── Fixed time interval, not triggered by user  → cron job
+├── Triggered by user action / event            → message queue (BullMQ / SQS)
+├── Complex multi-step workflow                 → workflow orchestrator (Inngest / Temporal)
+└── Sub-second real-time                        → streaming (Kafka / Kinesis)
+
+Run heavy work in cron or offload?
+├── Job completes in < 5s                       → run inline in cron handler
+└── Job takes longer / is heavy                 → cron enqueues task; BullMQ worker executes
+
+Multiple instances possible?
+├── Yes (containers, k8s)                       → distributed lock (Redis SET NX EX)
+└── Guaranteed single process                   → no lock needed
+
+Idempotency strategy?
+├── DB record per job run                       → check `last_run_at` before executing
+├── Row-level processing                        → upsert by ID (idempotent write)
+└── External API call                           → track processed IDs in dedicated table
+```
+
+---
+
+## Key Rules
+
+1. All cron jobs must be idempotent — handle duplicate execution without side effects
+2. Acquire distributed lock (Redis `SET key 1 NX EX 60`) before executing — prevent parallel runs
+3. Cron should be thin: validate timing, acquire lock, enqueue work to BullMQ — don't do heavy lifting inline
+4. Log start time, end time, records processed on every run
+5. Alert on missed schedule (job didn't run) AND on failure — missing run is worse than failure
+6. Always schedule in UTC — never local timezone
+7. Implement graceful shutdown: complete current record, stop processing new ones on SIGTERM
+
+---
+
+## Implementation
+
+```typescript
+// BullMQ repeatable job with Redis-based scheduling
+import { Queue, Worker, Job } from 'bullmq'
+import { redis } from '@/lib/redis'
+
+const reportQueue = new Queue('reports', { connection: redis })
+
+// Schedule: add repeatable job (idempotent — BullMQ deduplicates by jobId)
+await reportQueue.add(
+  'daily-report',
+  { type: 'daily-summary' },
+  {
+    jobId: 'daily-report-recurring',     // stable ID prevents duplicates
+    repeat: { pattern: '0 0 * * *' },    // 00:00 UTC daily
+    removeOnComplete: 10,
+    removeOnFail: 50,
+  }
+)
+
+// Worker with distributed lock + idempotency check
+const worker = new Worker('reports', async (job: Job) => {
+  const lockKey = `lock:report:${job.data.type}:${job.id}`
+  const locked = await redis.set(lockKey, '1', { NX: true, EX: 300 })
+  if (!locked) {
+    console.log(`Job ${job.id} already running — skipping`)
+    return
+  }
+
+  try {
+    const runDate = new Date().toISOString().slice(0, 10)
+
+    // Idempotency: skip if already ran today
+    const alreadyRan = await db.jobRun.findUnique({ where: { type_date: { type: 'daily-report', date: runDate } } })
+    if (alreadyRan) return
+
+    const count = await generateDailyReport(runDate)
+
+    await db.jobRun.create({ data: { type: 'daily-report', date: runDate, recordsProcessed: count } })
+    console.log(`daily-report complete: ${count} records`)
+  } finally {
+    await redis.del(lockKey)
+  }
+}, { connection: redis, concurrency: 1 })
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  await worker.close()
+  process.exit(0)
+})
+```

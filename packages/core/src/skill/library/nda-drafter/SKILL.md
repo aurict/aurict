@@ -4,7 +4,7 @@ description: "Gizlilik sözleşmesi şablonları, ticari sır tanımı, süre ve
 triggers:
   keywords: ["NDA", "gizlilik sözleşmesi", "gizlilik anlaşması", "ticari sır", "NDA drafter", "confidentiality agreement"]
 auto_load_when: "Kullanıcı gizlilik sözleşmesi taslağı, ticari sır koruma anlaşması, iş ortağı NDA'sı veya tedarikçi gizlilik anlaşması talep eder"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "WebFetch", "WebSearch"]
 ---
 
@@ -256,7 +256,3 @@ CEZAİ ŞART MATRİSİ
 ---
 
 *Uyarı: Bu şablonlar genel rehberlik amaçlıdır. Ticari veya yatırımcı görüşmeleri için mutlaka yetkili hukuk danışmanına danışılmalıdır.*
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

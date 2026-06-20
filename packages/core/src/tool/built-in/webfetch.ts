@@ -39,7 +39,7 @@ export const webfetchTool: ToolDef = {
 
     try {
       const res = await fetch(url, {
-        headers: { "User-Agent": "OmniCod/0.0.1" },
+        headers: { "User-Agent": "Aurict/0.0.1" },
         signal:  controller.signal,
       })
       if (!res.ok) return { output: "", error: `HTTP ${res.status} ${res.statusText}` }

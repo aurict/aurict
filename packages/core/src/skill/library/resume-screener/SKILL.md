@@ -4,7 +4,7 @@ description: "PDF CV inceleme, aday eşleştirme, ATS uyumluluğu, anahtar kelim
 triggers:
   keywords: ["resume screener", "cv incele", "aday eleme", "ats uyumlu", "keyword matching"]
 auto_load_when: "Kullanıcı CV tarama, aday değerlendirme veya işe uygunluk analizi ister"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "grep", "glob"]
 ---
 
@@ -171,6 +171,3 @@ red_gerekçe_uretimi
 | Eğitim uyumsuz | %15 | Alternatif rol öner |
 | Ücret beklentisi | %15 | Pazar araştırması |
 | Konum | %10 | Remote seçenek |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

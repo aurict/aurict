@@ -179,7 +179,3 @@ When to use:
 | Enum values | PostgreSQL ENUM type | Type-safe at DB level |
 | Connection pool | PgBouncer / prisma pool | Max 100 pg connections |
 | Migrations | Up + down scripts | Always have rollback |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

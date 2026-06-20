@@ -4,21 +4,30 @@ import { homedir } from "os"
 import { parseFrontmatter } from "./frontmatter.js"
 import type { SkillDef, SkillDetector } from "./types.js"
 
-const USER_SKILLS_DIR = join(homedir(), ".omnicod", "skills")
+const USER_SKILLS_DIR = join(homedir(), ".aurict", "skills")
 
 const LIBRARY = new URL("./library", import.meta.url).pathname
 
 // ─── Öncelik tablosu ─────────────────────────────────────────────────────────
 const PRIORITY_OVERRIDES: Record<string, number> = {
-  "nextjs-expert":    10,
-  "react-expert":      9,
-  "typescript-expert": 8,
-  "prisma-expert":     8,
-  "nodejs-expert":     7,
-  "blueprint":         1,
+  "next-fullstack":    12,   // composite — highest priority
+  "t3-stack":          12,   // composite — highest priority
+  "nextjs-expert":     10,
+  "react-expert":       9,
+  "typescript-expert":  8,
+  "prisma-expert":      8,
+  "ai-sdk-patterns":    8,
+  "nodejs-expert":      7,
+  "bun-fullstack":      7,
+  "cloudflare-workers": 7,
+  "database-migrations": 6,
+  "error-boundaries":   6,
+  "api-mocking":        7,
+  "rate-limiting":      7,
+  "blueprint":          1,
 }
 
-// OmniRule SKILL.md'de deps alanı yok — supplementary dep detection map
+// Aurict SKILL.md'de deps alanı yok — supplementary dep detection map
 // Sadece en kritik framework'ler için küçük liste
 const DEPS_SUPPLEMENT: Record<string, string[]> = {
   "react-expert":            ["react", "react-dom"],
@@ -59,6 +68,17 @@ const DEPS_SUPPLEMENT: Record<string, string[]> = {
   "solidity-patterns":       ["hardhat", "foundry"],
   "mlops-patterns":          ["mlflow", "tensorboard"],
   "etl-patterns":            ["airflow", "dbt"],
+  // composite stacks
+  "next-fullstack":          ["next", "@prisma/client", "drizzle-orm", "better-auth", "next-auth", "@auth/core"],
+  "t3-stack":                ["@trpc/server", "@trpc/client", "@trpc/next", "@trpc/react-query"],
+  // new singles
+  "ai-sdk-patterns":         ["ai", "@ai-sdk/openai", "@ai-sdk/anthropic", "@ai-sdk/google"],
+  "bun-fullstack":           ["bun-types", "elysia", "hono"],
+  "cloudflare-workers":      ["@cloudflare/workers-types", "wrangler"],
+  "database-migrations":     ["prisma", "drizzle-kit"],
+  "error-boundaries":        [],
+  "api-mocking":             ["msw", "nock", "@mswjs/data", "jest-fetch-mock"],
+  "rate-limiting":           ["express-rate-limit", "rate-limiter-flexible", "@upstash/ratelimit"],
 }
 
 function buildDetector(triggers: SkillFrontmatter["triggers"] | undefined): SkillDetector {
@@ -118,7 +138,7 @@ function scanLibrary(): Map<string, SkillDef> {
 
 const SKILLS = scanLibrary()
 
-// Kullanıcının ~/.omnicod/skills/ klasöründeki .md dosyalarını tarar
+// Kullanıcının ~/.aurict/skills/ klasöründeki .md dosyalarını tarar
 function scanUserSkills(): void {
   let files: string[]
   try { files = readdirSync(USER_SKILLS_DIR) } catch { return }

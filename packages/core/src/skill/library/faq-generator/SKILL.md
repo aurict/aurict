@@ -4,7 +4,7 @@ description: "SSS oluşturma. Soru gruplama. Search optimization. Content struct
 triggers:
   keywords: ["faq generator", "sss oluşturucu", "sıkça sorulan sorular", "destek dokümantasyon", "faq sayfası"]
 auto_load_when: "Kullanıcı SSS (Sıkça Sorulan Sorular) dokümantasyonu oluşturmayı veya mevcut ticket'lardan FAQ çıkarmayı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -246,7 +246,3 @@ interface FAQGeneratorConfig {
   language: string;
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

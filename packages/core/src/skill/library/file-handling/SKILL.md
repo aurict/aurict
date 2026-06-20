@@ -222,7 +222,3 @@ Cleanup methods:
 | Upload to S3 | @aws-sdk/lib-storage | Multipart auto |
 | Temp file | tmp / os.tmpdir | Clean up on close |
 | Watch file | fs.watch / chokidar | chokidar more reliable |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

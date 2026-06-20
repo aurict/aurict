@@ -70,10 +70,14 @@ export const lspTool: ToolDef = {
         finalCmd.push(path)
       }
 
-      const proc = spawn(finalCmd, { cwd: ctx.workdir })
-      const out = await new Response(proc.stdout).text()
-      const err = await new Response(proc.stderr).text()
-      const exitCode = await proc.exited
+      const proc  = spawn(finalCmd, { cwd: ctx.workdir })
+      const timer = setTimeout(() => { try { proc.kill() } catch { /* zaten kapanmış */ } }, 60_000)
+      const [out, err, exitCode] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ])
+      clearTimeout(timer)
 
       if (exitCode === 0) {
         return { output: `[${language.toUpperCase()}] Check successful. No syntax/type errors found.` }

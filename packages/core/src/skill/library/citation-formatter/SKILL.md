@@ -4,7 +4,7 @@ description: "Atıf formatlama: APA 7, MLA 9, Chicago, Harvard. Reference manage
 triggers:
   keywords: ["citation", "apa", "mla", "chicago", "harvard", "atıf formatı", "referans", "bibliyografya", "doi"]
 auto_load_when: "User asks to format citations, create bibliography, or generate references in a specific citation style"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch"]
 ---
 
@@ -193,7 +193,3 @@ B. Atıf Gruplama
 | Citation.js | APA, MLA, BibTeX | JavaScript |
 | DOI.org | DOI resolver | Web |
 | CrossRef API | Metadata çekme | REST API |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

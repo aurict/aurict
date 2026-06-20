@@ -205,7 +205,3 @@ Hybrid approach:
 | Deno Deploy | Generous | Full Deno APIs |
 | Fastly Compute | 50ms | CDN logic |
 | AWS Lambda@Edge | 5s | CloudFront integration |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

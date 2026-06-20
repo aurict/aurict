@@ -14,12 +14,12 @@ function timestamp(): string {
 }
 
 export function defaultExportFilename(ext: "md" | "html"): string {
-  return `omnicod-export-${timestamp()}.${ext}`
+  return `aurict-export-${timestamp()}.${ext}`
 }
 
 // ── Markdown ──────────────────────────────────────────────────────────────────
 
-export function exportToMarkdown(messages: ExportMessage[], title = "OmniCod Session"): string {
+export function exportToMarkdown(messages: ExportMessage[], title = "Aurict Session"): string {
   const lines: string[] = [
     `# ${title}`,
     `> Exported ${new Date().toLocaleString()}`,
@@ -89,7 +89,7 @@ function mdToHtml(text: string): string {
     .replace(/\n/g, "<br>")
 }
 
-export function exportToHtml(messages: ExportMessage[], title = "OmniCod Session"): string {
+export function exportToHtml(messages: ExportMessage[], title = "Aurict Session"): string {
   const parts: string[] = []
 
   for (const m of messages) {

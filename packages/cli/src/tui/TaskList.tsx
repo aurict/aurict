@@ -1,6 +1,6 @@
 import React from "react"
 import { Box, Text } from "ink"
-import type { Task } from "@omnicod/core"
+import type { Task } from "@aurict/core"
 
 interface Props {
   tasks: Task[]

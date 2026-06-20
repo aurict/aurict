@@ -4,7 +4,7 @@ description: "Bilgi tabanı makaleleri. Step-by-step guides. Troubleshooting. Se
 triggers:
   keywords: ["knowledge base writer", "bilgi tabanı yazarı", "help center", "bilgi bankası", "yardım makalesi"]
 auto_load_when: "Kullanıcı bilgi tabanı (knowledge base) makaleleri, adım adım kılavuzlar, sorun giderme dokümanları veya arama optimizasyonu talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -441,7 +441,3 @@ interface KnowledgeBaseWriterConfig {
   };
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

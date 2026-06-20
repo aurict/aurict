@@ -4,7 +4,7 @@ description: "Performans değerlendirme yazımı, SMART hedefleri, 360 feedback,
 triggers:
   keywords: ["performance review generator", "performans değerlendirme", "smart hedefleri", "360 feedback", "yetkinlik matrisi"]
 auto_load_when: "Kullanıcı performans değerlendirmesi, hedef belirleme veya 360 feedback raporu ister"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "grep", "glob"]
 ---
 
@@ -197,6 +197,3 @@ gelişim_planı
 | Problem solving | Sorun bildirir | Analiz eder | Sistem yapar |
 | Communication | Bilgi paylaşır | Etkili sunar | İkna eder |
 | Leadership | Talimat alır | Ekip yönetir | Strategi belirler |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

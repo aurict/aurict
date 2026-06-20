@@ -193,5 +193,95 @@ Winner Decision:
 | Sample Size | n = 16σ²/δ² | Minimum visitors |
 | Z-score | (p1-p2)/SE | Test statistic |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Which test type?
+├── Two variants of same UI element    → A/B test (split traffic 50/50)
+├── Multiple variants                  → Multi-variant (needs more traffic per variant)
+├── Optimize allocation automatically  → Multi-armed bandit (exploration vs exploitation)
+└── Complete page redesign             → Split URL test
+
+Assignment: client-side or server-side?
+├── UI-only change, no flash acceptable → client-side (feature flag / GrowthBook SDK)
+├── Server-rendered page, SEO matters  → server-side assignment (avoid layout shift)
+└── Personalization / auth required    → server-side (use user ID for consistent bucketing)
+
+Enough data to decide?
+├── p-value < 0.05 AND ran ≥ 1 week   → statistically significant — decide
+├── p-value < 0.05 but < 1 week        → wait — could be day-of-week bias
+└── Still running but looking good     → do NOT stop early — peeking inflates false positives
+
+Winner decision?
+├── Significant lift on primary metric  → ship variant
+├── Significant but guardrail degraded  → do not ship (e.g. +conversion but +errors)
+└── No significant result               → document and move on
+```
+
+---
+
+## Key Rules
+
+1. Define primary metric, secondary metrics, and guardrails BEFORE starting the test
+2. Calculate required sample size before launch — never size the test after seeing results
+3. Run for at least 1 full week — capture weekday/weekend variance
+4. Never stop a test early because it "looks good" — peeking inflates false positive rate
+5. One variable per test — multiple changes make it impossible to attribute effect
+6. Segment results by device/source/geo after overall result to understand context
+7. Document all tests including negative results — learnings compound over time
+
+---
+
+## Implementation
+
+```typescript
+// Deterministic variant assignment (hash-based bucketing)
+function simpleHash(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash)
+}
+
+function assignVariant(
+  userId: string,
+  testId: string,
+  variants: Array<{ id: string; weight: number }>
+): string {
+  const hash = simpleHash(`${userId}-${testId}`)
+  const bucket = hash % 100
+
+  let cumulative = 0
+  for (const variant of variants) {
+    cumulative += variant.weight
+    if (bucket < cumulative) return variant.id
+  }
+  return variants[variants.length - 1].id  // fallback
+}
+
+// Statistical significance check
+function isSignificant(
+  controlConversions: number, controlVisitors: number,
+  variantConversions: number, variantVisitors: number
+): boolean {
+  const p1 = controlConversions / controlVisitors
+  const p2 = variantConversions / variantVisitors
+  const p = (controlConversions + variantConversions) / (controlVisitors + variantVisitors)
+  const se = Math.sqrt(p * (1 - p) * (1 / controlVisitors + 1 / variantVisitors))
+  const zScore = Math.abs((p1 - p2) / se)
+  return zScore > 1.96  // 95% confidence
+}
+
+// Usage
+const variant = assignVariant(userId, 'checkout-cta-2024', [
+  { id: 'control',   weight: 50 },
+  { id: 'variant-a', weight: 50 },
+])
+
+// Track exposure
+analytics.track('Experiment Viewed', { experiment_id: 'checkout-cta-2024', variant })
+```

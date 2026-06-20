@@ -13,7 +13,7 @@ auto_load_when:
   - property_marketing
   - content_creation
   - sales_copywriting
-agent: researcher
+agent: content-ops
 tools:
   - template_generator
   - markdown_writer
@@ -291,6 +291,3 @@ Agent Bio Template
 | **Yapı yaşı** | Bina + renovation durumu | "2020 yapımı, yenilenmiş" |
 | **Isınma** | Tipi + maliyet tahmini | "Doğalgaz kombi, aylık ~1.200 TL" |
 | **CTA** | İletişim + aciliyet | "Randevu için hemen arayın: 0532..." |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

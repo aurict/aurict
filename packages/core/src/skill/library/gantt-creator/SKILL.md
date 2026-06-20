@@ -5,7 +5,7 @@ triggers:
   keywords: ["gantt", "proje takvimi", "kritik yol", "milestone", "timeline", "şemapanı"]
   contexts: ["project planning", "delivery schedule", "resource allocation", "deadline management"]
 auto_load_when: "Kullanıcı proje takvimi, Gantt şeması veya kritik yol analizi istediğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
 
@@ -283,6 +283,3 @@ Düzenli check:
 | Orta (20-100 görev) | Monday, Asana | Cloud, işbirliği |
 | Büyük (>100 görev) | MS Project, Jira | Enterprise |
 | Enterprise | Primavera, SAP | Full-scale |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

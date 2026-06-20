@@ -390,5 +390,103 @@ trace.get_tracer_provider().add_span_processor(
 | Correlation | Trace ID | Link all three pillars |
 | SLO | Error budget | Track allowed failures |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Metrics, logs, or traces?
+├── "How many / how fast / what rate?"       → metrics (counter, histogram, gauge)
+├── "What exactly happened at time T?"      → logs (structured JSON with context)
+└── "Why is this request slow?"             → traces (spans, latency breakdown)
+
+When to add alert?
+├── Maps to user-visible impact              → yes (error rate, latency breach)
+├── Internal technical indicator only       → no (disk 70%, CPU spike — use dashboard)
+└── For every exception                     → no — alert on SLI breach, not individual errors
+
+Which logging level?
+├── Development debugging                   → DEBUG (disable in prod)
+├── Normal operation events                 → INFO
+├── Something unexpected but recoverable   → WARN
+├── Error requiring attention               → ERROR
+└── Service unrecoverable                   → FATAL
+
+Vendor choice?
+├── Open-source / self-hosted               → OpenTelemetry + Jaeger + Prometheus + Grafana
+├── Managed / startup speed                 → Datadog or New Relic (all-in-one)
+└── Already on AWS                          → CloudWatch + X-Ray
+```
+
+---
+
+## Key Rules
+
+1. Structured JSON logging always — never `console.log('user updated ' + id)`
+2. `trace_id` + `request_id` in every log line — enables log → trace correlation
+3. Alert on SLI breaches only — not every exception or warning
+4. SLO defined before adding alerts — know your error budget first
+5. OpenTelemetry as instrumentation layer — swap backends without code changes
+6. Runbook link in every alert annotation — not a raw expression
+7. `for: 5m` on alert rules — prevents flap on transient spikes
+
+---
+
+## Implementation
+
+```typescript
+// Pino structured logger + request correlation middleware
+import pino from 'pino'
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL ?? 'info',
+  base: { service: 'api', version: process.env.npm_package_version },
+  timestamp: pino.stdTimeFunctions.isoTime,
+})
+
+// Express / Hono middleware — attach request context
+export function requestLogger(req: any, res: any, next: any) {
+  const traceId  = req.headers['x-trace-id'] ?? crypto.randomUUID()
+  const log      = logger.child({ traceId, path: req.path, method: req.method })
+  req.log        = log
+  res.setHeader('x-trace-id', traceId)
+  const start    = Date.now()
+  res.on('finish', () => log.info({ status: res.statusCode, ms: Date.now() - start }, 'request'))
+  next()
+}
+
+// OpenTelemetry span — manual instrumentation for DB calls
+import { trace, SpanStatusCode } from '@opentelemetry/api'
+const tracer = trace.getTracer('api')
+
+export async function queryUser(id: string) {
+  return tracer.startActiveSpan('db.user.find', async (span) => {
+    span.setAttribute('db.system', 'postgresql')
+    span.setAttribute('user.id', id)
+    try {
+      const user = await db.user.findUnique({ where: { id } })
+      span.setStatus({ code: SpanStatusCode.OK })
+      return user
+    } catch (err) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: String(err) })
+      span.recordException(err as Error)
+      throw err
+    } finally {
+      span.end()
+    }
+  })
+}
+
+// Prometheus SLI alert rule
+/*
+- alert: HighErrorRate
+  expr: |
+    sum(rate(http_requests_total{status=~"5.."}[5m]))
+    / sum(rate(http_requests_total[5m])) > 0.01
+  for: 5m
+  labels: { severity: critical }
+  annotations:
+    summary: "Error rate > 1% for 5 minutes"
+    runbook: "https://wiki/runbooks/high-error-rate"
+*/
+```

@@ -11,9 +11,9 @@ const BUILT_IN_TYPES = ["explore", "code", "review", "test", "docs", "performanc
 export const taskTool: ToolDef = {
   id:          "task",
   timeoutMs:   600_000,  // 10 min for foreground tasks; background tasks return immediately
-  description: "Spawn a specialized subagent. Built-in types: explore, code, review, test, docs, performance, analytics, security, debug. Custom agents: use the agent ID from .omnicod/agents/*.md",
+  description: "Spawn a specialized subagent. Built-in types: explore, code, review, test, docs, performance, analytics, security, debug. Custom agents: use the agent ID from .aurict/agents/*.md",
   parameters:  z.object({
-    type:        z.string().describe("Agent type (built-in or custom agent ID from .omnicod/agents/)"),
+    type:        z.string().describe("Agent type (built-in or custom agent ID from .aurict/agents/)"),
     description: z.string().describe("Short description of this agent's task (shown in UI)"),
     prompt:      z.string().describe("Detailed instructions for the subagent"),
     background:  z.boolean().optional().describe("If true, don't wait for result (fire and forget)"),
@@ -112,7 +112,7 @@ interface AgentConfig {
 
 async function loadAgentConfig(type: string, workdir: string): Promise<AgentConfig | null> {
   try {
-    const configPath = `${workdir}/.omnicod/config.json`
+    const configPath = `${workdir}/.aurict/config.json`
     const raw  = await Bun.file(configPath).text()
     const cfg  = JSON.parse(raw) as Record<string, unknown>
     const agents = cfg["agents"] as Record<string, AgentConfig> | undefined

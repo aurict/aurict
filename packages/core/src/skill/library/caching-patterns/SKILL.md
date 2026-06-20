@@ -196,6 +196,102 @@ How to handle:
 | DB query | Prisma + Redis | Heavy aggregations |
 | Full-page | Next.js ISR | revalidate: 60 |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Which cache strategy?
+├── Read-heavy, infrequent writes          → cache-aside (check → miss → fetch → write)
+├── Must be immediately consistent        → write-through (write cache + DB together)
+├── Write-heavy, eventual consistency ok  → write-back (cache first, async DB sync)
+└── Stale data acceptable, serve fast     → cache-first (only miss hits DB)
+
+Which cache layer?
+├── Single user / browser                 → Cache-Control header (no-store sensitive data)
+├── Public static content                 → CDN edge (Cloudflare / Fastly)
+├── Shared across app instances           → Redis (distributed)
+├── Hot data per process                  → node-cache / LRU-cache (in-memory)
+└── DB query results                      → Redis with query hash as key
+
+Cache invalidation strategy?
+├── Acceptable eventual consistency       → TTL (set and forget)
+├── Must invalidate on write              → event-based (publish invalidation message)
+├── Versioned data                        → key versioning: `user:v2:${id}`
+└── Admin-triggered clear                 → manual cache delete endpoint
+```
+
+---
+
+## Key Rules
+
+1. Every cache entry must have a TTL — never cache without expiry
+2. Add random jitter to TTLs to prevent cache stampede (± 10–20%)
+3. Cache key includes all parameters that affect the response
+4. Never cache user-specific data in shared/CDN cache
+5. App works correctly when cache is empty — graceful degradation
+6. Monitor hit rate: target > 80%; below that, re-examine what you're caching
+7. Two-level caching: L1 in-process (sub-ms) → L2 Redis (1-5ms)
+
+---
+
+## Implementation
+
+```typescript
+// Two-level cache: L1 LRU + L2 Redis (cache-aside pattern)
+import LRUCache from 'lru-cache'
+import { redis } from '@/lib/redis'
+
+const l1 = new LRUCache<string, unknown>({ max: 500, ttl: 30_000 })
+
+async function getWithCache<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttlSeconds = 60
+): Promise<T> {
+  // L1 hit
+  const l1hit = l1.get(key)
+  if (l1hit !== undefined) return l1hit as T
+
+  // L2 hit
+  const l2hit = await redis.get(key)
+  if (l2hit) {
+    const value = JSON.parse(l2hit) as T
+    l1.set(key, value)  // warm L1
+    return value
+  }
+
+  // Cache miss — fetch from source
+  const value = await fetcher()
+  const jitteredTtl = ttlSeconds + Math.floor(Math.random() * ttlSeconds * 0.2)
+
+  await redis.set(key, JSON.stringify(value), { EX: jitteredTtl })
+  l1.set(key, value)
+  return value
+}
+
+// Invalidation on write
+async function updateUser(id: string, data: Partial<User>) {
+  await db.user.update({ where: { id }, data })
+  // Invalidate all related keys
+  await redis.del(`user:${id}`)
+  await redis.del(`user:profile:${id}`)
+  l1.delete(`user:${id}`)
+}
+
+// Cache stampede prevention with lock
+async function getWithLock<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const lockKey = `lock:${key}`
+  const locked = await redis.set(lockKey, '1', { NX: true, EX: 5 })
+  if (!locked) {
+    // Another process is fetching — poll briefly
+    await new Promise(r => setTimeout(r, 100))
+    const cached = await redis.get(key)
+    if (cached) return JSON.parse(cached) as T
+  }
+  const value = await fetcher()
+  await redis.set(key, JSON.stringify(value), { EX: 60 })
+  await redis.del(lockKey)
+  return value
+}
+```

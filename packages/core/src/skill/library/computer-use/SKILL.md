@@ -427,7 +427,7 @@ Bu özellik yalnızca son çare olarak (UI API'leri veya CLI mevcut olmadığın
 
 ## 15. Cross-Platform Uyumluluk Katmanı (Linux / Mac / Win)
 
-OmniRule ortamı genelde Linux/Unix bazlı olsa da, ajanın esnek olması için komut alias'ları kullanın:
+Aurict ortamı genelde Linux/Unix bazlı olsa da, ajanın esnek olması için komut alias'ları kullanın:
 - **Clipboard İşlemleri:** Linux'ta `xclip` veya `xsel`, Mac'te `pbcopy`/`pbpaste`, Win'de `clip`.
 - **Ağ Arayüzleri:** Linux'ta `ip addr`, Mac'te `ifconfig`.
 - **Hizmet (Service) Yönetimi:** Linux'ta `systemctl`, Mac'te `launchctl` veya `brew services`.
@@ -448,4 +448,4 @@ Kullanıcının projelerindeki `.env` dosyalarını okuması veya düzenlemesi g
 - Komut satırı çıktıları ve kodlar daima orijinal dilinde (çoğunlukla İngilizce/Bash formatında) tutulur.
 
 ## Geliştirici Notu
-Bu skill dosyası OmniRule Agentic Framework tarafından otomatik olarak okunur. Herhangi bir değişiklik durumunda `npm run tool:skills` komutunu çalıştırarak sistemin yetenek matrisini (registry.json) güncellemeyi unutmayın.
+Bu skill dosyası Aurict Agentic Framework tarafından otomatik olarak okunur. Herhangi bir değişiklik durumunda `npm run tool:skills` komutunu çalıştırarak sistemin yetenek matrisini (registry.json) güncellemeyi unutmayın.

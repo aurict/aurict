@@ -5,7 +5,7 @@ triggers:
   keywords: ["bülten", "newsletter", "haber özeti", "email marketing", "mailchimp", "substack", "içerik bülteni", "haber tarama"]
   extensions: [".md", ".html"]
 auto_load_when: "E-posta bülteni hazırlama, haber derleme veya içerik bülteni talep edildiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch"]
 ---
 
@@ -308,7 +308,3 @@ Zamanlama Matrisi:
 | Share/Forward | Bülten sonunda | Yüksek |
 | Subscribe CTA | Hero altında | Çok yüksek |
 | Unsubscribe | Footer | Zorunlu |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

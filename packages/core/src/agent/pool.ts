@@ -2,12 +2,13 @@ import { sseManager }     from "../server/sse.js"
 import { hooks }          from "../hook/emitter.js"
 import { SessionManager } from "../session/manager.js"
 import { ensureWorkspace } from "./workspace.js"
+import { loadConfig }     from "../config/config.js"
 import type { WorkerRequest, WorkerMessage, WorkerControl, AgentType } from "./protocol.js"
 import { AGENT_TYPE_TOOLS } from "./protocol.js"
 
-const WORKER_TIMEOUT  = 300_000   // 5 dakika — heartbeat'le reset edilir
-const HEARTBEAT_GRACE = 45_000    // heartbeat gelmezse bu kadar sonra timeout
-const MAX_WORKERS     = 4
+const DEFAULT_WORKER_TIMEOUT  = 300_000   // 5 dakika — heartbeat'le reset edilir
+const HEARTBEAT_GRACE         = 45_000    // heartbeat gelmezse bu kadar sonra timeout
+const DEFAULT_MAX_WORKERS     = 4
 
 const ENV_VAR_KEYS = [
   "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY",
@@ -16,7 +17,7 @@ const ENV_VAR_KEYS = [
   "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_DEPLOYMENT",
   "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_REGION",
   "OLLAMA_HOST", "OLLAMA_BASE_URL", "OLLAMA_DEFAULT_MODEL",
-  "OMNICOD_PROVIDER",
+  "AURICT_PROVIDER",
 ] as const
 
 function collectEnvVars(): Record<string, string> {
@@ -164,8 +165,10 @@ class AgentPool {
     allowedTools?:   string[]
     onText?:         (delta: string) => void
   }): Promise<string> {
-    if (this.entries.size >= MAX_WORKERS) {
-      return Promise.reject(new Error(`Worker pool full (max ${MAX_WORKERS})`))
+    const agentsCfg  = loadConfig(opts.workdir).agents ?? {}
+    const maxWorkers = agentsCfg.maxWorkers ?? DEFAULT_MAX_WORKERS
+    if (this.entries.size >= maxWorkers) {
+      return Promise.reject(new Error(`Worker pool full (max ${maxWorkers})`))
     }
 
     const subSessionId = SessionManager.create(
@@ -195,10 +198,11 @@ class AgentPool {
         toolCount:       0,
       }
 
+      const workerTimeout = (loadConfig(opts.workdir).agents?.timeout) ?? DEFAULT_WORKER_TIMEOUT
       const entry: PoolEntry = {
         worker,
         info,
-        timer:      this.makeTimer(opts.id, WORKER_TIMEOUT),
+        timer:      this.makeTimer(opts.id, workerTimeout),
         resolve,
         reject,
         textBuffer: "",

@@ -250,13 +250,106 @@ How to achieve:
 | Event sourcing | Full audit trail | High |
 | CQRS + events | Read/write separation | High |
 
+---
+
+## Decision Tree
+
+```
+Choreography or orchestration?
+├── < 5 services, simple linear flow         → choreography (each service reacts)
+├── Complex workflow with compensation       → orchestration (saga coordinator)
+└── Both: choreography for integration,     → hybrid
+     orchestration for business workflows
+
+Event sourcing or standard events?
+├── Need full audit trail + replay           → event sourcing (append-only log)
+├── Cross-service integration only          → standard domain events
+└── Complex state machine                   → event sourcing
+
+CQRS?
+├── Read patterns differ from write         → CQRS (separate models)
+├── Scale reads independently               → CQRS with read replicas
+└── Simple CRUD, same patterns              → no CQRS (unnecessary complexity)
+
+Which broker?
+├── Very high throughput + replay            → Kafka
+├── Simple queue + managed                   → SQS/SNS
+├── Multi-service event bus + rules          → EventBridge
+└── Lightweight / self-hosted               → RabbitMQ
+```
+
+---
+
+## Key Rules
+
+1. Events are immutable facts in the past — never mutate after publish
+2. Idempotent consumers always — check event ID before processing
+3. Schema contract for every event type — schema registry or Zod schema
+4. Dead letter queue for every consumer — bounded retry + alert on DLQ
+5. Correlation ID in every event — propagate across all hops for tracing
+6. Choreography for loose coupling; orchestration when you need visibility
+7. Versioned event types (`OrderPlacedV2`) — never break existing consumers
+
+---
+
+## Implementation
+
+```typescript
+// Type-safe event bus with BullMQ (Node.js)
+import { Queue, Worker } from 'bullmq'
+import { z } from 'zod'
+
+// Event schemas — single source of truth
+const OrderPlacedSchema = z.object({
+  eventType:     z.literal('order.placed'),
+  orderId:       z.string(),
+  userId:        z.string(),
+  totalCents:    z.number(),
+  correlationId: z.string(),
+  occurredAt:    z.string(),
+})
+type OrderPlaced = z.infer<typeof OrderPlacedSchema>
+
+const orderQueue = new Queue<OrderPlaced>('orders', { connection: redis })
+
+// Publisher
+export async function placeOrder(userId: string, items: Item[]) {
+  const order = await db.order.create({ data: { userId, items } })
+  await orderQueue.add('order.placed', {
+    eventType: 'order.placed', orderId: order.id,
+    userId, totalCents: order.totalCents,
+    correlationId: crypto.randomUUID(),
+    occurredAt: new Date().toISOString(),
+  })
+  return order
+}
+
+// Consumer — idempotent + schema validated
+const worker = new Worker<OrderPlaced>('orders', async (job) => {
+  const event = OrderPlacedSchema.parse(job.data)
+
+  // Idempotency check
+  const already = await redis.get(`event:${job.id}`)
+  if (already) return
+
+  switch (event.eventType) {
+    case 'order.placed':
+      await fulfillmentService.reserve(event.orderId)
+      await notificationService.sendConfirmation(event.userId)
+      break
+  }
+
+  await redis.set(`event:${job.id}`, '1', { EX: 86400 })
+}, { connection: redis })
+
+worker.on('failed', (job, err) => {
+  console.error({ correlationId: job?.data.correlationId, err })
+})
+```
+
 | Broker | Throughput | Durability |
 |---|---|---|
 | Kafka | Very high | Durable replay |
 | RabbitMQ | High | Configurable |
 | SNS/SQS | High | Managed |
 | EventBridge | Medium | Managed |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

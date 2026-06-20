@@ -4,7 +4,7 @@ description: "Satış tahmini. Pipeline analysis, weighted forecast, scenario pl
 triggers:
   keywords: ["sales forecast", "satış tahmini", "pipeline analysis", "revenue forecasting", "quota attainment"]
 auto_load_when: "Kullanıcı satış tahmini, pipeline analizi, weighted forecast veya revenue planning talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -465,6 +465,3 @@ Validation:
 | Monthly | Forecast review | Sales Lead |
 | Quarterly | Full refresh | Sales Ops |
 | Annual | Strategic | VP Sales |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

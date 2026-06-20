@@ -13,6 +13,7 @@ export type AgentType =
   | "devops"      // full: CI/CD, Docker, infra-as-code
   | "design"      // read + write: UI/UX artifact üretimi
   | "data"        // read + write + bash: veri dönüşümü, SQL, analiz
+  | "critic"      // read-only: kod/plan/mimari eleştirisi — yazma erişimi yok
 
 // Per-type MAX_STEPS — uzun görevler kırpılmaz, kısa görevler boşa tur atmaz
 export const AGENT_MAX_STEPS: Record<AgentType, number> = {
@@ -30,26 +31,28 @@ export const AGENT_MAX_STEPS: Record<AgentType, number> = {
   devops:      40,
   design:      20,
   data:        35,
+  critic:       8,   // kısa ve odaklı — sadece okur ve raporlar
 }
 
 // Her agent tipinin erişebileceği tool'lar (ToolRegistry ID'leriyle eşleşmeli)
 // "write" tüm tiplerde var — findings dosyasını workspace'e yazabilmeli
 // "send_message" tüm tiplerde var — sibling agent'lara mesaj yollamak için
 export const AGENT_TYPE_TOOLS: Record<AgentType, string[]> = {
-  coordinator: ["subagent", "send_message"],
-  explore:     ["read", "write", "glob", "grep", "webfetch", "websearch", "send_message"],
-  code:        ["read", "write", "edit", "apply_patch", "glob", "grep", "bash", "lsp", "undo", "send_message"],
-  review:      ["read", "write", "glob", "grep", "lsp", "send_message"],
-  test:        ["read", "write", "glob", "grep", "bash", "send_message"],
-  docs:        ["read", "write", "edit", "glob", "grep", "send_message"],
-  performance: ["read", "write", "glob", "grep", "bash", "send_message"],
-  analytics:   ["read", "write", "glob", "grep", "webfetch", "send_message"],
-  security:    ["read", "write", "glob", "grep", "lsp", "websearch", "send_message"],
-  debug:       ["read", "write", "glob", "grep", "bash", "lsp", "send_message"],
-  refactor:    ["read", "write", "edit", "apply_patch", "glob", "grep", "lsp", "send_message"],
+  coordinator: ["subagent", "send_message", "scratchpad", "critique"],
+  explore:     ["read", "write", "glob", "grep", "webfetch", "websearch", "symbols", "code_map", "scratchpad", "send_message"],
+  code:        ["read", "write", "edit", "apply_patch", "glob", "grep", "bash", "lsp", "undo", "symbols", "code_map", "verify", "scratchpad", "critique", "send_message"],
+  review:      ["read", "write", "glob", "grep", "lsp", "symbols", "code_map", "verify", "send_message"],
+  test:        ["read", "write", "glob", "grep", "bash", "symbols", "verify", "send_message"],
+  docs:        ["read", "write", "edit", "glob", "grep", "symbols", "code_map", "send_message"],
+  performance: ["read", "write", "glob", "grep", "bash", "symbols", "code_map", "send_message"],
+  analytics:   ["read", "write", "glob", "grep", "webfetch", "symbols", "send_message"],
+  security:    ["read", "write", "glob", "grep", "lsp", "websearch", "symbols", "code_map", "send_message"],
+  debug:       ["read", "write", "glob", "grep", "bash", "lsp", "symbols", "verify", "scratchpad", "send_message"],
+  refactor:    ["read", "write", "edit", "apply_patch", "glob", "grep", "lsp", "symbols", "code_map", "verify", "send_message"],
   devops:      ["read", "write", "edit", "apply_patch", "bash", "glob", "grep", "webfetch", "send_message"],
   design:      ["read", "write", "glob", "grep", "webfetch", "send_message"],
-  data:        ["read", "write", "bash", "glob", "grep", "send_message"],
+  data:        ["read", "write", "bash", "glob", "grep", "symbols", "send_message"],
+  critic:      ["read", "glob", "grep", "lsp", "symbols", "code_map"],
 }
 
 // Parent → Worker (request)

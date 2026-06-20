@@ -17,7 +17,7 @@ const cache = new Map<string, CustomAgentDef[]>()
 export function loadCustomAgents(workdir: string): CustomAgentDef[] {
   if (cache.has(workdir)) return cache.get(workdir)!
 
-  const agentsDir = join(workdir, ".omnicod", "agents")
+  const agentsDir = join(workdir, ".aurict", "agents")
   if (!existsSync(agentsDir)) { cache.set(workdir, []); return [] }
 
   const defs: CustomAgentDef[] = []

@@ -187,6 +187,3 @@ IaC in GCP:
 | Cloud Storage | Object storage | Classes |
 | Vertex AI | ML platform | AutoML |
 | Cloud CDN | CDN | Global |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

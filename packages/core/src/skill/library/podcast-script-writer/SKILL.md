@@ -13,7 +13,7 @@ auto_load_when:
   - audio_production
   - interview_planning
   - media_production
-agent: researcher
+agent: content-ops
 tools:
   - markdown_writer
   - template_generator
@@ -273,6 +273,3 @@ Show Notes Template
 | **Guest** | Araştırma + kişiselleştirme | 3 makale oku, 1 podcast dinle |
 | **SEO** | Başlık + description + keywords | Podcast platformları için optimize et |
 | **Thumbnail** | YouTube'daysan: okunabilir, yüz + metin | Alt text'i de doldur |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

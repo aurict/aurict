@@ -6,10 +6,67 @@ import { countTokens } from "../provider/tokenizer.js"
 import type { SkillDef, LoadedSkill } from "./types.js"
 
 const MAX_TOKENS_PER_SKILL = 600     // tiktoken sayımı
-const DISK_CACHE_DIR       = join(homedir(), ".omnicod", "skill-cache")
+const DISK_CACHE_DIR       = join(homedir(), ".aurict", "skill-cache")
+
+// ─── Task tipi ve section öncelikleri ────────────────────────────────────────
+
+export type TaskType = "implement" | "debug" | "review" | "refactor" | "explain"
+
+const TASK_SECTION_PRIORITIES: Record<TaskType, string[][]> = {
+  implement: [
+    ["Examples",        "Implementation",  "Patterns"],
+    ["Key Rules",       "Core Rules",      "Rules"],
+    ["Quick Reference", "Quick Ref"],
+    ["Anti-Patterns",   "❌",              "Avoid"],
+    ["Decision Tree",   "When to use"],
+  ],
+  debug: [
+    ["Anti-Patterns",   "❌",              "Avoid"],
+    ["Decision Tree",   "When to use"],
+    ["Key Rules",       "Core Rules",      "Rules"],
+    ["Quick Reference", "Quick Ref"],
+    ["Examples",        "Implementation",  "Patterns"],
+  ],
+  review: [
+    ["Anti-Patterns",   "❌",              "Avoid"],
+    ["Key Rules",       "Core Rules",      "Rules"],
+    ["Quick Reference", "Quick Ref"],
+    ["Decision Tree",   "When to use"],
+    ["Examples",        "Implementation",  "Patterns"],
+  ],
+  refactor: [
+    ["Anti-Patterns",   "❌",              "Avoid"],
+    ["Key Rules",       "Core Rules",      "Rules"],
+    ["Examples",        "Implementation",  "Patterns"],
+    ["Decision Tree",   "When to use"],
+    ["Quick Reference", "Quick Ref"],
+  ],
+  explain: [
+    ["Quick Reference", "Quick Ref"],
+    ["Key Rules",       "Core Rules",      "Rules"],
+    ["Decision Tree",   "When to use"],
+    ["Examples",        "Implementation",  "Patterns"],
+    ["Anti-Patterns",   "❌",              "Avoid"],
+  ],
+}
+
+export function detectTaskType(userText: string): TaskType {
+  const t = userText.toLowerCase()
+  if (/\b(fix|error|bug|crash|fail|broken|exception|undefined is not|cannot read|doesn'?t work|not working|why (is|does|isn'?t)|what'?s wrong)\b/.test(t))
+    return "debug"
+  if (/\b(review|check this|look at this|is this (correct|right|good)|does this (look|seem)|thoughts on|feedback on|evaluate)\b/.test(t))
+    return "review"
+  if (/\b(refactor|clean up|restructur|reorganiz|simplif|extract this|improve the|technical debt)\b/.test(t))
+    return "refactor"
+  if (/\b(explain|what is|how does|what'?s the (difference|meaning)|why (does|is|would)|how (do|can) i understand)\b/.test(t))
+    return "explain"
+  return "implement"
+}
 
 // ─── Bellek içi cache ─────────────────────────────────────────────────────────
 const memCache = new Map<string, LoadedSkill>()
+// Adaptive cache: "${skillId}:${taskType}" → LoadedSkill (session-scoped, no disk cache)
+const adaptiveMemCache = new Map<string, LoadedSkill>()
 
 export async function loadSkill(def: SkillDef): Promise<LoadedSkill> {
   if (memCache.has(def.id)) return memCache.get(def.id)!
@@ -27,7 +84,7 @@ export async function loadSkill(def: SkillDef): Promise<LoadedSkill> {
 
   const { meta, body } = parseFrontmatter(raw)
   const description    = meta.description || def.name
-  const systemPrompt   = extractSystemPrompt(body, def.id)
+  const systemPrompt   = extractSystemPrompt(body)
   const tokenCount     = countTokens(systemPrompt)
 
   const loaded: LoadedSkill = { ...def, description, systemPrompt, tokenCount }
@@ -40,11 +97,37 @@ export async function loadSkills(defs: SkillDef[]): Promise<LoadedSkill[]> {
   return Promise.all(defs.map(loadSkill))
 }
 
-export function clearLoaderCache(): void { memCache.clear() }
+export function clearLoaderCache(): void {
+  memCache.clear()
+  adaptiveMemCache.clear()
+}
+
+/** Task tipine göre section önceliği değiştirilmiş skill yükle (session-scoped cache) */
+export async function loadSkillAdaptive(def: SkillDef, taskType: TaskType): Promise<LoadedSkill> {
+  const cacheKey = `${def.id}:${taskType}`
+  if (adaptiveMemCache.has(cacheKey)) return adaptiveMemCache.get(cacheKey)!
+
+  let raw = ""
+  try { raw = await Bun.file(def.contentPath).text() } catch {
+    const empty: LoadedSkill = { ...def, description: def.name, systemPrompt: "", tokenCount: 0 }
+    adaptiveMemCache.set(cacheKey, empty)
+    return empty
+  }
+
+  const { meta, body } = parseFrontmatter(raw)
+  const description    = meta.description || def.name
+  const priorities     = TASK_SECTION_PRIORITIES[taskType]
+  const systemPrompt   = extractSystemPromptWithPriorities(body, priorities)
+  const tokenCount     = countTokens(systemPrompt)
+
+  const loaded: LoadedSkill = { ...def, description, systemPrompt, tokenCount }
+  adaptiveMemCache.set(cacheKey, loaded)
+  return loaded
+}
 
 // ─── Sistem prompt çıkarımı ───────────────────────────────────────────────────
 
-const SECTION_PRIORITIES = [
+const DEFAULT_SECTION_PRIORITIES: string[][] = [
   ["Quick Reference",   "Quick Ref"],
   ["Anti-Patterns",     "❌",              "Avoid"],
   ["Decision Tree",     "When to use"],
@@ -52,30 +135,37 @@ const SECTION_PRIORITIES = [
   ["Implementation",    "Examples",        "Patterns"],
 ]
 
-function extractSystemPrompt(body: string, skillId: string): string {
+function extractSystemPromptWithPriorities(body: string, priorities: string[][]): string {
   const chunks: string[] = []
   let tokens = 0
 
-  for (const headings of SECTION_PRIORITIES) {
+  for (const headings of priorities) {
     const content = extractSection(body, headings)
     if (!content) continue
 
-    const chunk     = content
-    const chunkTok  = countTokens(chunk)
-
+    const chunkTok = countTokens(content)
     if (tokens + chunkTok > MAX_TOKENS_PER_SKILL) {
-      // Sığabildiği kadar al
       const available = MAX_TOKENS_PER_SKILL - tokens
-      if (available > 50) chunks.push(trimToTokens(chunk, available))
+      if (available > 50) chunks.push(trimToTokens(content, available))
       break
     }
 
-    chunks.push(chunk)
+    chunks.push(content)
     tokens += chunkTok
     if (tokens >= MAX_TOKENS_PER_SKILL) break
   }
 
+  // Fallback: numbered sections (## 1. Topic) — eski format skill'ler için
+  // Priority section bulunamadıysa body'nin ilk MAX_TOKENS_PER_SKILL token'ını al
+  if (chunks.length === 0 && body.trim()) {
+    return trimToTokens(body.trim(), MAX_TOKENS_PER_SKILL)
+  }
+
   return chunks.join("\n\n").trim()
+}
+
+function extractSystemPrompt(body: string): string {
+  return extractSystemPromptWithPriorities(body, DEFAULT_SECTION_PRIORITIES)
 }
 
 function extractSection(body: string, headings: string[]): string {

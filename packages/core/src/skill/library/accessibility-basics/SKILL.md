@@ -197,6 +197,112 @@ Tools decision:
 | AA | Error identification | Describe error in text |
 | AAA | Enhanced contrast 7:1 | For critical text |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+WCAG target level?
+├── New public-facing product          → AA (minimum acceptable)
+├── Legal/compliance requirement       → A + AA strictly
+├── Enterprise / government            → AAA for critical flows
+└── Internal tool, no legal exposure   → AA still recommended
+
+Custom interactive element needed?
+├── Native HTML button/link works      → use native (gets a11y for free)
+├── No native equivalent               → add role + aria-* + keyboard handler
+└── Icon-only button                   → add aria-label
+
+Focus management?
+├── Modal opens                        → move focus to modal, trap Tab inside
+├── Modal closes                       → return focus to trigger element
+├── Dynamic content inserted           → announce via aria-live or move focus
+└── Tooltip/popover                    → trigger keeps focus, Esc closes
+
+Error handling in forms?
+├── Inline validation                  → aria-invalid + aria-describedby on input
+├── Summary at top                     → move focus to first error on submit
+└── Success toast                      → aria-live="polite" region
+```
+
+---
+
+## Key Rules
+
+1. All text on background: minimum 4.5:1 contrast ratio (AA), 3:1 for large text (18px+)
+2. Every interactive element reachable by keyboard: Tab, Shift+Tab, Enter, Space
+3. Every `<img>` has `alt`: descriptive for informative, `alt=""` for decorative
+4. Semantic HTML first — `<button>`, `<nav>`, `<main>`, `<header>` give roles for free
+5. Focus outline never `display:none` or `outline:none` — if custom, keep visible
+6. `lang` attribute on `<html>` — screen readers use it to pick correct voice
+7. Test with real screen reader (NVDA/VoiceOver) — automated tools catch only 30-40%
+
+---
+
+## Implementation
+
+```tsx
+// Accessible modal with focus trap
+import { useEffect, useRef } from 'react'
+
+function Modal({ isOpen, onClose, title, children }: ModalProps) {
+  const firstFocusRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (isOpen) firstFocusRef.current?.focus()
+  }, [isOpen])
+
+  if (!isOpen) return null
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
+    >
+      <h2 id="modal-title">{title}</h2>
+      {children}
+      <button ref={firstFocusRef} onClick={onClose}>Close</button>
+    </div>
+  )
+}
+
+// Form field with accessible error
+function EmailField({ error }: { error?: string }) {
+  return (
+    <div>
+      <label htmlFor="email">Email</label>
+      <input
+        id="email"
+        type="email"
+        aria-invalid={!!error}
+        aria-describedby={error ? 'email-error' : undefined}
+      />
+      {error && (
+        <span id="email-error" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// Announce dynamic content
+function LiveRegion({ message }: { message: string }) {
+  return (
+    <div aria-live="polite" aria-atomic="true" className="sr-only">
+      {message}
+    </div>
+  )
+}
+
+// Icon-only button
+function DeleteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button onClick={onClick} aria-label="Delete item">
+      <TrashIcon aria-hidden="true" />
+    </button>
+  )
+}
+```

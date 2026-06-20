@@ -11,6 +11,7 @@ import {
   agentPool,
   questionService,
   readAttachmentFromPath,
+  extractSymbolBody,
   taskManager,
   detectUndercoverRepo,
   getCoordinatorSystemPrompt,
@@ -26,8 +27,8 @@ import {
   depSentinel,
   PlanGate,
   setDefault,
-} from "@omnicod/core"
-import type { PermissionRequest, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest } from "@omnicod/core"
+} from "@aurict/core"
+import type { PermissionRequest, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown } from "@aurict/core"
 
 import { parseSlashCommand, getCommand, allCommands } from "../commands/registry.js"
 import { Buddy, awardMessageXP } from "./Buddy.js"
@@ -58,9 +59,11 @@ import { PlanApprovalModal } from "./PlanApprovalModal.js"
 import { SettingsPanel }     from "./SettingsPanel.js"
 import { DesignWizard }      from "./DesignWizard.js"
 import type { DesignWizardResult } from "./DesignWizard.js"
+import type { UpdateInfo } from "../util/update-check.js"
+import { CURRENT_VERSION }  from "../util/update-check.js"
 import { readClipboard }     from "../util/clipboard.js"
 import { useMouseEvents }    from "./mouse.js"
-import { buildDesignPrompt, recordSystemUsed, recordSkillUsed, slugify } from "@omnicod/core"
+import { buildDesignPrompt, recordSystemUsed, recordSkillUsed, slugify } from "@aurict/core"
 import { saveDraft, loadDraft, clearDraft, hasPendingCrashReport, writeCrashReport } from "../util/draft.js"
 
 interface Props {
@@ -69,9 +72,28 @@ interface Props {
   workdir:         string
   system?:         string
   undercover?:     boolean
+  updatePromise?:  Promise<UpdateInfo | null>
 }
 
-export function App({ initialProvider, initialModel, workdir, system, undercover }: Props) {
+/**
+ * Model görev ortasında metin bırakıp durdu mu?
+ * Token kesintisi (açık kod bloğu) veya devam ifadesi varsa true döner.
+ * Yanlış pozitifi azaltmak için kasıtlı olarak muhafazakâr tutuldu.
+ */
+function stalledMidTask(text: string): boolean {
+  if (!text || text.length < 20) return false
+  const t = text.trimEnd()
+  // Kapalı olmayan kod bloğu — en güvenilir sinyal
+  const fences = (t.match(/```/g) ?? []).length
+  if (fences % 2 !== 0) return true
+  // Üç nokta ile bitmek (… veya ...) — kesilmiş metin
+  if (t.endsWith("…") || t.endsWith("...")) return true
+  // "devam edeceğim / will continue / let me now / şimdi yapacağım" sonunda durma
+  if (/(?:will\s+(?:now\s+)?continue|let me (?:now |proceed|continue)|devam edece[gğ]im|şimdi\s+\w+\s+yapaca[gğ]ım)[.…]?\s*$/i.test(t)) return true
+  return false
+}
+
+export function App({ initialProvider, initialModel, workdir, system, undercover, updatePromise }: Props) {
   const { exit } = useApp()
 
   const [provider,   setProviderState] = useState(initialProvider)
@@ -88,7 +110,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [attachPath,  setAttachPath]   = useState("")
   const [picker,     setPicker]        = useState<{ title: string; items: PickerItem[]; onSelect: (i: PickerItem) => void } | null>(null)
   const [prompt,     setPrompt]        = useState<{ title: string; placeholder: string | undefined; secret: boolean | undefined; onSubmit: (v: string) => void } | null>(null)
-  const [tokens,     setTokens]        = useState({ input: 0, output: 0 })
+  const [tokens,     setTokens]        = useState<TokenBreakdown>({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 })
   const [history,    setHistory]       = useState<CoreMessage[]>([])
   const [skillNames, setSkillNames]    = useState<string[]>([])
   const [tasks,      setTasks]         = useState<Task[]>([])
@@ -119,6 +141,20 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
   // Floating Task Panel
   const [taskPanelOpen, setTaskPanelOpen] = useState(false)
+
+  // Update notification
+  const [updateInfo,        setUpdateInfo]        = useState<UpdateInfo | null>(null)
+  const [updateDismissed,   setUpdateDismissed]   = useState(false)
+
+  // Draft save timestamp — triggers a brief "✓ saved" flash in StatusBar
+  const [draftSavedAt, setDraftSavedAt] = useState<number | undefined>(undefined)
+
+  // Streaming inline error
+  const [streamingError, setStreamingError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!updatePromise) return
+    updatePromise.then((info) => { if (info) setUpdateInfo(info) }).catch(() => {})
+  }, [])
 
   // Autopilot mode — tüm permission'ları otomatik onayla
   const [autopilotMode, setAutopilotMode] = useState(false)
@@ -156,6 +192,12 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   // Design Wizard
   const [designWizardOpen, setDesignWizardOpen] = useState(false)
 
+  // Herhangi bir tam-ekran overlay/modal açıkken true — useInput guard'ları bu flag'i kullanır.
+  // Yeni bir overlay state eklenirse buraya da eklenmeli.
+  const overlayOpen =
+    designWizardOpen || settingsOpen || cmdPaletteOpen || quickSearchOpen ||
+    !!planRequest || !!editingMsg || !!prompt || !!btwState || !!viewingSubagentId
+
   // Draft recovery
   const [draftRecovered, setDraftRecovered] = useState(false)
   const draftTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -170,8 +212,9 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const MAX_CHECKPOINTS = 20
 
   // Conversation Branches
-  interface ConvBranch { id: string; name: string; messages: DisplayMessage[]; history: CoreMessage[]; tokens: { input: number; output: number }; createdAt: number }
-  const [branches,        setBranches]        = useState<ConvBranch[]>([{ id: "main", name: "main", messages: [], history: [], tokens: { input: 0, output: 0 }, createdAt: Date.now() }])
+  interface ConvBranch { id: string; name: string; messages: DisplayMessage[]; history: CoreMessage[]; tokens: TokenBreakdown; createdAt: number }
+  const ZERO_TOKENS: TokenBreakdown = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 }
+  const [branches,        setBranches]        = useState<ConvBranch[]>([{ id: "main", name: "main", messages: [], history: [], tokens: ZERO_TOKENS, createdAt: Date.now() }])
   const [activeBranchIdx, setActiveBranchIdx] = useState(0)
 
   const mainSessionId   = useRef<string>(crypto.randomUUID())
@@ -182,6 +225,9 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const skipSubmitRef     = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const loadingRef         = useRef(false)
+
+  // Auto-continue: model görev ortasında durduğunda otomatik devam
+  const autoContinueRef  = useRef<{ needed: boolean; count: number }>({ needed: false, count: 0 })
 
   // Adaptive throttle refs
   const streamTextRef    = useRef("")
@@ -236,7 +282,10 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
   useEffect(() => {
     draftTimerRef.current = setInterval(() => {
-      if (inputRef.current.trim() && !loadingRef.current) saveDraft(inputRef.current)
+      if (inputRef.current.trim() && !loadingRef.current) {
+        saveDraft(inputRef.current)
+        setDraftSavedAt(Date.now())
+      }
     }, 5_000)
     return () => { if (draftTimerRef.current) clearInterval(draftTimerRef.current) }
   }, [])
@@ -351,7 +400,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       if (loading) return
       const clip = readClipboard()
       if (clip.type === "image") {
-        const att: import("@omnicod/core").Attachment = {
+        const att: import("@aurict/core").Attachment = {
           type:    "image",
           name:    clip.name,
           base64:  clip.base64,
@@ -461,11 +510,17 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       if (expandedContent)    { setExpandedContent(null); return }
       if (btwState)           { setBtwState(null); if (btwFrameRef.current) { clearInterval(btwFrameRef.current); btwFrameRef.current = null }; return }
       if (taskPanelOpen)      { setTaskPanelOpen(false); return }
+      if (updateInfo && !updateDismissed) { setUpdateDismissed(true); return }
       if (permission || picker || question) return
       if (attachInput)        { setAttachInput(false); setAttachPath(""); return }
       if (input?.startsWith("/")) { setInput(""); return }
       if (!loading) exit()
     }
+
+    // ESC işlendikten sonra: overlay açıkken tüm diğer kısayolları blokla.
+    // Ctrl+C (abort/exit) her zaman çalışır — bu guard'dan önce handle edildi.
+    // ESC her zaman çalışır — bu guard'dan önce handle edildi.
+    if (overlayOpen) return
   })
 
   // ── Setters ───────────────────────────────────────────────────────────────
@@ -611,11 +666,11 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       const newBranch: ConvBranch = {
         id: crypto.randomUUID(), name: newName,
         messages: messages.slice(), history: history.slice(),
-        tokens: { input: tokens.input, output: tokens.output }, createdAt: Date.now(),
+        tokens: { ...tokens }, createdAt: Date.now(),
       }
       setBranches((prev) => {
         const updated = [...prev]
-        updated[activeBranchIdx] = { ...updated[activeBranchIdx]!, messages: messages.slice(), history: history.slice(), tokens: { input: tokens.input, output: tokens.output } }
+        updated[activeBranchIdx] = { ...updated[activeBranchIdx]!, messages: messages.slice(), history: history.slice(), tokens: { ...tokens } }
         return [...updated, newBranch]
       })
       setActiveBranchIdx(branches.length)
@@ -625,7 +680,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       if (idx < 0 || idx >= branches.length || idx === activeBranchIdx) return
       setBranches((prev) => {
         const updated = [...prev]
-        updated[activeBranchIdx] = { ...updated[activeBranchIdx]!, messages: messages.slice(), history: history.slice(), tokens: { input: tokens.input, output: tokens.output } }
+        updated[activeBranchIdx] = { ...updated[activeBranchIdx]!, messages: messages.slice(), history: history.slice(), tokens: { ...tokens } }
         return updated
       })
       const target = branches[idx]!
@@ -703,7 +758,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       case "clear":
         setMessages([])
         setHistory([])
-        setTokens({ input: 0, output: 0 })
+        setTokens({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 })
         setContextTokens(0)
         setSessionTitle(undefined)
         isFirstMessage.current = true
@@ -756,23 +811,49 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     if (skipSubmitRef.current) { skipSubmitRef.current = false; return }
     let text = userInput.trim()
     if (!text) return
+    // Kullanıcı elle mesaj gönderince auto-continue sayacını sıfırla
+    autoContinueRef.current.count = 0
 
-    // @path.ext syntax — inline file attachments
-    const atRe = /@([\w./~-]+\.[a-zA-Z]{2,6})/g
+    // @path.ext[:symbol] syntax — file attachment or symbol context injection
+    // @auth.ts          → attach whole file (image) or inline code for text files
+    // @auth.ts:validate → inject only that function/class body as code block
+    const atRe = /@([\w./~-]+\.[a-zA-Z]{2,6})(?::(\w+))?/g
     const atMatches = [...text.matchAll(atRe)]
+    const symbolContextBlocks: string[] = []
     if (atMatches.length > 0) {
       for (const m of atMatches) {
-        const rawPath = m[1]!
-        const fullPath = rawPath.startsWith("~")
+        const rawPath    = m[1]!
+        const symbolName = m[2]   // may be undefined
+        const fullPath   = rawPath.startsWith("~")
           ? rawPath.replace("~", process.env["HOME"] ?? "~")
           : rawPath.startsWith("/") ? rawPath : `${workdirState}/${rawPath}`
-        try {
-          const att = await readAttachmentFromPath(fullPath)
-          setAttachments((prev) => [...prev, att])
-        } catch { /* ignore — leave @path in message */ }
+
+        if (symbolName) {
+          // Symbol context injection — extract just the function/class body
+          try {
+            const extracted = await extractSymbolBody(fullPath, symbolName)
+            if (extracted) {
+              const ext  = rawPath.slice(rawPath.lastIndexOf(".") + 1)
+              symbolContextBlocks.push(
+                `[Context: @${rawPath}:${symbolName} — lines ${extracted.startLine}-${extracted.endLine}]\n\`\`\`${ext}\n${extracted.code}\n\`\`\``
+              )
+            }
+          } catch { /* ignore */ }
+        } else {
+          // Whole-file attachment (existing behavior)
+          try {
+            const att = await readAttachmentFromPath(fullPath)
+            setAttachments((prev) => [...prev, att])
+          } catch { /* ignore — leave @path in message */ }
+        }
       }
-      // Remove @path references from message text
+      // Remove all @path[:symbol] references from message text
       text = text.replace(atRe, "").replace(/\s{2,}/g, " ").trim()
+    }
+
+    // Prepend symbol context blocks to the message
+    if (symbolContextBlocks.length > 0) {
+      text = symbolContextBlocks.join("\n\n") + (text ? "\n\n" + text : "")
     }
 
     setInput("")
@@ -789,6 +870,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       setSessionTitle(title)
     }
 
+    setStreamingError(null)
     const startTime = Date.now()
     const now       = Date.now()
     const controller = new AbortController()
@@ -926,8 +1008,15 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           streamReasonRef.current = ""
           setStreamingText(null)
           setStreamingReason(null)
-          setTokens((prev) => ({ input: prev.input + t.input, output: prev.output + t.output }))
-          setContextTokens(t.input)
+          setTokens((prev) => ({
+            input:     prev.input     + t.input,
+            output:    prev.output    + t.output,
+            cacheRead: prev.cacheRead + t.cacheRead,
+            cacheWrite:prev.cacheWrite+ t.cacheWrite,
+            reasoning: prev.reasoning + t.reasoning,
+          }))
+          // context window usage = all input tokens (fresh + cache reads + cache writes)
+          setContextTokens(t.input + t.cacheRead + t.cacheWrite)
           const duration = Date.now() - startTime
           if (duration > 15_000) notifyTaskDone(text, duration)
           if (!extractedRef.current) {
@@ -948,17 +1037,26 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             }
             return next
           })
+
+          // Stall tespiti: model görev ortasında metin bırakıp durduysa otomatik devam et
+          if (stalledMidTask(finalText) && autoContinueRef.current.count < 3) {
+            autoContinueRef.current = { needed: true, count: autoContinueRef.current.count + 1 }
+          } else {
+            autoContinueRef.current.needed = false
+          }
         },
       })
     } catch (err) {
       if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
       streamTextRef.current   = ""
       streamReasonRef.current = ""
+      const errMsg = err instanceof Error ? err.message : String(err)
+      setStreamingError(errMsg)
       setStreamingText(null)
       setStreamingReason(null)
       setMessages((prev) => {
         const next = prev.map(m => m.pending ? { ...m, pending: false } : m)
-        next.push({ id: crypto.randomUUID(), role: "error", content: err instanceof Error ? err.message : String(err) })
+        next.push({ id: crypto.randomUUID(), role: "error", content: errMsg })
         return next
       })
       if (Date.now() - startTime > 15_000) notifyError(text)
@@ -972,7 +1070,13 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       setActiveTool(undefined)
       abortControllerRef.current = null
       setAttachments([])
-      setQueuedInput((q) => { if (q) setTimeout(() => handleSubmit(q), 50); return undefined })
+      setQueuedInput((q) => {
+        const autoMsg = autoContinueRef.current.needed ? "continue" : undefined
+        autoContinueRef.current.needed = false
+        const toSend = q ?? autoMsg
+        if (toSend) setTimeout(() => handleSubmit(toSend), 80)
+        return undefined
+      })
     }
   }, [loading, history, provider, model, workdir, system, executeCommand])
 
@@ -984,6 +1088,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     : []
   const subIdx = subSessions.findIndex((s) => s.id === viewingSubagentId)
 
+  // Herhangi bir overlay/modal açıkken ChatInput'un useInput'u devre dışı
+  // kalmalı; aksi halde tuşlar (özellikle Enter ve yazılan metin) hem modal'a
   return (
     <ThemeContext.Provider value={activeTheme}>
     <KeybindingsProvider initialContext={loading ? "streaming" : "ready"}>
@@ -1007,7 +1113,20 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
         {/* Startup banner */}
         {!viewingSubagentId && messages.length === 0 && (
-          <StartupBanner version="v0.0.1" provider={provider} model={model} workdir={workdir} />
+          <StartupBanner version={`v${CURRENT_VERSION}`} provider={provider} model={model} workdir={workdir} />
+        )}
+
+        {/* Update notification */}
+        {updateInfo && !updateDismissed && (
+          <Box paddingX={2} marginBottom={1}>
+            <Text color="#f59e0b">◆ </Text>
+            <Text color="#fbbf24">Update available: </Text>
+            <Text color="#94a3b8">v{updateInfo.current}</Text>
+            <Text color="#64748b"> → </Text>
+            <Text color="#34d399" bold>v{updateInfo.latest}  </Text>
+            <Text color="#64748b">npm install -g aurict</Text>
+            <Text color="#475569">  (esc to dismiss)</Text>
+          </Box>
         )}
 
         {/* Session title */}
@@ -1059,11 +1178,12 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         ))}
 
         {/* Canlı streaming + skeleton (metin gelmeden önce shimmer) */}
-        {!viewingSubagentId && (loading || streamingText || streamingReason) && !activeTool && (
+        {!viewingSubagentId && (loading || streamingText || streamingReason || streamingError) && !activeTool && (
           <StreamingView
             text={streamingText}
             reasoning={streamingReason}
             skeleton={loading && !streamingText && !streamingReason}
+            {...(streamingError ? { error: streamingError } : {})}
           />
         )}
 
@@ -1229,14 +1349,17 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           />
           {permission
             ? <PermissionPrompt request={permission} onDecide={handlePermission} />
-            : !picker && !question && !attachInput && !expandedContent && (
+            : !picker && !question && !attachInput && !expandedContent && !overlayOpen && (
               <ChatInput
                 value={input}
                 onChange={setInput}
                 onSubmit={handleSubmit}
                 disabled={loading}
                 history={commandHistory}
-{...(queuedInput !== undefined ? { queued: queuedInput } : {})}
+                onPasteTruncated={(orig, trunc) =>
+                  addSystemMsg(`Paste truncated: ${orig.toLocaleString()} → ${trunc.toLocaleString()} chars`)
+                }
+                {...(queuedInput !== undefined ? { queued: queuedInput } : {})}
               />
             )
           }
@@ -1260,6 +1383,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           effort={effort}
           autopilotMode={autopilotMode}
           cols={termCols}
+          {...(draftSavedAt !== undefined ? { draftSavedAt } : {})}
           {...(branch !== undefined ? { branch } : {})}
           {...(() => {
             try {

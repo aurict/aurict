@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { Box, Text, useInput } from "ink"
-import { SessionManager, agentPool } from "@omnicod/core"
-import type { Part } from "@omnicod/core"
+import { SessionManager, agentPool } from "@aurict/core"
+import type { Part } from "@aurict/core"
 import { useTheme } from "../utils/theme.js"
 
 // Max parts loaded into memory for display — bounds RAM regardless of agent activity

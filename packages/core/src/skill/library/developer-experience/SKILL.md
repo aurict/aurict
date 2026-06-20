@@ -185,6 +185,3 @@ Inner Source Patterns:
 | Debugging | VS Code, logs | Medium |
 | Testing | Test running scripts | Medium |
 | Onboarding | Checklists | Medium |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

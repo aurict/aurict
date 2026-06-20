@@ -49,6 +49,8 @@ function scoreAll(deps: Set<string>, paths: string[]): SkillMatch[] {
   const results: SkillMatch[] = []
 
   for (const skill of SkillRegistry.all()) {
+    // content-ops skill'leri proje tespitinden muaf — sadece intent ile tetiklenir
+    if (skill.agent === "content-ops") continue
     const { score, reasons } = scoreSkill(skill, deps, paths)
     if (score > 0) {
       results.push({ skill, confidence: Math.min(score, 1), reasons })

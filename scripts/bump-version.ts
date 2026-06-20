@@ -19,7 +19,7 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 
 // package.json files to update (version field)
 const PACKAGES = [
-  "packages/omnicod/package.json",
+  "packages/aurict/package.json",
   "packages/cli/package.json",
   "packages/core/package.json",
   "packages/sdk/package.json",
@@ -34,8 +34,13 @@ const PACKAGES = [
 const SOURCE_FILES: Array<{ path: string; pattern: RegExp; replace: string }> = [
   {
     path: "packages/cli/src/index.ts",
-    pattern: /OmniCod v\d+\.\d+\.\d+/g,
-    replace: `OmniCod v${version}`,
+    pattern: /Aurict v\d+\.\d+\.\d+/g,
+    replace: `Aurict v${version}`,
+  },
+  {
+    path: "packages/cli/src/util/update-check.ts",
+    pattern: /CURRENT_VERSION = "\d+\.\d+\.\d+"/,
+    replace: `CURRENT_VERSION = "${version}"`,
   },
 ]
 
@@ -48,7 +53,7 @@ for (const rel of PACKAGES) {
 
   pkg.version = version
 
-  // Also update optionalDependencies if present (packages/omnicod)
+  // Also update optionalDependencies if present (packages/aurict)
   if (pkg.optionalDependencies) {
     for (const k of Object.keys(pkg.optionalDependencies)) {
       pkg.optionalDependencies[k] = version

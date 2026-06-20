@@ -13,7 +13,7 @@ auto_load_when:
   - career_development
   - professional_branding
   - recruitment
-agent: researcher
+agent: content-ops
 tools:
   - markdown_writer
   - template_generator
@@ -361,6 +361,3 @@ Cover Letter Structure (Optional but Recommended)
 | **Margins** | 1.5–2 cm | Kenar boşlukları tutarlı olsun |
 | **Dosya adı** | Ad_Soyad_Resume_2026.pdf | Kolay tanımlanır format |
 | **ATS kontrol** | Word'e yapıştır, bozulma var mı? | Düzgün görünüyorsa hazır |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

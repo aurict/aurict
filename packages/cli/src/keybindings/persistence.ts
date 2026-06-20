@@ -1,7 +1,7 @@
 /**
  * Keybindings — Persistence
  *
- * Kullanıcı keybinding override'larını ~/.omnicod/keybindings.json dosyasında
+ * Kullanıcı keybinding override'larını ~/.aurict/keybindings.json dosyasında
  * saklar. Dosya yoksa veya bozuksa sessizce default'a düşer.
  */
 
@@ -13,7 +13,7 @@ import { validateOverride } from "./validate.js"
 
 // ── Paths ────────────────────────────────────────────────────────────────────
 
-const CONFIG_DIR  = path.join(os.homedir(), ".omnicod")
+const CONFIG_DIR  = path.join(os.homedir(), ".aurict")
 const CONFIG_FILE = path.join(CONFIG_DIR, "keybindings.json")
 
 /** Config dosya yolunu döner (test ve inspect için). */

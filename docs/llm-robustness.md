@@ -1,6 +1,6 @@
 # LLM Robustness Layer
 
-OmniCod is designed to produce reliable results even when using weaker, cheaper, or poorly-calibrated models. The robustness layer is a set of framework-level features that compensate for common LLM failure modes — so reliability doesn't depend entirely on model quality.
+Aurict is designed to produce reliable results even when using weaker, cheaper, or poorly-calibrated models. The robustness layer is a set of framework-level features that compensate for common LLM failure modes — so reliability doesn't depend entirely on model quality.
 
 ---
 
@@ -65,7 +65,7 @@ Before executing `write` or `edit` on a TypeScript/JavaScript file, named import
 
 ```typescript
 // Model writes: import { phantomFn } from './utils'
-// OmniCod checks: does './utils.ts' exist AND does it export 'phantomFn'?
+// Aurict checks: does './utils.ts' exist AND does it export 'phantomFn'?
 // If file exists but export not found → block with diagnostic
 ```
 

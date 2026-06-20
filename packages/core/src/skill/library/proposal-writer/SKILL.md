@@ -4,7 +4,7 @@ description: "B2B teklif yazımı. Solution design, pricing table, terms ve case
 triggers:
   keywords: ["proposal", "teklif", "B2B proposal", "sales proposal", "quote", "RFP response"]
 auto_load_when: "Kullanıcı B2B teklifi, satış teklifi, fiyat teklifi veya RFP yanıtı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -476,6 +476,3 @@ Content:
 | Valid period | 30 days | 45-60 days |
 | Payment | Net 30 | 50/50 or annual |
 | Support | Business hours | 24/7 for enterprise |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

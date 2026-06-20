@@ -10,7 +10,7 @@ let gitDir: string
 
 beforeAll(() => {
   // Create a minimal git repo for positive git tests
-  gitDir = mkdtempSync(join(tmpdir(), "omnicod-git-"))
+  gitDir = mkdtempSync(join(tmpdir(), "aurict-git-"))
   try {
     execSync("git init",                          { cwd: gitDir, stdio: "pipe" })
     execSync("git config user.email t@t.com",    { cwd: gitDir, stdio: "pipe" })
@@ -24,7 +24,7 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), "omnicod-inject-"))
+  tmpDir = mkdtempSync(join(tmpdir(), "aurict-inject-"))
 })
 
 afterEach(() => {

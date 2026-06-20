@@ -5,7 +5,7 @@ triggers:
   keywords: ["toplantı özet", "action item", "karar defteri", "meeting summarizer", "meeting minutes", "toplantı tutanak"]
   contexts: ["team meeting", "project review", "standup", "one-on-one", "town hall"]
 auto_load_when: "Kullanıcı toplantı özetleme, action item çıkarma veya takip mekanizması oluşturma görevi istediğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
 
@@ -245,6 +245,3 @@ Uygulama:
 | Weekly: 1 sayfa | Departman | 1 çeyrek |
 | Monthly: 2-3 sayfa | Leadership | 1 yıl |
 | Strategic: Tam doküman | Executive | 3+ yıl |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

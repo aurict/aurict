@@ -4,7 +4,7 @@ description: "Sunum şablonu oluşturma. Slide yapısı, story flow, data visual
 triggers:
   keywords: ["pitch deck", "sunum şablonu", "investor pitch", "startup pitch", "sales deck", "presentation builder"]
 auto_load_when: "Kullanıcı pitch deck, yatırımcı sunumu, satış prezentasyonu veya slide yapısı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -355,6 +355,3 @@ Story:
 | Presentation | Actual speak | 7-10 min |
 | Q&A | Discussion | 10-20 min |
 | Per slide | Average | 30-45 sec |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

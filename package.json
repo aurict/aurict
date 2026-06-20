@@ -1,11 +1,11 @@
 {
-  "name": "omnicod",
+  "name": "aurict",
   "version": "1.0.1",
   "private": true,
   "workspaces": [
     "packages/core",
     "packages/cli",
-    "packages/omnicod",
+    "packages/aurict",
     "packages/cli-linux-x64",
     "packages/cli-linux-arm64",
     "packages/cli-darwin-x64",

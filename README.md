@@ -1,24 +1,26 @@
-# OmniCod
+# Aurict
 
 **A terminal-native AI coding assistant built for the way developers actually work.**
 
+**[aurict.dev](https://aurict.dev)** · [npm](https://www.npmjs.com/package/aurict) · [Docs](https://aurict.dev/docs) · [Changelog](https://aurict.dev/changelog)
+
 ```
-❯ omnicod
+❯ aurict
 ```
 
-OmniCod runs entirely in your terminal. No browser tabs, no Electron overhead, no clipboard
+Aurict runs entirely in your terminal. No browser tabs, no Electron overhead, no clipboard
 juggling between windows. You stay in the environment where you already write code, and the AI
 meets you there — with full access to your files, shell, language servers, and running processes.
 
 ---
 
-## Why OmniCod?
+## Why Aurict?
 
 Most AI coding tools are built around a chat interface that happens to have a code block.
-OmniCod is built around a **coding environment** that happens to have a chat interface.
+Aurict is built around a **coding environment** that happens to have a chat interface.
 
 **It understands your project before you say a word.**
-OmniCod scans your repository on startup — framework, language, package manager, config files,
+Aurict scans your repository on startup — framework, language, package manager, config files,
 existing conventions — and injects that context into every request. You don't have to explain
 that you're using Next.js with Tailwind and Drizzle. It already knows.
 
@@ -44,7 +46,7 @@ full-screen takeovers.
 
 **It exposes a local API.**
 Every session is reachable over HTTP with bearer-token auth. Pipe output from scripts, drive
-OmniCod from CI, or build your own tooling on top.
+Aurict from CI, or build your own tooling on top.
 
 ---
 
@@ -74,7 +76,7 @@ OmniCod from CI, or build your own tooling on top.
 | `webfetch` | HTTP fetch with automatic HTML stripping |
 | `websearch` | Web search integration |
 | `lsp` | TypeScript/Python language server diagnostics before edits |
-| `todo` | Project-local task tracking, persisted to `.omnicod/todos.json` |
+| `todo` | Project-local task tracking, persisted to `.aurict/todos.json` |
 | `apply_patch` | Unified diff patch application |
 | `subagent` | Spawn a typed specialist agent inline |
 
@@ -85,7 +87,7 @@ OmniCod from CI, or build your own tooling on top.
 | **Bash classifier** | Three-tier analysis (safe / warning / danger) before any shell command runs |
 | **Sandbox execution** | Risky executables (node, python, ruby, bash, sh scripts) run in Docker isolation |
 | **Permission system** | Per-tool allow/deny rules, wildcard path matching, always-allow list |
-| **JWT auth** | Bearer token on the local HTTP API, auto-generated at `~/.omnicod/server-token` |
+| **JWT auth** | Bearer token on the local HTTP API, auto-generated at `~/.aurict/server-token` |
 
 ### Design Agent
 
@@ -114,20 +116,20 @@ OmniCod from CI, or build your own tooling on top.
 Produces a single self-contained binary with the Bun runtime embedded — no runtime dependencies.
 
 ```bash
-git clone https://github.com/omnicod/omnicod
-cd omnicod
+git clone https://github.com/aurict-dev/aurict
+cd aurict
 bun install
 bun run build
 
 # Run
-./dist/omnicod
+./dist/aurict
 ```
 
 ### Global install via npm
 
 ```bash
-npm install -g @omnicod/cli
-omnicod
+npm install -g @aurict/cli
+aurict
 ```
 
 ### Requirements
@@ -142,22 +144,22 @@ omnicod
 
 ```bash
 # Set your API key
-omnicod /config set anthropic sk-ant-...
+aurict /config set anthropic sk-ant-...
 
 # Start the TUI
-omnicod
+aurict
 
 # Pipe mode — non-interactive single query
-echo "What does this function do?" | omnicod
+echo "What does this function do?" | aurict
 
 # Open a specific directory
-omnicod --workdir ~/projects/myapp
+aurict --workdir ~/projects/myapp
 ```
 
 ### CLI Flags
 
 ```
-omnicod [options]
+aurict [options]
 
   -p, --provider <id>    Provider to use (anthropic, openai, openrouter, google, ollama)
   -m, --model <id>       Model to use
@@ -225,7 +227,7 @@ omnicod [options]
 
 ## MCP Integration
 
-OmniCod reads MCP server configuration from `.omnicod/mcp.json`, using the same format
+Aurict reads MCP server configuration from `.aurict/mcp.json`, using the same format
 as `claude_desktop_config.json`.
 
 ```json
@@ -252,12 +254,12 @@ MCP tools appear alongside built-in tools and are subject to the same permission
 
 ## HTTP API
 
-OmniCod exposes a REST/SSE API on `127.0.0.1:7777`. All endpoints except `/v1/health`
+Aurict exposes a REST/SSE API on `127.0.0.1:7777`. All endpoints except `/v1/health`
 require bearer-token authentication.
 
 ```bash
 # Read the auto-generated token
-TOKEN=$(cat ~/.omnicod/server-token)
+TOKEN=$(cat ~/.aurict/server-token)
 
 # Health check (no auth required)
 curl http://localhost:7777/v1/health
@@ -279,17 +281,17 @@ curl -N http://localhost:7777/v1/session/<id>/message \
   -d '{"content":"refactor the auth module"}'
 ```
 
-The token is stored at `~/.omnicod/server-token` (mode 600) and regenerated if deleted.
+The token is stored at `~/.aurict/server-token` (mode 600) and regenerated if deleted.
 
 ---
 
 ## Configuration
 
-OmniCod stores all configuration in `~/.omnicod/`:
+Aurict stores all configuration in `~/.aurict/`:
 
 ```
-~/.omnicod/
-├── omnicod.db          # SQLite database (sessions, config, MCP servers)
+~/.aurict/
+├── aurict.db          # SQLite database (sessions, config, MCP servers)
 ├── server-token        # HTTP API bearer token (chmod 600)
 └── todos.json          # Project-local task list (per working directory)
 ```
@@ -297,8 +299,8 @@ OmniCod stores all configuration in `~/.omnicod/`:
 To set a default provider and model:
 
 ```bash
-omnicod /config set default.provider anthropic
-omnicod /config set default.model claude-sonnet-4-6
+aurict /config set default.provider anthropic
+aurict /config set default.model claude-sonnet-4-6
 ```
 
 ---
@@ -310,13 +312,13 @@ bun install              # install dependencies
 bun run dev              # start in development mode (hot reload)
 bun run test             # run all 131 tests
 bun run typecheck        # TypeScript strict check (both packages)
-bun run build            # compile to standalone binary → dist/omnicod
+bun run build            # compile to standalone binary → dist/aurict
 ```
 
 ### Project Structure
 
 ```
-omnicod/
+aurict/
 ├── packages/
 │   ├── core/            # Agent engine, tools, providers, storage, server
 │   │   ├── src/
@@ -334,9 +336,9 @@ omnicod/
 │       │   └── utils/       # Theme, highlight, token display
 │       └── test/            # 39 TUI component tests
 ├── scripts/
-│   └── build.ts         # bun build --compile → dist/omnicod
+│   └── build.ts         # bun build --compile → dist/aurict
 └── dist/
-    └── omnicod          # Compiled binary (~103 MB, Bun runtime embedded)
+    └── aurict          # Compiled binary (~103 MB, Bun runtime embedded)
 ```
 
 ### Running Tests
@@ -379,4 +381,4 @@ StatusBar, StartupBanner).
 
 ## License
 
-MIT
+MIT — see [aurict.dev](https://aurict.dev) for full documentation and community.

@@ -1,4 +1,4 @@
-# OmniCod Documentation
+# Aurict Documentation
 
 ## Getting started
 

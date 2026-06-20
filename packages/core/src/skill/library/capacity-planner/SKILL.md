@@ -5,7 +5,7 @@ triggers:
   keywords: ["capacity planning", "resource allocation", "utilization", "staffing", "conflict resolution"]
   contexts: ["resource planning", "team capacity", "project staffing", "workload balancing"]
 auto_load_when: "Kullanıcı kaynak planlama, utilizasyon hesaplama veya staffing model istediğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
 
@@ -363,6 +363,3 @@ Mitigation: Knowledge transfer plan
 | 3-6 months | Tactical | Aylık |
 | 6-12 months | Strategic | Quarterly |
 | 12+ months | Long-range | Annual |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

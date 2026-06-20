@@ -4,7 +4,7 @@ description: "Çoktan seçmeli soru oluşturma, difficulty seviyeleri, distracto
 triggers:
   keywords: ["quiz generator", "quiz", "soru bankası", "çoktan seçmeli", "distractor", "rubric", "test sorusu"]
 auto_load_when: "User asks to generate quiz questions, create a test bank, or design assessment items"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash"]
 ---
 
@@ -194,7 +194,3 @@ B. İyi Soru Kontrol Listesi
 | rpb (discrimination) | >0.20 | Ayrıt edicilik iyi |
 | Distractor popularity | >5% her biri | Çeldirici çalışıyor |
 | Top option % | <40% | Cevap dağılımı iyi |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

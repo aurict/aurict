@@ -164,7 +164,3 @@ Columnar vs Row-based:
 | Dask | Both | Python-native scaling |
 | Parquet | Storage | Analytical queries (OLAP) |
 | Delta Lake | Storage | Reliable data lakes with ACID |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

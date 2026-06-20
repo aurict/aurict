@@ -458,5 +458,86 @@ Secret Rotation:
 | Timeout | AbortController | 5-10s max processing |
 | Monitoring | Metrics | Track success/failure rate |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Process synchronously or async?
+├── Work < 200ms (quick DB write)      → process inline, respond 200
+├── Work > 200ms or might fail         → queue immediately, respond 200, process async
+└── Critical (payment, fulfillment)    → queue + DLQ + alert on failure
+
+Response code?
+├── Signature invalid                  → 401 (stops retries)
+├── Payload malformed                  → 400 (stops retries)
+├── Processing error                   → 200 (trigger provider retry later)
+└── Duplicate / already processed      → 200 (idempotent, pretend success)
+
+Idempotency storage?
+├── Redis available                    → SET webhook:${id} EX 86400
+├── Only DB available                  → unique index on externalId column
+└── Multi-instance with race risk      → Redis SETNX (atomic)
+```
+
+---
+
+## Key Rules
+
+1. Verify HMAC signature before any processing — reject 401 on mismatch
+2. Respond 200 immediately for provider retries; queue work async
+3. Use event `id` as idempotency key — check before processing, set after
+4. Never return 5xx for your processing failures — provider will retry indefinitely
+5. Log every webhook with correlation ID for debugging
+6. Dead letter queue for failed events after max retries
+7. Rate-limit the endpoint by IP (100/min) against DDoS
+
+---
+
+## Implementation
+
+```typescript
+// Stripe webhook handler — signature verification + idempotency
+import { createHmac, timingSafeEqual } from 'crypto'
+import { redis } from '@/lib/redis'
+import { queue } from '@/lib/queue'
+
+export async function POST(req: Request) {
+  const payload   = await req.text()
+  const signature = req.headers.get('stripe-signature') ?? ''
+
+  // 1. Verify signature (timing-safe comparison)
+  const [, ts, , v1] = signature.split(/[=,]/)
+  const expected = createHmac('sha256', process.env.STRIPE_WEBHOOK_SECRET!)
+    .update(`${ts}.${payload}`)
+    .digest('hex')
+  if (!timingSafeEqual(Buffer.from(expected), Buffer.from(v1 ?? ''))) {
+    return new Response('Invalid signature', { status: 401 })
+  }
+
+  const event = JSON.parse(payload)
+
+  // 2. Idempotency check
+  const key = `webhook:stripe:${event.id}`
+  const seen = await redis.set(key, '1', { NX: true, EX: 86400 })
+  if (!seen) return new Response('OK')  // duplicate, skip silently
+
+  // 3. Queue async, respond immediately
+  await queue.add('stripe-event', event)
+  return new Response('OK')
+}
+
+// Worker — process with retry + DLQ
+async function processStripeEvent(event: StripeEvent) {
+  switch (event.type) {
+    case 'checkout.session.completed':
+      await fulfillOrder(event.data.object)
+      break
+    case 'customer.subscription.deleted':
+      await downgradeUser(event.data.object.customer as string)
+      break
+    default:
+      // Unknown events: no-op (200 already sent)
+  }
+}
+```

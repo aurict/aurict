@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+"use strict"
+
+const { execFileSync } = require("node:child_process")
+const path = require("node:path")
+const os   = require("node:os")
+
+const PLATFORM = os.platform()   // 'linux' | 'darwin'
+const ARCH     = os.arch()       // 'x64'   | 'arm64'
+
+// Map Node.js arch names to our package suffix
+const ARCH_MAP = { x64: "x64", arm64: "arm64", aarch64: "arm64" }
+const arch = ARCH_MAP[ARCH]
+
+if (!arch || (PLATFORM !== "linux" && PLATFORM !== "darwin")) {
+  console.error(
+    `aurict: unsupported platform ${PLATFORM}/${ARCH}\n` +
+    `Supported: linux/x64, linux/arm64, darwin/x64, darwin/arm64\n` +
+    `Build from source: https://github.com/aurict-dev/aurict`
+  )
+  process.exit(1)
+}
+
+const pkgName = `@aurict/cli-${PLATFORM}-${arch}`
+
+let binPath
+try {
+  // Resolve the platform-specific binary from optionalDependencies
+  const pkgJson = require.resolve(`${pkgName}/package.json`)
+  binPath = path.join(path.dirname(pkgJson), "bin", "aurict")
+} catch {
+  console.error(
+    `aurict: could not find platform package "${pkgName}"\n` +
+    `Try reinstalling: npm install -g aurict`
+  )
+  process.exit(1)
+}
+
+try {
+  execFileSync(binPath, process.argv.slice(2), { stdio: "inherit" })
+} catch (err) {
+  process.exit(err.status ?? 1)
+}

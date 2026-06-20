@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
-import type { PermissionRequest } from "@omnicod/core"
+import type { PermissionRequest } from "@aurict/core"
 
 type Decision = "allow" | "allow_once" | "deny" | "deny_abort"
 

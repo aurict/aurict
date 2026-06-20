@@ -7,6 +7,6 @@ export default defineConfig({
   out: "./packages/core/src/storage/migrations",
   dialect: "sqlite",
   dbCredentials: {
-    url: join(homedir(), ".omnicod", "omnicod.db"),
+    url: join(homedir(), ".aurict", "aurict.db"),
   },
 })

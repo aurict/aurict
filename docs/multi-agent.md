@@ -2,7 +2,7 @@
 
 ## Overview
 
-OmniCod runs long tasks by distributing work across a pool of typed specialist agents. Each agent runs in an isolated Bun Worker thread with its own tool scope, system prompt, and context window.
+Aurict runs long tasks by distributing work across a pool of typed specialist agents. Each agent runs in an isolated Bun Worker thread with its own tool scope, system prompt, and context window.
 
 ```
 User request
@@ -48,7 +48,7 @@ Enable coordinator mode to have the main agent act as a task decomposer and orch
 Or from the command line:
 
 ```bash
-omnicod --coordinator
+aurict --coordinator
 ```
 
 In coordinator mode:
@@ -78,10 +78,10 @@ The pool manages up to 10 concurrent workers. Workers are reused across tasks wi
 
 ```bash
 # View pool status
-omnicod /agents
+aurict /agents
 
 # Kill a stuck worker
-omnicod /agents kill <worker-id>
+aurict /agents kill <worker-id>
 ```
 
 Worker timeout: **5 minutes** per task. Long-running tasks should be broken into smaller subtasks by the coordinator.
@@ -90,7 +90,7 @@ Worker timeout: **5 minutes** per task. Long-running tasks should be broken into
 
 ## Custom agents
 
-Define custom agent types in `<workdir>/.omnicod/agents.json`:
+Define custom agent types in `<workdir>/.aurict/agents.json`:
 
 ```json
 [
@@ -115,17 +115,17 @@ Invoke with:
 
 ## Undercover mode
 
-For monorepos with their own AI conventions (e.g., a repo that already has an `AGENTS.md` defining specific agent behavior), OmniCod detects this and runs in undercover mode — respecting the existing conventions without overriding them.
+For monorepos with their own AI conventions (e.g., a repo that already has an `AGENTS.md` defining specific agent behavior), Aurict detects this and runs in undercover mode — respecting the existing conventions without overriding them.
 
 ```bash
-omnicod --undercover
+aurict --undercover
 ```
 
 ---
 
 ## Autopilot mode
 
-In autopilot mode, OmniCod executes multi-step tasks without asking for confirmation on safe operations:
+In autopilot mode, Aurict executes multi-step tasks without asking for confirmation on safe operations:
 
 ```
 /autopilot

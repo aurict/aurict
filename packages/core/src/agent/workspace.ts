@@ -7,12 +7,12 @@ import { join } from "path"
  * Her parent session için bir dizin açılır.
  * Aynı session'dan spawn edilen tüm subagentlar bu dizini okuyup yazabilir.
  *
- * Dizin: {workdir}/.omnicod/sessions/{parentId}/workspace/
+ * Dizin: {workdir}/.aurict/sessions/{parentId}/workspace/
  */
 
 export function getWorkspaceDir(workdir: string, parentSessionId: string): string {
   // İlk 8 karakter — kısa ama yeterince benzersiz
-  return join(workdir, ".omnicod", "sessions", parentSessionId.slice(0, 8), "workspace")
+  return join(workdir, ".aurict", "sessions", parentSessionId.slice(0, 8), "workspace")
 }
 
 export function ensureWorkspace(workdir: string, parentSessionId: string): string {
@@ -27,6 +27,30 @@ export function ensureWorkspace(workdir: string, parentSessionId: string): strin
  */
 export function agentFindingsPath(workspaceDir: string, agentType: string): string {
   return join(workspaceDir, `${agentType}.md`)
+}
+
+/**
+ * Workspace'deki tüm findings dosyalarını okur ve birleştirir.
+ * Coordinator agent sentez aşamasında bunu kullanır.
+ */
+export async function readWorkspaceFindings(
+  workdir:         string,
+  parentSessionId: string,
+): Promise<{ agentType: string; content: string }[]> {
+  const dir = getWorkspaceDir(workdir, parentSessionId)
+  try {
+    const { readdir, readFile } = await import("node:fs/promises")
+    const files = await readdir(dir).catch(() => [] as string[])
+    const mdFiles = files.filter(f => f.endsWith(".md"))
+    return Promise.all(
+      mdFiles.map(async (f) => ({
+        agentType: f.replace(/\.md$/, ""),
+        content:   (await readFile(join(dir, f), "utf8")).trim(),
+      }))
+    )
+  } catch {
+    return []
+  }
 }
 
 /**

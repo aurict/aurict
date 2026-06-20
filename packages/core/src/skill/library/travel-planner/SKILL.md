@@ -11,7 +11,7 @@ auto_load_when:
   - Kullanıcı seyahat, tatil, gezi kelimelerini kullanır
   - Uçuş, otel, konaklama talepleri
   - Şehir rehberi veya turistik bilgi istekleri
-agent: docs-agent
+agent: content-ops
 tools:
   - web-search
   - currency-converter
@@ -195,6 +195,3 @@ KARŞILAŞTIRMA MATRİSİ
 ---
 
 *Travel Planner v1.0 — Bon voyage!*
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

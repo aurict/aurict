@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { join } from "path"
-import { readFileSync, writeFileSync, mkdirSync } from "fs"
+import { readFile, writeFile, mkdir } from "fs/promises"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
 interface TodoItem {
@@ -11,17 +11,17 @@ interface TodoItem {
 }
 
 function todoPath(workdir: string): string {
-  return join(workdir, ".omnicod", "todos.json")
+  return join(workdir, ".aurict", "todos.json")
 }
 
-function load(workdir: string): TodoItem[] {
-  try { return JSON.parse(readFileSync(todoPath(workdir), "utf8")) as TodoItem[] }
+async function load(workdir: string): Promise<TodoItem[]> {
+  try { return JSON.parse(await readFile(todoPath(workdir), "utf8")) as TodoItem[] }
   catch { return [] }
 }
 
-function save(workdir: string, items: TodoItem[]): void {
-  mkdirSync(join(workdir, ".omnicod"), { recursive: true })
-  writeFileSync(todoPath(workdir), JSON.stringify(items, null, 2))
+async function save(workdir: string, items: TodoItem[]): Promise<void> {
+  await mkdir(join(workdir, ".aurict"), { recursive: true })
+  await writeFile(todoPath(workdir), JSON.stringify(items, null, 2))
 }
 
 export const todoTool: ToolDef = {
@@ -34,7 +34,7 @@ export const todoTool: ToolDef = {
   }),
   async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
     const action = String(args["action"])
-    const todos  = load(ctx.workdir)
+    const todos  = await load(ctx.workdir)
 
     if (action === "list") {
       if (!todos.length) return { output: "(no todos)" }
@@ -50,7 +50,7 @@ export const todoTool: ToolDef = {
       if (!text) return { output: "", error: "text is required for add" }
       const item: TodoItem = { id: crypto.randomUUID(), text, done: false, created: new Date().toISOString() }
       todos.push(item)
-      save(ctx.workdir, todos)
+      await save(ctx.workdir, todos)
       return { output: `Added: [${item.id.slice(0, 6)}] ${text}` }
     }
 
@@ -61,11 +61,11 @@ export const todoTool: ToolDef = {
 
       if (action === "complete") {
         todos[idx]!.done = true
-        save(ctx.workdir, todos)
+        await save(ctx.workdir, todos)
         return { output: `Done: ${todos[idx]!.text}` }
       } else {
         const removed = todos.splice(idx, 1)[0]!
-        save(ctx.workdir, todos)
+        await save(ctx.workdir, todos)
         return { output: `Deleted: ${removed.text}` }
       }
     }

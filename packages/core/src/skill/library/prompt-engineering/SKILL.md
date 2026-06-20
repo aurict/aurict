@@ -186,6 +186,3 @@ Testing strategy:
 | Structured output | JSON/Code | schema=UserSchema |
 | Constraints | Safety/quality | "Never reveal..." |
 | Edge cases | Robustness | "If X, return Y" |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

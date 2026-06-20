@@ -1,16 +1,16 @@
 /**
  * User-configurable hooks loaded from:
- *   ~/.omnicod/hooks.json  (global)
- *   .omnicod/hooks.json    (project — merged on top)
+ *   ~/.aurict/hooks.json  (global)
+ *   .aurict/hooks.json    (project — merged on top)
  *
  * Format:
  * {
- *   "v1.session.start":  [{ "shell": "notify-send 'OmniCod started'" }],
- *   "v1.tool.after":     [{ "shell": "echo done >> ~/omnicod.log" }],
+ *   "v1.session.start":  [{ "shell": "notify-send 'Aurict started'" }],
+ *   "v1.tool.after":     [{ "shell": "echo done >> ~/aurict.log" }],
  *   "v1.session.end":    [{ "shell": "osascript -e 'display notification \"Done\"'" }]
  * }
  *
- * Each shell command receives the hook payload as JSON in the OMNICOD_HOOK_PAYLOAD env var.
+ * Each shell command receives the hook payload as JSON in the AURICT_HOOK_PAYLOAD env var.
  * Shell hooks run with a 5-second timeout and do NOT block the main flow on error.
  */
 
@@ -32,7 +32,7 @@ function loadHooksFile(path: string): UserHooksFile {
   try {
     return JSON.parse(readFileSync(path, "utf8")) as UserHooksFile
   } catch {
-    console.error(`[omnicod] Warning: failed to parse hooks file: ${path}`)
+    console.error(`[aurict] Warning: failed to parse hooks file: ${path}`)
     return {}
   }
 }
@@ -56,7 +56,7 @@ function runShellHook(command: string, payload: unknown): void {
       timeout: SHELL_TIMEOUT_MS,
       env: {
         ...process.env,
-        OMNICOD_HOOK_PAYLOAD: JSON.stringify(payload),
+        AURICT_HOOK_PAYLOAD: JSON.stringify(payload),
       },
       stdio: "ignore",
     })
@@ -71,8 +71,8 @@ export function loadUserHooks(projectDir: string): void {
   if (registered) return
   registered = true
 
-  const globalPath  = join(homedir(), ".omnicod", "hooks.json")
-  const projectPath = join(projectDir, ".omnicod", "hooks.json")
+  const globalPath  = join(homedir(), ".aurict", "hooks.json")
+  const projectPath = join(projectDir, ".aurict", "hooks.json")
 
   const globalHooks  = loadHooksFile(globalPath)
   const projectHooks = loadHooksFile(projectPath)
@@ -93,5 +93,5 @@ export function loadUserHooks(projectDir: string): void {
   }
 
   const eventCount = Object.keys(merged).filter(k => (merged[k]?.length ?? 0) > 0).length
-  console.error(`[omnicod] User hooks: ${entryCount} handler${entryCount !== 1 ? "s" : ""} across ${eventCount} event${eventCount !== 1 ? "s" : ""}`)
+  console.error(`[aurict] User hooks: ${entryCount} handler${entryCount !== 1 ? "s" : ""} across ${eventCount} event${eventCount !== 1 ? "s" : ""}`)
 }

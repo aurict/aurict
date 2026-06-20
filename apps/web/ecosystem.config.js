@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "omnicod-web",
+      name: "aurict-web",
       script: "bun",
       args: "run start",
       cwd: "./",

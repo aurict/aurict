@@ -180,6 +180,3 @@ redirect(session.url!);
 ❌ Not handling webhook retries idempotently
 ✅ Check if order already processed before updating DB
 ```
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish.

@@ -5,7 +5,7 @@ triggers:
   keywords: ["okr", "objective", "key result", "quarter planning", "hedef takip", "performans"]
   contexts: ["quarterly planning", "team OKR", "company OKR", "personal OKR", "check-in"]
 auto_load_when: "Kullanıcı OKR sistemi kurma, takip etme veya quarter planlama istediğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
 
@@ -318,6 +318,3 @@ Lessons: Obj2 için daha fazla
 | Vertical | Üst-alttan aşağıya | Company → Team → Individual |
 | Horizontal | Ekipler arası | Engineering ↔ Product ↔ Sales |
 | Cross-functional | Çapraz fonksiyonel | Support + Product → Customer Success |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

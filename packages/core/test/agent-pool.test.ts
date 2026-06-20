@@ -33,8 +33,12 @@ describe("AGENT_TYPE_TOOLS", () => {
     }
   })
 
-  it("coordinator has only subagent + send_message (dispatch-only)", () => {
-    expect(AGENT_TYPE_TOOLS.coordinator).toEqual(["subagent", "send_message"])
+  it("coordinator has dispatch tools (subagent, send_message, scratchpad, critique)", () => {
+    // Coordinator: orchestrator agent — subagent spawn + send_message + scratchpad + critique
+    expect(AGENT_TYPE_TOOLS.coordinator).toContain("subagent")
+    expect(AGENT_TYPE_TOOLS.coordinator).toContain("send_message")
+    expect(AGENT_TYPE_TOOLS.coordinator).toContain("scratchpad")
+    expect(AGENT_TYPE_TOOLS.coordinator).toContain("critique")
   })
 
   it("coordinator has NO read/write/bash", () => {
@@ -82,9 +86,11 @@ describe("AGENT_TYPE_TOOLS", () => {
     }
   })
 
-  it("all agent types include send_message", () => {
+  it("all agent types (except critic) include send_message", () => {
     const types = Object.keys(AGENT_TYPE_TOOLS) as Array<keyof typeof AGENT_TYPE_TOOLS>
     for (const t of types) {
+      // Critic agent read-only, sadece rapor verir — mesaj göndermez
+      if (t === "critic") continue
       expect(AGENT_TYPE_TOOLS[t]).toContain("send_message")
     }
   })

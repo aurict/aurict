@@ -1,3 +1,13 @@
+---
+name: html-to-pdf
+description: "HTML → PDF pipeline using Playwright. A4, print-optimized, page-overflow-free professional documents."
+triggers:
+  keywords: ["pdf", "html to pdf", "playwright pdf", "print pdf", "generate pdf", "render pdf"]
+auto_load_when: "Generating or rendering PDF documents from HTML content via Playwright"
+agent: code
+tools: ["Read", "Write", "Bash"]
+---
+
 # Skill: html-to-pdf
 
 Professional document generation via HTML → PDF pipeline using Playwright.
@@ -171,7 +181,3 @@ img { max-width: 100%; height: auto; }
 | Use external fonts with `@import` | Embed fonts as base64 or use system fonts |
 | Generate PDF from React component directly | Render to static HTML first, then PDF |
 | Fixed pixel heights on sections | Use `min-height` or `padding` instead |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

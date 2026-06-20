@@ -14,16 +14,28 @@ const DEFAULT_RULES: PermissionRule[] = [
   { tool: "write", pattern: "/usr/*",     action: "deny",   scope: "global" },
   { tool: "write", pattern: "/sys/*",     action: "deny",   scope: "global" },
 
-  // ── Always-safe read-only tools ───────────────────────────────────────────
-  { tool: "read",       pattern: "*", action: "allow", scope: "global" },
-  { tool: "glob",       pattern: "*", action: "allow", scope: "global" },
-  { tool: "grep",       pattern: "*", action: "allow", scope: "global" },
-  { tool: "websearch",  pattern: "*", action: "allow", scope: "global" },
-  { tool: "webfetch",   pattern: "*", action: "allow", scope: "global" },
-  { tool: "lsp",        pattern: "*", action: "allow", scope: "global" },
+  // ── Always-safe read-only / utility tools ────────────────────────────────
+  { tool: "read",        pattern: "*", action: "allow", scope: "global" },
+  { tool: "glob",        pattern: "*", action: "allow", scope: "global" },
+  { tool: "grep",        pattern: "*", action: "allow", scope: "global" },
+  { tool: "websearch",   pattern: "*", action: "allow", scope: "global" },
+  { tool: "webfetch",    pattern: "*", action: "allow", scope: "global" },
+  { tool: "lsp",         pattern: "*", action: "allow", scope: "global" },
+  { tool: "symbols",     pattern: "*", action: "allow", scope: "global" },
+  { tool: "code_map",    pattern: "*", action: "allow", scope: "global" },
+  { tool: "load_skill",  pattern: "*", action: "allow", scope: "global" },
+  { tool: "http_request", pattern: "*", action: "allow", scope: "global" },
+  { tool: "jwt_decode",  pattern: "*", action: "allow", scope: "global" },
+  { tool: "regex_test",  pattern: "*", action: "allow", scope: "global" },
+  { tool: "jq",          pattern: "*", action: "allow", scope: "global" },
+  { tool: "pptx",        pattern: "*", action: "allow", scope: "global" },
+  { tool: "render_pdf",  pattern: "*", action: "allow", scope: "global" },
+  { tool: "chart",       pattern: "*", action: "allow", scope: "global" },
+  { tool: "mermaid",     pattern: "*", action: "allow", scope: "global" },
 
   // ── Agent / coordination tools (no destructive side-effects) ─────────────
   { tool: "subagent",       pattern: "*", action: "allow", scope: "global" },
+  { tool: "send_message",   pattern: "*", action: "allow", scope: "global" },
   { tool: "task",           pattern: "*", action: "allow", scope: "global" },
   { tool: "task_create",    pattern: "*", action: "allow", scope: "global" },
   { tool: "task_update",    pattern: "*", action: "allow", scope: "global" },
@@ -33,6 +45,9 @@ const DEFAULT_RULES: PermissionRule[] = [
   { tool: "memory",     pattern: "*", action: "allow", scope: "global" },
   { tool: "todo",       pattern: "*", action: "allow", scope: "global" },
   { tool: "question",   pattern: "*", action: "allow", scope: "global" },
+  { tool: "scratchpad", pattern: "*", action: "allow", scope: "global" },
+  { tool: "verify",     pattern: "*", action: "allow", scope: "global" },
+  { tool: "critique",   pattern: "*", action: "allow", scope: "global" },
 ]
 
 const rules: PermissionRule[] = [...DEFAULT_RULES]

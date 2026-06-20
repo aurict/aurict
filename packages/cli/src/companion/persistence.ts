@@ -5,7 +5,7 @@ import type { CompanionState } from "./types.js"
 import { SPECIES } from "./species.js"
 import { HATS } from "./hats.js"
 
-const CONFIG_DIR  = join(homedir(), ".omnicod")
+const CONFIG_DIR  = join(homedir(), ".aurict")
 const STATE_FILE  = join(CONFIG_DIR, "companion.json")
 
 const DEFAULT_STATE: CompanionState = {

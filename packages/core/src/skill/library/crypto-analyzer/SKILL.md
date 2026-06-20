@@ -4,7 +4,7 @@ description: "Kripto para trendleri ve grafik analizi. Teknik indikatörler (RSI
 triggers:
   keywords: ["kripto analiz", "crypto analiz", "teknik analiz", "trading", "RSI", "MACD", "bitcoin analiz", "altcoin"]
 auto_load_when: "Kullanıcı kripto para analizi, teknik analiz veya trading stratejisi taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -386,6 +386,3 @@ function piyasaDeğeri(coin) {
 | 25-50 | Korku | Belirsiz |
 | 50-75 | Açgözlülük | Yükseliş |
 | 75-100 | Aşırı Açgörlük | Tepe |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -208,6 +208,3 @@ export async function POST(req: Request) {
 ❌ Building custom user sync without webhooks
 ✅ Use clerk webhooks (svix) to keep your DB in sync
 ```
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish.

@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
- * Cross-compile OmniCod for all supported platforms.
+ * Cross-compile Aurict for all supported platforms.
  *
  * Outputs:
- *   dist/omnicod-linux-x64
- *   dist/omnicod-linux-arm64
- *   dist/omnicod-darwin-x64
- *   dist/omnicod-darwin-arm64
+ *   dist/aurict-linux-x64
+ *   dist/aurict-linux-arm64
+ *   dist/aurict-darwin-x64
+ *   dist/aurict-darwin-arm64
  *
  * Then copies each binary into its platform package directory so
  * `bun run publish` can publish them directly.
@@ -61,7 +61,7 @@ if (targets.length === 0) {
 let allOk = true
 
 for (const { id, bunTarget, exe } of targets) {
-  const outSuffix = exe ? `omnicod-${id}.exe` : `omnicod-${id}`
+  const outSuffix = exe ? `aurict-${id}.exe` : `aurict-${id}`
   const outFile   = join(DIST, outSuffix)
   console.log(`\n▶ Building ${id}…`)
 
@@ -89,7 +89,7 @@ for (const { id, bunTarget, exe } of targets) {
 
   // Copy into platform package so `npm publish` picks it up
   const pkgBin  = join(ROOT, `packages/cli-${id}/bin`)
-  const binName = exe ? "omnicod.exe" : "omnicod"
+  const binName = exe ? "aurict.exe" : "aurict"
   mkdirSync(pkgBin, { recursive: true })
   copyFileSync(outFile, join(pkgBin, binName))
   try { chmodSync(join(pkgBin, binName), 0o755) } catch { /* Windows .exe */ }

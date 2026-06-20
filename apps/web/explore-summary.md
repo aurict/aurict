@@ -42,7 +42,7 @@
 - Runs `bun server.js` in production
 
 ### Ecosystem Config (PM2)
-- Process: `omnicod-web`, port 3376, 1 instance, 512MB max
+- Process: `aurict-web`, port 3376, 1 instance, 512MB max
 
 ### Environment Variables
 - `RESEND_API_KEY=your_resend_api_key_here`
@@ -94,9 +94,9 @@ apps/web/src/
 
 ### `src/app/layout.tsx` — Root Layout
 - Geist Sans + Geist Mono fonts
-- Metadata: "OmniCod — Terminal AI Coding Assistant"
+- Metadata: "Aurict — Terminal AI Coding Assistant"
 - Dark background (`#0a0a0a`), film grain overlay
-- Site URL: `https://omnicod.dev`
+- Site URL: `https://aurict.dev`
 
 ### `src/app/page.tsx` — Home Page
 - Composes: Nav → Hero → Features → Install → Waitlist → Footer

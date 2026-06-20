@@ -4,7 +4,7 @@ description: "NPS/CSAT anketleri. Question design. Response optimization. Analys
 triggers:
   keywords: ["satisfaction survey creator", "memnuniyet anketi", "nps anketi", "csat", "müşteri memnuniyeti ölçümü"]
 auto_load_when: "Kullanıcı NPS/CSAT anketleri oluşturmayı, soru tasarlamayı veya anket analizi yapmayı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -340,7 +340,3 @@ interface SatisfactionSurveyConfig {
   };
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

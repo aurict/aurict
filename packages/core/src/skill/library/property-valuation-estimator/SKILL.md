@@ -13,7 +13,7 @@ auto_load_when:
   - investment_analysis
   - financial_consulting
   - appraisal_services
-agent: researcher
+agent: content-ops
 tools:
   - markdown_writer
   - template_generator
@@ -331,6 +331,3 @@ Market Approach — Macro Level
 | **Arsa değeri** | Arsa m² × Birim arsa fiyatı | Karşılaştırma yoluyla |
 | **Inşaat maliyeti** | m² × Birim maliyet (TL/m²) | 2026 İstanbul: ~25.000 TL/m² |
 | **Değer aralığı** | Min düzeltilmiş – maks düzeltilmiş | ±%10 marj ile sun |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

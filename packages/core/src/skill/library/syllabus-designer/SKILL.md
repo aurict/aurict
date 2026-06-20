@@ -4,7 +4,7 @@ description: "Ders müfredatı tasarımı, haftalık plan, okuma listesi ve asse
 triggers:
   keywords: ["syllabus", "müfredat", "ders programı", "course design", "weekly plan", "okuma listesi", "assessment"]
 auto_load_when: "User asks to design a course syllabus, create a weekly schedule, or build an assessment calendar"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash"]
 ---
 
@@ -223,7 +223,3 @@ C. Haftalık Okuma Atama Formatı
 | İçerik sunumu | Lecture | 20 dk |
 | Tartışma/etkinlik | Active | 20 dk |
 | Kapanış/sentez | Wrap | 10 dk |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

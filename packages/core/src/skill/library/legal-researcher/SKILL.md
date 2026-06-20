@@ -4,7 +4,7 @@ description: "Hukuki araştırma, içtihat tarama, mevzuat takibi, Yargıtay kar
 triggers:
   keywords: ["hukuki araştırma", "içtihat", "mevzuat", "Yargıtay", "kanun araştırması", "legal research"]
 auto_load_when: "Kullanıcı hukuki konu araştırması, içtihat tarama, mevzuat sorgulama veya hukuki makale talep eder"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "WebFetch", "WebSearch"]
 ---
 
@@ -228,7 +228,3 @@ FAZ 5: GÖZDEN GEÇİRME
 ---
 
 *Uyarı: Bu araştırma rehberi akademik ve profesyonel kullanım içindir. Hukuki danışmanlık yerine geçmez.*
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

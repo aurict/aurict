@@ -176,7 +176,3 @@ Aggregation:
 | Transactions | session.withTransaction() | Requires replica set |
 | TTL expiry | createIndex + expireAfterSeconds | Auto-cleanup |
 | Full-text search | $text index | Or Atlas Search for advanced |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

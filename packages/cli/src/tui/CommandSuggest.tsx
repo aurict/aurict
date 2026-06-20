@@ -20,14 +20,16 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
   // Filter değişince seçimi sıfırla
   useEffect(() => { setIdx(0) }, [filter])
 
-  const filtered = commands.filter((c) => {
+  const allMatches = commands.filter((c) => {
     const f = filter.toLowerCase()
     return (
       c.name.startsWith(f) ||
       (c.aliases ?? []).some((a) => a.startsWith(f)) ||
       (f.length >= 2 && c.description.toLowerCase().includes(f))
     )
-  }).slice(0, MAX_SHOW)
+  })
+  const filtered  = allMatches.slice(0, MAX_SHOW)
+  const hiddenCount = allMatches.length - filtered.length
 
   useInput((_char, key) => {
     if (!filtered.length) return
@@ -66,6 +68,9 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
           )
         })}
       </Box>
+      {hiddenCount > 0 && (
+        <Text color={theme.textDim} dimColor>  +{hiddenCount} more — type to narrow</Text>
+      )}
       <Text color={theme.textDim} dimColor>↑↓ select  Tab fill  Enter run  Esc close</Text>
     </Box>
   )

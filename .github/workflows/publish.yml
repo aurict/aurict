@@ -33,7 +33,7 @@ jobs:
         run: bun run scripts/build-all.ts
 
       - name: Smoke test (linux-x64)
-        run: ./dist/omnicod-linux-x64 --version
+        run: ./dist/aurict-linux-x64 --version
 
       - name: Setup Node.js (for npm publish)
         uses: actions/setup-node@v4
@@ -50,10 +50,10 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Publishing version $VERSION"
-          for pkg in packages/omnicod packages/cli-linux-x64 packages/cli-linux-arm64 packages/cli-darwin-x64 packages/cli-darwin-arm64 packages/cli-win32-x64; do
+          for pkg in packages/aurict packages/cli-linux-x64 packages/cli-linux-arm64 packages/cli-darwin-x64 packages/cli-darwin-arm64 packages/cli-win32-x64; do
             bun x json -I -f $pkg/package.json -e "this.version='$VERSION'"
           done
-          bun x json -I -f packages/omnicod/package.json -e "
+          bun x json -I -f packages/aurict/package.json -e "
             Object.keys(this.optionalDependencies || {}).forEach(k => {
               this.optionalDependencies[k] = '$VERSION'
             })
@@ -62,7 +62,7 @@ jobs:
       - name: Publish platform packages
         run: |
           for pkg in cli-linux-x64 cli-linux-arm64 cli-darwin-x64 cli-darwin-arm64 cli-win32-x64; do
-            echo "Publishing @omnicod/$pkg..."
+            echo "Publishing @aurict/$pkg..."
             cd packages/$pkg
             npm publish --access public
             cd ../..
@@ -78,7 +78,7 @@ jobs:
 
       - name: Publish main package (with retry)
         run: |
-          cd packages/omnicod
+          cd packages/aurict
           for attempt in 1 2 3; do
             echo "Attempt $attempt..."
             npm publish --access public && break
@@ -98,9 +98,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/omnicod-linux-x64
-            dist/omnicod-linux-arm64
-            dist/omnicod-darwin-x64
-            dist/omnicod-darwin-arm64
-            dist/omnicod-win32-x64.exe
+            dist/aurict-linux-x64
+            dist/aurict-linux-arm64
+            dist/aurict-darwin-x64
+            dist/aurict-darwin-arm64
+            dist/aurict-win32-x64.exe
           generate_release_notes: true

@@ -2,11 +2,11 @@
 
 ## Config file location
 
-OmniCod stores all configuration in `~/.omnicod/omnicod.db` (SQLite). Human-readable config is managed through slash commands or environment variables.
+Aurict stores all configuration in `~/.aurict/aurict.db` (SQLite). Human-readable config is managed through slash commands or environment variables.
 
 ```
-~/.omnicod/
-├── omnicod.db          # SQLite: sessions, config, MCP servers, memories, todos
+~/.aurict/
+├── aurict.db          # SQLite: sessions, config, MCP servers, memories, todos
 ├── server-token        # HTTP API bearer token (chmod 600, auto-generated)
 └── skills/             # Custom skill .md files (global)
 ```
@@ -15,7 +15,7 @@ Per-project config lives in:
 
 ```
 <workdir>/
-├── .omnicod/
+├── .aurict/
 │   ├── CLAUDE.md       # Project instructions (injected into every session)
 │   └── skills/         # Project-local custom skills
 ├── CLAUDE.md           # Alternative project instructions location
@@ -28,17 +28,17 @@ Per-project config lives in:
 
 ```bash
 # Set default provider and model
-omnicod /config set default.provider anthropic
-omnicod /config set default.model claude-sonnet-4-6
+aurict /config set default.provider anthropic
+aurict /config set default.model claude-sonnet-4-6
 
 # View current config
-omnicod /config
+aurict /config
 
 # Set compaction strategy
-omnicod /config set compaction.strategy balanced   # aggressive | balanced | conservative
+aurict /config set compaction.strategy balanced   # aggressive | balanced | conservative
 
 # Set context tail turns (turns preserved verbatim during compaction)
-omnicod /config set compaction.tailTurns 2
+aurict /config set compaction.tailTurns 2
 ```
 
 ---
@@ -104,14 +104,14 @@ Protect sensitive files from accidental writes:
 
 ```bash
 # Block all writes to secrets
-omnicod /gate add deny "**/.env*"
-omnicod /gate add deny "**/secrets/**"
+aurict /gate add deny "**/.env*"
+aurict /gate add deny "**/secrets/**"
 
 # Require confirmation before writing to production config
-omnicod /gate add ask "**/prod.config.*"
+aurict /gate add ask "**/prod.config.*"
 
 # View current rules
-omnicod /gate list
+aurict /gate list
 ```
 
 ---
@@ -122,8 +122,8 @@ The local HTTP server starts on `localhost:4111` by default.
 
 ```bash
 # Override port
-omnicod --port 5000
+aurict --port 5000
 
 # Disable HTTP server
-omnicod --no-server
+aurict --no-server
 ```

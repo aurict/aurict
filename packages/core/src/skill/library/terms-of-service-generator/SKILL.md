@@ -4,7 +4,7 @@ description: "Kullanım şartları şablonu, sorumluluk sınırlaması, garanti 
 triggers:
   keywords: ["kullanım şartları", "terms of service", "tos", "hizmet şartları", "sorumluluk sınırlaması", "fesih", " kullanım koşulları"]
 auto_load_when: "Kullanıcı web sitesi/uygulama/software-as-a-service kullanım şartları, hizmet sözleşmesi şablonu veya fesih prosedürü talep eder"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "WebFetch", "WebSearch"]
 ---
 
@@ -283,7 +283,3 @@ Fesih onayı + kayıt arşivleme
 ---
 
 *Uyarı: Bu şablonlar genel rehberlik amaçlıdır. Dijital platform ToS taslağı için mutlaka teknoloji hukuku alanında uzmanlaşmış avukata danışılmalıdır. 6502 sayılı Tüketicinin Korunması Hakkında Kanun kapsamındaki zorunlu hükümler dikkate alınmalıdır.*
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -29,7 +29,7 @@ export const taskUpdateTool: ToolDef = {
   description: "Update the status or owner of an existing task.",
   parameters: z.object({
     id: z.string().describe("Task ID to update"),
-    status: z.enum(["pending", "in_progress", "error"]).optional().describe("New status of the task"),
+    status: z.enum(["pending", "in_progress", "completed", "error"]).optional().describe("New status of the task. Use 'completed' to mark done (equivalent to task_complete)."),
     owner: z.string().optional().describe("Assign an agent role or ID to this task"),
     blockedBy: z.array(z.string()).optional().describe("Update the blocked by list"),
     errorMsg: z.string().optional().describe("Set error message if status is 'error'"),
@@ -38,6 +38,11 @@ export const taskUpdateTool: ToolDef = {
     const id = String(args["id"])
     
     try {
+      if (args["status"] === "completed") {
+        taskManager.completeTask(id, "")
+        return { output: `Task [${id}] completed.` }
+      }
+
       if (args["status"] === "error" && args["errorMsg"]) {
         taskManager.failTask(id, String(args["errorMsg"]))
         return { output: `Task [${id}] failed with error: ${args["errorMsg"]}` }

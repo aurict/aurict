@@ -7,11 +7,12 @@ import { useTheme } from "../utils/theme.js"
 const MAX_PASTE_CHARS = 50_000
 
 interface Props {
-  value:    string
-  onChange: (v: string) => void
-  onSubmit: (v: string) => void
-  disabled: boolean
-  history:  string[]
+  value:              string
+  onChange:           (v: string) => void
+  onSubmit:           (v: string) => void
+  disabled:           boolean
+  history:            string[]
+  onPasteTruncated?:  (originalLen: number, truncatedLen: number) => void
 }
 
 function splitLines(v: string): string[] {
@@ -47,7 +48,7 @@ function sanitizeInput(raw: string): string {
   return stripVTControlCharacters(raw).replace(/\r/g, "\n")
 }
 
-export function MultilineInput({ value, onChange, onSubmit, disabled, history }: Props) {
+export function MultilineInput({ value, onChange, onSubmit, disabled, history, onPasteTruncated }: Props) {
   const theme = useTheme()
 
   const [lines, setLines]   = useState<string[]>(() => splitLines(value))
@@ -76,8 +77,12 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history }:
 
   // Paste işlemi: sanitize edilmiş metni imlece ekle
   function applyPaste(raw: string) {
+    const normalized  = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
     const pasted      = sanitizePaste(raw)
     if (!pasted) return
+    if (normalized.length > MAX_PASTE_CHARS) {
+      onPasteTruncated?.(raw.length, pasted.length)
+    }
     const pastedLines = pasted.split("\n")
     setLines(prev => {
       const next   = [...prev]

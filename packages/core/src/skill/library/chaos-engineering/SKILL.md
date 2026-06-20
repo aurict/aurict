@@ -204,5 +204,108 @@ Game Day Process:
 | FIS | AWS | AWS |
 | Pumba | Docker chaos | Docker |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Ready to start chaos testing?
+├── No observability (metrics/traces)   → set up observability first
+├── No DLQ / circuit breaker in place   → fix resiliency gaps first
+└── Observability and DLQ ready         → start with small blast radius
+
+Which failure to inject first?
+├── Single process/pod crash            → start here (simplest, most realistic)
+├── Network latency between services    → inject 100-500ms delay
+├── External dependency timeout         → mock timeout at the edge
+└── AZ failure / disk full              → only after above pass
+
+Chaos in prod or staging?
+├── First experiment on a flow          → staging with prod-like data
+├── Proven scenario, small blast radius → canary subset of prod
+└── Full prod chaos                     → only with rollback plan + on-call ready
+
+Tool selection?
+├── Kubernetes cluster                  → Chaos Mesh (CNCF, declarative YAML)
+├── AWS                                 → FIS (Fault Injection Simulator)
+├── Docker Compose / single host        → Pumba
+└── Multi-platform, commercial          → Gremlin
+```
+
+---
+
+## Key Rules
+
+1. Define the steady state before every experiment: specific SLO metric (e.g. p99 < 200ms)
+2. Write hypothesis before injecting: "If pod X crashes, pod Y should serve from cache"
+3. Always have a documented rollback: how to stop the experiment in under 60 seconds
+4. Start with the smallest blast radius (one pod, 1% traffic) — expand as confidence grows
+5. Abort experiment immediately if unintended degradation is observed
+6. Never run chaos in prod without on-call coverage and stakeholder awareness
+7. Automate experiments in CI/CD — manual-only chaos is not continuous validation
+
+---
+
+## Implementation
+
+```yaml
+# Chaos Mesh: pod failure for 30 seconds
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: payment-service-kill
+  namespace: chaos-testing
+spec:
+  action: pod-failure
+  mode: one
+  duration: 30s
+  selector:
+    namespaces: [production]
+    labelSelectors:
+      app: payment-service
+```
+
+```yaml
+# Chaos Mesh: network latency injection (100ms + 10ms jitter)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: db-latency-injection
+spec:
+  action: delay
+  mode: one
+  selector:
+    namespaces: [production]
+    labelSelectors:
+      app: api-server
+  delay:
+    latency: 100ms
+    jitter: 10ms
+  direction: to
+  target:
+    selector:
+      namespaces: [production]
+      labelSelectors:
+        app: postgres
+    mode: all
+  duration: 60s
+```
+
+```typescript
+// Circuit breaker pattern (defend against dependency failure)
+// Use cockatiel or opossum library
+import { Policy, ConsecutiveBreaker, SamplingBreaker } from 'cockatiel'
+
+const circuitBreaker = Policy.handleAll()
+  .circuitBreaker(10_000, new ConsecutiveBreaker(5))
+
+export async function callExternalService(payload: unknown) {
+  return circuitBreaker.execute(() => fetch('/external-api', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(3000),  // 3s timeout
+  }))
+}
+// When circuit opens after 5 consecutive failures,
+// subsequent calls throw immediately for 10s (no waiting on timeout)
+```

@@ -11,7 +11,7 @@ auto_load_when:
   - Etkinlik, organizasyon, organizatör
   - Davetiye, mekan, catering
   - Planlama, timeline, checklist
-agent: docs-agent
+agent: content-ops
 tools:
   - budget-allocator
   - timeline-generator
@@ -224,6 +224,3 @@ VENDOR YÖNETİMİ
 ---
 
 *Event Planner v1.0 — Her detay önemli!*
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

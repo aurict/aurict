@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { Box, Text } from "ink"
+import { useTheme } from "../utils/theme.js"
 
 const FRAMES = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
 
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function Spinner({ activeTool }: Props) {
+  const theme = useTheme()
   const [frame, setFrame] = useState(0)
 
   useEffect(() => {
@@ -42,8 +44,8 @@ export function Spinner({ activeTool }: Props) {
 
   return (
     <Box gap={1} paddingX={2} marginBottom={1}>
-      <Text color="#7ab4e8">{spin}</Text>
-      <Text color="#a1a1aa">{verb}<Text color="#52525b">...</Text></Text>
+      <Text color={theme.accent}>{spin}</Text>
+      <Text color={theme.textSecondary}>{verb}<Text color={theme.textDim}>...</Text></Text>
     </Box>
   )
 }

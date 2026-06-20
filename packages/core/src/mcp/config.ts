@@ -5,10 +5,10 @@ import type { MCPConfig, MCPServerConfig } from "./types.js"
 export function loadMCPConfig(workdir: string): MCPConfig {
   const merged: MCPConfig = { mcpServers: {} }
 
-  // Önce global (~/.omnicod/mcp.json), sonra proje (.omnicod/mcp.json) — proje override eder
+  // Önce global (~/.aurict/mcp.json), sonra proje (.aurict/mcp.json) — proje override eder
   const paths = [
-    join(homedir(), ".omnicod", "mcp.json"),
-    join(workdir, ".omnicod", "mcp.json"),
+    join(homedir(), ".aurict", "mcp.json"),
+    join(workdir, ".aurict", "mcp.json"),
   ]
 
   for (const p of paths) {

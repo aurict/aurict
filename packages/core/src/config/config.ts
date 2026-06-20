@@ -1,16 +1,45 @@
 import { join } from "path"
 import { homedir } from "os"
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from "fs"
+import type { FallbackTrigger } from "../provider/fallback.js"
 
-export type CompactionStrategy = "aggressive" | "balanced" | "conservative"
+export type CompactionStrategy  = "aggressive" | "balanced" | "conservative"
+export type TruncationStrategy = "head" | "tail" | "head_tail" | "smart"
 
 export interface OmniConfig {
   providers?:  Record<string, { apiKey?: string; baseUrl?: string }>
   defaults?:   { provider?: string; model?: string; effort?: number }
   compaction?: { tailTurns?: number; strategy?: CompactionStrategy; messageCountThreshold?: number }
+  truncation?: {
+    maxChars?: number
+    strategy?: TruncationStrategy
+    perTool?:  Record<string, { maxChars?: number; strategy?: TruncationStrategy }>
+  }
+  agents?: {
+    /** Aynı anda çalışabilecek maksimum worker sayısı (default: 4) */
+    maxWorkers?: number
+    /** Worker başına timeout ms (default: 300_000) */
+    timeout?: number
+  }
+  /** Provider fallback zinciri — rate limit/timeout durumunda otomatik provider değişimi */
+  fallback?: {
+    enabled?: boolean
+    providers?: string[]
+    triggerOn?: FallbackTrigger[]
+    maxRetries?: number
+    retryDelayMs?: number
+    circuitBreakerThreshold?: number
+    circuitBreakerResetMs?: number
+  }
+  /** Cost-aware model routing — task complexity'ye göre otomatik model seçimi */
+  routing?: {
+    enabled?: boolean
+    budgetThresholdUsd?: number
+    maxSessionCostUsd?: number
+  }
 }
 
-const GLOBAL_PATH = join(homedir(), ".omnicod", "config.json")
+const GLOBAL_PATH = join(homedir(), ".aurict", "config.json")
 
 function load(path: string): OmniConfig {
   try {
@@ -20,22 +49,31 @@ function load(path: string): OmniConfig {
 }
 
 function save(path: string, cfg: OmniConfig): void {
-  mkdirSync(join(homedir(), ".omnicod"), { recursive: true })
+  mkdirSync(join(homedir(), ".aurict"), { recursive: true })
   writeFileSync(path, JSON.stringify(cfg, null, 2), "utf8")
   try { chmodSync(path, 0o600) } catch { /* ignore on windows */ }
 }
 
 function merge(a: OmniConfig, b: OmniConfig): OmniConfig {
   return {
-    providers: { ...(a.providers ?? {}), ...(b.providers ?? {}) },
-    defaults:  { ...(a.defaults  ?? {}), ...(b.defaults  ?? {}) },
+    providers:  { ...(a.providers  ?? {}), ...(b.providers  ?? {}) },
+    defaults:   { ...(a.defaults   ?? {}), ...(b.defaults   ?? {}) },
+    compaction: { ...(a.compaction ?? {}), ...(b.compaction ?? {}) },
+    truncation: {
+      ...(a.truncation ?? {}),
+      ...(b.truncation ?? {}),
+      perTool: { ...(a.truncation?.perTool ?? {}), ...(b.truncation?.perTool ?? {}) },
+    },
+    agents: { ...(a.agents ?? {}), ...(b.agents ?? {}) },
+    fallback: { ...(a.fallback ?? {}), ...(b.fallback ?? {}) },
+    routing: { ...(a.routing ?? {}), ...(b.routing ?? {}) },
   }
 }
 
-/** ~/.omnicod/config.json okur, env var'ları üstüne yazar */
+/** ~/.aurict/config.json okur, env var'ları üstüne yazar */
 export function loadConfig(projectDir?: string): OmniConfig {
   const global  = load(GLOBAL_PATH)
-  const project = projectDir ? load(join(projectDir, ".omnicod", "config.json")) : {}
+  const project = projectDir ? load(join(projectDir, ".aurict", "config.json")) : {}
   const merged  = merge(global, project)
 
   // Env var'lar her zaman override eder

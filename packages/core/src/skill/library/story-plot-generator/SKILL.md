@@ -12,7 +12,7 @@ auto_load_when:
   - script_writing
   - novel_planning
   - game_narrative
-agent: researcher
+agent: content-ops
 tools:
   - markdown_writer
   - template_generator
@@ -221,6 +221,3 @@ Scene Sequencing
 | **POV** | Kimin gözünden? | Birinci tekil şahıs — güvenilmez anlatıcı |
 | **Stakes** | Risk ne? | Sadece kendisi değil, tüm mahalle tehlikede |
 | **Resolution** | Nasıl bitiyor? | Pyrrhic victory — kazanır ama çok kaybeder |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

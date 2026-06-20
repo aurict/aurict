@@ -191,7 +191,3 @@ How to implement:
 | Path traversal | Validate + normalize paths | High |
 | Rate limiting | Redis sliding window | High |
 | Secrets exposure | Vault / env injection | Critical |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

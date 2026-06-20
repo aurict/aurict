@@ -1,18 +1,18 @@
 import { join } from "path"
 import { homedir } from "os"
 import { readFileSync } from "fs"
-import type { OmniCodConfig } from "./types.js"
+import type { AurictConfig } from "./types.js"
 
-function readJSON(path: string): Partial<OmniCodConfig> {
+function readJSON(path: string): Partial<AurictConfig> {
   try {
-    return JSON.parse(readFileSync(path, "utf8")) as Partial<OmniCodConfig>
+    return JSON.parse(readFileSync(path, "utf8")) as Partial<AurictConfig>
   } catch { return {} }
 }
 
 // Yükleme önceliği: global < proje < CLI flags (son kazanır)
-export function loadConfig(workdir: string): OmniCodConfig {
-  const global  = readJSON(join(homedir(), ".omnicod", "config.json"))
-  const project = readJSON(join(workdir, ".omnicod", "config.json"))
+export function loadConfig(workdir: string): AurictConfig {
+  const global  = readJSON(join(homedir(), ".aurict", "config.json"))
+  const project = readJSON(join(workdir, ".aurict", "config.json"))
 
   return deepMerge(
     deepMerge({}, global as Record<string, unknown>) as Record<string, unknown>,
@@ -20,7 +20,7 @@ export function loadConfig(workdir: string): OmniCodConfig {
   )
 }
 
-function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): OmniCodConfig { // eslint-disable-line @typescript-eslint/no-explicit-any
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): AurictConfig { // eslint-disable-line @typescript-eslint/no-explicit-any
   const result = { ...target }
   for (const [k, v] of Object.entries(source)) {
     if (v !== null && typeof v === "object" && !Array.isArray(v) && typeof target[k] === "object") {
@@ -29,7 +29,7 @@ function deepMerge(target: Record<string, unknown>, source: Record<string, unkno
       result[k] = v
     }
   }
-  return result as OmniCodConfig
+  return result as AurictConfig
 }
 
 // ─── CLI flag parser ──────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ export function parseFlags(argv = process.argv.slice(2)): CLIFlags {
   return flags
 }
 
-export function applyFlags(cfg: OmniCodConfig, flags: CLIFlags): OmniCodConfig {
+export function applyFlags(cfg: AurictConfig, flags: CLIFlags): AurictConfig {
   const result = { ...cfg }
   if (flags.provider !== undefined) (result as Record<string, unknown>)["provider"] = flags.provider
   if (flags.model    !== undefined) (result as Record<string, unknown>)["model"]    = flags.model

@@ -4,7 +4,7 @@ description: "CRM veri temizleme. Duplicate detection, data standardization ve v
 triggers:
   keywords: ["CRM cleaning", "veri temizleme", "duplicate detection", "data deduplication", "data standardization", "CRM hygiene"]
 auto_load_when: "Kullanıcı CRM veri kalitesi, duplicate temizleme, veri standardizasyonu veya validation kuralları talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Grep", "Glob"]
 ---
 
@@ -439,6 +439,3 @@ Prevention:
 | Data validation | Run rules | Real-time |
 | Quality audit | Full assessment | Monthly |
 | Deep clean | Complete refresh | Quarterly |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

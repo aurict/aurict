@@ -5,7 +5,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "paths": {
-      "@omnicod/core": ["../core/src/index.ts"]
+      "@aurict/core": ["../core/src/index.ts"]
     }
   },
   "include": ["src/**/*", "../core/src/**/*"]

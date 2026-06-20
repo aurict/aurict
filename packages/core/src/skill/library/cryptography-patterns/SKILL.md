@@ -181,5 +181,83 @@ Application Cryptography:
 | RSA signing | RSA-PSS | 2048+ bits |
 | ECDSA | P-256, P-384 | 256, 384 bits |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+What to protect?
+├── User password                      → hash with Argon2id (Bun) or bcrypt cost≥12 (Node)
+├── Data integrity check               → HMAC-SHA256 (signed hash, verify sender)
+├── Sensitive field in DB (PII)        → AES-256-GCM (envelope encryption via KMS)
+├── JWT / API token signing            → RS256 (asymmetric) or HS256 (symmetric, server-only)
+└── File/blob at rest                  → S3 SSE-KMS or envelope encryption with KMS DEK
+
+Key management?
+├── Any cloud environment              → use cloud KMS (AWS KMS / GCP KMS / Azure Key Vault)
+├── Self-hosted                        → HashiCorp Vault
+└── Simple secret env var              → at least put in secret manager — never in code
+
+HMAC or signature?
+├── Verify a message came from you (same secret)       → HMAC-SHA256
+├── Verify message origin (anyone can verify)          → digital signature (RSA-PSS or ECDSA)
+└── Webhook payload integrity (e.g. Stripe)            → HMAC-SHA256 timing-safe compare
+```
+
+---
+
+## Key Rules
+
+1. Never store or transmit plaintext passwords — hash with Argon2id or bcrypt (cost ≥ 12)
+2. Never implement your own crypto algorithm — use vetted libraries (jose, Web Crypto API, noble-*)
+3. Use authenticated encryption: AES-256-GCM, not AES-CBC (GCM detects tampering)
+4. HMAC comparisons must be timing-safe: `crypto.timingSafeEqual()` — never string equality
+5. Keys never in code or `.env` checked into git — always in KMS or secrets manager
+6. TLS 1.2 minimum everywhere; disable TLS 1.0/1.1; prefer TLS 1.3
+7. Rotate secrets and keys on a schedule; support rotation without downtime
+
+---
+
+## Implementation
+
+```typescript
+// Password hashing — Bun built-in (Argon2id)
+import { password } from 'bun'
+const hash  = await password.hash('userPassword')       // Argon2id by default
+const valid = await password.verify('userPassword', hash)
+
+// Or Node.js: bcrypt
+import bcrypt from 'bcryptjs'
+const hash  = await bcrypt.hash('userPassword', 12)
+const valid = await bcrypt.compare('userPassword', hash)
+
+// AES-256-GCM encryption / decryption (Web Crypto API)
+async function encrypt(plaintext: string, key: CryptoKey): Promise<{ iv: string; ciphertext: string }> {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const encoded = new TextEncoder().encode(plaintext)
+  const cipherBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded)
+  return {
+    iv:         Buffer.from(iv).toString('base64'),
+    ciphertext: Buffer.from(cipherBuffer).toString('base64'),
+  }
+}
+
+async function decrypt(data: { iv: string; ciphertext: string }, key: CryptoKey): Promise<string> {
+  const iv    = Buffer.from(data.iv, 'base64')
+  const ct    = Buffer.from(data.ciphertext, 'base64')
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct)
+  return new TextDecoder().decode(plain)
+}
+
+// HMAC-SHA256 webhook signature (timing-safe)
+import { createHmac, timingSafeEqual } from 'crypto'
+
+function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+  const expected = createHmac('sha256', secret).update(payload).digest('hex')
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  } catch {
+    return false  // different length — still safe
+  }
+}
+```

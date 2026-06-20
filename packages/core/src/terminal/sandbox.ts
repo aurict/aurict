@@ -8,28 +8,10 @@ export interface SandboxConfig {
 }
 
 /**
- * Komutun izole bir Docker sandbox'ında çalıştırılıp çalıştırılmayacağına karar verir.
+ * Docker sandboxing disabled — requires Docker daemon which is not universally available.
+ * Security is handled at the permission layer (user approves each bash command).
  */
-export function shouldUseSandbox(command: string, analysis: CommandAnalysis): boolean {
-  const { parsedExecutables } = analysis
-
-  // Çok açık yıkıcı komutları Sandbox içinde izole etmeye çalış, 
-  // ama rm -rf /workspace dahi tehlikeli olabilir.
-  // Biz genellikle bilinmeyen/untrusted script yürütmelerini sandbox'a atarız:
-  const riskyExecutables = new Set(["node", "python", "python3", "ruby", "perl", "sh", "bash"])
-  
-  // npm install, pip install gibi dış ağdan inen kodları çalıştıranları yakala
-  if (parsedExecutables.includes("npm install") || parsedExecutables.includes("yarn install") || parsedExecutables.includes("pip install")) {
-    return true
-  }
-
-  // Node veya Python ile çalıştırılan her türlü lokal script untrusted kabul edilebilir.
-  for (const exec of parsedExecutables) {
-    if (riskyExecutables.has(exec)) {
-      return true
-    }
-  }
-
+export function shouldUseSandbox(_command: string, _analysis: CommandAnalysis): boolean {
   return false
 }
 

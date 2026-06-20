@@ -4,7 +4,7 @@ description: "İade prosedürü. Refund policy. Escalation path. Customer retent
 triggers:
   keywords: ["refund processor", "iade işlemci", "para iadesi", "ücret iadesi", "geri ödeme"]
 auto_load_when: "Kullanıcı iade taleplerini işleme almayı, iade yanıtları oluşturmayı veya iade politikası dokümantasyonu hazırlamayı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -266,7 +266,3 @@ interface RefundProcessorConfig {
   };
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

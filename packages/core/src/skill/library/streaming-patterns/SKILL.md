@@ -197,6 +197,3 @@ Common Integrations:
 | CDC | Change data capture | Debezium |
 | Stream-table | Lookup materialized view | ksqlDB |
 | Enrichment | Join stream with database | Kafka Streams |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

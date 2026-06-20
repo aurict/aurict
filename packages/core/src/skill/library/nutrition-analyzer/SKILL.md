@@ -13,7 +13,7 @@ auto_load_when:
   - diet_planning
   - recipe_development
   - wellness_apps
-agent: researcher
+agent: content-ops
 tools:
   - markdown_writer
   - template_generator
@@ -311,6 +311,3 @@ Recipe Optimization
 | **Protein (min)** | 50 g/gün | Erkekler için 56 g |
 | **Breakfast protein** | 20–30 g | Kas protein sentezi |
 | **Post-workout carb** | 0.5–0.7 g/kg | Glikojen yenilenmesi |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

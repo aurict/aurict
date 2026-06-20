@@ -1,5 +1,5 @@
 "use client"
-import { motion } from "framer-motion"
+import { m } from "framer-motion"
 import { TerminalWindow } from "@/components/terminal/TerminalWindow"
 
 export function Hero() {
@@ -34,7 +34,7 @@ export function Hero() {
 
       <div style={{ maxWidth: 860, width: "100%", textAlign: "center", position: "relative", zIndex: 1 }}>
         {/* pill badge */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -64,12 +64,12 @@ export function Hero() {
                 boxShadow: "0 0 8px var(--accent)",
               }}
             />
-            v1.0 — Open Source
+            v1.0.5 — Open Source
           </span>
-        </motion.div>
+        </m.div>
 
         {/* headline */}
-        <motion.h1
+        <m.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
@@ -84,10 +84,10 @@ export function Hero() {
           <span style={{ color: "var(--text)" }}>The terminal AI</span>
           <br />
           <span className="gradient-text">that actually thinks.</span>
-        </motion.h1>
+        </m.h1>
 
         {/* subheadline */}
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.22 }}
@@ -101,10 +101,10 @@ export function Hero() {
         >
           9 specialist agents. 218+ contextual skills. Bash classifier. MCP client.
           One command to rule your entire codebase.
-        </motion.p>
+        </m.p>
 
         {/* CTA row */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.34 }}
@@ -148,19 +148,19 @@ export function Hero() {
             }}
           >
             <span style={{ color: "var(--accent)" }}>$</span>
-            <span>npm install -g omnicod</span>
+            <span>npm install -g aurict</span>
           </div>
-        </motion.div>
+        </m.div>
 
         {/* terminal demo */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 30, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.7, delay: 0.45 }}
           style={{ maxWidth: 780, margin: "0 auto" }}
         >
           <TerminalWindow />
-        </motion.div>
+        </m.div>
       </div>
     </section>
   )

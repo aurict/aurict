@@ -1,5 +1,6 @@
-import { createSession, getSession, listSessions, updateSession, addPart, getSessionParts, getSessionPartsCount, getSessionPartsTail } from "../storage/queries.js"
+import { createSession, getSession, listSessions, updateSession, addPart, getSessionParts, getSessionPartsCount, getSessionPartsTail, recordTurn as dbRecordTurn, listSessionsWithStats, getSessionStats, searchSessions as dbSearchSessions } from "../storage/queries.js"
 import type { Session, Part, SessionConfig } from "./types.js"
+import type { SessionStats, SessionSearchResult } from "../storage/queries.js"
 import { hooks } from "../hook/emitter.js"
 
 function newId(): string {
@@ -62,5 +63,31 @@ export const SessionManager = {
 
   getPartsCount(sessionId: string): number {
     return getSessionPartsCount(sessionId)
+  },
+
+  /** LLM turn'ü bitti — token ve maliyet birikimini güncelle */
+  recordTurn(sessionId: string, data: {
+    inputTokens:  number
+    outputTokens: number
+    cacheTokens:  number
+    costUsd:      number
+    model:        string
+  }): void {
+    try { dbRecordTurn(sessionId, data) } catch { /* istatistik hatası agent'ı durdurmamalı */ }
+  },
+
+  /** Maliyet istatistikleriyle tüm session listesi */
+  listWithStats(limit?: number): SessionStats[] {
+    return listSessionsWithStats(limit)
+  },
+
+  /** Tek session'ın maliyet özeti */
+  getStats(sessionId: string): SessionStats | undefined {
+    return getSessionStats(sessionId)
+  },
+
+  /** Part içeriklerinde tam metin arama */
+  search(query: string, limit?: number): SessionSearchResult[] {
+    return dbSearchSessions(query, limit)
   },
 }

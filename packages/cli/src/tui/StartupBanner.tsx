@@ -1,5 +1,5 @@
 /**
- * StartupBanner — OmniCod başlangıç banner'ı
+ * StartupBanner — Aurict başlangıç banner'ı
  *
  * Sol tarafta gradient sphere (logo), sağ tarafta version/provider/model/workdir.
  * Design system primitive'leri (Surface, HStack, VStack, Center, Divider, Typo) ile
@@ -9,6 +9,7 @@
 import React from "react"
 import { Text } from "ink"
 import { HStack, VStack, Center, Divider, Typo, Badge } from "./design-system/index.js"
+import { useTheme } from "../utils/theme.js"
 
 // Gradient sphere — mavi → cyan → teal
 // Her satır daha dar (üst/alt) veya geniş (orta) — 3D küre hissi
@@ -22,9 +23,9 @@ const SPHERE: Array<{ row: string; color: string }> = [
   { row: "    ░▒▓████▓▒░    ",     color: "#134e4a" },  // çok koyu teal (alt kenar)
 ]
 
-// OMNICOD harflerinin renkleri (gradient)
-const LOGO_COLORS = ["#06b6d4", "#0891b2", "#0284c7", "#1d4ed8", "#2563eb", "#1d4ed8", "#0284c7"]
-const LOGO_LETTERS = ["O", "M", "N", "I", "C", "O", "D"]
+// AURICT harflerinin renkleri (gradient)
+const LOGO_COLORS = ["#f59e0b", "#d97706", "#06b6d4", "#0891b2", "#1d4ed8", "#2563eb"]
+const LOGO_LETTERS = ["A", "U", "R", "I", "C", "T"]
 
 interface Props {
   version:  string
@@ -34,11 +35,12 @@ interface Props {
 }
 
 export function StartupBanner({ version, provider, model, workdir }: Props) {
-  const user = process.env["USER"] || process.env["USERNAME"] || "user"
-  const dir  = workdir.replace(process.env["HOME"] ?? "", "~")
+  const theme = useTheme()
+  const user  = process.env["USER"] || process.env["USERNAME"] || "user"
+  const dir   = workdir.replace(process.env["HOME"] ?? "", "~")
 
   return (
-    <HStack paddingX="md" paddingY="sm" gap="lg" borderStyle="round" borderColor="#334155">
+    <HStack paddingX="md" paddingY="sm" gap="lg" borderStyle="round" borderColor={theme.borderDim}>
       {/* Sol — gradient sphere */}
       <Center>
         <VStack>
@@ -49,7 +51,7 @@ export function StartupBanner({ version, provider, model, workdir }: Props) {
       </Center>
 
       {/* Dikey ayraç */}
-      <Divider orientation="vertical" color="#334155" />
+      <Divider orientation="vertical" color={theme.borderDim} />
 
       {/* Sağ — bilgiler */}
       <VStack justify="center" gap="none">
@@ -63,7 +65,7 @@ export function StartupBanner({ version, provider, model, workdir }: Props) {
         </HStack>
 
         {/* Ayırıcı çizgi */}
-        <Divider color="#334155" />
+        <Divider color={theme.borderDim} />
 
         {/* Model + Provider */}
         <HStack gap="xs" marginTop="sm">
@@ -80,7 +82,7 @@ export function StartupBanner({ version, provider, model, workdir }: Props) {
         </HStack>
 
         {/* Ayırıcı çizgi (boşluk bırakır) */}
-        <Divider color="#334155" />
+        <Divider color={theme.borderDim} />
 
         {/* Kısa ipuçları — Badge olarak */}
         <HStack gap="sm" marginTop="sm">

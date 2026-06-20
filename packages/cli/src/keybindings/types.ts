@@ -10,7 +10,7 @@
  *   Context.READY    → Action.cancel   → "escape"
  *   Context.PERMISSION → Action.approve → "y"
  *
- * Kullanıcı ~/.omnicod/keybindings.json dosyasında action→key eşlemesini
+ * Kullanıcı ~/.aurict/keybindings.json dosyasında action→key eşlemesini
  * override edebilir (örn. `{"submit": "tab"}`).
  */
 

@@ -212,7 +212,3 @@ Service mesh options:
 | ConfigMap | Non-secret config | data key-value |
 | Secret | Sensitive config | data base64-encoded |
 | HPA | Auto-scale pods | minReplicas, maxReplicas, metrics |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

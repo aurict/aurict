@@ -1,11 +1,11 @@
 # MCP (Model Context Protocol)
 
-OmniCod supports MCP servers using the same `claude_desktop_config.json`-compatible format.
+Aurict supports MCP servers using the same `claude_desktop_config.json`-compatible format.
 
 ## Adding an MCP server
 
 ```bash
-omnicod /mcp add
+aurict /mcp add
 ```
 
 This opens an interactive prompt for:
@@ -17,7 +17,7 @@ This opens an interactive prompt for:
 Or add directly via config:
 
 ```bash
-omnicod /mcp add --name filesystem \
+aurict /mcp add --name filesystem \
   --command npx \
   --args "@modelcontextprotocol/server-filesystem,/path/to/dir"
 ```
@@ -58,26 +58,26 @@ MCP servers are stored in the SQLite database. You can also provide a JSON confi
 
 ```bash
 # List configured servers
-omnicod /mcp list
+aurict /mcp list
 
 # View tools from a specific server
-omnicod /mcp tools filesystem
+aurict /mcp tools filesystem
 
 # View resources from a server
-omnicod /mcp resources filesystem
+aurict /mcp resources filesystem
 
 # Remove a server
-omnicod /mcp remove filesystem
+aurict /mcp remove filesystem
 
 # Restart a server
-omnicod /mcp restart filesystem
+aurict /mcp restart filesystem
 ```
 
 ---
 
 ## How MCP tools work
 
-When OmniCod starts, it connects to all configured MCP servers and registers their tools in the tool registry. MCP tools appear alongside built-in tools and are subject to the same permission system.
+When Aurict starts, it connects to all configured MCP servers and registers their tools in the tool registry. MCP tools appear alongside built-in tools and are subject to the same permission system.
 
 MCP tool IDs are prefixed with the server name to avoid collisions:
 
@@ -109,8 +109,8 @@ MCP servers can expose resources (read-only data sources) in addition to tools. 
 
 ```bash
 # List resources from a server
-omnicod /mcp resources github
+aurict /mcp resources github
 
 # Inject a resource into the current session
-omnicod /mcp attach github://repos/omnicod/omnicod/issues
+aurict /mcp attach github://repos/aurict/aurict/issues
 ```

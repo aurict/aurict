@@ -196,7 +196,3 @@ Language fallbacks:
 | Number format | Intl.NumberFormat | Currency, percent |
 | Locale detect | Accept-Language header | Server-side redirect |
 | RTL support | CSS logical properties | inline/block instead of left/right |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

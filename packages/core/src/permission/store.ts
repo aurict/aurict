@@ -1,7 +1,11 @@
-import type { PermissionDecision } from "./types.js"
+import type { PermissionDecision, CategoryPermission } from "./types.js"
+import type { ToolCategory } from "../tool/types.js"
+import { getToolCategory } from "./categories.js"
 
 // Session boyunca onaylanan/reddedilen izinleri tutar
 const approved = new Set<string>()
+// Kategori bazlı session izinleri ("write" → "allow_session")
+const categoryApprovals = new Map<ToolCategory, CategoryPermission>()
 
 function key(tool: string, pattern: string) {
   return `${tool}:${pattern}`
@@ -16,6 +20,25 @@ export const PermissionStore = {
   },
   clear(): void {
     approved.clear()
+    categoryApprovals.clear()
+  },
+
+  // ── Kategori bazlı onay ────────────────────────────────────────────────────
+  /** "Bu session boyunca tüm write işlemlerine izin ver" gibi toplu onay */
+  approveCategory(category: ToolCategory, perm: CategoryPermission = "allow_session"): void {
+    categoryApprovals.set(category, perm)
+  },
+  /** Tool adından kategorisini bulup session izni var mı kontrol et */
+  isCategoryApproved(toolName: string): boolean {
+    const cat = getToolCategory(toolName)
+    return categoryApprovals.get(cat) === "allow_session"
+  },
+  getCategoryPermission(toolName: string): CategoryPermission | undefined {
+    const cat = getToolCategory(toolName)
+    return categoryApprovals.get(cat)
+  },
+  listCategoryApprovals(): Array<{ category: ToolCategory; perm: CategoryPermission }> {
+    return [...categoryApprovals.entries()].map(([category, perm]) => ({ category, perm }))
   },
 }
 

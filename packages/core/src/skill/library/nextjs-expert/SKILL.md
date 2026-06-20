@@ -261,6 +261,75 @@ export async function POST(request: NextRequest) {
 | SEO metadata | export const metadata or generateMetadata |
 | API endpoint | app/api/route/route.ts |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Component type?
+├── Uses useState/useEffect/browser API/onClick → 'use client'
+├── Fetches data / reads DB / accesses env vars  → Server Component (default)
+└── Both?  → Server parent fetches → Client child handles interaction
+
+Cache strategy?
+├── Static content (blog, marketing)  → { cache: 'force-cache' }
+├── User-specific or real-time        → { cache: 'no-store' }
+├── Slowly changing (product catalog) → { next: { revalidate: 60 } }
+└── After any mutation                → revalidateTag('tag-name')
+
+Mutation handler?
+├── Form submit / internal mutation   → Server Action ('use server')
+├── External webhook / public API     → Route Handler (app/api/.../route.ts)
+└── Client-triggered async action     → Server Action (skip API layer)
+```
+
+---
+
+## Key Rules
+
+1. Default to Server Component — add 'use client' only on interactive leaf nodes
+2. Push 'use client' as far DOWN the tree as possible; never on layout.tsx
+3. Parallel fetches always: `const [a, b] = await Promise.all([getA(), getB()])`
+4. Use `revalidateTag()` after mutations — `revalidatePath()` is too broad
+5. Server Actions: validate → mutate → revalidateTag → redirect (no useEffect needed)
+6. Wrap slow async Server Components in `<Suspense fallback={<Skeleton />}>`
+7. `error.tsx` per segment — not a global try/catch in layout.tsx
+8. `export const revalidate = N` / `export const dynamic = 'force-dynamic'` per segment
+
+---
+
+## Implementation
+
+```tsx
+// Server Action — validate → mutate → revalidate → redirect
+'use server'
+import { revalidateTag } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { z } from 'zod'
+
+const Schema = z.object({ name: z.string().min(1) })
+
+export async function createItem(formData: FormData) {
+  const { name } = Schema.parse(Object.fromEntries(formData))
+  await db.item.create({ data: { name } })
+  revalidateTag('items')
+  redirect('/items')
+}
+
+// Optimistic update in Client Component
+'use client'
+import { useOptimistic, useTransition } from 'react'
+
+export function ItemForm({ items }: { items: Item[] }) {
+  const [optimistic, addOptimistic] = useOptimistic(items)
+  const [, startTransition] = useTransition()
+
+  async function action(formData: FormData) {
+    const name = formData.get('name') as string
+    startTransition(() => addOptimistic([...optimistic, { id: 'tmp', name }]))
+    await createItem(formData)
+  }
+
+  return <form action={action}><input name="name" /><button>Add</button></form>
+}
+```

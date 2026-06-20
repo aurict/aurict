@@ -5,7 +5,7 @@ triggers:
   keywords: ["copywriting", "satış metni", "AIDA", "PAS", "başlık", "CTA", "call to action", "satış yazısı", "pazarlama"]
   extensions: [".md", ".txt", ".html"]
 auto_load_when: "Satış metni, landing page, reklam metni veya pazarlama içeriği talep edildiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash"]
 ---
 
@@ -260,7 +260,3 @@ Ekran görüntüsü kullanımı:
 | Soft | "Daha Fazla Bilgi" | Bilgi arayan |
 | Scarcity | "Sınırlı Kontenjan" | Kararsız |
 | Reassurance | "Ücretsiz Dene" | Riskten kaçınan |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

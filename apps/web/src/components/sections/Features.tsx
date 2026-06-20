@@ -1,6 +1,6 @@
 "use client"
 import React from "react"
-import { motion } from "framer-motion"
+import { m } from "framer-motion"
 import { FEATURES } from "@/lib/constants"
 
 // ─── SVG icon set ─────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ export function Features() {
     >
       {/* section header */}
       <div style={{ textAlign: "center", marginBottom: 72 }}>
-        <motion.p
+        <m.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-60px" }}
@@ -131,8 +131,8 @@ export function Features() {
           }}
         >
           Capabilities
-        </motion.p>
-        <motion.h2
+        </m.p>
+        <m.h2
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
@@ -148,7 +148,7 @@ export function Features() {
           Not just autocomplete.
           <br />
           <span className="gradient-text">An AI team in your terminal.</span>
-        </motion.h2>
+        </m.h2>
       </div>
 
       {/* feature grid */}
@@ -166,7 +166,7 @@ export function Features() {
         {FEATURES.map((feature, i) => {
           const IconComponent = ICON_MAP[feature.icon]
           return (
-            <motion.div
+            <m.div
               key={feature.title}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -249,7 +249,7 @@ export function Features() {
                   </p>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )
         })}
       </div>

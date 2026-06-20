@@ -60,7 +60,7 @@ export const FEATURES = [
   {
     icon: "skills",
     title: "218+ Contextual Skills",
-    description: "OmniCod scans your project before you say a word — framework, language, config, conventions. The right context is injected automatically.",
+    description: "Aurict scans your project before you say a word — framework, language, config, conventions. The right context is injected automatically.",
     tag: "Intelligence",
     color: "#a78bfa",
   },

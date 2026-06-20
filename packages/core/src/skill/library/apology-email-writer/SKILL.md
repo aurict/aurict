@@ -4,7 +4,7 @@ description: "Kriz iletişimi. Empathetic response. Recovery actions. Compensati
 triggers:
   keywords: ["apology email writer", "özür mektubu", "kriz iletişimi", "müşteri özür e-postası", "empatik yanıt"]
 auto_load_when: "Kullanıcı kriz durumlarında özür e-postası yazmayı, empatik yanıt oluşturmayı veya müşteri kurtarma aksiyonları talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -407,7 +407,3 @@ interface ApologyEmailConfig {
   };
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

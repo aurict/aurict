@@ -4,7 +4,7 @@ description: "Sektörel regülasyon kontrolü, BDDK, BTK, SPK uyumluluk, uyumlul
 triggers:
   keywords: ["uyumluluk", "regülasyon", "BDDK", "BTK", "SPK", "KKM", "düzenleyici kurum", "compliance checker", "gap analysis"]
 auto_load_when: "Kullanıcı sektörel düzenleyici kurallara uyum kontrolü, BDDK/BTK/SPK denetimlerine hazırlık, gap analysis veya uyumluluk matrix talep eder"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "WebFetch", "WebSearch"]
 ---
 
@@ -278,7 +278,3 @@ SPK UYUMLULUK KONTROL LİSTESİ (Yatırım Kurumları İçin)
 ---
 
 *Uyarı: Bu kontrol listesi genel rehberlik amaçlıdır. Denetimlere hazırlık için ilgili düzenleyici kurumun güncel mevzuatı ve uzman danışman görüşü alınmalıdır.*
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

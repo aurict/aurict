@@ -241,7 +241,3 @@ console.log(process.memoryUsage()) // heapUsed, heapTotal, external, rss
 | Child process | child_process.fork | Separate process |
 | Streams | Transform stream | Backpressure built-in |
 | Shutdown | http.closeAllConnections | Node 18.2+ |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

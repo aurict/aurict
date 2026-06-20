@@ -1,25 +1,25 @@
 "use client"
 import { useState } from "react"
-import { motion } from "framer-motion"
+import { m } from "framer-motion"
 
 const INSTALL_STEPS = [
   {
     step: "01",
     title: "Install",
-    code: "npm install -g omnicod",
+    code: "npm install -g aurict",
     note: "Mac, Linux, Windows — one command.",
   },
   {
     step: "02",
     title: "Run",
-    code: "omnicod",
+    code: "aurict",
     note: "Launch in any project directory.",
   },
   {
     step: "03",
     title: "Configure",
-    code: "omnicod /models",
-    note: "Choose your provider and model.",
+    code: "# First-run wizard sets up provider & key",
+    note: "Interactive setup — pick provider, enter API key, choose model.",
   },
 ]
 
@@ -42,7 +42,7 @@ export function Install() {
       }}
     >
       <div style={{ textAlign: "center", marginBottom: 64 }}>
-        <motion.p
+        <m.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -56,8 +56,8 @@ export function Install() {
           }}
         >
           Get started
-        </motion.p>
-        <motion.h2
+        </m.p>
+        <m.h2
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -71,12 +71,12 @@ export function Install() {
         >
           Up and running in{" "}
           <span className="gradient-text">30 seconds.</span>
-        </motion.h2>
+        </m.h2>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {INSTALL_STEPS.map((s, i) => (
-          <motion.div
+          <m.div
             key={s.step}
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -138,8 +138,12 @@ export function Install() {
               onClick={() => copy(s.code)}
             >
               <span>
-                <span style={{ color: "var(--accent)", marginRight: 8 }}>$</span>
-                {s.code}
+                {!s.code.startsWith("#") && (
+                  <span style={{ color: "var(--accent)", marginRight: 8 }}>$</span>
+                )}
+                <span style={{ color: s.code.startsWith("#") ? "var(--text-muted)" : "var(--text)" }}>
+                  {s.code}
+                </span>
               </span>
               <span
                 style={{
@@ -161,7 +165,7 @@ export function Install() {
             >
               {s.note}
             </span>
-          </motion.div>
+          </m.div>
         ))}
       </div>
     </section>

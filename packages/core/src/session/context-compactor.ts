@@ -40,6 +40,7 @@ export function classifyMessage(msg: CoreMessage): ContextType {
 // Yüksek skor = kırpma sırasında daha uzun korunur.
 export function importanceScore(msg: CoreMessage, allMessages: CoreMessage[], idx: number): number {
   let score = 50
+  const text = extractText(msg)
 
   // Recency: son %20 → +30, son %40 → +20, son %60 → +10
   const rel = idx / Math.max(1, allMessages.length - 1)
@@ -55,9 +56,41 @@ export function importanceScore(msg: CoreMessage, allMessages: CoreMessage[], id
   if (type === "conversation" && msg.role === "user") score += 10
 
   // Uzunluk cezası: çok kısa (gürültü) veya çok uzun (büyük raw output)
-  const tokens = countTokens(extractText(msg)) + 4
+  const tokens = countTokens(text) + 4
   if (tokens < 15)   score -= 20
   if (tokens > 3000) score -= 10
+
+  // ─── Faz 3: Gelişmiş önem skorlaması ──────────────────────────────────────
+
+  // Error chain detection: hata mesajları yüksek öncelik
+  if (/error|failed|exception|cannot|unable/i.test(text)) {
+    score += 25
+  }
+
+  // Fix detection: düzeltme mesajları çok yüksek öncelik
+  if (/fixed|resolved|solved|changed|updated|corrected/i.test(text)) {
+    // Önceki mesajlarda hata var mı kontrol et
+    const hasPriorError = allMessages.slice(0, idx).some(m =>
+      /error|failed|exception/i.test(extractText(m))
+    )
+    if (hasPriorError) score += 35
+  }
+
+  // Decision detection: karar mesajları yüksek öncelik
+  if (/decided|chose|selected|let'?s use|we'?ll use|going with/i.test(text)) {
+    score += 20
+  }
+
+  // User correction: kullanıcı agent'ı düzelttiyse çok yüksek öncelik
+  if (msg.role === "user" && /\bno\b|\bwrong\b|\bincorrect\b|don'?t\b|\bstop\b|\bactually\b/i.test(text)) {
+    score += 40
+  }
+
+  // File path density: çok fazla dosya referansı = önemli
+  const pathMatches = text.match(/\b[\w-]+\.(ts|tsx|js|jsx|py|go|rs|md|json)\b/g)
+  if (pathMatches && pathMatches.length > 3) {
+    score += Math.min(15, pathMatches.length * 3)
+  }
 
   return Math.max(0, Math.min(100, score))
 }

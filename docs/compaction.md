@@ -1,6 +1,6 @@
 # Session Compaction
 
-When a conversation approaches the model's context limit, OmniCod automatically compacts it — replacing the accumulated history with a structured summary that preserves the essential information.
+When a conversation approaches the model's context limit, Aurict automatically compacts it — replacing the accumulated history with a structured summary that preserves the essential information.
 
 ## When compaction triggers
 
@@ -79,7 +79,7 @@ The `strategy` config setting adjusts behavior within each path:
 The `tailTurns` setting controls how many recent conversation turns are preserved verbatim after compaction (not summarized):
 
 ```bash
-omnicod /config set compaction.tailTurns 3
+aurict /config set compaction.tailTurns 3
 ```
 
 Default: 2. Conservative strategy adds 2 extra turns; aggressive subtracts 1.

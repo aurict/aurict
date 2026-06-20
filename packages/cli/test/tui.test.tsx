@@ -275,12 +275,12 @@ describe("StartupBanner", () => {
     expect(lastFrame()).toContain("0.0.1")
   })
 
-  it("renders OMNICOD letters", () => {
+  it("renders AURICT letters", () => {
     const { lastFrame } = render(
       <StartupBanner version="1.0.0" provider="anthropic" model="claude-opus-4" workdir="/tmp" />
     )
     const frame = lastFrame() ?? ""
-    // Each letter is rendered separately but they form OMNICOD
+    // Each letter is rendered separately but they form AURICT
     expect(frame).toContain("O")
     expect(frame).toContain("M")
     expect(frame).toContain("N")

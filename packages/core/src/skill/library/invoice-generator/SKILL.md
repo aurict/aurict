@@ -4,7 +4,7 @@ description: "Profesyonel fatura tasarımı. Fatura elementleri (tarih, no, verg
 triggers:
   keywords: ["fatura oluştur", "fatura tasarımı", "e-fatura", "e-defter", "invoice generator", "fatura", "billing"]
 auto_load_when: "Kullanıcı profesyonel fatura oluşturma, e-fatura formatı veya fatura tasarımı taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -326,6 +326,3 @@ function dövizFatura(tutar, paraBirimi, kur) {
 | %10 | Gıda, konut kiralama |
 | %8 | Temel gıda, kitap |
 | %0 | İhracat |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

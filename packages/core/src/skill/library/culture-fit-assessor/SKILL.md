@@ -4,7 +4,7 @@ description: "Kültür uyumluluk testi, değerler matrisi, davranışsal soru ba
 triggers:
   keywords: ["culture fit assessor", "kültür uyumu", "değerler matrisi", "davranışsal test", "kültür değerlendirme"]
 auto_load_when: "Kullanıcı kültür uyumluluk değerlendirmesi, kültür testi veya kültür matrisi ister"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "grep", "glob"]
 ---
 
@@ -194,6 +194,3 @@ sonuç_yorumlama
 | Customer | Her zaman müşteri öncelikli | Ürün/operasyon öncelikli |
 | Teamwork | Birlikte çalışır | Bağımsız çalışır |
 | Excellence | Detay odaklı | Hız odaklı |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

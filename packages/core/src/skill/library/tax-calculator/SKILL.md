@@ -4,7 +4,7 @@ description: "Fatura üretimi, KDV ve vergi dilimi hesaplaması. Türkiye ve ulu
 triggers:
   keywords: ["vergi hesaplama", "KDV", "gelir vergisi", "stopaj", "fatura", "vergi avantajı", "tax calculator", "VAT", "income tax"]
 auto_load_when: "Kullanıcı vergi hesaplama, fatura üretimi veya vergi analizi taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -233,6 +233,3 @@ const net = brut - vergi + agi;
 | AGİ (Bekâr) | 268.33 TL | 2026 |
 | AGİ (Evli) | 357.78 TL | 2026 |
 | AGİ (Çocuk başı) | +89.44 TL | Max 3 çocuk |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

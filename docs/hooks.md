@@ -1,6 +1,6 @@
 # Hook System
 
-OmniCod provides a hook system that lets you react to agent lifecycle events — from outside the agent loop. Hooks are synchronous or async functions registered at startup.
+Aurict provides a hook system that lets you react to agent lifecycle events — from outside the agent loop. Hooks are synchronous or async functions registered at startup.
 
 ## Available hooks
 
@@ -19,7 +19,7 @@ OmniCod provides a hook system that lets you react to agent lifecycle events —
 ## Registering hooks in code
 
 ```typescript
-import { onToolBefore, onToolAfter, onCompact, onSessionStart, onAgentComplete } from "@omnicod/core"
+import { onToolBefore, onToolAfter, onCompact, onSessionStart, onAgentComplete } from "@aurict/core"
 
 // Log every bash command
 onToolBefore(async ({ tool, args }) => {
@@ -48,19 +48,19 @@ onToolBefore(async (payload) => {
 
 ## User hooks (shell scripts)
 
-You can define hooks as shell commands in `~/.omnicod/hooks.json`:
+You can define hooks as shell commands in `~/.aurict/hooks.json`:
 
 ```json
 {
   "v1.tool.after": [
     {
       "match": { "tool": "write" },
-      "command": "echo 'File written: {{args.path}}' >> ~/.omnicod/write-log.txt"
+      "command": "echo 'File written: {{args.path}}' >> ~/.aurict/write-log.txt"
     }
   ],
   "v1.session.compact": [
     {
-      "command": "notify-send 'OmniCod' 'Context compacted ({{tokensAfter}} tokens)'"
+      "command": "notify-send 'Aurict' 'Context compacted ({{tokensAfter}} tokens)'"
     }
   ]
 }
@@ -75,7 +75,7 @@ Template variables (`{{field}}`) are replaced with values from the hook payload.
 The `v1.context.inject` hook lets external systems add or remove skill IDs before skills are loaded:
 
 ```typescript
-import { hooks } from "@omnicod/core"
+import { hooks } from "@aurict/core"
 
 hooks.on("v1.context.inject", async (payload) => {
   // Always include the team conventions skill
@@ -110,7 +110,7 @@ Hooks have a **5-second** timeout by default. Hooks that take longer are cancell
 ## Session lifecycle hooks
 
 ```typescript
-import { onSessionStart, onAgentComplete } from "@omnicod/core"
+import { onSessionStart, onAgentComplete } from "@aurict/core"
 
 onSessionStart(async ({ sessionId, provider, model }) => {
   console.log(`Session ${sessionId} started with ${provider}/${model}`)

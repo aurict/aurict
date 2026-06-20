@@ -207,6 +207,3 @@ onLCP(metric => Sentry.addBreadcrumb({ category: 'webvital', message: `LCP: ${me
 | Bugsnag | @bugsnag/js | Good for React |
 | Rollbar | rollbar.js | Simpler setup |
 | Datadog | dd-trace | APM + errors |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

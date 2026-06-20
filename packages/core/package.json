@@ -1,9 +1,9 @@
 {
-  "name": "@omnicod/core",
+  "name": "@aurict/core",
   "version": "1.0.5",
   "private": false,
   "type": "module",
-  "description": "OmniCod core engine — agent loop, tools, sessions, providers",
+  "description": "Aurict core engine — agent loop, tools, sessions, providers",
   "keywords": [
     "ai",
     "llm",
@@ -15,7 +15,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/omnicod/omnicod"
+    "url": "https://github.com/aurict-dev/aurict"
   },
   "main": "./src/index.ts",
   "exports": {
@@ -37,6 +37,7 @@
     "drizzle-orm": "^0.40.0",
     "hono": "^4.7.0",
     "js-tiktoken": "^1.0.16",
+    "pptxgenjs": "^4.0.1",
     "zod": "^3.24.0"
   },
   "devDependencies": {

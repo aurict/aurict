@@ -4,7 +4,7 @@ description: "İş ilanı yazımı, anahtar kelime yerleştirme, şirket kültü
 triggers:
   keywords: ["job description writer", "iş ilanı", "iş tanımı", "job posting", "yetenek pazarlaması"]
 auto_load_when: "Kullanıcı iş ilanı yazımı, iş tanımı veya işe alım içeriği ister"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "grep", "glob"]
 ---
 
@@ -214,6 +214,3 @@ işe_alım_pazarlaması
 | Mid | 2-5 yıl | Bağımsızlık, uzmanlık |
 | Senior | 5-8 yıl | Liderlik, strateji |
 | Lead/Director | 8+ yıl | Strategik, yönetim |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

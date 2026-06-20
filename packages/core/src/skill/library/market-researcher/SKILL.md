@@ -5,7 +5,7 @@ triggers:
   keywords: ["pazar araştırması", "market research", "swot", "pestle", "rekabet analizi", "demografik", "trend", "TAM SAM FM"]
   extensions: [".md", ".pdf", ".xlsx"]
 auto_load_when: "Pazar analizi, rakip araştırması veya stratejik iş raporu talep edildiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch"]
 ---
 
@@ -368,7 +368,3 @@ Pazar Araştırma Raporu Şablonu:
 | SWOT/PESTLE | 500-700 | Matris + metin |
 | Trendler | 400-600 | Liste + grafik |
 | Öneriler | 300-500 | Liste |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

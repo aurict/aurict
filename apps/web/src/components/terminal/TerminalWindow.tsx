@@ -96,7 +96,7 @@ export function TerminalWindow() {
             color: "var(--text-muted)",
           }}
         >
-          omnicod — my-project
+          aurict — my-project
         </div>
         {/* scenario tabs */}
         <div style={{ display: "flex", gap: 6 }}>

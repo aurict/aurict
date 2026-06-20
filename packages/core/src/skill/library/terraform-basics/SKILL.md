@@ -203,7 +203,3 @@ How to organize environments:
 | terraform destroy | Remove all | Only in dev/staging |
 | terraform import | Adopt existing resource | Brownfield migration |
 | terraform state | Manipulate state | Advanced / emergency |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

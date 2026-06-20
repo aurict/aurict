@@ -304,5 +304,96 @@ Stale-while-revalidate:
 | Caching | ETags + Cache-Control | ETag header |
 | Filtering | Query params | ?role=admin&status=active |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+HTTP method?
+├── Reading data (no side effects)    → GET
+├── Creating a new resource           → POST  → 201 Created
+├── Replacing resource entirely       → PUT   → 200 OK
+├── Partial update                    → PATCH → 200 OK
+└── Deleting                          → DELETE → 204 No Content
+
+Status code?
+├── Success, returns body             → 200 OK
+├── Created                          → 201 + Location header
+├── Async started                    → 202 Accepted
+├── Invalid input / validation        → 400 Bad Request
+├── Missing/invalid auth token        → 401 Unauthorized
+├── Auth OK, no permission            → 403 Forbidden
+├── Resource doesn't exist            → 404 Not Found
+├── Duplicate / version conflict      → 409 Conflict
+└── Rate limit exceeded               → 429 Too Many Requests
+
+Pagination strategy?
+├── List < 1 000 rows, simple UX     → offset: ?page=2&per_page=20
+├── Large tables / infinite scroll   → cursor: ?cursor=abc123
+└── Time-ordered feed                → keyset: ?since_id=123&limit=20
+
+Versioning strategy?
+├── New API, multiple clients        → URL path /api/v1/
+├── Internal only / single client   → header versioning ok
+└── Never break → maintain v1 for 12+ months after v2 ships
+```
+
+---
+
+## Key Rules
+
+1. Use nouns (plurals, kebab-case) for resources — `/user-profiles` not `/getUserProfile`
+2. HTTP methods carry semantic meaning — GET is idempotent, POST is not
+3. URL versioning `/api/v1/` as default — easiest to test and cache
+4. Cursor pagination for any list that can grow > 1 000 rows
+5. RFC 7807 error format everywhere — `type`, `title`, `status`, `detail`, field `errors[]`
+6. ETags + `Cache-Control` headers on every GET endpoint
+7. Whitelist allowed filter params — never let clients query arbitrary DB fields
+8. Add `Deprecation` + `Sunset` headers at least 12 months before removing a version
+
+---
+
+## Implementation
+
+```typescript
+// RFC 7807 error response helper
+function problemDetail(status: number, title: string, detail: string, errors?: object) {
+  return Response.json(
+    { type: `https://api.example.com/errors/${title.toLowerCase().replace(/ /g, '-')}`,
+      title, status, detail, ...(errors ? { errors } : {}) },
+    { status }
+  )
+}
+
+// Validation error
+export async function POST(req: Request) {
+  const body = await req.json()
+  const result = CreateUserSchema.safeParse(body)
+  if (!result.success) {
+    return problemDetail(400, 'Validation Failed',
+      'Request body contains invalid fields',
+      result.error.flatten().fieldErrors)
+  }
+  const user = await db.user.create({ data: result.data })
+  return Response.json(user, { status: 201 })
+}
+
+// Cursor pagination response
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const cursor = searchParams.get('cursor')
+  const limit  = Math.min(Number(searchParams.get('limit') ?? 20), 100)
+
+  const items = await db.item.findMany({
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const hasMore   = items.length > limit
+  const data      = hasMore ? items.slice(0, limit) : items
+  const nextCursor = hasMore ? data[data.length - 1].id : null
+
+  return Response.json({ data, meta: { nextCursor, hasMore } })
+}
+```

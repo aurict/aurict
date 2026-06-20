@@ -195,6 +195,91 @@ Consistency checklist:
 | Treemap | Hierarchical part-of-whole | D3 |
 | Large data | WebGL rendering | deck.gl / regl |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Which chart type?
+├── Compare categories                 → Bar chart (horizontal for long labels)
+├── Trend over time                    → Line chart
+├── Part-of-whole (≤4 segments)        → Donut chart
+├── Part-of-whole (many / nested)      → Treemap
+├── Correlation between two variables  → Scatter plot
+├── Distribution of values             → Histogram or Box plot
+└── Two continuous + one size variable → Bubble chart
+
+Which library?
+├── React + simple bar/line/pie        → Recharts (SVG, composable)
+├── React + highly customizable        → Nivo
+├── Complex custom visualization       → D3.js (maximum control)
+├── Large dataset (>10k points)        → Canvas-based (Chart.js) or deck.gl
+└── Quick prototyping / dashboards     → Apache ECharts
+
+Performance concern?
+├── < 500 data points                  → SVG (Recharts / Nivo)
+├── 500–10k points                     → Canvas (Chart.js)
+├── > 10k points                       → WebGL (deck.gl / regl)
+└── Dynamic real-time stream           → Canvas + requestAnimationFrame
+
+Data still loading?
+└── Show skeleton/placeholder chart — never empty space
+```
+
+---
+
+## Key Rules
+
+1. Pick chart type based on the relationship in the data, not aesthetics
+2. Never use pie/donut for more than 4 segments — bar chart is always clearer
+3. Never use dual Y-axis — creates misleading scale comparisons; use two charts instead
+4. Color is never the only differentiator — add pattern, shape, or text label (colorblind accessible)
+5. SVG for < 500 points; Canvas for 500–10k; WebGL beyond that
+6. Always provide a data table fallback for screen readers (`role="img"` + `aria-label`)
+7. Memoize data transforms — never re-compute in render; `useMemo` or server-side rollup
+
+---
+
+## Implementation
+
+```tsx
+// Recharts line chart with loading skeleton + accessibility
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+
+interface ChartData { date: string; value: number }
+
+function MetricsChart({ data, isLoading }: { data: ChartData[]; isLoading: boolean }) {
+  if (isLoading) {
+    return <div className="h-64 bg-gray-100 animate-pulse rounded" aria-label="Loading chart" />
+  }
+
+  return (
+    <figure aria-label="Daily metrics trend">
+      <ResponsiveContainer width="100%" height={256}>
+        <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip
+            contentStyle={{ borderRadius: 8 }}
+            formatter={(value: number) => [value.toLocaleString(), 'Events']}
+          />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="#2563eb"
+            strokeWidth={2}
+            dot={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+
+      {/* Screen reader fallback */}
+      <table className="sr-only" aria-label="Chart data table">
+        <thead><tr><th>Date</th><th>Value</th></tr></thead>
+        <tbody>{data.map(d => <tr key={d.date}><td>{d.date}</td><td>{d.value}</td></tr>)}</tbody>
+      </table>
+    </figure>
+  )
+}
+```

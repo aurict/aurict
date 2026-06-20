@@ -4,7 +4,7 @@ description: "Destek ticket kategorileme. Auto-tagging. Routing rules. Priority 
 triggers:
   keywords: ["ticket categorizer", "ticket etiketleme", "otomatik etiketleme", "destek sınıflandırma", "ticket routing", "öncelik sınıflandırma"]
 auto_load_when: "Kullanıcı destek ticket'larını kategorize etmeyi veya sınıflandırmayı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -177,7 +177,3 @@ interface TicketCategorizerConfig {
   }[];
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

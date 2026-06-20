@@ -188,6 +188,105 @@ Response on limit:
 | Error format | RFC 7807 | application/problem+json |
 | Logging | Correlation ID | trace-id header |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Where does this code belong?
+├── CORS, rate limit, auth, logging    → middleware (runs on every request)
+├── Parse/validate specific input      → middleware before handler
+├── Business logic for this route      → handler (after middleware chain)
+└── Map errors to HTTP responses       → global error handler (last middleware)
+
+Which HTTP error to return?
+├── Schema validation fails            → 400 Bad Request
+├── No or invalid credentials          → 401 Unauthorized
+├── Valid user, but no permission      → 403 Forbidden
+├── Resource ID doesn't exist          → 404 Not Found
+├── Same resource already exists       → 409 Conflict
+├── Business rule violation            → 422 Unprocessable Entity
+└── Unexpected failure                 → 500 + correlation ID (never leak internals)
+
+Rate limiting strategy?
+├── Public unauthenticated routes      → per IP (sliding window)
+├── Authenticated endpoints            → per user ID
+├── Expensive mutation (email, payment)→ per user + stricter limit
+└── All of the above                   → layered: IP first, user second
+```
+
+---
+
+## Key Rules
+
+1. All cross-cutting logic (CORS, rate limit, logging, auth) in middleware — never repeat in handlers
+2. Validate every incoming request at the boundary with Zod before business logic
+3. Never return raw database or framework errors to clients — map to safe messages
+4. Consistent error envelope: `{ error: { code, message, details? } }` on every endpoint
+5. Mandatory pagination on all list endpoints — set and enforce a max page size
+6. Attach a `trace-id` (or `x-request-id`) to every request for log correlation
+7. Auth middleware attaches `req.user`; never re-fetch user in every handler
+
+---
+
+## Implementation
+
+```typescript
+// Hono middleware chain (same pattern in Express/Fastify)
+import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
+
+type Env = { Variables: { userId: string } }
+const app = new Hono<Env>()
+
+// 1. Trace ID middleware
+app.use('*', async (c, next) => {
+  const traceId = c.req.header('x-request-id') ?? crypto.randomUUID()
+  c.header('x-request-id', traceId)
+  await next()
+})
+
+// 2. Auth middleware (attach user to context)
+async function requireAuth(c: any, next: () => Promise<void>) {
+  const token = c.req.header('authorization')?.replace('Bearer ', '')
+  if (!token) return c.json({ error: { code: 'UNAUTHORIZED', message: 'Missing token' } }, 401)
+
+  try {
+    const payload = await verifyToken(token)
+    c.set('userId', payload.sub as string)
+    await next()
+  } catch {
+    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Invalid token' } }, 401)
+  }
+}
+
+// 3. Route with Zod validation
+const createPostSchema = z.object({
+  title:   z.string().min(1).max(200),
+  content: z.string().min(1),
+})
+
+app.post('/posts', requireAuth, zValidator('json', createPostSchema), async (c) => {
+  const userId = c.get('userId')
+  const body   = c.req.valid('json')
+
+  const post = await db.post.create({ data: { ...body, authorId: userId } })
+  return c.json({ data: post }, 201)
+})
+
+// 4. Global error handler
+app.onError((err, c) => {
+  if (err instanceof AppError) {
+    return c.json({ error: { code: err.code, message: err.message } }, err.status)
+  }
+  console.error({ err, traceId: c.res.headers.get('x-request-id') })
+  return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' } }, 500)
+})
+
+class AppError extends Error {
+  constructor(public code: string, message: string, public status: number) {
+    super(message)
+  }
+}
+```

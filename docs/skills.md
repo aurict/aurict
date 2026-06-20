@@ -2,7 +2,7 @@
 
 ## What are skills?
 
-A skill is a structured context injection that tells the AI how to reason about a specific technology, framework, or pattern. Skills are not prompt templates — they are modular system prompt sections that are composed at session start based on what OmniCod detects in your project.
+A skill is a structured context injection that tells the AI how to reason about a specific technology, framework, or pattern. Skills are not prompt templates — they are modular system prompt sections that are composed at session start based on what Aurict detects in your project.
 
 A TypeScript + Next.js + Tailwind project automatically gets skills for:
 - TypeScript strict mode conventions
@@ -16,7 +16,7 @@ You don't configure this — it's automatic.
 
 ## How detection works
 
-On startup, OmniCod scans `<workdir>` for:
+On startup, Aurict scans `<workdir>` for:
 
 1. **Package files** — `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`, …
 2. **Config files** — `tsconfig.json`, `next.config.*`, `vite.config.*`, `tailwind.config.*`, …
@@ -59,20 +59,20 @@ Or run:
 
 ### Global custom skills
 
-Place `.md` files in `~/.omnicod/skills/`. They are loaded for every project.
+Place `.md` files in `~/.aurict/skills/`. They are loaded for every project.
 
 ```
-~/.omnicod/skills/
+~/.aurict/skills/
 ├── my-conventions.md
 └── team-patterns.md
 ```
 
 ### Project-local custom skills
 
-Place `.md` files in `<workdir>/.omnicod/skills/`. They override global skills with the same name.
+Place `.md` files in `<workdir>/.aurict/skills/`. They override global skills with the same name.
 
 ```
-myproject/.omnicod/skills/
+myproject/.aurict/skills/
 ├── api-conventions.md
 └── database-patterns.md
 ```
@@ -125,16 +125,16 @@ Beyond skills, you can pin arbitrary content into every session for a project:
 
 ```bash
 # Pin a file's content permanently
-omnicod /pin add src/db/schema.ts
+aurict /pin add src/db/schema.ts
 
 # Pin a note
-omnicod /pin add "Always use the shared Prisma client from lib/prisma.ts"
+aurict /pin add "Always use the shared Prisma client from lib/prisma.ts"
 
 # View pinned items
-omnicod /pin list
+aurict /pin list
 
 # Remove a pin
-omnicod /pin remove <id>
+aurict /pin remove <id>
 ```
 
 Pinned content is always injected, regardless of the token budget.

@@ -444,5 +444,96 @@ export const app = createApp()
 | Stream | c.stream() | For large responses |
 | Cloudflare | c.env.KV, c.env.DB | Access Workers bindings |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Route organization?
+├── ≤ 5 routes, prototype             → single file app.ts
+├── Growing API                       → split: routes/users.ts, aggregate in index.ts
+└── Shared auth/validation logic      → middleware/ directory
+
+Input validation?
+├── Always                            → zValidator('json', schema) as middleware
+├── Path params                       → zValidator('param', schema)
+└── Query params                      → zValidator('query', schema) with z.coerce.number()
+
+Deployment target?
+├── Cloudflare Workers                → c.env.DB (D1), c.env.KV, c.env.R2
+├── Bun runtime                       → Bun.serve, bun:sqlite
+├── Node.js                           → hono/node-server adapter
+└── Deno Deploy                       → default export app
+
+Error strategy?
+├── Expected errors (validation)      → return c.json(err, 400) in handler
+├── Unexpected errors (all routes)    → app.onError((err, c) => ...)
+└── 404                               → app.notFound((c) => ...)
+```
+
+---
+
+## Key Rules
+
+1. Use `new Hono<{ Bindings: Env }>()` to type Cloudflare environment bindings
+2. `zValidator` as route middleware — never manual `req.json()` + manual check
+3. `app.onError` for centralized error handling — avoids try/catch in every route
+4. Route modules with `new Hono()` + `app.route(prefix, module)` — never one mega file
+5. `c.set(key, value)` in middleware, `c.get(key)` in handler — typed via `Variables` generic
+6. `createApp()` factory instead of global `app` — easier to test and reuse
+7. Streaming via `c.stream()` for LLM responses and large payloads
+
+---
+
+## Implementation
+
+```typescript
+// Full typed Hono app with auth middleware + Zod validation
+import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
+
+type Env = { Bindings: { DB: D1Database; JWT_SECRET: string } }
+type Vars = { userId: string }
+
+const app = new Hono<Env & { Variables: Vars }>()
+
+// Auth middleware — sets userId in context
+app.use('/api/*', async (c, next) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '')
+  if (!token) return c.json({ error: 'Unauthorized' }, 401)
+  const userId = await verifyJwt(token, c.env.JWT_SECRET)
+  if (!userId) return c.json({ error: 'Invalid token' }, 401)
+  c.set('userId', userId)
+  await next()
+})
+
+// Route with Zod validation + typed context
+const CreatePostSchema = z.object({
+  title:   z.string().min(1).max(200),
+  content: z.string().min(1),
+})
+
+app.post('/api/posts',
+  zValidator('json', CreatePostSchema),
+  async (c) => {
+    const body   = c.req.valid('json')   // fully typed
+    const userId = c.get('userId')
+    const post   = await c.env.DB
+      .prepare('INSERT INTO posts (title, content, user_id) VALUES (?,?,?) RETURNING *')
+      .bind(body.title, body.content, userId)
+      .first()
+    return c.json(post, 201)
+  }
+)
+
+// Centralized error handler
+app.onError((err, c) => {
+  console.error(err)
+  return c.json({ error: 'Internal error', message: err.message }, 500)
+})
+
+app.notFound((c) => c.json({ error: 'Not found' }, 404))
+
+export default app
+```

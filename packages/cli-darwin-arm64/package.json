@@ -1,11 +1,11 @@
 {
-  "name": "@omnicod/cli-darwin-arm64",
+  "name": "@aurict/cli-darwin-arm64",
   "version": "1.0.5",
-  "description": "OmniCod CLI binary for macOS arm64 (Apple Silicon)",
+  "description": "Aurict CLI binary for macOS arm64 (Apple Silicon)",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/omnicod/omnicod"
+    "url": "https://github.com/aurict-dev/aurict"
   },
   "os": [
     "darwin"
@@ -14,6 +14,6 @@
     "arm64"
   ],
   "files": [
-    "bin/omnicod"
+    "bin/aurict"
   ]
 }

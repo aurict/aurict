@@ -29,18 +29,18 @@ export function Footer() {
               letterSpacing: "-0.02em",
             }}
           >
-            omnicod
+            aurict
           </span>
           <span style={{ color: "var(--border-bright)" }}>·</span>
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>MIT License</span>
           <span style={{ color: "var(--border-bright)" }}>·</span>
-          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>© 2026 omnicod-dev</span>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>© 2026 aurict-dev</span>
         </div>
 
         <div style={{ display: "flex", gap: 32 }}>
           {[
-            { label: "GitHub", href: "https://github.com/omnicod-dev/omnicod" },
-            { label: "npm", href: "https://www.npmjs.com/package/omnicod" },
+            { label: "GitHub", href: "https://github.com/aurict-dev/aurict" },
+            { label: "npm", href: "https://www.npmjs.com/package/aurict" },
             { label: "Docs", href: "/docs" },
             { label: "Changelog", href: "/changelog" },
           ].map((link) => (

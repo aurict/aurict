@@ -170,7 +170,9 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
       }
       clearTimeout(stallTimer)
 
-      if (turnText) finalText = turnText   // final answer = son turn'ün text'i
+      // Son turn metni accumulate et — override değil append.
+      // Agent son turda sadece tool call yaptıysa önceki turların metni korunur.
+      if (turnText) finalText = finalText ? `${finalText}\n\n${turnText}` : turnText
 
       const usage = await result.usage as Record<string, number>
       totalInput  += usage["promptTokens"]     ?? 0
@@ -197,6 +199,34 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
     if (abort.signal.aborted) {
       send({ type: "error", message: "Subagent cancelled" })
       return
+    }
+
+    // Tüm turnlar tool-only geçti → metin boş.
+    // Tek bir özet turu zorla: araç çağrısı yok, sadece düz metin özeti.
+    if (!finalText) {
+      try {
+        let summaryText = ""
+        const sumResult = streamText({
+          model,
+          ...(workerSystem ? { system: workerSystem } : {}),
+          messages: [...messages, {
+            role:    "user" as const,
+            content: "Provide a plain-text summary of everything you completed and your key findings. No tool calls.",
+          }],
+          maxSteps:    1,
+          abortSignal: abort.signal,
+        } as any)
+        for await (const part of (sumResult as any).fullStream) {
+          if (abort.signal.aborted) break
+          if (part.type === "text-delta") {
+            const delta = (part.textDelta as string) || ""
+            if (delta) { summaryText += delta; send({ type: "text", delta }) }
+          }
+        }
+        const sumUsage = await (sumResult as any).usage as Record<string, number>
+        totalOutput += Number(sumUsage?.["completionTokens"] ?? 0)
+        if (summaryText) finalText = summaryText
+      } catch { /* özet başarısız — boş devam et */ }
     }
 
     send({

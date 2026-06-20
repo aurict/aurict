@@ -4,7 +4,7 @@ description: "Churn prediction. Early warning signs. Risk segmentasyonu. Prevent
 triggers:
   keywords: ["churn predictor", "müşteri kaybı tahmini", "churn analizi", "kayıp riski", "müşteri analizi"]
 auto_load_when: "Kullanıcı müşteri kaybı (churn) tahmini, risk segmentasyonu veya önleme stratejileri oluşturmayı talep ettiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "grep", "glob"]
 ---
 
@@ -330,7 +330,3 @@ interface ChurnPredictorConfig {
   monitoringFrequency: 'daily' | 'weekly';
 }
 ```
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

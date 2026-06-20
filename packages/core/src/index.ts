@@ -31,6 +31,7 @@ export { gateGuard }                                     from "./permission/gate
 export type { GateRule, AuditEntry }                     from "./permission/gateguard.js"
 
 export { SessionManager }                                from "./session/manager.js"
+export type { SessionStats, SessionSearchResult }        from "./storage/queries.js"
 export type { Session, Part, SessionConfig }             from "./session/types.js"
 export { isOverflow, isOverflowByMessages, compact, estimateTokens, getCircuitState, getContextBreakdown } from "./session/compaction.js"
 export type { CBState, CBStatus, ContextBreakdown }      from "./session/compaction.js"
@@ -39,18 +40,22 @@ export type { ContextType, ContextHealth }               from "./session/context
 
 export { SkillRegistry }                                 from "./skill/registry.js"
 export { detectSkills }                                  from "./skill/detector.js"
-export { loadSkill, loadSkills }                         from "./skill/loader.js"
-export { buildSystemPrompt, getSkillsForProject, clearSkillCache, getContextualSkills, buildGitSection, buildProactiveFileSection } from "./skill/injector.js"
+export { loadSkill, loadSkills, loadSkillAdaptive, detectTaskType } from "./skill/loader.js"
+export type { TaskType }                                 from "./skill/loader.js"
+export { buildSystemPrompt, getSkillsForProject, clearSkillCache, getContextualSkills, buildGitSection, buildProactiveFileSection, buildIntentSkillSection } from "./skill/injector.js"
 export type { SkillDef, LoadedSkill, SkillMatch }        from "./skill/types.js"
 export { autoInvoker }                                   from "./skill/auto-invoke.js"
 export type { AutoInvokeRule, AutoTrigger }              from "./skill/auto-invoke.js"
+export { skillScoreStore }                               from "./skill/score-store.js"
+export { loadSkillOverride, applyOverride }              from "./skill/override.js"
+export type { SkillOverride }                            from "./skill/override.js"
 export { installRemoteSkill, listInstalledSkills, uninstallSkill } from "./skill/remote.js"
 export type { RemoteSkillMeta }                          from "./skill/remote.js"
 export { loadPlugins, getLoadedPlugins, PLUGIN_DIR }     from "./plugin/loader.js"
 export type { OmniPlugin }                               from "./plugin/loader.js"
 
 export { runAgent }                                      from "./agent/loop.js"
-export type { AgentRunOptions, AgentFinishResult, AgentStatus } from "./agent/types.js"
+export type { AgentRunOptions, AgentFinishResult, AgentStatus, TokenBreakdown } from "./agent/types.js"
 export { agentPool }                                     from "./agent/pool.js"
 export { loadCustomAgents, getCustomAgent }              from "./agent/custom.js"
 export type { CustomAgentDef }                           from "./agent/custom.js"
@@ -120,3 +125,136 @@ export type { PlanRequest, PlanStep, PlanDecision } from "./plan/gate.js"
 export { DesignLoader, matchDesign, extractProjectBrand, brandToContext, loadDesignPrefs, saveDesignPrefs, recordSystemUsed, recordSkillUsed, buildDesignPrompt, buildDesignOutputDir, slugify } from "./design/index.js"
 export type { DesignSystem, Skill, MatchResult, ProjectBrand, DesignPrefs, DesignJobSpec } from "./design/index.js"
 export { loadCustomTools } from "./tool/custom-loader.js"
+
+// Project context & diagnostics
+export { readArchitecture }   from "./project-context/architecture.js"
+export { readDecisions }      from "./project-context/decisions.js"
+export { diagnosticsStore }   from "./diagnostics/store.js"
+export type { DiagnosticsEntry } from "./diagnostics/store.js"
+
+// ── Recipe system ──────────────────────────────────────────────────────────────
+export { runRecipe, parseRecipeFile }    from "./recipe/runner.js"
+export type { RecipeDef, RecipeStep, RecipeRunOptions, RecipeRunResult } from "./recipe/types.js"
+
+// ── Multi-agent workspace (readWorkspaceFindings) ─────────────────────────────
+export { readWorkspaceFindings } from "./agent/workspace.js"
+
+// ── Code analysis (tree-sitter-free symbol extraction) ────────────────────────
+export { extractSymbols, extractSymbolBody, detectLanguage, formatSymbolsSummary } from "./analysis/symbols.js"
+export type { CodeSymbol, FileSymbols, Language, SymbolKind } from "./analysis/symbols.js"
+
+// ── Verification Oracle ────────────────────────────────────────────────────────
+export { findRelatedTests }                 from "./verification/detector.js"
+export { runRelatedTests, detectFramework } from "./verification/runner.js"
+export type { TestRunResult }               from "./verification/runner.js"
+
+// ── Scratchpad ─────────────────────────────────────────────────────────────────
+export { scratchpadStore }                  from "./scratchpad/store.js"
+export { EMPTY_SCRATCHPAD }                 from "./scratchpad/types.js"
+export type { ScratchpadState, ScratchpadHistoryEntry } from "./scratchpad/types.js"
+
+// ── Foundation Utilities (Faz 0) ───────────────────────────────────────────────
+export { hashArgs, hashString, hashFileQuick, hashFileContent } from "./util/hash.js"
+export { Timer, measure, measureSync, globalTimer }             from "./util/timing.js"
+export { LRUCache }                                              from "./util/lru-cache.js"
+export { metrics, createMetricsCollector }                       from "./util/metrics.js"
+export type { MetricsSnapshot, ToolMetric, ProviderSwitchEntry, CompactionEntry } from "./util/metrics.js"
+
+// ── Tool Result Cache (Faz 1) ─────────────────────────────────────────────────
+export { toolResultCache, createToolResultCache } from "./tool/cache.js"
+
+// ── Provider Intelligence (Faz 2) ─────────────────────────────────────────────
+export { ProviderFallback, providerFallback, loadFallbackFromConfig } from "./provider/fallback.js"
+export type { FallbackConfig, FallbackTrigger } from "./provider/fallback.js"
+export { ModelRouter, modelRouter, loadRouterFromConfig } from "./provider/router.js"
+export type { RouterConfig, RoutingDecision, ModelTier, TaskComplexity } from "./provider/router.js"
+
+// ── Context Intelligence (Faz 3) ──────────────────────────────────────────────
+export { extractErrorChains, addProtectedErrors } from "./session/compaction.js"
+export type { ErrorChain } from "./session/compaction.js"
+export { extractPerTurnMemories } from "./memory/extractor.js"
+export { recordErrorPattern, getRelevantErrorPatterns, formatErrorPatterns, clearPatternCache } from "./memory/error-pattern.js"
+export type { ErrorPattern } from "./memory/error-pattern.js"
+
+// ── Tool Intelligence (Faz 4) ─────────────────────────────────────────────────
+export { shouldRunTsc, runIncrementalTsc, filterTscForFile, clearTscCache } from "./verification/tsc.js"
+export { detectHallucinations, formatHallucinationWarnings } from "./verification/hallucination.js"
+export type { HallucinationWarning } from "./verification/hallucination.js"
+
+// ── Agent Evolution (Faz 5) ───────────────────────────────────────────────────
+export { decomposeTask, flattenTaskTree, getTaskProgress } from "./agent/decomposition.js"
+export type { TaskNode, DecompositionLevel, DecompositionRequest } from "./agent/decomposition.js"
+export { agentLearner, createAgentLearner } from "./agent/learning.js"
+export type { AgentPerformance, AgentLearningConfig } from "./agent/learning.js"
+export { contextBus, createContextBus } from "./agent/context-bus.js"
+export type { FileLock, ContextBusConfig } from "./agent/context-bus.js"
+export { computeOptimalWorkers, adjustForComplexity, getPoolSizingReport } from "./agent/pool-sizing.js"
+export type { PoolSizingConfig } from "./agent/pool-sizing.js"
+
+// ── Developer Experience (Faz 6) ──────────────────────────────────────────────
+export { progressTracker, ToolProgressTracker, getToolProgressMessage } from "./util/progress.js"
+export type { ToolProgressEvent, ToolProgressStatus, ToolProgressCallback } from "./util/progress.js"
+export { prefetchManager, PrefetchManager, extractPrefetchHints } from "./util/prefetch.js"
+export type { PrefetchRequest, PrefetchResult, PrefetchHint } from "./util/prefetch.js"
+export { extractInstantContext, formatInstantContext } from "./util/instant-context.js"
+export type { InstantContextResult, InstantContextConfig } from "./util/instant-context.js"
+
+// ── Security & Robustness (Faz 7) ─────────────────────────────────────────────
+export {
+  escapeHtml,
+  escapeSql,
+  sanitizePath,
+  sanitizeInput,
+  validateLength,
+  validateEmail,
+  validateUrl,
+  validateFilePath,
+  validateJsonInput,
+  escapeShellArg,
+  validateRegex,
+  comprehensiveSanitize,
+} from "./security/validation.js"
+export type { ValidationResult } from "./security/validation.js"
+
+export {
+  TokenBucketLimiter,
+  SlidingWindowLimiter,
+  throttle,
+  debounce,
+  ConcurrencyLimiter,
+  apiRateLimiter,
+  agentConcurrencyLimiter,
+} from "./security/rate-limiter.js"
+export type { RateLimitConfig, RateLimitResult } from "./security/rate-limiter.js"
+
+export {
+  AuditLogger,
+  auditLogger,
+  readAuditLogs,
+  filterAuditLogs,
+} from "./security/audit.js"
+export type { AuditEvent, AuditEventType, AuditLogConfig } from "./security/audit.js"
+
+export {
+  scanDependencies,
+  formatVulnerabilityReport,
+  hasCriticalVulnerabilities,
+  groupBySeverity,
+} from "./security/vulnerability-scanner.js"
+export type { VulnerabilityInfo, DependencyScanResult } from "./security/vulnerability-scanner.js"
+
+export {
+  classifyError,
+  withRetry,
+  CircuitBreaker,
+  withFallback,
+  errorBoundary,
+  ErrorHandlerRegistry,
+  errorHandlerRegistry,
+} from "./security/error-boundary.js"
+export type {
+  ErrorSeverity,
+  ErrorCategory,
+  ClassifiedError,
+  RecoveryStrategy,
+} from "./security/error-boundary.js"

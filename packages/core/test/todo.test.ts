@@ -9,7 +9,7 @@ let tmpDir: string
 let ctx: ToolContext
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), "omnicod-todo-"))
+  tmpDir = mkdtempSync(join(tmpdir(), "aurict-todo-"))
   ctx = {
     sessionId: "test-session",
     workdir:   tmpDir,
@@ -82,7 +82,7 @@ describe("todo add", () => {
 
   it("persists to disk", async () => {
     await todoTool.execute({ action: "add", text: "Persisted task" }, ctx)
-    const filePath = join(tmpDir, ".omnicod", "todos.json")
+    const filePath = join(tmpDir, ".aurict", "todos.json")
     expect(existsSync(filePath)).toBe(true)
     const data = JSON.parse(readFileSync(filePath, "utf8"))
     expect(data).toHaveLength(1)
@@ -122,7 +122,7 @@ describe("todo complete", () => {
     const list = await todoTool.execute({ action: "list" }, ctx)
     const id = list.output.match(/\]\s+([a-f0-9]{6})/)?.[1]!
     await todoTool.execute({ action: "complete", id }, ctx)
-    const data = JSON.parse(readFileSync(join(tmpDir, ".omnicod", "todos.json"), "utf8"))
+    const data = JSON.parse(readFileSync(join(tmpDir, ".aurict", "todos.json"), "utf8"))
     expect(data[0].done).toBe(true)
   })
 })
@@ -177,7 +177,7 @@ describe("todo persistence", () => {
   })
 
   it("different workdirs have independent todo lists", async () => {
-    const otherDir = mkdtempSync(join(tmpdir(), "omnicod-todo-other-"))
+    const otherDir = mkdtempSync(join(tmpdir(), "aurict-todo-other-"))
     try {
       const ctx2: ToolContext = {
         sessionId: "other-session",

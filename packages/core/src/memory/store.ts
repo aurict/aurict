@@ -129,7 +129,7 @@ class MemoryStore {
   /** Human-readable markdown export */
   toMarkdown(workdir: string): string {
     const entries = this.list(workdir)
-    if (!entries.length) return "# OmniCod Memory\n\n_(empty)_\n"
+    if (!entries.length) return "# Aurict Memory\n\n_(empty)_\n"
 
     const sections: Record<string, Memory[]> = {}
     for (const m of entries) {
@@ -138,7 +138,7 @@ class MemoryStore {
       sections[key]!.push(m)
     }
 
-    const lines = ["# OmniCod Memory\n"]
+    const lines = ["# Aurict Memory\n"]
     for (const [sec, mems] of Object.entries(sections)) {
       lines.push(`## ${sec}\n`)
       for (const m of mems) {
@@ -150,10 +150,10 @@ class MemoryStore {
     return lines.join("\n")
   }
 
-  /** .omnicod/memory.md dosyasına yaz */
+  /** .aurict/memory.md dosyasına yaz */
   exportToFile(workdir: string): void {
     try {
-      const dir  = join(workdir, ".omnicod")
+      const dir  = join(workdir, ".aurict")
       mkdirSync(dir, { recursive: true })
       writeFileSync(join(dir, "memory.md"), this.toMarkdown(workdir), "utf8")
     } catch { /* dosya yazma başarısız → sessizce geç */ }

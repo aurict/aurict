@@ -193,7 +193,3 @@ CSS optimization:
 | TTFB | < 800ms | CDN, caching, edge rendering |
 | TBT | < 200ms | Split large tasks, defer scripts |
 | FCP | < 1.8s | Critical CSS inline, preload fonts |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

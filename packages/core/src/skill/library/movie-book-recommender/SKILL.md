@@ -209,6 +209,3 @@ TÜR MATRİSİ (Örnek: Gerilim)
 ---
 
 *Movie & Book Recommender v1.0 — Doğru hikaye, doğru an!*
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

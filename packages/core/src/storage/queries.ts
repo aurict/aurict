@@ -1,6 +1,6 @@
 import { db } from "./db.js"
 import { sessions, parts, config, memories } from "./schema.js"
-import { eq, desc, and, isNull, or, sql } from "drizzle-orm"
+import { eq, desc, and, or, sql } from "drizzle-orm"
 
 export function createSession(data: {
   id: string
@@ -33,6 +33,80 @@ export function updateSession(id: string, data: Partial<{ title: string; status:
     .set({ ...data, updatedAt: Date.now() })
     .where(eq(sessions.id, id))
     .run()
+}
+
+/** Her LLM turn'ünden sonra token ve maliyet birikimini günceller */
+export function recordTurn(sessionId: string, data: {
+  inputTokens:  number
+  outputTokens: number
+  cacheTokens:  number
+  costUsd:      number
+  model:        string
+}) {
+  db.run(sql`
+    UPDATE sessions
+    SET
+      total_input_tokens   = total_input_tokens  + ${data.inputTokens},
+      total_output_tokens  = total_output_tokens + ${data.outputTokens},
+      total_cache_tokens   = total_cache_tokens  + ${data.cacheTokens},
+      accumulated_cost_usd = accumulated_cost_usd + ${data.costUsd},
+      turn_count           = turn_count + 1,
+      last_model           = ${data.model},
+      updated_at           = ${Date.now()}
+    WHERE id = ${sessionId}
+  `)
+}
+
+export interface SessionStats {
+  id:                 string
+  title:              string | null
+  status:             string
+  createdAt:          number
+  turnCount:          number
+  totalInputTokens:   number
+  totalOutputTokens:  number
+  totalCacheTokens:   number
+  accumulatedCostUsd: number
+  lastModel:          string | null
+}
+
+/** Session listesini maliyet/token istatistikleriyle döner */
+export function listSessionsWithStats(limit = 50): SessionStats[] {
+  return db.select({
+    id:                 sessions.id,
+    title:              sessions.title,
+    status:             sessions.status,
+    createdAt:          sessions.createdAt,
+    turnCount:          sessions.turnCount,
+    totalInputTokens:   sessions.totalInputTokens,
+    totalOutputTokens:  sessions.totalOutputTokens,
+    totalCacheTokens:   sessions.totalCacheTokens,
+    accumulatedCostUsd: sessions.accumulatedCostUsd,
+    lastModel:          sessions.lastModel,
+  })
+  .from(sessions)
+  .orderBy(desc(sessions.createdAt))
+  .limit(limit)
+  .all() as SessionStats[]
+}
+
+/** Tek session'ın maliyet/token özeti */
+export function getSessionStats(sessionId: string): SessionStats | undefined {
+  return db.select({
+    id:                 sessions.id,
+    title:              sessions.title,
+    status:             sessions.status,
+    createdAt:          sessions.createdAt,
+    turnCount:          sessions.turnCount,
+    totalInputTokens:   sessions.totalInputTokens,
+    totalOutputTokens:  sessions.totalOutputTokens,
+    totalCacheTokens:   sessions.totalCacheTokens,
+    accumulatedCostUsd: sessions.accumulatedCostUsd,
+    lastModel:          sessions.lastModel,
+  })
+  .from(sessions)
+  .where(eq(sessions.id, sessionId))
+  .get() as SessionStats | undefined
 }
 
 function isSqliteBusy(err: unknown): boolean {
@@ -93,6 +167,51 @@ export function getSessionPartsTail(sessionId: string, limit: number) {
     .limit(limit)
     .all()
     .reverse()
+}
+
+export interface SessionSearchResult {
+  sessionId:   string
+  title:       string | null
+  updatedAt:   number
+  matchCount:  number
+  excerpt:     string   // ilk eşleşen mesajın kısa kesiti
+}
+
+/** Session part'larında tam metin arama. SQLite LIKE kullanır — regex gerekmez. */
+export function searchSessions(query: string, limit = 20): SessionSearchResult[] {
+  if (!query.trim()) return []
+  const pattern = `%${query.replace(/[%_]/g, "\\$&")}%`
+
+  // Her eşleşen part için session bilgilerini join et
+  const rows = db.all(sql`
+    SELECT
+      s.id          AS sessionId,
+      s.title       AS title,
+      s.updated_at  AS updatedAt,
+      COUNT(p.id)   AS matchCount,
+      MIN(p.content) AS firstContent
+    FROM parts p
+    JOIN sessions s ON s.id = p.session_id
+    WHERE p.content LIKE ${pattern} ESCAPE '\\'
+      AND s.parent_id IS NULL
+    GROUP BY s.id
+    ORDER BY s.updated_at DESC
+    LIMIT ${limit}
+  `) as Array<{
+    sessionId:    string
+    title:        string | null
+    updatedAt:    number
+    matchCount:   number
+    firstContent: string
+  }>
+
+  return rows.map(r => ({
+    sessionId:  r.sessionId,
+    title:      r.title,
+    updatedAt:  r.updatedAt,
+    matchCount: r.matchCount,
+    excerpt:    r.firstContent.slice(0, 100).replace(/\n/g, " "),
+  }))
 }
 
 export function getConfig(key: string): string | undefined {

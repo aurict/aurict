@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
 
-const DIR  = join(homedir(), ".omnicod", "stash")
+const DIR  = join(homedir(), ".aurict", "stash")
 const FILE = join(DIR, "stashes.json")
 
 export interface StashEntry {

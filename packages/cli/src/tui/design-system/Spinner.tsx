@@ -2,7 +2,7 @@
  * Design System — Spinner
  *
  * Çoklu animasyon tipi: dots, line, arc, pulse, bounce, braille, ascii.
- * Openclaude'dan ilham, OmniCod'un Spinner.tsx'inin halefi.
+ * Openclaude'dan ilham, Aurict'un Spinner.tsx'inin halefi.
  *
  * Her spinner:
  * - frames[]: unicode karakter dizisi

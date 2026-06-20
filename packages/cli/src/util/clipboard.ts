@@ -41,7 +41,7 @@ function readMacClipboard(): ClipboardResult {
 
   if (kind === "image") {
     // Save clipboard image to temp file as PNG
-    const tmp = join(tmpdir(), `omnicod-clip-${Date.now()}.png`)
+    const tmp = join(tmpdir(), `aurict-clip-${Date.now()}.png`)
     try {
       execSync(
         `osascript -e 'set f to POSIX file "${tmp}"' -e 'set d to (clipboard)' -e 'write (clipboard as «class PNGf») to (open for access f with write permission)' -e 'close access f'`,

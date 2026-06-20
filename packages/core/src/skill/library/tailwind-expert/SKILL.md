@@ -205,6 +205,93 @@ Migration priority:
 | Arbitrary value | w-[37px] | Use sparingly |
 | Custom token | extend.colors.brand | In tailwind.config.ts |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Use @theme or arbitrary value?
+├── Color / spacing / radius used in 3+ places → @theme token
+├── One-off dimension                           → arbitrary [37px]
+└── Complex selector / state                   → @utility custom class
+
+Media query or container query?
+├── Layout changes based on viewport (sidebar) → media query: md:hidden
+├── Component adapts to its container width    → @container + @md:flex
+└── Both                                       → media for layout, container for components
+
+Component variant approach?
+├── Few discrete variants (primary/secondary)  → cva() from class-variance-authority
+├── Complex layout with slots                  → composition (Card.Header, Card.Body)
+└── Polymorphic element (button renders as a) → as prop with forwardRef
+
+Dark mode?
+├── Follow OS setting automatically            → @media (prefers-color-scheme: dark)
+├── User-controlled toggle                     → dark: class strategy
+└── Runtime theming (multiple themes)          → CSS variables in @theme, swap with JS
+```
+
+---
+
+## Key Rules
+
+1. Mobile-first always — base classes for mobile, `md:` / `lg:` for larger
+2. Semantic token names in `@theme`: `--color-primary` not `--color-blue-500`
+3. `cva()` for reusable components with variants — eliminates long repeated className strings
+4. `cn()` (clsx + tailwind-merge) for conditional class merging — never string concatenation
+5. Dark mode via CSS variables in `@theme` — not `dark:` on every individual class
+6. Container queries (`@container`) for components that reuse across different widths
+7. Never `@apply` large groups of utilities — extract to a React component instead
+
+---
+
+## Implementation
+
+```typescript
+// cva() — type-safe component variants
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
+
+const buttonVariants = cva(
+  'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      variant: {
+        default:     'bg-primary text-primary-foreground hover:bg-primary/90',
+        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        outline:     'border border-input bg-background hover:bg-accent',
+        ghost:       'hover:bg-accent hover:text-accent-foreground',
+      },
+      size: {
+        sm:   'h-8 px-3 text-sm',
+        md:   'h-10 px-4',
+        lg:   'h-12 px-6 text-lg',
+      },
+    },
+    defaultVariants: { variant: 'default', size: 'md' },
+  }
+)
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>
+  & VariantProps<typeof buttonVariants>
+  & { className?: string }
+
+export function Button({ variant, size, className, ...props }: ButtonProps) {
+  return <button className={cn(buttonVariants({ variant, size }), className)} {...props} />
+}
+
+// CSS variables dark mode in global CSS
+/*
+@theme {
+  --color-bg:      oklch(100% 0 0);
+  --color-fg:      oklch(9% 0 0);
+  --color-primary: oklch(45% 0.2 260);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg:  oklch(9% 0 0);
+    --color-fg:  oklch(95% 0 0);
+  }
+}
+*/
+```

@@ -193,6 +193,88 @@ Implementation approaches:
 | Transaction | prisma.$transaction([]) | Atomic batch |
 | Relation | include: { rel: true } | With select for perf |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Fetching related data?
+├── Need all fields of relation     → include: { posts: true }
+├── Need specific fields only       → select: { posts: { select: { title: true } } }
+├── Need a count only               → include: { _count: { select: { posts: true } } }
+└── Deeply nested (>2 levels)       → consider separate query + join in code
+
+Multiple writes?
+├── Must all succeed or all fail    → prisma.$transaction([...])
+├── Independent writes              → parallel Promise.all([...])
+└── Single write                    → no transaction needed
+
+Which transaction API?
+├── Simple array of operations      → prisma.$transaction([op1, op2])
+├── Needs intermediate results      → prisma.$transaction(async (tx) => { ... })
+└── High concurrency / optimistic   → tx with isolationLevel: 'Serializable'
+
+Migration timing?
+├── Local development               → npx prisma migrate dev
+├── Staging / CI                    → npx prisma migrate deploy
+└── Production urgent fix           → prisma db execute (never migrate reset)
+```
+
+---
+
+## Key Rules
+
+1. Never `findMany()` without `take` — always paginate
+2. `select` specific fields instead of `include: { rel: true }` for performance
+3. Singleton PrismaClient — one global instance, never `new PrismaClient()` per request
+4. Soft deletes via middleware — not scattered `where: { deletedAt: null }` in every query
+5. Always review generated `.sql` migration files before deploying
+6. Use cursor pagination (`cursor` + `skip: 1`) for large datasets
+7. `$queryRaw` only as last resort — type it with `Prisma.sql\`...\``
+
+---
+
+## Implementation
+
+```typescript
+// Singleton PrismaClient (lib/prisma.ts)
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+// Interactive transaction (read-then-write)
+async function transferCredits(fromId: string, toId: string, amount: number) {
+  return prisma.$transaction(async (tx) => {
+    const from = await tx.user.findUniqueOrThrow({ where: { id: fromId } })
+    if (from.credits < amount) throw new Error('Insufficient credits')
+    await tx.user.update({ where: { id: fromId }, data: { credits: { decrement: amount } } })
+    await tx.user.update({ where: { id: toId   }, data: { credits: { increment: amount } } })
+  })
+}
+
+// Soft delete middleware
+prisma.$use(async (params, next) => {
+  if (params.model === 'Post') {
+    if (params.action === 'delete') {
+      params.action = 'update'
+      params.args['data'] = { deletedAt: new Date() }
+    }
+    if (['findFirst', 'findMany', 'findUnique'].includes(params.action)) {
+      params.args.where = { ...params.args.where, deletedAt: null }
+    }
+  }
+  return next(params)
+})
+
+// Cursor pagination
+async function getPosts(cursor?: string) {
+  return prisma.post.findMany({
+    take: 21,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, title: true, createdAt: true },
+  })
+}
+```

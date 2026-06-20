@@ -5,7 +5,7 @@ triggers:
   keywords: ["risk register", "risk matrix", "risk assessment", "mitigation plan", "risk yönetimi"]
   contexts: ["project risk", "operational risk", "strategic risk", "compliance risk"]
 auto_load_when: "Kullanıcı risk kayıt sistemi oluşturma, risk değerlendirme veya mitigation planlama istediğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
 
@@ -364,6 +364,3 @@ Escalation: Score >15 → Weekly leadership
 | High | Haftalık | Weekly review |
 | Medium | İki haftada | Bi-weekly |
 | Low | Aylık | Monthly |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

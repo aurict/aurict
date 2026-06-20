@@ -192,7 +192,3 @@ When to check metrics:
 | LCP image | Eager + preload | loading="eager" fetchpriority="high" |
 | Prevent CLS | Explicit dimensions | width="800" height="600" |
 | Art direction | <picture> with media | Different crops per breakpoint |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

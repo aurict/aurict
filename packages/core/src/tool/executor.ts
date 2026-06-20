@@ -1,10 +1,19 @@
 import { join, resolve } from "path"
+import { readFile } from "fs/promises"
 import { hooks } from "../hook/emitter.js"
 import { PermissionEvaluator } from "../permission/evaluator.js"
 import { PermissionGate, PermissionStore } from "../permission/store.js"
 import { gateGuard } from "../permission/gateguard.js"
 import { addPart } from "../storage/queries.js"
 import { classifyCommand } from "../terminal/classifier.js"
+import { diagnosticsStore } from "../diagnostics/store.js"
+import { truncateOutput, resolveTruncationConfig } from "./truncation.js"
+import { toolResultCache } from "./cache.js"
+import { metrics } from "../util/metrics.js"
+import { shouldRunTsc, runIncrementalTsc, filterTscForFile } from "../verification/tsc.js"
+import { detectHallucinations, formatHallucinationWarnings } from "../verification/hallucination.js"
+import { progressTracker, getToolProgressMessage } from "../util/progress.js"
+import { prefetchManager, extractPrefetchHints } from "../util/prefetch.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "./types.js"
 import type { PermissionRequest } from "../permission/types.js"
 
@@ -30,45 +39,8 @@ export const ExecutorEvents = {
 // Individual tools can override this with ToolDef.timeoutMs.
 const TOOL_EXEC_TIMEOUT_MS = 120_000  // 2 minutes default
 
-// ── Dual-Path: TypeScript verification after edit/write ───────────────────────
-const TYPED_FILE_RE    = /\.(ts|tsx|js|jsx|mts|cts)$/
-const TSC_TIMEOUT_MS   = 4_000
-const TSC_CACHE_TTL_MS = 8_000
-
-interface TscCacheEntry { output: string; ts: number }
-const tscResultCache = new Map<string, TscCacheEntry>()
-
-async function runTscCheck(workdir: string): Promise<string> {
-  const cached = tscResultCache.get(workdir)
-  if (cached && Date.now() - cached.ts < TSC_CACHE_TTL_MS) return cached.output
-
-  try {
-    const { spawn } = await import("bun")
-    const proc  = spawn(["bunx", "tsc", "--noEmit", "--pretty", "false"], {
-      cwd: workdir, stdout: "pipe", stderr: "pipe",
-    })
-    const timer = setTimeout(() => { try { proc.kill() } catch {} }, TSC_TIMEOUT_MS)
-    const out   = await new Response(proc.stdout).text()
-    const err   = await new Response(proc.stderr).text()
-    await proc.exited
-    clearTimeout(timer)
-    const result = (out + err).trim() || "✓"
-    tscResultCache.set(workdir, { output: result, ts: Date.now() })
-    return result
-  } catch {
-    return ""
-  }
-}
-
-function filterTscForFile(tscOut: string, filePath: string): string {
-  if (!tscOut || tscOut === "✓") return tscOut
-  const name    = filePath.split("/").pop() ?? ""
-  const relevant = tscOut.split("\n").filter(l => l.includes(name)).slice(0, 12)
-  return relevant.length > 0 ? relevant.join("\n") : ""
-}
-
-// Outputs longer than this get heuristically summarized before being returned to the model.
-const OUTPUT_SUMMARIZE_THRESHOLD = 4_000
+// ── TypeScript file regex ──────────────────────────────────────────────────────
+const TYPED_FILE_RE = /\.(ts|tsx|js|jsx|mts|cts)$/
 
 function analyzeToolError(toolId: string, error: string): string {
   const e = error.toLowerCase()
@@ -92,25 +64,6 @@ function analyzeToolError(toolId: string, error: string): string {
   return hint ? `${error}\n[Hint] ${hint}` : error
 }
 
-function summarizeToolOutput(toolId: string, output: string): string {
-  const lines = output.split("\n")
-
-  if (toolId === "grep") {
-    const files = new Set(lines.map(l => l.split(":")[0]).filter(Boolean))
-    const kept  = lines.slice(0, 50).join("\n")
-    const note  = lines.length > 50
-      ? `\n[${lines.length} matches across ${files.size} file(s) — showing first 50]`
-      : `\n[${lines.length} matches across ${files.size} file(s)]`
-    return kept + note
-  }
-
-  // Generic: head + tail with omission notice
-  const head    = output.slice(0, 2_500)
-  const tail    = output.slice(-600)
-  const omitted = output.length - 2_500 - 600
-  if (omitted <= 0) return output
-  return `${head}\n\n[... ${omitted} chars / ${lines.length} total lines omitted ...]\n\n${tail}`
-}
 
 // C: Pre-verify named imports from existing local modules before write/edit
 const MAX_IMPORT_CHECKS  = 4
@@ -168,10 +121,15 @@ async function verifyLocalImports(
   return issues.length > 0 ? issues.join("; ") : null
 }
 
-function withToolTimeout<T>(promise: Promise<T>, def: ToolDef): Promise<T> {
+function withToolTimeout<T>(
+  promise:   Promise<T>,
+  def:       ToolDef,
+  onTimeout: () => void,
+): Promise<T> {
   const ms = def.timeoutMs ?? TOOL_EXEC_TIMEOUT_MS
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => {
+      onTimeout()  // execAC'yi abort et → tool ctx.signal'i görür
       reject(new Error(`Tool '${def.id}' timed out after ${ms / 1000}s — aborted to prevent freeze`))
     }, ms)
     promise.then(
@@ -284,9 +242,11 @@ export async function executeTool(
   }
 
   if (decision === "ask" && !PermissionStore.isApproved(def.id, pattern)) {
-    // Subagent: PermissionGate.wait() would hang forever — auto-approve non-critical asks
-    if (ctx.isSubagent) {
-      // Danger-level in subagent → block; warning-level → allow (agent was authorized by user)
+    // Kategori bazlı toplu onay — "Bu session boyunca tüm write işlemlerine izin ver" gibi
+    if (PermissionStore.isCategoryApproved(def.id)) {
+      // Kategori onayı var — bireysel onay gerekmez
+    } else if (ctx.isSubagent) {
+      // Subagent: PermissionGate.wait() would hang forever — auto-approve non-critical asks
       if (level === "danger") {
         return { output: "", error: `Permission denied: [${def.id}] is too risky to auto-approve in subagent context. Level: danger.` }
       }
@@ -319,40 +279,165 @@ export async function executeTool(
     }
   }
 
-  // --- Execute (timeout korumalı) ---
+  // --- Tool Result Cache check (pre-execute) ---
+  // Cacheable tool'lar için cache'den sonuç al, varsa execute etme
+  const cachedResult = toolResultCache.get(def.id, args)
+  if (cachedResult) {
+    // Cache hit — execute etmeden dön
+    const durationMs = 0
+    metrics.record(def.id, durationMs, true)
+    return { output: cachedResult.result, ...(cachedResult.error !== undefined ? { error: cachedResult.error } : {}) }
+  }
+
+  // --- Faz 6: Progress tracking başlat ---
+  const progressMessage = getToolProgressMessage(def.id, args)
+  progressTracker.start(def.id, progressMessage)
+
+  // --- Execute (timeout korumalı + gerçek iptal zinciri) ---
+  //
+  // execAC: bu tool çağrısına özel AbortController.
+  //   • ctx.signal (loop'tan gelen opts.signal) abort edilirse → execAC da abort edilir.
+  //   • withToolTimeout süresi dolunca → execAC abort edilir.
+  // Tool, ctx.signal yerine execCtx.signal'i kullanır; her iki kaynaktan da iptal alır.
+  const execAC    = new AbortController()
+  const mirrorFn  = () => execAC.abort()
+  if (ctx.signal.aborted) {
+    execAC.abort()
+  } else {
+    ctx.signal.addEventListener("abort", mirrorFn, { once: true })
+  }
+  const execCtx: ToolContext = { ...ctx, signal: execAC.signal }
+
   const start = Date.now()
   let result: ExecuteResult
   let execError: string | null = null
 
   try {
-    result = await withToolTimeout(def.execute(args, ctx), def)
+    result = await withToolTimeout(def.execute(args, execCtx), def, () => execAC.abort())
   } catch (err) {
     execError = String(err)
     result    = { output: "", error: execError }
+  } finally {
+    ctx.signal.removeEventListener("abort", mirrorFn)
   }
 
-  // --- Post-process: error hints + output summarization ---
+  // --- Faz 6: Progress tracking bitir ---
+  if (result.error) {
+    progressTracker.error(def.id, result.error)
+  } else {
+    progressTracker.finish(def.id, "Done")
+  }
+
+  // --- Faz 6: Predictive prefetching ---
+  if (!result.error) {
+    try {
+      const hints = extractPrefetchHints(def.id, args, result.output)
+      for (const hint of hints) {
+        prefetchManager.prefetch({
+          hint,
+          data: { ...args, result: result.output },
+          workdir: ctx.workdir,
+        }).catch(() => {}) // Prefetch hatası tool sonucunu engellemez
+      }
+    } catch {
+      // Prefetch hatası tool sonucunu engellemez
+    }
+  }
+
+  const durationMs = Date.now() - start
+
+  // --- Tool Result Cache write (post-execute) ---
+  // Cache miss ise sonucu cache'e yaz (sadece başarılı sonuçlar)
+  if (!cachedResult && !result.error) {
+    toolResultCache.set(def.id, args, result.output)
+  }
+  metrics.record(def.id, durationMs, false)
+
+  // --- Cache invalidation: write/edit sonrası ilgili path cache'lerini sil ---
+  if (def.id === "write" || def.id === "edit" || def.id === "apply_patch") {
+    const filePath = String(args["path"] ?? "")
+    if (filePath) {
+      toolResultCache.invalidateByPath(resolve(ctx.workdir, filePath))
+    }
+  }
+
+  // --- Post-process: error hints + output truncation ---
   if (result.error) {
     result = { ...result, error: analyzeToolError(def.id, result.error) }
-  } else if (result.output && result.output.length > OUTPUT_SUMMARIZE_THRESHOLD) {
-    result = { ...result, output: summarizeToolOutput(def.id, result.output) }
+  } else if (result.output) {
+    const truncCfg = resolveTruncationConfig(def.id)
+    if (result.output.length > truncCfg.maxChars) {
+      result = { ...result, output: truncateOutput(result.output, truncCfg, def.id) }
+    }
   }
 
   // --- Dual-path: TypeScript verification after edit/write ---
   if (!result.error && (def.id === "edit" || def.id === "write")) {
     const filePath = String(args["path"] ?? "")
     if (TYPED_FILE_RE.test(filePath)) {
-      const tscOut  = await runTscCheck(ctx.workdir)
-      const fileErr = filterTscForFile(tscOut, filePath)
-      if (fileErr && fileErr !== "✓") {
-        result = { ...result, output: result.output + `\n\n[TypeScript] Errors in this file after edit:\n${fileErr}` }
-      } else if (tscOut === "✓") {
-        result = { ...result, output: result.output + "\n[TypeScript] ✓ No errors" }
+      // Faz 4: Smart TSC — comment-only change'lerde skip et
+      const absPath = resolve(ctx.workdir, filePath)
+      let oldContent = ""
+      try {
+        oldContent = await readFile(absPath, "utf-8")
+      } catch {
+        // Dosya okunamadıysa TSC çalıştır
+      }
+
+      const newContent = def.id === "edit" 
+        ? String(args["new_string"] ?? "")
+        : String(args["content"] ?? "")
+
+      // shouldRunTsc: comment-only veya string-only change'lerde false döner
+      if (shouldRunTsc(filePath, oldContent, newContent)) {
+        const tscOut = await runIncrementalTsc(ctx.workdir, [filePath])
+        const fileErr = filterTscForFile(tscOut, filePath)
+        
+        if (fileErr && fileErr !== "✓") {
+          result = { ...result, output: result.output + `\n\n[TypeScript] Errors in this file after edit:\n${fileErr}` }
+        } else if (tscOut === "✓") {
+          result = { ...result, output: result.output + "\n[TypeScript] ✓ No errors" }
+        }
+      } else {
+        result = { ...result, output: result.output + "\n[TypeScript] Skipped (non-type change)" }
+      }
+
+      // Faz 4: Hallucination detection
+      try {
+        const hallucinations = await detectHallucinations(newContent, filePath, ctx.workdir)
+        if (hallucinations.length > 0) {
+          const warnings = formatHallucinationWarnings(hallucinations)
+          result = { ...result, output: result.output + warnings }
+        }
+      } catch {
+        // Hallucination detection hatası tool sonucunu engellemez
       }
     }
   }
 
-  const durationMs = Date.now() - start
+  // --- Test discovery hint (edit, write, apply_patch) ---
+  if (!result.error && (def.id === "edit" || def.id === "write" || def.id === "apply_patch")) {
+    try {
+      const { findRelatedTests } = await import("../verification/detector.js")
+      // apply_patch: changed_files listesinden ilk dosyayı al, yoksa path
+      const rawPath  = def.id === "apply_patch"
+        ? String((args["changed_files"] as string[] | undefined)?.[0] ?? args["path"] ?? "")
+        : String(args["path"] ?? "")
+      const absFilePath = resolve(ctx.workdir, rawPath)
+      const related     = await findRelatedTests(absFilePath, ctx.workdir, execAC.signal)
+      if (related.length > 0) {
+        const rel = related.map(f =>
+          f.startsWith(ctx.workdir + "/") ? f.slice(ctx.workdir.length + 1) : f
+        )
+        result = {
+          ...result,
+          output: result.output + `\n[Verify] Related tests found: ${rel.join(", ")} — run verify(action="test", path="${rel[0]}") to check.`,
+        }
+      }
+    } catch { /* detector failure never blocks tool result */ }
+  }
+
+  // durationMs zaten yukarıda (post-execute) hesaplandı
 
   // --- v1.tool.after hook (outcome-aware) ---
   const outcome = execError || result.error ? "error" : "success"
@@ -361,12 +446,21 @@ export async function executeTool(
   const after = afterPayload
 
   if (outcome === "error") {
+    const errMsg = execError ?? result.error ?? "unknown"
     await hooks.emit("v1.tool.error", {
       tool:       def.id,
       args,
-      error:      execError ?? result.error ?? "unknown",
+      error:      errMsg,
       durationMs,
     })
+    // Persist to .aurict/diagnostics/ for cross-session awareness
+    try {
+      diagnosticsStore.record(ctx.workdir, {
+        type:  "tool_error",
+        tool:  def.id,
+        error: errMsg.slice(0, 300),
+      })
+    } catch { /* diagnostics failure must never break tool execution */ }
   }
 
   // --- SQLite kayıt ---

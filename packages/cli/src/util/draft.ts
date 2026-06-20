@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, readdir
 import { join } from "node:path"
 import { homedir } from "node:os"
 
-const DIR        = join(homedir(), ".omnicod")
+const DIR        = join(homedir(), ".aurict")
 const DRAFT_FILE = join(DIR, "draft.txt")
 const CRASH_DIR  = join(DIR, "crash")
 

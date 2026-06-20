@@ -19,8 +19,8 @@ const DEFAULT_PROTECTED: GateRule[] = [
   { pattern: "tsconfig.*.json", action: "ask" },
   { pattern: "package.json",    action: "ask" },
   { pattern: ".git/*",          action: "deny" },
-  // OmniCod internal data — subagents must not corrupt session DB, companion state, config, stash, etc.
-  { pattern: ".omnicod/*",      action: "deny" },
+  // Aurict internal data — subagents must not corrupt session DB, companion state, config, stash, etc.
+  { pattern: ".aurict/*",      action: "deny" },
 ]
 
 function matchPattern(pattern: string, filePath: string): boolean {
@@ -57,7 +57,7 @@ class GateGuard {
 
   private loadProjectRules(dir: string): void {
     try {
-      const configPath = join(dir, ".omnicod", "protected.json")
+      const configPath = join(dir, ".aurict", "protected.json")
       const rules = JSON.parse(readFileSync(configPath, "utf8")) as GateRule[]
       this.customRules = [...rules]
     } catch { /* no project config */ }
@@ -99,8 +99,8 @@ class GateGuard {
 
   audit(entry: AuditEntry): void {
     const dir = this.projectDir
-      ? join(this.projectDir, ".omnicod")
-      : join(process.cwd(), ".omnicod")
+      ? join(this.projectDir, ".aurict")
+      : join(process.cwd(), ".aurict")
     try {
       mkdirSync(dir, { recursive: true })
       appendFileSync(join(dir, "audit.log"), JSON.stringify(entry) + "\n", "utf8")

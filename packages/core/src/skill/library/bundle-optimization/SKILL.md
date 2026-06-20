@@ -187,6 +187,91 @@ When to exceed:
 | Preload | <link rel=preload> | Medium |
 | Bundle analysis | webpack-bundle-analyzer | Discovery |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Split code?
+├── SPA with multiple routes            → dynamic import() per route
+├── Heavy component below fold         → dynamic import() + React.lazy
+├── Feature used rarely (admin panel)  → dynamic import on user action
+└── Small util (<5KB), used everywhere → keep in main bundle
+
+Tree shaking working?
+├── Named import from ESM              → tree shaking works
+├── import * as lodash from 'lodash'   → no tree shaking — use lodash-es
+├── CommonJS require()                 → no tree shaking
+└── sideEffects: false in package.json → signals bundler to remove dead code
+
+Image optimization?
+├── Photos, complex images             → WebP/AVIF + srcset
+├── Simple icons/logos                 → SVG inline
+├── Next.js                            → <Image /> component (automatic)
+└── Plain HTML                         → <picture> with srcset + loading="lazy"
+
+Bundle too large?
+└── Analyze first: npx vite-bundle-visualizer / webpack-bundle-analyzer
+    ├── Duplicate deps                 → dedupe in package.json
+    ├── One large lib                  → lazy import it
+    └── Many small chunks (>50)       → adjust minChunkSize
+```
+
+---
+
+## Key Rules
+
+1. Route-level code splitting by default — never ship one monolithic bundle
+2. Named ESM imports only: `import { debounce } from 'lodash-es'`, not `import _ from 'lodash'`
+3. Analyze before optimizing — webpack-bundle-analyzer or vite-bundle-visualizer first
+4. Images: WebP/AVIF with srcset; `loading="lazy"` for below-fold images
+5. Initial JS budget: < 170KB compressed; per route < 100KB
+6. `font-display: swap` on web fonts; subset to used characters only
+7. Third-party scripts: `async` or `defer`; load analytics after first interaction
+
+---
+
+## Implementation
+
+```typescript
+// React route-level splitting (Next.js or React Router)
+import { lazy, Suspense } from 'react'
+
+const AdminPanel = lazy(() => import('./AdminPanel'))
+const Chart = lazy(() => import('./Chart'))
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AdminPanel />
+    </Suspense>
+  )
+}
+
+// Dynamic import on user action
+async function loadHeavyFeature() {
+  const { HeavyFeature } = await import('./HeavyFeature')
+  return HeavyFeature
+}
+
+// vite.config.ts — manual chunks for vendor splitting
+import { defineConfig } from 'vite'
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui:     ['@radix-ui/react-dialog', '@radix-ui/react-tooltip'],
+        },
+      },
+    },
+  },
+})
+
+// next.config.ts — bundle analysis
+import bundleAnalyzer from '@next/bundle-analyzer'
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
+export default withBundleAnalyzer({ /* config */ })
+// Usage: ANALYZE=true next build
+```

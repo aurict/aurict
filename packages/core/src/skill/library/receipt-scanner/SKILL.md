@@ -4,7 +4,7 @@ description: "Fiş/makbuz görüntülerinden veri ayıklama. OCR teknolojisi. Di
 triggers:
   keywords: ["fiş tarama", "makbuz okuma", "OCR", "belge tarama", "receipt scanner", "fatura okuma", "dijital makbuz"]
 auto_load_when: "Kullanıcı fiş/makbuz görüntülerinden veri çıkarma, OCR veya dijital belge işleme taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -409,6 +409,3 @@ function exportCSV(fişler) {
 | KDV | Hayır | % |
 | Kalemler | Hayır | Liste |
 | Kategori | Hayır | Enum |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

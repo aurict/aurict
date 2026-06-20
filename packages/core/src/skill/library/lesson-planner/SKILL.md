@@ -4,7 +4,7 @@ description: "Ders planı oluşturma, Bloom taksonomisi, öğrenme çıktıları
 triggers:
   keywords: ["lesson plan", "ders planı", "bloom taksonomisi", "öğrenme çıktıları", "learning objectives", "değerlendirme"]
 auto_load_when: "User requests a lesson plan, learning objectives, or instructional design for K-12 or higher education"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash"]
 ---
 
@@ -185,7 +185,3 @@ B. Düzey Belirleyici (Summative)
 | Düzey belirleyici | Ders sonu | Kalıcı not |
 | Tanılayıcı | Ders öncesi | Ön bilgi tespiti |
 | Öz değerlendirme | Ders içi | Öz farkındalık |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -4,7 +4,7 @@ description: "Marka/patent araştırması, TürkPatent sorgusu, Nice sınıfland
 triggers:
   keywords: ["marka araştırması", "patent sorgusu", "TürkPatent", "NİCE sınıfı", "fikri mülkiyet", "trademark search", " trademark"]
 auto_load_when: "Kullanıcı marka/ticari marka araştırması, patent sorgusu, Nice sınıflandırması veya fikri mülkiyet analizi talep eder"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "WebFetch", "WebSearch"]
 ---
 
@@ -265,7 +265,3 @@ GENEL BENZERLİK SKORU = (Fonetik × 0.4) + (Görsel × 0.3) + (Kavramsal × 0.3
 ---
 
 *Uyarı: Bu araştırma rehberi Fikri Mülkiyet alanında genel bilgilendirme amaçlıdır. Marka tescili veya patent başvurusu için mutlaka kalifiye patent vekilinden (marka vekili) profesyonel destek alınmalıdır.*
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

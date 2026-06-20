@@ -14,17 +14,17 @@ export async function POST(req: NextRequest) {
 
   try {
     await resend.emails.send({
-      from: "OmniCod Waitlist <onboarding@resend.dev>",
+      from: "Aurict Waitlist <onboarding@resend.dev>",
       to: NOTIFY,
       subject: `New waitlist signup: ${email}`,
       html: `
         <div style="font-family:monospace;background:#0a0a0a;color:#f5f5f5;padding:32px;border-radius:8px">
-          <p style="color:#818cf8;font-size:12px;letter-spacing:0.1em;text-transform:uppercase">OmniCod Waitlist</p>
+          <p style="color:#818cf8;font-size:12px;letter-spacing:0.1em;text-transform:uppercase">Aurict Waitlist</p>
           <h2 style="margin:12px 0;font-size:20px">New signup</h2>
           <p style="color:#a1a1aa;font-size:14px">Email:</p>
           <p style="font-size:16px;color:#f5f5f5">${email}</p>
           <hr style="border:none;border-top:1px solid #262626;margin:24px 0"/>
-          <p style="color:#52525b;font-size:12px">Sent from omnicod.dev waitlist form</p>
+          <p style="color:#52525b;font-size:12px">Sent from aurict.dev waitlist form</p>
         </div>
       `,
     })

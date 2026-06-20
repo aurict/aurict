@@ -422,5 +422,105 @@ Testing:
 | Metadata | call.metadata.get('key') | Headers |
 | TLS | grpc.ServerCredentials.createSsl() | Secure connection |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+gRPC or REST?
+├── Internal service-to-service (typed contract) → gRPC
+├── Public API (browser, third-party)            → REST (gRPC-web adds complexity)
+├── Real-time bidirectional                      → gRPC bidirectional stream
+└── Simple webhook / event                       → REST POST
+
+Unary or streaming?
+├── Single request → single response              → unary (rpc Get(Req) returns (Res))
+├── One request → multiple responses (large list) → server stream (returns (stream Res))
+├── Multiple requests → one response (upload)     → client stream (stream Req) returns (Res)
+└── Real-time both sides (chat, collaborative)    → bidirectional stream
+
+Error code to use?
+├── Input validation failed                       → INVALID_ARGUMENT (400 equiv)
+├── Resource not found                            → NOT_FOUND (404 equiv)
+├── No auth token                                 → UNAUTHENTICATED (401 equiv)
+├── Token valid, no permission                    → PERMISSION_DENIED (403 equiv)
+└── Timeout exceeded                              → DEADLINE_EXCEEDED (504 equiv)
+```
+
+---
+
+## Key Rules
+
+1. Field numbers 1–15 for hot fields — single byte encoding; plan schema carefully
+2. Never reuse or renumber existing fields — breaks wire compatibility
+3. Version proto namespaces: `user.v1.UserService` from day 1
+4. Always set client deadline: `{ deadline: new Date(Date.now() + 5000) }`
+5. Reuse gRPC channel per service — never create a new one per request
+6. TLS always in production — `grpc.credentials.createSsl(rootCert)`
+7. Auth in interceptor — metadata `authorization` header checked once, not per handler
+
+---
+
+## Implementation
+
+```typescript
+// Auth interceptor (server-side)
+import * as grpc from '@grpc/grpc-js'
+import { verifyJwt } from './auth'
+
+function authInterceptor(
+  call: grpc.ServerUnaryCall<any, any>,
+  callback: grpc.sendUnaryData<any>,
+  next: grpc.NextCall
+) {
+  const token = call.metadata.get('authorization')[0]?.toString()?.replace('Bearer ', '')
+  if (!token) {
+    return callback({ code: grpc.status.UNAUTHENTICATED, message: 'Missing token' })
+  }
+  verifyJwt(token)
+    .then((user) => { call.metadata.set('user', JSON.stringify(user)); next() })
+    .catch(() => callback({ code: grpc.status.UNAUTHENTICATED, message: 'Invalid token' }))
+}
+
+// Server — service implementation
+const server = new grpc.Server()
+server.addService(proto.user.UserService.service, {
+  getUser: (call: grpc.ServerUnaryCall<GetUserRequest, User>, callback: grpc.sendUnaryData<User>) => {
+    const { id } = call.request
+    db.findUser(id)
+      .then((user) => {
+        if (!user) return callback({ code: grpc.status.NOT_FOUND, message: `User ${id} not found` })
+        callback(null, user)
+      })
+      .catch((err) => callback({ code: grpc.status.INTERNAL, message: err.message }))
+  },
+
+  // Server-streaming: large result set
+  listUsers: (call: grpc.ServerWritableStream<ListUsersRequest, User>) => {
+    db.streamUsers(call.request.filter)
+      .on('data', (user: User) => call.write(user))
+      .on('end', ()            => call.end())
+      .on('error', (err: Error) => call.destroy(err))
+  },
+})
+server.bindAsync('0.0.0.0:50051', grpc.ServerCredentials.createInsecure(), () => server.start())
+
+// Client — reuse channel singleton
+let _client: UserServiceClient | undefined
+function getClient() {
+  if (!_client) {
+    _client = new proto.user.UserService('localhost:50051', grpc.credentials.createInsecure())
+  }
+  return _client
+}
+
+async function getUser(id: string): Promise<User> {
+  const deadline = new Date(Date.now() + 5_000)
+  return new Promise((resolve, reject) => {
+    getClient().getUser({ id }, { deadline }, (err, user) => {
+      if (err) return reject(err)
+      resolve(user)
+    })
+  })
+}
+```

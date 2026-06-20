@@ -1,8 +1,8 @@
 {
-  "name": "@omnicod/cli",
+  "name": "@aurict/cli",
   "version": "1.0.5",
   "private": false,
-  "description": "OmniCod — Terminal AI coding assistant",
+  "description": "Aurict — Terminal AI coding assistant",
   "keywords": [
     "ai",
     "cli",
@@ -15,21 +15,21 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/omnicod/omnicod"
+    "url": "https://github.com/aurict-dev/aurict"
   },
-  "homepage": "https://github.com/omnicod/omnicod",
+  "homepage": "https://github.com/aurict-dev/aurict",
   "bin": {
-    "omnicod": "./bin/omnicod"
+    "aurict": "./bin/aurict"
   },
   "files": [
-    "bin/omnicod",
+    "bin/aurict",
     "README.md"
   ],
   "optionalDependencies": {
-    "@omnicod/cli-linux-x64": "1.0.5",
-    "@omnicod/cli-linux-arm64": "1.0.5",
-    "@omnicod/cli-darwin-x64": "1.0.5",
-    "@omnicod/cli-darwin-arm64": "1.0.5"
+    "@aurict/cli-linux-x64": "1.0.5",
+    "@aurict/cli-linux-arm64": "1.0.5",
+    "@aurict/cli-darwin-x64": "1.0.5",
+    "@aurict/cli-darwin-arm64": "1.0.5"
   },
   "scripts": {
     "dev": "bun run ../cli/src/index.ts"
@@ -38,7 +38,7 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@omnicod/core": "workspace:*",
+    "@aurict/core": "workspace:*",
     "@types/bun": "latest",
     "@types/react": "^18.3.0",
     "ink": "^5.2.1",

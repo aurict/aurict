@@ -4,7 +4,7 @@ description: "Anki/Quizlet kartları, spaced repetition, card tipleri ve deck or
 triggers:
   keywords: ["flashcard", "anki", "quizlet", "spaced repetition", "flash card", "bilgi kartı", "tekrar"]
 auto_load_when: "User asks to create flashcards, generate Anki/Quizlet decks, or optimize spaced repetition study"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash"]
 ---
 
@@ -252,7 +252,3 @@ C. Python Script Template (Anki Batch Import)
 | Quizlet | Kullanımı kolay, sosyal | Basit algoritma |
 | Mochi | Güzel UI, iyi algoritma | Yeni platform |
 | Supermemo | En gelişmiş algoritma | Steep learning curve |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

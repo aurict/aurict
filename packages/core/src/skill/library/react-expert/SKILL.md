@@ -214,6 +214,82 @@ Ask in order:
 | useRef | DOM ref / mutable | Doesn't trigger re-render |
 | useTransition | Non-urgent updates | Mark slow state as transition |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+State type?
+├── Local UI (open/close, input value)       → useState
+├── Complex: multiple sub-values / actions  → useReducer
+├── Shared across components                 → Zustand or Context
+└── Server data (async, cache needed)        → TanStack Query / SWR
+
+Async in component?
+├── Need Suspense boundary                   → use(promise)
+├── Side effect after render                 → useEffect (not for fetching)
+└── Form with server round-trip              → useActionState + Server Action
+
+Performance problem?
+├── Profile with React DevTools FIRST
+├── Re-render cause: expensive compute       → useMemo
+├── Re-render cause: callback recreation    → useCallback (only when passed to memo'd child)
+├── Re-render cause: list key unstable       → key={item.id}, not key={index}
+└── No measured problem                      → do NOT optimize
+```
+
+---
+
+## Key Rules
+
+1. Never mutate state directly — always return new refs: `[...arr, item]`, `{...obj, key: val}`
+2. Derive computed values during render — not in a `useEffect` + `setState`
+3. `key={item.id}` on dynamic lists — stable identity prevents reconciliation bugs
+4. `useCallback` / `useMemo` only after profiling confirms a problem
+5. Server fetches in Server Components → pass data as props to Client
+6. `useEffect` for side effects only (subscriptions, DOM focus) — not initial data fetching
+7. Measure with React DevTools Profiler before any optimization
+
+---
+
+## Implementation
+
+```tsx
+// useActionState — form with server validation + pending state
+'use client'
+import { useActionState } from 'react'
+import { createUser } from './actions'
+
+type State = { errors?: { email?: string; name?: string }; message?: string }
+
+export function CreateUserForm() {
+  const [state, formAction, isPending] = useActionState<State, FormData>(
+    createUser,
+    {}
+  )
+  return (
+    <form action={formAction}>
+      <input name="name" aria-invalid={!!state.errors?.name} />
+      {state.errors?.name && <span>{state.errors.name}</span>}
+      <input name="email" />
+      {state.errors?.email && <span>{state.errors.email}</span>}
+      <button disabled={isPending}>{isPending ? 'Saving…' : 'Create'}</button>
+    </form>
+  )
+}
+
+// useOptimistic — instant feedback, auto-rollback on error
+'use client'
+import { useOptimistic } from 'react'
+
+export function LikeButton({ postId, initialLikes }: { postId: string; initialLikes: number }) {
+  const [likes, addLike] = useOptimistic(initialLikes, (current) => current + 1)
+
+  async function handleLike() {
+    addLike(undefined)   // immediate UI update
+    await likePost(postId)  // actual server call; error auto-reverts
+  }
+
+  return <button onClick={handleLike}>{likes} ♥</button>
+}
+```

@@ -17,7 +17,7 @@ You are a Senior Data Architect. You bridge the gap between raw database schemas
 
 ## 3. Step-by-Step Execution SOP
 ### Step 1: Schema Ingestion
-- Run OmniRule `db-analyzer`.
+- Run Aurict `db-analyzer`.
 - Scan `.prisma`, `.sql`, or `.ts` schema files.
 - **Verify:** Ensure all relations (1:1, 1:N) are identified correctly.
 

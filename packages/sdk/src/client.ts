@@ -1,10 +1,10 @@
-import type { Session, CreateSessionOptions, SendMessageOptions, OmniCodClientOptions } from "./types.js"
+import type { Session, CreateSessionOptions, SendMessageOptions, AurictClientOptions } from "./types.js"
 
-export class OmniCodClient {
+export class AurictClient {
   private baseUrl: string
   private token: string | undefined
 
-  constructor(opts: OmniCodClientOptions = {}) {
+  constructor(opts: AurictClientOptions = {}) {
     this.baseUrl = opts.baseUrl ?? "http://127.0.0.1:7777"
     this.token = opts.token
   }

@@ -32,9 +32,6 @@ function SkeletonLine({ color }: { color: string }) {
   return <Text color={color} dimColor>{SKELETON_FRAMES[frame]}</Text>
 }
 
-const THINK_COLOR = "#4e6e8d"
-const THINK_DIM   = "#2d4a5e"
-
 // Reasoning bloğu sırasında yalnızca son N satırı göster —
 // tüm geçmişi render etmek terminal'i dondurur
 const MAX_REASONING_LINES = 8
@@ -43,6 +40,7 @@ interface Props {
   text:       string | null
   reasoning:  string | null
   skeleton?:  boolean   // show shimmer placeholder before first token
+  error?:     string    // show inline error (e.g. stream interrupted)
 }
 
 function lastLines(text: string, n: number): string[] {
@@ -54,9 +52,8 @@ function lineCount(text: string): number {
   return text.split("\n").length
 }
 
-export const StreamingView = memo(function StreamingView({ text, reasoning, skeleton }: Props) {
+export const StreamingView = memo(function StreamingView({ text, reasoning, skeleton, error }: Props) {
   const theme = useTheme()
-  const cols  = process.stdout.columns ?? 80
 
   return (
     <Box flexDirection="column" paddingX={1} marginBottom={1}>
@@ -70,17 +67,17 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
           <Box flexDirection="column" marginBottom={text ? 1 : 0}>
             {/* Başlık: "∴ thinking… (142 lines)" */}
             <Box gap={1}>
-              <Text color={THINK_DIM}>∴</Text>
-              <Text color={THINK_COLOR} italic dimColor>thinking…</Text>
+              <Text color={theme.borderDim}>∴</Text>
+              <Text color={theme.accent} italic dimColor>thinking…</Text>
               {total > 1 && (
-                <Text color={THINK_DIM} dimColor>({total} lines)</Text>
+                <Text color={theme.borderDim} dimColor>({total} lines)</Text>
               )}
             </Box>
 
             {/* Taşan satır bildirimi */}
             {hidden > 0 && (
               <Box marginLeft={2}>
-                <Text color={THINK_DIM} dimColor>  ↑ {hidden} lines above</Text>
+                <Text color={theme.borderDim} dimColor>  ↑ {hidden} lines above</Text>
               </Box>
             )}
 
@@ -88,9 +85,9 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
             <Box flexDirection="column" marginLeft={2}>
               {visible.map((line, i) => (
                 <Box key={i} flexDirection="row">
-                  <Text color={THINK_DIM} dimColor>┊ </Text>
+                  <Text color={theme.borderDim} dimColor>┊ </Text>
                   <Text
-                    color={THINK_COLOR}
+                    color={theme.accent}
                     italic
                     dimColor
                     wrap="wrap"
@@ -101,7 +98,7 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
               ))}
               {/* Canlı imleç */}
               <Box flexDirection="row" marginLeft={2}>
-                <Text color={THINK_COLOR} dimColor>▋</Text>
+                <Text color={theme.accent} dimColor>▋</Text>
               </Box>
             </Box>
           </Box>
@@ -109,7 +106,7 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
       })()}
 
       {/* ── Skeleton (metin gelmeden önce) ── */}
-      {skeleton && !text && !reasoning && (
+      {skeleton && !text && !reasoning && !error && (
         <Box flexDirection="row" gap={1} paddingLeft={1}>
           <Box width={2} flexShrink={0}>
             <Text color={theme.assistantDot}>○</Text>
@@ -136,6 +133,24 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
           >
             <Text wrap="wrap">{text}</Text>
             <Text color={theme.accent}>▋</Text>
+          </Box>
+        </Box>
+      )}
+
+      {/* ── Hata durumu ── */}
+      {error && (
+        <Box flexDirection="row" gap={1} paddingLeft={1}>
+          <Box width={2} flexShrink={0}>
+            <Text color={theme.error}>✗</Text>
+          </Box>
+          <Box
+            flexGrow={1}
+            borderStyle="single"
+            borderTop={false} borderBottom={false} borderRight={false}
+            borderColor={theme.error}
+            paddingLeft={1}
+          >
+            <Text color={theme.error} wrap="wrap">{error}</Text>
           </Box>
         </Box>
       )}

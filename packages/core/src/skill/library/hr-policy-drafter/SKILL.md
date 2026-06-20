@@ -4,7 +4,7 @@ description: "İK prosedürleri, çalışan el kitabı, off-boarding süreci, gi
 triggers:
   keywords: ["hr policy drafter", "ik politikası", "çalışan el kitabı", "off-boarding", "gizlilik politikası"]
 auto_load_when: "Kullanıcı IK politikası, çalışan el kitabı veya off-boarding prosedürü ister"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "grep", "glob"]
 ---
 
@@ -239,6 +239,3 @@ yasal_gereksinimler
 | İş sağlığı | İSG Kanunu | OSHA |
 | Çalışma saatleri | 45 saat/hafta | 40 saat/ABD |
 | Deneme süresi | 2 ay (max) | Değişken |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

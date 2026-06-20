@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { Box, Text } from "ink"
-import { agentPool } from "@omnicod/core"
-import type { AgentInfo } from "@omnicod/core"
+import { agentPool } from "@aurict/core"
+import type { AgentInfo } from "@aurict/core"
 import { useTheme } from "../utils/theme.js"
 
 const SPIN = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]

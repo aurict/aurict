@@ -11,7 +11,7 @@ auto_load_when:
   - Spor, fitness, gym, antrenman, egzersiz
   - Set, rep, kilo, kas, protein
   - Kardiyo, HIIT, güç antrenmanı
-agent: docs-agent
+agent: content-ops
 tools:
   - bmi-calculator
   - calorie-calculator
@@ -213,6 +213,3 @@ EGZERSİZ PARAMETRELERİ
 ---
 
 *Workout Planner v1.0 — Güç seninle olsun!*
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

@@ -460,5 +460,97 @@ Best Practices:
 | Retry | DLQ | On failure destination |
 | Cost | ARM | Use arm64 architecture |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Synchronous or async trigger?
+├── HTTP request / API call              → API Gateway + Lambda sync
+├── Queue processing / retries          → SQS + Lambda (batchSize 1-10)
+├── File upload processing              → S3 event trigger
+└── Scheduled job                       → EventBridge rule + Lambda
+
+Cold start concern?
+├── Latency-critical (p99 < 100ms)      → provisioned concurrency
+├── Background processing               → no concern
+└── Reduce cold start anyway            → bundle < 5MB, init outside handler
+
+State needed?
+├── Between invocations                 → external: DynamoDB / Redis / S3
+├── Within invocation                   → module-level cache (reused in warm runs)
+└── Global in-memory cache              → module-level + TTL check (not guaranteed fresh)
+
+Memory size?
+└── Start 256MB → measure → tune (higher memory = more CPU = faster = cheaper per ms)
+```
+
+---
+
+## Key Rules
+
+1. Initialize DB connections, SDK clients outside the handler — reused in warm invocations
+2. Never store mutable state in global variables — use DynamoDB / Redis / S3
+3. Bundle size < 5 MB — lazy-load heavy deps, use layers for shared code
+4. Set `reservedConcurrency` — prevents thundering herd on downstream services
+5. DLQ on every async trigger (`onFailure` destination) — never silently drop events
+6. ARM64 (Graviton2) runtime — 20% cheaper, same performance for most workloads
+7. `provisioned concurrency` only for latency-critical endpoints; avoid for batch jobs
+
+---
+
+## Implementation
+
+```typescript
+// Lambda handler — warm DB connection + structured error handling
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
+import { Pool } from 'pg'
+
+// Module-level — reused across warm invocations
+let pool: Pool | undefined
+function getPool() {
+  if (!pool) {
+    pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 })
+  }
+  return pool
+}
+
+export const handler = async (
+  event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> => {
+  const requestId = event.requestContext.requestId
+
+  try {
+    const body = JSON.parse(event.body ?? '{}')
+    const db   = getPool()
+    const result = await db.query('SELECT id, name FROM users WHERE id = $1', [body.id])
+
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json', 'x-request-id': requestId },
+      body: JSON.stringify(result.rows[0] ?? null),
+    }
+  } catch (err) {
+    console.error({ requestId, err })
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Internal error', requestId }),
+    }
+  }
+}
+
+// serverless.yml — DLQ + ARM + reserved concurrency
+/*
+functions:
+  api:
+    handler: src/handler.handler
+    runtime: nodejs20.x
+    architecture: arm64
+    memorySize: 256
+    timeout: 10
+    reservedConcurrency: 50
+    events:
+      - http: { path: /, method: post }
+    onError: !GetAtt DeadLetterQueue.Arn
+*/
+```

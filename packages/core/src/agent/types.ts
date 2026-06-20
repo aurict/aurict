@@ -24,9 +24,17 @@ export interface AgentRunOptions {
   onFinish?:      (result: AgentFinishResult) => void
 }
 
+export interface TokenBreakdown {
+  input:      number  // fresh input (non-cached)
+  output:     number  // completion tokens
+  cacheRead:  number  // cached prompt reads  (cheap)
+  cacheWrite: number  // cache creation tokens
+  reasoning:  number  // extended thinking tokens
+}
+
 export interface AgentFinishResult {
   text:         string
-  tokens:       { input: number; output: number }
+  tokens:       TokenBreakdown
   sessionId?:   string
   newMessages:  CoreMessage[]
 }

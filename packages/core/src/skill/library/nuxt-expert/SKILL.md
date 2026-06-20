@@ -189,6 +189,3 @@ export default defineNuxtConfig({
 ❌ Mutating useRoute() directly for navigation
 ✅ navigateTo('/path') or router.push() for programmatic nav
 ```
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish.

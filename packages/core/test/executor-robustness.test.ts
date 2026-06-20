@@ -17,7 +17,7 @@ import { tmpdir } from "os"
 let dir: string
 
 beforeAll(() => {
-  dir = join(tmpdir(), `omnicod-exec-test-${Date.now()}`)
+  dir = join(tmpdir(), `aurict-exec-test-${Date.now()}`)
   mkdirSync(dir, { recursive: true })
 
   writeFileSync(join(dir, "lib.ts"), [

@@ -233,5 +233,99 @@ if (toolResult.stop_reason === 'tool_use') {
 | Low latency | Haiku + caching | claude-haiku-4-5 |
 | Sensitive data | Self-hosted | Ollama, vLLM |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Which model?
+├── Fast + cheap (classify, summarize, format) → claude-haiku-4-5
+├── Balanced production workload               → claude-sonnet-4-6 (default)
+├── Complex reasoning / long analysis          → claude-opus-4-8
+└── OpenAI ecosystem dependency                → gpt-4o / gpt-4o-mini
+
+Streaming or sync?
+├── Chat UI / real-time display                → stream (shows tokens as they arrive)
+├── Background job / batch processing          → sync (simpler, easier to log)
+└── Structured extraction                      → sync + tool_choice: 'required'
+
+Structured output strategy?
+├── Need typed response (extract fields)       → tool_choice: 'required' + single tool
+├── JSON schema enough                         → response_format: { type: 'json_object' }
+└── Free-form text with format instructions   → system prompt (fragile, avoid if possible)
+
+Same system prompt repeated?
+├── Long system prompt (> 1 000 tokens)        → cache_control: { type: 'ephemeral' } (90% cost reduction)
+└── Short system prompt                        → no caching needed
+```
+
+---
+
+## Key Rules
+
+1. Retry with exponential backoff on 429/529 — never give up on first error
+2. Prompt caching for any system prompt > 1 000 tokens — 90% input cost reduction
+3. Validate / parse LLM output before using — never trust raw text as structured data
+4. Use `tool_choice: 'required'` + single tool for reliable structured extraction
+5. Truncate context aggressively — LLMs degrade with >50% of context window filled
+6. Log token usage per request for cost tracking (`usage.input_tokens` + `output_tokens`)
+7. Circuit breaker: stop calling after 3 consecutive failures, surface error to user
+
+---
+
+## Implementation
+
+```typescript
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// Retry wrapper with exponential backoff
+async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try { return await fn() } catch (err: any) {
+      if (i === maxRetries - 1) throw err
+      const isRetryable = err.status === 429 || err.status === 529 || err.status >= 500
+      if (!isRetryable) throw err
+      await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000))
+    }
+  }
+  throw new Error('unreachable')
+}
+
+// Structured extraction via tool use (most reliable)
+const result = await callWithRetry(() =>
+  client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 512,
+    tools: [{
+      name: 'extract_invoice',
+      description: 'Extract invoice fields from text',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          amount:   { type: 'number' },
+          currency: { type: 'string' },
+          dueDate:  { type: 'string', description: 'ISO 8601 date' },
+        },
+        required: ['amount', 'currency'],
+      },
+    }],
+    tool_choice: { type: 'required' },
+    messages: [{ role: 'user', content: `Extract from: ${rawInvoiceText}` }],
+  })
+)
+const toolUse = result.content.find(b => b.type === 'tool_use')
+const invoice = toolUse?.input  // typed as your schema
+
+// Prompt caching for repeated large system prompts
+async function chat(userMessage: string) {
+  return client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    system: [{ type: 'text', text: LARGE_SYSTEM_PROMPT,
+      cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: userMessage }],
+  })
+}
+```

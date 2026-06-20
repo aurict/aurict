@@ -291,5 +291,105 @@ export const prerender = true // Static generation
 | Form action | actions in +page.server.ts | Server mutation |
 | Transition | transition:fade | Built-in |
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+---
+
+## Decision Tree
+
+```
+Reactivity approach (Svelte 5)?
+├── Local component state                  → $state(value)
+├── Derived / computed value              → $derived(expression)
+├── Side effect on state change           → $effect(() => { ... })
+└── Global shared state                   → writable()/readable() store + $ prefix
+
+Data loading: +page.server.ts or +page.ts?
+├── DB access / server secrets / auth     → +page.server.ts (server-only)
+├── Public API call (browser can also do) → +page.ts (both environments)
+└── Static data at build time             → +page.ts with prerender = true
+
+Mutation: Form action or fetch?
+├── Standard form submit (progressive)    → +page.server.ts actions (recommended)
+├── Complex client interaction needed     → fetch + endpoint
+└── Real-time / optimistic UI             → fetch + $state for optimistic update
+```
+
+---
+
+## Key Rules
+
+1. Svelte 5 only: `$state`, `$derived`, `$effect` — not `let count = 0` + `$:` reactive
+2. `$state` for local, `writable` store for global — never global `let` at module level
+3. `{#each items as item (item.id)}` always — key required for correct list transitions
+4. Form actions > client fetch for mutations — progressive enhancement, no JS needed
+5. `+page.server.ts` for DB/secrets; never expose sensitive data through `+page.ts`
+6. Dynamic imports for heavy components: `const Heavy = () => import('./Heavy.svelte')`
+7. `$effect` cleanup: return a function from $effect to cancel subscriptions
+
+---
+
+## Implementation
+
+```svelte
+<!-- Svelte 5 runes — counter with derived + effect -->
+<script lang="ts">
+  let count    = $state(0)
+  let doubled  = $derived(count * 2)
+  let history  = $state<number[]>([])
+
+  $effect(() => {
+    history = [...history, count]
+    // Return cleanup function (runs before next effect or on unmount)
+    return () => console.log('cleanup')
+  })
+</script>
+
+<button onclick={() => count++}>Count: {count} × 2 = {doubled}</button>
+<p>History: {history.join(', ')}</p>
+
+<!-- Form action — +page.server.ts -->
+```
+
+```typescript
+// src/routes/posts/+page.server.ts
+import type { Actions, PageServerLoad } from './$types'
+import { fail, redirect } from '@sveltejs/kit'
+
+export const load: PageServerLoad = async ({ locals }) => {
+  const posts = await db.post.findMany({ where: { userId: locals.user.id } })
+  return { posts }
+}
+
+export const actions: Actions = {
+  create: async ({ request, locals }) => {
+    const data  = await request.formData()
+    const title = data.get('title') as string
+
+    if (!title || title.length < 1) {
+      return fail(400, { errors: { title: 'Required' } })
+    }
+
+    await db.post.create({ data: { title, userId: locals.user.id } })
+    throw redirect(303, '/posts')
+  },
+}
+```
+
+```svelte
+<!-- src/routes/posts/+page.svelte -->
+<script lang="ts">
+  import { enhance } from '$app/forms'
+  let { data, form } = $props()
+</script>
+
+<ul>
+  {#each data.posts as post (post.id)}
+    <li>{post.title}</li>
+  {/each}
+</ul>
+
+<form method="POST" action="?/create" use:enhance>
+  <input name="title" />
+  {#if form?.errors?.title}<span>{form.errors.title}</span>{/if}
+  <button>Create</button>
+</form>
+```

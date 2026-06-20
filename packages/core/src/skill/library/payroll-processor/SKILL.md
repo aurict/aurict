@@ -4,7 +4,7 @@ description: "Maaş bordrosu, vergiler ve kesintiler. Brüt/net hesaplama. SGK, 
 triggers:
   keywords: ["maaş bordrosu", "bordro hesaplama", "payroll", "SGK kesintisi", "gelir vergisi", "asgari geçim indirimi", "brüt net hesaplama"]
 auto_load_when: "Kullanıcı maaş bordrosu, payroll hesaplama veya çalışan maliyet analizi taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -302,6 +302,3 @@ function hesaplaNet(brüt) {
 | 6 ay-1.5 yıl | 4 hafta |
 | 1.5-3 yıl | 6 hafta |
 | 3 yıl+ | 8 hafta |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

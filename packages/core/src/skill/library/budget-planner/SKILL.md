@@ -4,7 +4,7 @@ description: "Şirket/birey bütçe planlama. Gelir-gider kategorileri. Tasarruf
 triggers:
   keywords: ["bütçe planlama", "bütçe oluşturma", "bütçe yönetimi", "budget planning", "budget", "tasarruf hedefi", "acıl durum fonu"]
 auto_load_when: "Kullanıcı şirket veya bireysel bütçe planlama, tasarruf hedefleri veya bütçe analizi taleplerinde bulunduğunda"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch", "Grep"]
 ---
 
@@ -404,6 +404,3 @@ function tasarrufHesapla(hedef, mevcut, vadeAy) {
 | Kısa | 0-1 yıl | Tatil, elektronik |
 | Orta | 1-5 yıl | Araba, ev deposu |
 | Uzun | 5+ yıl | Emeklilik, ev |
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

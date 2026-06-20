@@ -1,7 +1,7 @@
 /**
  * Plugin yükleyici.
  *
- * ~/.omnicod/plugins/ klasöründeki .js / .mjs dosyalarını yükler.
+ * ~/.aurict/plugins/ klasöründeki .js / .mjs dosyalarını yükler.
  * Her dosya şunu export edebilir:
  *   export const plugin: OmniPlugin = { name, tools?, providers? }
  *
@@ -26,7 +26,7 @@ import { ProviderRegistry } from "../provider/registry.js"
 import type { ToolDef }     from "../tool/types.js"
 import type { ProviderPlugin } from "../provider/plugin.js"
 
-export const PLUGIN_DIR = join(homedir(), ".omnicod", "plugins")
+export const PLUGIN_DIR = join(homedir(), ".aurict", "plugins")
 
 export interface OmniPlugin {
   name:       string

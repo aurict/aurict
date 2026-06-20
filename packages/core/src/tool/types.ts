@@ -24,7 +24,7 @@ export interface ToolContext {
    * true = Bun Worker thread içinde çalışıyoruz.
    * PermissionGate her worker'da izole instance'dır, TUI'ya ulaşamaz.
    * Bu flag set ise "ask" kararları workdir kapsamında otomatik onaylanır;
-   * "deny" (örn. .omnicod/*, .git/*) her zaman bloke eder.
+   * "deny" (örn. .aurict/*, .git/*) her zaman bloke eder.
    */
   isSubagent?: boolean
 }

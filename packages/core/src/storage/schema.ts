@@ -1,13 +1,20 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core"
 
 export const sessions = sqliteTable("sessions", {
-  id: text("id").primaryKey(),
-  title: text("title"),
-  createdAt: integer("created_at").notNull(),
-  updatedAt: integer("updated_at").notNull(),
-  parentId: text("parent_id"),
-  config: text("config"),
-  status: text("status").notNull().default("active"),
+  id:                  text("id").primaryKey(),
+  title:               text("title"),
+  createdAt:           integer("created_at").notNull(),
+  updatedAt:           integer("updated_at").notNull(),
+  parentId:            text("parent_id"),
+  config:              text("config"),
+  status:              text("status").notNull().default("active"),
+  // ── Maliyet takibi (Faz 1) ─────────────────────────────────────────────────
+  totalInputTokens:    integer("total_input_tokens").default(0),
+  totalOutputTokens:   integer("total_output_tokens").default(0),
+  totalCacheTokens:    integer("total_cache_tokens").default(0),
+  accumulatedCostUsd:  real("accumulated_cost_usd").default(0),
+  turnCount:           integer("turn_count").default(0),
+  lastModel:           text("last_model"),
 })
 
 export const parts = sqliteTable("parts", {

@@ -4,7 +4,7 @@ description: "Dava özetleme, taraf analizi, talep ve savunma özeti, karar sonu
 triggers:
   keywords: ["dava özeti", "dava analizi", "talep", "savunma", "yargılama", "mahkeme kararı", "lawsuit summary", "legal analysis"]
 auto_load_when: "Kullanıcı dava dosyası özetleme, taraf analizi, talep ve savunma içeriği çıkarma veya yargılama sonucu raporlama talep eder"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "WebFetch", "WebSearch"]
 ---
 
@@ -280,7 +280,3 @@ KARAR DEĞERLENDİRME ŞABLONU
 ---
 
 *Uyarı: Bu analiz aracı hukuki danışmanlık yerine geçmez. Gerçek dava dosyaları için mutlaka yetkili avukata danışılmalıdır. İçtihat değerlendirmesi yalnızca göstergesel niteliktedir.*
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

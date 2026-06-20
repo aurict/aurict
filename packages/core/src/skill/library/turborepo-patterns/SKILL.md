@@ -201,6 +201,3 @@ TURBO_TEAM=your-team
 ❌ Not declaring outputs in turbo.json
 ✅ Declare all build artifacts as outputs for cache hits
 ```
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish.

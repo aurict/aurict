@@ -1,8 +1,8 @@
 /**
- * Custom Tool Loader — .omnicod/tools/*.js
+ * Custom Tool Loader — .aurict/tools/*.js
  *
- * Kullanıcılar proje veya global .omnicod/tools/ dizinine JS tool dosyaları
- * koyarak OmniCod'a yeni araçlar ekleyebilir.
+ * Kullanıcılar proje veya global .aurict/tools/ dizinine JS tool dosyaları
+ * koyarak Aurict'a yeni araçlar ekleyebilir.
  *
  * Format (ESM, .js dosyası):
  *
@@ -22,8 +22,8 @@
  *   }
  *
  * Tool dosyaları şu konumlardan yüklenir (önce global, proje override eder):
- *   ~/.omnicod/tools/*.js
- *   <workdir>/.omnicod/tools/*.js
+ *   ~/.aurict/tools/*.js
+ *   <workdir>/.aurict/tools/*.js
  */
 
 import { join }        from "node:path"
@@ -90,7 +90,7 @@ async function loadFromDir(dir: string, loaded: Set<string>): Promise<void> {
       const raw  = mod.default ?? mod
 
       if (!isValidTool(raw)) {
-        console.error(`[omnicod] custom tool ${file}: invalid format, skipping`)
+        console.error(`[aurict] custom tool ${file}: invalid format, skipping`)
         continue
       }
 
@@ -115,9 +115,9 @@ async function loadFromDir(dir: string, loaded: Set<string>): Promise<void> {
       } as ToolDef)
 
       loaded.add(raw.id)
-      console.error(`[omnicod] custom tool loaded: ${raw.id} (${file})`)
+      console.error(`[aurict] custom tool loaded: ${raw.id} (${file})`)
     } catch (err) {
-      console.error(`[omnicod] custom tool ${file}: failed to load —`, (err as Error).message)
+      console.error(`[aurict] custom tool ${file}: failed to load —`, (err as Error).message)
     }
   }
 }
@@ -125,9 +125,9 @@ async function loadFromDir(dir: string, loaded: Set<string>): Promise<void> {
 export async function loadCustomTools(workdir: string): Promise<void> {
   const loaded = new Set<string>()
 
-  // 1. Global: ~/.omnicod/tools/
-  await loadFromDir(join(homedir(), ".omnicod", "tools"), loaded)
+  // 1. Global: ~/.aurict/tools/
+  await loadFromDir(join(homedir(), ".aurict", "tools"), loaded)
 
-  // 2. Project: <workdir>/.omnicod/tools/ (override)
-  await loadFromDir(join(workdir, ".omnicod", "tools"), loaded)
+  // 2. Project: <workdir>/.aurict/tools/ (override)
+  await loadFromDir(join(workdir, ".aurict", "tools"), loaded)
 }

@@ -5,7 +5,7 @@ triggers:
   keywords: ["reklam kampanyası", "google ads", "facebook ads", "meta ads", "ppc", "reklam metni", "hedef kitle", "campaign", "ad copy"]
   extensions: [".md", ".csv", ".xlsx"]
 auto_load_when: "Google Ads, Facebook Ads veya dijital reklam kampanyası oluşturma talep edildiğinde"
-agent: researcher
+agent: content-ops
 tools: ["Read", "Write", "Bash", "WebFetch"]
 ---
 
@@ -301,7 +301,3 @@ Ad-to-Landing Page Uyumu:
 | Custom (remarketing) | Çok yüksek | Conversion |
 | Lookalike | Orta-yüksek | Yeni müşteri |
 | In-market | Orta | Consideration |
-
-
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.

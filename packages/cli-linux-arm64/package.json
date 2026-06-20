@@ -1,11 +1,11 @@
 {
-  "name": "@omnicod/cli-linux-arm64",
+  "name": "@aurict/cli-linux-arm64",
   "version": "1.0.5",
-  "description": "OmniCod CLI binary for Linux arm64",
+  "description": "Aurict CLI binary for Linux arm64",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/omnicod/omnicod"
+    "url": "https://github.com/aurict-dev/aurict"
   },
   "os": [
     "linux"
@@ -14,6 +14,6 @@
     "arm64"
   ],
   "files": [
-    "bin/omnicod"
+    "bin/aurict"
   ]
 }

@@ -1,0 +1,49 @@
+{
+  "name": "aurict",
+  "version": "1.0.5",
+  "description": "Open-source terminal AI coding assistant — 9 specialist agents, 218+ skills, multi-provider (Anthropic, OpenAI, Google, Ollama and more). Claude Code alternative.",
+  "keywords": [
+    "ai",
+    "cli",
+    "coding-assistant",
+    "terminal-ai",
+    "claude",
+    "claude-code-alternative",
+    "opencode-alternative",
+    "terminal",
+    "llm",
+    "agent",
+    "multi-agent",
+    "anthropic",
+    "openai",
+    "developer-tools",
+    "ai-tools",
+    "open-source"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aurict-dev/aurict.git"
+  },
+  "homepage": "https://aurict.dev",
+  "bugs": {
+    "url": "https://github.com/aurict-dev/aurict/issues"
+  },
+  "bin": {
+    "aurict": "./bin/aurict"
+  },
+  "files": [
+    "bin/aurict",
+    "README.md"
+  ],
+  "optionalDependencies": {
+    "@aurict/cli-linux-x64": "1.0.5",
+    "@aurict/cli-linux-arm64": "1.0.5",
+    "@aurict/cli-darwin-x64": "1.0.5",
+    "@aurict/cli-darwin-arm64": "1.0.5",
+    "@aurict/cli-win32-x64": "1.0.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

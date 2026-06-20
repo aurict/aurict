@@ -215,6 +215,112 @@ Cache API:
 | IndexedDB | Large client storage | via idb library |
 | Web Crypto | Client-side crypto | subtle.digest, encrypt |
 
+---
 
-## 🌍 Universal Language Support
-- **Turkish Native:** This skill natively supports Turkish. If the user prompt is in Turkish, all analysis, formatting, and output MUST be entirely in Turkish. You do not need explicit "write in Turkish" instructions.
+## Decision Tree
+
+```
+Client-side storage: which API?
+├── Simple config, theme, token < 5KB  → localStorage (sync, string only)
+├── Per-tab session data                → sessionStorage (cleared on tab close)
+├── Large structured data / blobs      → IndexedDB (async, transactions)
+└── HTTP response caching / offline    → Cache API (Service Worker)
+
+Cross-tab communication?
+├── Simple broadcast (same origin)     → BroadcastChannel
+├── Shared state + background work     → SharedWorker + MessagePort
+└── Heavy computation off main thread  → Web Worker (isolated, no shared DOM)
+
+Observer pattern?
+├── Watch element entering viewport    → IntersectionObserver (lazy load, infinite scroll)
+├── Watch element size change          → ResizeObserver (responsive components)
+└── Watch DOM mutations                → MutationObserver (third-party DOM changes)
+
+Clipboard operation?
+├── Write (copy to clipboard)          → navigator.clipboard.writeText() — requires focus
+├── Read (paste from clipboard)        → navigator.clipboard.readText() — requires permission
+└── No user gesture available          → document.execCommand('copy') fallback (deprecated)
+```
+
+---
+
+## Key Rules
+
+1. Never store sensitive data in localStorage — XSS can read it; use HttpOnly cookies
+2. Always feature-detect before using browser APIs: `if ('geolocation' in navigator)`
+3. Disconnect observers when element is removed: `observer.disconnect()` in cleanup
+4. Remove event listeners on unmount to prevent memory leaks
+5. IndexedDB: always handle `versionchange` and `upgradeneeded` events for migrations
+6. Service Workers: register after `load` event — don't block initial page parse
+7. Clipboard API requires a transient user gesture — don't call from async without it
+
+---
+
+## Implementation
+
+```typescript
+// localStorage wrapper with JSON support
+const storage = {
+  get<T>(key: string, fallback: T): T {
+    try {
+      const raw = localStorage.getItem(key)
+      return raw ? (JSON.parse(raw) as T) : fallback
+    } catch { return fallback }
+  },
+  set(key: string, value: unknown) {
+    localStorage.setItem(key, JSON.stringify(value))
+  },
+  remove(key: string) { localStorage.removeItem(key) },
+}
+
+// IntersectionObserver for lazy loading
+function useLazyLoad(callback: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        callback()
+        observer.disconnect()
+      }
+    }, { threshold: 0.1 })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [callback])
+
+  return ref
+}
+
+// BroadcastChannel for cross-tab sync
+const channel = new BroadcastChannel('auth-state')
+
+function logout() {
+  clearSession()
+  channel.postMessage({ type: 'logout' })
+}
+
+channel.onmessage = (event) => {
+  if (event.data.type === 'logout') {
+    window.location.href = '/login'
+  }
+}
+
+// Clipboard copy with fallback
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    // Legacy fallback
+    const el = document.createElement('textarea')
+    el.value = text
+    document.body.appendChild(el)
+    el.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(el)
+    return ok
+  }
+}
+```
