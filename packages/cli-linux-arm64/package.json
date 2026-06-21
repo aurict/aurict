@@ -1,6 +1,6 @@
 {
   "name": "@aurict/cli-linux-arm64",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Aurict CLI binary for Linux arm64",
   "license": "MIT",
   "repository": {
