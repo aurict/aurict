@@ -38,7 +38,7 @@ function wordRight(line: string, col: number): number {
 }
 
 // Paste metni için: ANSI strip + \r normalizasyon + boyut sınırı + bracketed paste cleanup
-function sanitizePaste(raw: string): string {
+export function sanitizePaste(raw: string): string {
   return stripVTControlCharacters(raw)
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
@@ -87,7 +87,8 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
     if (value !== joined && value !== prevValueRef.current) {
       const next = splitLines(value)
       setLines(next)
-      setCursor({ row: 0, col: 0 })
+      const lastRow = Math.max(0, next.length - 1)
+      setCursor({ row: lastRow, col: (next[lastRow] ?? "").length })
     }
     prevValueRef.current = value
   }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -101,17 +102,18 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
       onPasteTruncated?.(raw.length, pasted.length)
     }
     const pastedLines = pasted.split("\n")
+    const currentCursor = cursorRef.current
     setLines(prev => {
       const next   = [...prev]
-      const before = (next[cursor.row] ?? "").slice(0, cursor.col)
-      const after  = (next[cursor.row] ?? "").slice(cursor.col)
-      next[cursor.row] = before + pastedLines[0]!
+      const before = (next[currentCursor.row] ?? "").slice(0, currentCursor.col)
+      const after  = (next[currentCursor.row] ?? "").slice(currentCursor.col)
+      next[currentCursor.row] = before + pastedLines[0]!
       const rest = pastedLines.slice(1)
       if (rest.length > 0) {
         rest[rest.length - 1] = rest[rest.length - 1]! + after
-        next.splice(cursor.row + 1, 0, ...rest)
+        next.splice(currentCursor.row + 1, 0, ...rest)
       } else {
-        next[cursor.row] += after
+        next[currentCursor.row] += after
       }
       return next
     })
@@ -148,12 +150,17 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
       return
     }
 
-    // ── Bracketed paste sequence fragment'lerini ignore et ─────────────
-    // Sanitize fonksiyonları bu karakterleri temizler, burada sadece ignore et
+    // ── Bracketed paste ────────────────────────────────────────────────
+    // Full paste events marker + content birlikte gelebilir; sadece marker
+    // fragment'leri yok sayılır, içerikli event paste olarak uygulanır.
     if (
-      input.includes("[200~") || input.includes("[201~") ||
-      input === "\x1b" || input === "\x1b["
+      input.includes("\x1b[200~") || input.includes("\x1b[201~") ||
+      input.includes("[200~") || input.includes("[201~")
     ) {
+      applyPaste(input)
+      return
+    }
+    if (input === "\x1b" || input === "\x1b[") {
       return
     }
 

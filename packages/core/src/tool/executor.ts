@@ -187,6 +187,26 @@ function affectedPatchPaths(summary: PatchSummary): string[] {
   ))]
 }
 
+function isPermissionApproved(defId: string, pattern: string, patchSummary?: PatchSummary): boolean {
+  if (patchSummary) {
+    const paths = affectedPatchPaths(patchSummary)
+    return paths.length > 0 && paths.every((filePath) => PermissionStore.isApproved(defId, filePath))
+  }
+  return PermissionStore.isApproved(defId, pattern)
+}
+
+function approvePermission(defId: string, pattern: string, patchSummary: PatchSummary | undefined, directory: boolean): void {
+  if (patchSummary) {
+    for (const filePath of affectedPatchPaths(patchSummary)) {
+      if (directory) PermissionStore.approveDirectory(defId, filePath)
+      else PermissionStore.approve(defId, filePath)
+    }
+    return
+  }
+  if (directory) PermissionStore.approveDirectory(defId, pattern)
+  else PermissionStore.approve(defId, pattern)
+}
+
 export async function executeTool(
   def:     ToolDef,
   rawArgs: Record<string, unknown>,
@@ -252,6 +272,7 @@ export async function executeTool(
             return { output: "", error: `GateGuard: write to '${filePath}' denied by user.` }
           }
           if (userResponse.decision === "allow") PermissionStore.approve(def.id, filePath)
+          if (userResponse.decision === "allow_directory") PermissionStore.approveDirectory(def.id, filePath)
         }
       }
     }
@@ -302,6 +323,9 @@ export async function executeTool(
         }
         if (userResponse.decision === "allow") {
           for (const filePath of askPaths) PermissionStore.approve(def.id, filePath)
+        }
+        if (userResponse.decision === "allow_directory") {
+          for (const filePath of askPaths) PermissionStore.approveDirectory(def.id, filePath)
         }
       }
     }
@@ -362,7 +386,7 @@ export async function executeTool(
     return { output: "", error: `Permission denied: [${def.id}] ${pattern}` }
   }
 
-  if (decision === "ask" && !PermissionStore.isApproved(def.id, pattern)) {
+  if (decision === "ask" && !isPermissionApproved(def.id, pattern, patchSummary)) {
     // Kategori bazlı toplu onay — "Bu session boyunca tüm write işlemlerine izin ver" gibi
     if (PermissionStore.isCategoryApproved(def.id)) {
       // Kategori onayı var — bireysel onay gerekmez
@@ -404,8 +428,12 @@ export async function executeTool(
       }
       // allow_once → sadece bu kez, session'a kaydetme
       // allow      → session boyunca hatırla
+      // allow_directory → aynı klasör altında session boyunca hatırla
       if (userResponse.decision === "allow") {
-        PermissionStore.approve(def.id, pattern)
+        approvePermission(def.id, pattern, patchSummary, false)
+      }
+      if (userResponse.decision === "allow_directory") {
+        approvePermission(def.id, pattern, patchSummary, true)
       }
     }
   }

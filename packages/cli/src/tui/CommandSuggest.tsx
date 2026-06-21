@@ -11,6 +11,9 @@ import {
 } from "../commands/ui-metadata.js"
 
 const MAX_SHOW = 8
+const NAME_WIDTH = 16
+const CATEGORY_WIDTH = 10
+const ALIAS_WIDTH = 18
 
 interface Props {
   filter:    string         // "/" sonrası yazılan metin
@@ -62,13 +65,13 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
                 <Text color={sel ? theme.accent : theme.textDim}>{sel ? "▶" : " "}</Text>
                 <Text color={sel ? theme.accent : theme.textDim}>{commandIcon(cmd)}</Text>
                 <Text color={sel ? theme.accent : theme.textPrimary} bold={sel}>
-                  {"/" + cmd.name.padEnd(13)}
+                  {("/" + cmd.name).padEnd(NAME_WIDTH)}
                 </Text>
-                <Text color={theme.textDim} dimColor>{category.label.padEnd(8)}</Text>
-                {cmd.aliases?.length ? (
-                  <Text color={theme.textDim} dimColor>{cmd.aliases.slice(0, 3).map(a => `/${a}`).join(" ")}</Text>
-                ) : null}
-                <Text color={sel ? theme.textPrimary : theme.textDim} dimColor={!sel}>
+                <Text color={theme.textDim} dimColor>{category.label.padEnd(CATEGORY_WIDTH)}</Text>
+                <Text color={theme.textDim} dimColor>
+                  {(cmd.aliases?.slice(0, 3).map(a => `/${a}`).join(" ") ?? "").padEnd(ALIAS_WIDTH)}
+                </Text>
+                <Text color={sel ? theme.textPrimary : theme.textDim} dimColor={!sel} wrap="truncate-end">
                   {cmd.description}
                 </Text>
               </Box>

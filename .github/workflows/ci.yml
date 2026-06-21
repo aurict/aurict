@@ -10,6 +10,9 @@ jobs:
   typecheck-and-test:
     name: Typecheck & Test
     runs-on: ubuntu-latest
+    env:
+      HOME: ${{ runner.temp }}/aurict-home
+      AURICT_SNAPSHOT_DIR: ${{ runner.temp }}/aurict-snapshots
 
     steps:
       - uses: actions/checkout@v4
