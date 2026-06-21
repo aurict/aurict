@@ -54,14 +54,14 @@ const workdir = process.cwd()
 
 // --version
 if (flags.version) {
-  console.log("Aurict v1.0.9")
+  console.log("Aurict v1.1.0")
   process.exit(0)
 }
 
 // --help
 if (flags.help) {
   console.log(`
-Aurict v1.0.9 — Terminal AI assistant
+Aurict v1.1.0 — Terminal AI assistant
 
 Usage:
   aurict [options]

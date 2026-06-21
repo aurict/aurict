@@ -1,6 +1,6 @@
 {
   "name": "@aurict/cli",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "private": false,
   "description": "Aurict — Terminal AI coding assistant",
   "keywords": [
@@ -26,11 +26,11 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@aurict/cli-linux-x64": "1.0.9",
-    "@aurict/cli-linux-arm64": "1.0.9",
-    "@aurict/cli-darwin-x64": "1.0.9",
-    "@aurict/cli-darwin-arm64": "1.0.9",
-    "@aurict/cli-win32-x64": "1.0.9"
+    "@aurict/cli-linux-x64": "1.1.0",
+    "@aurict/cli-linux-arm64": "1.1.0",
+    "@aurict/cli-darwin-x64": "1.1.0",
+    "@aurict/cli-darwin-arm64": "1.1.0",
+    "@aurict/cli-win32-x64": "1.1.0"
   },
   "scripts": {
     "dev": "bun run ../cli/src/index.ts"
