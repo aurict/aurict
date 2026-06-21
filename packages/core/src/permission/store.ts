@@ -1,4 +1,4 @@
-import type { PermissionDecision, CategoryPermission } from "./types.js"
+import type { PermissionDecision, PermissionResponse, CategoryPermission } from "./types.js"
 import type { ToolCategory } from "../tool/types.js"
 import { getToolCategory } from "./categories.js"
 
@@ -43,22 +43,26 @@ export const PermissionStore = {
 }
 
 // TUI → executor köprüsü: ask kararlarını bekler
-type Resolver = (decision: PermissionDecision) => void
-const pending = new Map<string, Resolver>()
+type ResponseResolver = (response: PermissionResponse) => void
+const pending = new Map<string, ResponseResolver>()
+
+function normalizeResponse(response: PermissionDecision | PermissionResponse): PermissionResponse {
+  return typeof response === "string" ? { decision: response } : response
+}
 
 export const PermissionGate = {
   // Executor tarafından çağrılır — kullanıcı kararını bekler
-  wait(id: string): Promise<PermissionDecision> {
+  wait(id: string): Promise<PermissionResponse> {
     return new Promise((resolve) => {
       pending.set(id, resolve)
     })
   },
 
   // TUI tarafından çağrılır — kullanıcı Y/N'ye bastı
-  respond(id: string, decision: PermissionDecision): void {
+  respond(id: string, decision: PermissionDecision | PermissionResponse): void {
     const resolve = pending.get(id)
     if (resolve) {
-      resolve(decision)
+      resolve(normalizeResponse(decision))
       pending.delete(id)
     }
   },
@@ -70,7 +74,7 @@ export const PermissionGate = {
   // Abort / Ctrl+C sırasında çağrılır — bekleyen tüm izin isteklerini reddet
   cancelPending(): void {
     for (const resolve of pending.values()) {
-      resolve("deny")
+      resolve({ decision: "deny" })
     }
     pending.clear()
   },

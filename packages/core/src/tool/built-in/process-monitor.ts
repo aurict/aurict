@@ -207,6 +207,13 @@ function humanMem(kb: number): string {
   return `${(kb / 1024 / 1024).toFixed(2)} GB`
 }
 
+function portHint(port: number): string {
+  if (port === 7777) {
+    return "\nHint: 7777 is Aurict's default local API port. Multiple TUI sessions can still run; only one local API server can bind this port."
+  }
+  return ""
+}
+
 // ── Tool tanımı ───────────────────────────────────────────────────────────────
 
 export const processMonitorTool: ToolDef = {
@@ -285,16 +292,16 @@ export const processMonitorTool: ToolDef = {
         const ports  = readProcNetTcp()
         const found  = ports.find((p) => p.port === portNum)
         if (!found) {
-          return { output: `Port :${portNum}${label} — NOT in use` }
+          return { output: `Port :${portNum}${label} — NOT in use${portHint(portNum)}` }
         }
         const procStr = found.proc ? ` by ${found.proc}${found.pid ? ` [PID ${found.pid}]` : ""}` : ""
-        return { output: `Port :${portNum}${label} — IN USE${procStr}` }
+        return { output: `Port :${portNum}${label} — IN USE${procStr}${portHint(portNum)}` }
 
       } else if (isMac) {
         const ports = await macosListenPorts()
         const found = ports.find((p) => p.port === portNum)
-        if (!found) return { output: `Port :${portNum}${label} — NOT in use` }
-        return { output: `Port :${portNum}${label} — IN USE by ${found.proc} [PID ${found.pid}]` }
+        if (!found) return { output: `Port :${portNum}${label} — NOT in use${portHint(portNum)}` }
+        return { output: `Port :${portNum}${label} — IN USE by ${found.proc} [PID ${found.pid}]${portHint(portNum)}` }
 
       } else {
         // Generic: net.createServer ile test
@@ -308,7 +315,7 @@ export const processMonitorTool: ToolDef = {
             }).catch(() => resolve(false))
           } catch { resolve(false) }
         })
-        return { output: `Port :${portNum}${label} — ${result ? "IN USE" : "NOT in use"}` }
+        return { output: `Port :${portNum}${label} — ${result ? "IN USE" : "NOT in use"}${portHint(portNum)}` }
       }
     }
 

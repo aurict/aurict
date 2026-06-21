@@ -25,7 +25,9 @@ that you're using Next.js with Tailwind and Drizzle. It already knows.
 **It works with real tools, not simulated ones.**
 Every file read, shell command, and code edit happens through a typed, permission-controlled
 tool layer. Commands are classified as safe, warning, or dangerous before execution. Risky
-executables run inside an isolated sandbox. You always know what's happening and why.
+execution is guarded by the policy sandbox: permission gates, protected paths, scrubbed env,
+timeouts, output limits, and audit trails. This is not container isolation; Docker is optional
+for heavier isolation. You always know what's happening and why.
 
 **It thinks in parallel, not in sequence.**
 Long tasks — refactoring a module, writing a test suite, auditing security — are broken into
@@ -65,7 +67,7 @@ Aurict from CI, or build your own tooling on top.
 
 | Tool | Description |
 |---|---|
-| `bash` | Shell execution with AST-level safe/warning/danger classification |
+| `bash` | Shell execution with conservative safe/warning/danger classification |
 | `read` | File reading with line-range support |
 | `write` | Atomic file writes |
 | `edit` | Precise string-replace edits with diff preview |
@@ -75,7 +77,7 @@ Aurict from CI, or build your own tooling on top.
 | `websearch` | Web search integration |
 | `lsp` | TypeScript/Python language server diagnostics before edits |
 | `todo` | Project-local task tracking, persisted to `.aurict/todos.json` |
-| `apply_patch` | Unified diff patch application |
+| `apply_patch` | Multi-file patch application with preview, GateGuard checks, and granular approval |
 | `subagent` | Spawn a typed specialist agent inline |
 
 ### Security
@@ -340,7 +342,7 @@ aurict /config set default.model claude-sonnet-4-6
 ```bash
 bun install              # install dependencies
 bun run dev              # start in development mode (hot reload)
-bun run test             # run all 145 tests
+bun run test             # run the test suite
 bun run typecheck        # TypeScript strict check (both packages)
 bun run build            # compile to standalone binary → dist/aurict
 ```

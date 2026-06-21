@@ -279,7 +279,7 @@ describe("StatusBar", () => {
     expect(frame).toContain("policy")
     expect(frame).toContain("api")
     expect(frame).toContain("7777")
-    expect(frame).toContain("used")
+    expect(frame).toContain("busy")
   })
 
   it("shows undercover badge when isUndercover", () => {

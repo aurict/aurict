@@ -17,6 +17,7 @@ export interface LocalServerStatus {
   port?: number
   started: boolean
   reused: boolean
+  reason?: string
 }
 
 type ServerStarter = (port: number) => void
@@ -33,7 +34,7 @@ export function startLocalServer(port: number, starter: ServerStarter = defaultS
     return true
   } catch (err) {
     if (isPortInUseError(err)) {
-      console.error(`[aurict] Server: port ${port} is already in use; continuing without local API server`)
+      console.error(`[aurict] Server: port ${port} is already in use; continuing TUI-only and reusing the existing port if it belongs to Aurict`)
       return false
     }
     throw err
@@ -71,6 +72,7 @@ export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvid
     localServer.port = port
     localServer.started = started
     localServer.reused = !started
+    if (!started) localServer.reason = "port-in-use"
   }
 
   // Load user-defined hooks from ~/.aurict/hooks.json + .aurict/hooks.json

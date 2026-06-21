@@ -1,9 +1,10 @@
-import React, { useState } from "react"
+import React, { useMemo, useState } from "react"
 import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
-import type { PermissionRequest } from "@aurict/core"
+import type { PermissionDecision, PermissionRequest, PermissionResponse } from "@aurict/core"
 
-type Decision = "allow" | "allow_once" | "deny" | "deny_abort" | "edit"
+type Decision = PermissionDecision | "deny_abort" | "edit"
+export type PermissionPromptDecision = Decision | PermissionResponse
 
 interface Option {
   id:      Decision
@@ -15,7 +16,7 @@ interface Option {
 
 interface Props {
   request:  PermissionRequest
-  onDecide: (d: Decision) => void
+  onDecide: (d: PermissionPromptDecision) => void
 }
 
 function riskLabel(level?: string): { text: string; detail: string } {
@@ -50,6 +51,22 @@ function _relativeTime(ms: number): string {
   return `${Math.floor(s / 3600)}h ago`
 }
 
+function patchFileLabel(file: NonNullable<PermissionRequest["files"]>[number]): string {
+  if (file.action === "move" && file.targetPath) return `${file.path} -> ${file.targetPath}`
+  return `${file.action} ${file.path}`
+}
+
+function patchFileKeys(file: NonNullable<PermissionRequest["files"]>[number]): string[] {
+  return file.action === "move" && file.targetPath ? [file.path, file.targetPath] : [file.path]
+}
+
+function patchPreviewLines(patchText: string, maxLines = 80): string[] {
+  const lines = patchText.split("\n")
+  return lines.length > maxLines
+    ? [...lines.slice(0, maxLines), `... ${lines.length - maxLines} more lines`]
+    : lines
+}
+
 export function PermissionPrompt({ request, onDecide }: Props) {
   const theme     = useTheme()
   const isDanger  = request.level === "danger"
@@ -57,9 +74,27 @@ export function PermissionPrompt({ request, onDecide }: Props) {
   const risk      = riskLabel(request.level)
   const sandbox   = sandboxLabel(request)
   const isBashTool = request.tool === "bash" || request.tool === "shell"
+  const files = request.files ?? []
+  const diff = request.diff
+  const patchText = request.patch?.text
+  const granularPatch = request.tool === "apply_patch" && request.patch?.granular === true && files.length > 0
+  const selectableFileKeys = useMemo(() => files.map((file) => patchFileKeys(file)), [files])
+  const allSelectedFiles = useMemo(() => selectableFileKeys.flat(), [selectableFileKeys])
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(() => new Set(allSelectedFiles))
+  const [fileIdx, setFileIdx] = useState(0)
+  const [showPatch, setShowPatch] = useState(Boolean(patchText))
+  const selectedCount = files.filter((file) =>
+    patchFileKeys(file).some((path) => selectedFiles.has(path))
+  ).length
 
   // Seçenek listesi — tehlike seviyesine göre değişir
-  const options: Option[] = isDanger
+  const options: Option[] = granularPatch
+    ? [
+        { id: "allow_partial", label: "Apply selected", hint: `${selectedCount}/${files.length} file${files.length === 1 ? "" : "s"}` },
+        { id: "allow_once", label: "Apply all once", hint: "ignore file selection for this patch" },
+        { id: "deny", label: "Deny", hint: "reject patch, AI receives error", color: theme.error },
+      ]
+    : isDanger
     ? [
         { id: "allow_once", label: "Allow once",       hint: "allow this time (risky)",          color: theme.warning, danger: true },
         ...(isBashTool ? [{ id: "edit" as const, label: "Edit command", hint: "deny and move command to input", color: theme.accent }] : []),
@@ -74,12 +109,40 @@ export function PermissionPrompt({ request, onDecide }: Props) {
       ]
 
   // Danger = default Deny, normal = default Allow once.
-  const [idx, setIdx] = useState(isDanger ? (isBashTool ? 2 : 1) : 0)
+  const [idx, setIdx] = useState(isDanger && !granularPatch ? (isBashTool ? 2 : 1) : 0)
 
-  useInput((_char, key) => {
+  useInput((char, key) => {
     if (key.upArrow)   { setIdx(i => Math.max(0, i - 1)); return }
     if (key.downArrow) { setIdx(i => Math.min(options.length - 1, i + 1)); return }
-    if (key.return)    { onDecide(options[idx]!.id); return }
+    if (granularPatch && key.leftArrow) { setFileIdx(i => Math.max(0, i - 1)); return }
+    if (granularPatch && key.rightArrow) { setFileIdx(i => Math.min(files.length - 1, i + 1)); return }
+    if (granularPatch && char === " ") {
+      const keys = selectableFileKeys[fileIdx] ?? []
+      if (keys.length > 0) {
+        setSelectedFiles((current) => {
+          const next = new Set(current)
+          const selected = keys.some((path) => next.has(path))
+          for (const path of keys) {
+            if (selected) next.delete(path)
+            else next.add(path)
+          }
+          return next
+        })
+      }
+      return
+    }
+    if (char === "d" && patchText) { setShowPatch((v) => !v); return }
+    if (key.return) {
+      const option = options[idx]!.id
+      if (option === "allow_partial") {
+        const approvedFiles = allSelectedFiles.filter((path) => selectedFiles.has(path))
+        if (approvedFiles.length === 0) return
+        onDecide({ decision: "allow_partial", approvedFiles })
+        return
+      }
+      onDecide(option)
+      return
+    }
     if (key.escape)    { onDecide("deny"); return }
   })
 
@@ -180,6 +243,70 @@ export function PermissionPrompt({ request, onDecide }: Props) {
           </Box>
         )}
 
+        {diff && (
+          <Box gap={2}>
+            <Text color={theme.textDim} dimColor>diff</Text>
+            <Text color={theme.success}>+{diff.added}</Text>
+            <Text color={theme.error}>-{diff.removed}</Text>
+            <Text color={theme.textDim}>{diff.fileCount} file{diff.fileCount === 1 ? "" : "s"}</Text>
+          </Box>
+        )}
+
+        {files.length > 0 && (
+          <Box flexDirection="column">
+            <Box gap={2}>
+              <Text color={theme.textDim} dimColor>files</Text>
+              <Text color={theme.textDim}>
+                {files.slice(0, 5).map((file) => patchFileLabel(file)).join(", ")}
+              </Text>
+            </Box>
+            {files.length > 5 && (
+              <Box paddingLeft={7}>
+                <Text color={theme.textDim} dimColor>{files.length - 5} more file{files.length - 5 === 1 ? "" : "s"}</Text>
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {granularPatch && (
+          <Box flexDirection="column" marginTop={1}>
+            <Box gap={2}>
+              <Text color={theme.textDim} dimColor>select</Text>
+              <Text color={theme.textDim}>{selectedCount}/{files.length}</Text>
+              <Text color={theme.textDim} dimColor>Left/Right file  Space toggle</Text>
+            </Box>
+            {files.slice(Math.max(0, fileIdx - 2), Math.min(files.length, fileIdx + 3)).map((file, offset) => {
+              const actualIdx = Math.max(0, fileIdx - 2) + offset
+              const selected = patchFileKeys(file).some((path) => selectedFiles.has(path))
+              const focused = actualIdx === fileIdx
+              return (
+                <Box key={`${file.path}-${actualIdx}`} gap={1} paddingLeft={2}>
+                  <Text color={focused ? theme.accent : theme.borderBright}>{focused ? "▶" : " "}</Text>
+                  <Text color={selected ? theme.success : theme.textDim}>{selected ? "[x]" : "[ ]"}</Text>
+                  <Text color={focused ? theme.textPrimary : theme.textDim}>{patchFileLabel(file)}</Text>
+                </Box>
+              )
+            })}
+          </Box>
+        )}
+
+        {patchText && showPatch && (
+          <Box flexDirection="column" marginTop={1} borderStyle="single" borderColor={theme.borderDim} paddingX={1}>
+            <Box gap={2}>
+              <Text color={theme.textDim} dimColor>patch preview</Text>
+              <Text color={theme.textDim} dimColor>d hide</Text>
+            </Box>
+            {patchPreviewLines(patchText).map((line, lineIdx) => {
+              const color = line.startsWith("+") ? theme.success
+                : line.startsWith("-") ? theme.error
+                  : line.startsWith("***") ? theme.accent
+                    : line.startsWith("@@") ? theme.warning
+                      : theme.textDim
+              return <Text key={lineIdx} color={color}>{line}</Text>
+            })}
+          </Box>
+        )}
+
         {/* reason yoksa ama summary varsa buraya düş */}
         {!request.reason && request.permissionSummary && (
           <Box gap={2} marginTop={0}>
@@ -215,8 +342,8 @@ export function PermissionPrompt({ request, onDecide }: Props) {
       <Box marginTop={1} paddingLeft={2}>
         <Text color={theme.textDim} dimColor>
           {isDanger
-            ? "↑↓ navigate  Enter confirm  Esc deny (recommended)"
-            : "↑↓ navigate  Enter confirm  Esc deny"}
+            ? `↑↓ action  Enter confirm  Esc deny${patchText ? "  d preview" : ""}${granularPatch ? "  ←/→ file  Space toggle" : ""}`
+            : `↑↓ action  Enter confirm  Esc deny${patchText ? "  d preview" : ""}${granularPatch ? "  ←/→ file  Space toggle" : ""}`}
         </Text>
       </Box>
     </Box>

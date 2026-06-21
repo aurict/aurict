@@ -14,6 +14,8 @@ type Hunk =
 interface UpdateChunk {
   oldLines:       string[]
   newLines:       string[]
+  addedCount:     number
+  removedCount:   number
   changeContext?: string | undefined
   endOfFile?:     boolean | undefined
 }
@@ -26,10 +28,26 @@ interface FileUpdate {
 interface StagedFile {
   relPath: string
   absPath: string
+  action: "add" | "delete" | "update" | "move"
+  targetPath?: string
   beforeExists: boolean
   beforeContent: string
   afterExists: boolean
   afterContent: string
+}
+
+export interface PatchFileSummary {
+  path: string
+  action: "add" | "delete" | "update" | "move"
+  targetPath?: string
+  added: number
+  removed: number
+}
+
+export interface PatchSummary {
+  files: PatchFileSummary[]
+  added: number
+  removed: number
 }
 
 // ─── Parser ────────────────────────────────────────────────────────────────
@@ -69,6 +87,8 @@ function parseUpdateBlock(lines: readonly string[], start: number): { chunks: Up
     const changeContext = lines[i]!.slice(2).trim() || undefined
     const oldLines: string[] = []
     const newLines: string[] = []
+    let addedCount = 0
+    let removedCount = 0
     let endOfFile = false
     i++
     while (i < lines.length && !lines[i]!.startsWith("@@")) {
@@ -76,12 +96,12 @@ function parseUpdateBlock(lines: readonly string[], start: number): { chunks: Up
       if (line === "*** End of File") { endOfFile = true; i++; break }
       if (line.startsWith("***")) break
       if (line.startsWith(" "))      { oldLines.push(line.slice(1)); newLines.push(line.slice(1)) }
-      else if (line.startsWith("-")) { oldLines.push(line.slice(1)) }
-      else if (line.startsWith("+")) { newLines.push(line.slice(1)) }
+      else if (line.startsWith("-")) { oldLines.push(line.slice(1)); removedCount++ }
+      else if (line.startsWith("+")) { newLines.push(line.slice(1)); addedCount++ }
       else throw new Error(`Invalid chunk line: ${line}`)
       i++
     }
-    const chunk: UpdateChunk = { oldLines, newLines }
+    const chunk: UpdateChunk = { oldLines, newLines, addedCount, removedCount }
     if (changeContext !== undefined) chunk.changeContext = changeContext
     if (endOfFile) chunk.endOfFile = true
     chunks.push(chunk)
@@ -132,6 +152,125 @@ function parsePatch(patchText: string): Hunk[] {
     }
   }
   return hunks
+}
+
+function countTextLines(text: string): number {
+  if (text.length === 0) return 0
+  return text.endsWith("\n") ? text.slice(0, -1).split("\n").length : text.split("\n").length
+}
+
+export function summarizePatchText(patchText: string): PatchSummary {
+  const hunks = parsePatch(patchText)
+  const files: PatchFileSummary[] = []
+
+  for (const hunk of hunks) {
+    if (hunk.type === "add") {
+      files.push({
+        path: hunk.path,
+        action: "add",
+        added: countTextLines(hunk.contents),
+        removed: 0,
+      })
+      continue
+    }
+
+    if (hunk.type === "delete") {
+      files.push({
+        path: hunk.path,
+        action: "delete",
+        added: 0,
+        removed: 0,
+      })
+      continue
+    }
+
+    const added = hunk.chunks.reduce((sum, chunk) => sum + chunk.addedCount, 0)
+    const removed = hunk.chunks.reduce((sum, chunk) => sum + chunk.removedCount, 0)
+    const summary: PatchFileSummary = {
+      path: hunk.path,
+      action: hunk.movePath ? "move" : "update",
+      added,
+      removed,
+    }
+    if (hunk.movePath) summary.targetPath = hunk.movePath
+    files.push(summary)
+  }
+
+  return {
+    files,
+    added: files.reduce((sum, file) => sum + file.added, 0),
+    removed: files.reduce((sum, file) => sum + file.removed, 0),
+  }
+}
+
+function blockPaths(lines: readonly string[], start: number, end: number): { path: string; targetPath?: string } | null {
+  const header = lines[start] ?? ""
+  const pathPrefix = [
+    "*** Add File:",
+    "*** Delete File:",
+    "*** Update File:",
+  ].find((prefix) => header.startsWith(prefix))
+  if (!pathPrefix) return null
+
+  const sourcePath = header.slice(pathPrefix.length).trim()
+  if (!sourcePath) return null
+
+  let targetPath: string | undefined
+  for (let i = start + 1; i < end; i++) {
+    const line = lines[i] ?? ""
+    if (line.startsWith("*** Move to:")) {
+      targetPath = line.slice("*** Move to:".length).trim()
+      break
+    }
+  }
+
+  return targetPath ? { path: sourcePath, targetPath } : { path: sourcePath }
+}
+
+export function filterPatchTextByFiles(patchText: string, approvedFiles: readonly string[]): string {
+  const approved = new Set(approvedFiles)
+  const lines = stripHeredoc(patchText.trim()).split("\n")
+  const begin = lines.findIndex((line) => line.trim() === "*** Begin Patch")
+  const end = lines.findIndex((line) => line.trim() === "*** End Patch")
+  if (begin === -1 || end === -1 || begin >= end) {
+    throw new Error("Invalid patch: missing Begin/End markers")
+  }
+
+  const selectedBlocks: string[][] = []
+  let i = begin + 1
+
+  while (i < end) {
+    const startsBlock = lines[i]?.startsWith("*** Add File:")
+      || lines[i]?.startsWith("*** Delete File:")
+      || lines[i]?.startsWith("*** Update File:")
+    if (!startsBlock) throw new Error(`Unknown patch line: ${lines[i]}`)
+
+    let next = i + 1
+    while (
+      next < end
+      && !lines[next]?.startsWith("*** Add File:")
+      && !lines[next]?.startsWith("*** Delete File:")
+      && !lines[next]?.startsWith("*** Update File:")
+    ) {
+      next++
+    }
+
+    const paths = blockPaths(lines, i, next)
+    if (paths && (approved.has(paths.path) || (paths.targetPath && approved.has(paths.targetPath)))) {
+      selectedBlocks.push(lines.slice(i, next))
+    }
+    i = next
+  }
+
+  if (selectedBlocks.length === 0) {
+    throw new Error("No patch files selected")
+  }
+
+  return [
+    "*** Begin Patch",
+    ...selectedBlocks.flat(),
+    "*** End Patch",
+  ].join("\n")
 }
 
 // ─── Fuzzy line matcher ────────────────────────────────────────────────────
@@ -226,6 +365,36 @@ function deriveUpdate(filePath: string, chunks: UpdateChunk[], original: string)
   return { content: next.text, bom: src.bom || next.bom }
 }
 
+function lineStats(before: string, after: string): { added: number; removed: number } {
+  const oldLines = before.length === 0 ? [] : before.split("\n")
+  const newLines = after.length === 0 ? [] : after.split("\n")
+  if (oldLines.at(-1) === "") oldLines.pop()
+  if (newLines.at(-1) === "") newLines.pop()
+
+  let prefix = 0
+  while (
+    prefix < oldLines.length &&
+    prefix < newLines.length &&
+    oldLines[prefix] === newLines[prefix]
+  ) {
+    prefix++
+  }
+
+  let suffix = 0
+  while (
+    suffix < oldLines.length - prefix &&
+    suffix < newLines.length - prefix &&
+    oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
+  ) {
+    suffix++
+  }
+
+  return {
+    removed: oldLines.length - prefix - suffix,
+    added: newLines.length - prefix - suffix,
+  }
+}
+
 async function readExistingFile(absPath: string): Promise<{ exists: boolean; content: string }> {
   try {
     return { exists: true, content: await readFile(absPath, "utf8") }
@@ -260,6 +429,7 @@ async function stagePatch(workdir: string, hunks: Hunk[]): Promise<{ staged: Sta
     const file: StagedFile = {
       relPath,
       absPath,
+      action: current.exists ? "update" : "add",
       beforeExists: current.exists,
       beforeContent: current.content,
       afterExists: current.exists,
@@ -273,6 +443,7 @@ async function stagePatch(workdir: string, hunks: Hunk[]): Promise<{ staged: Sta
     if (hunk.type === "add") {
       const file = await getStaged(hunk.path)
       if (file.afterExists) throw new Error(`Add File target already exists: ${hunk.path}`)
+      file.action = "add"
       file.afterExists = true
       file.afterContent = hunk.contents
       applied.push(`A ${hunk.path}`)
@@ -282,6 +453,7 @@ async function stagePatch(workdir: string, hunks: Hunk[]): Promise<{ staged: Sta
     if (hunk.type === "delete") {
       const file = await getStaged(hunk.path)
       if (!file.afterExists) throw new Error(`Delete File target does not exist: ${hunk.path}`)
+      file.action = "delete"
       file.afterExists = false
       file.afterContent = ""
       applied.push(`D ${hunk.path}`)
@@ -296,12 +468,16 @@ async function stagePatch(workdir: string, hunks: Hunk[]): Promise<{ staged: Sta
     if (hunk.movePath) {
       const target = await getStaged(hunk.movePath)
       if (target.afterExists) throw new Error(`Move target already exists: ${hunk.movePath}`)
+      target.action = "add"
       target.afterExists = true
       target.afterContent = final
+      file.action = "move"
+      file.targetPath = hunk.movePath
       file.afterExists = false
       file.afterContent = ""
       applied.push(`R ${hunk.path} -> ${hunk.movePath}`)
     } else {
+      file.action = "update"
       file.afterContent = final
       applied.push(`M ${hunk.path}`)
     }
@@ -312,6 +488,33 @@ async function stagePatch(workdir: string, hunks: Hunk[]): Promise<{ staged: Sta
   )
 
   return { staged: changed, applied }
+}
+
+function summarizeStagedFiles(files: StagedFile[]): PatchSummary {
+  const movedTargets = new Set(
+    files
+      .filter((file) => file.action === "move" && file.targetPath)
+      .map((file) => file.targetPath!),
+  )
+  const summaries: PatchFileSummary[] = files
+    .filter((file) => !(movedTargets.has(file.relPath) && !file.beforeExists))
+    .map((file) => {
+      const stats = lineStats(file.beforeContent, file.afterContent)
+      const summary: PatchFileSummary = {
+        path: file.relPath,
+        action: file.action,
+        added: stats.added,
+        removed: stats.removed,
+      }
+      if (file.targetPath) summary.targetPath = file.targetPath
+      return summary
+    })
+
+  return {
+    files: summaries,
+    added: summaries.reduce((sum, file) => sum + file.added, 0),
+    removed: summaries.reduce((sum, file) => sum + file.removed, 0),
+  }
 }
 
 async function writeStagedFile(file: StagedFile): Promise<void> {
@@ -379,11 +582,43 @@ export const applyPatchTool: ToolDef = {
     }
 
     const lines: string[] = []
+    const summary = summarizeStagedFiles(plan.staged)
+
     if (plan.applied.length > 0) {
       lines.push("Applied patch:")
       lines.push(...plan.applied)
     }
 
-    return { output: lines.join("\n") }
+    if (summary.files.length > 0) {
+      lines.push("")
+      lines.push(`Changed files: ${summary.files.map((file) =>
+        file.action === "move" && file.targetPath
+          ? `${file.path} -> ${file.targetPath}`
+          : file.path
+      ).join(", ")}`)
+      lines.push(`Stats: +${summary.added} -${summary.removed}`)
+    }
+
+    return {
+      output: lines.join("\n"),
+      metadata: {
+        changedFiles: summary.files.flatMap((file) =>
+          file.action === "move" && file.targetPath ? [file.path, file.targetPath] : [file.path]
+        ),
+        patch: {
+          files: summary.files.map((file) => {
+            const entry: {
+              path: string
+              action: "add" | "delete" | "update" | "move"
+              targetPath?: string
+            } = { path: file.path, action: file.action }
+            if (file.targetPath) entry.targetPath = file.targetPath
+            return entry
+          }),
+          added: summary.added,
+          removed: summary.removed,
+        },
+      },
+    }
   },
 }

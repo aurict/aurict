@@ -1,0 +1,10 @@
+{
+  "name": "aurict-eval-greeting-service",
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

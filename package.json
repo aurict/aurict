@@ -1,6 +1,6 @@
 {
   "name": "aurict",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "workspaces": [
     "packages/core",
@@ -18,6 +18,7 @@
     "build:all": "bun run scripts/build-all.ts",
     "publish:all": "bun run scripts/publish.ts",
     "publish:dry": "bun run scripts/publish.ts --dry-run",
+    "eval": "bun run scripts/eval.ts",
     "test": "bun test packages/core/test/*.test.ts packages/cli/test/*.test.tsx",
     "typecheck": "bunx tsc --noEmit -p packages/core/tsconfig.json && bunx tsc --noEmit -p packages/cli/tsconfig.json"
   },

@@ -48,7 +48,7 @@ export interface CommandContext {
   showPicker:        (title: string, items: PickerItem[], onSelect: (item: PickerItem) => void) => void
   showPrompt:        (title: string, placeholder: string, secret: boolean, onSubmit: (value: string) => void) => void
   restoreSession:    (msgs: Array<{ role: "user" | "assistant"; content: string }>) => void
-  messages:          Array<{ role: string; content: string; tool?: string; pending?: boolean; resultContent?: string }>
+  messages:          Array<{ role: string; content: string; tool?: string; pending?: boolean; resultContent?: string; timestamp?: number }>
   checkpoints:       Array<{ mark: number; messages: unknown[]; history: unknown[]; label: string }>
   popCheckpoints:    (n: number) => void
   branches:          Array<{ id: string; name: string; createdAt: number; messageCount: number }>

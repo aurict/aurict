@@ -16,7 +16,7 @@ describe("bootstrap local server", () => {
 
     expect(started).toBe(false)
     expect(log).toHaveBeenCalledWith(
-      "[aurict] Server: port 7777 is already in use; continuing without local API server",
+      "[aurict] Server: port 7777 is already in use; continuing TUI-only and reusing the existing port if it belongs to Aurict",
     )
   })
 

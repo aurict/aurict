@@ -1,0 +1,11 @@
+{
+  "name": "aurict-eval-string-utils",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

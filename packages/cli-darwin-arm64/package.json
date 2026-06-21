@@ -1,6 +1,6 @@
 {
   "name": "@aurict/cli-darwin-arm64",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Aurict CLI binary for macOS arm64 (Apple Silicon)",
   "license": "MIT",
   "repository": {

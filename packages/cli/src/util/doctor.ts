@@ -115,7 +115,38 @@ function serverPort(port = 7777): Check {
   }
 }
 
-export async function runDoctor(workdir: string): Promise<number> {
+function sandboxMode(): Check {
+  const raw = process.env["AURICT_SANDBOX_BACKEND"] ?? process.env["AURICT_SANDBOX"] ?? "policy"
+  const mode = raw === "off" || raw === "false" || raw === "0" ? "none" : raw
+  if (mode === "docker") {
+    return {
+      status: "warn",
+      label: "sandbox",
+      detail: "docker backend requested; stronger process isolation but higher startup/resource cost",
+    }
+  }
+  if (mode === "none") {
+    return {
+      status: "warn",
+      label: "sandbox",
+      detail: "disabled; shell commands rely only on permission prompts and tool timeouts",
+    }
+  }
+  if (mode !== "policy") {
+    return {
+      status: "warn",
+      label: "sandbox",
+      detail: `unknown mode '${mode}', default runtime behavior is policy guarded execution`,
+    }
+  }
+  return {
+    status: "ok",
+    label: "sandbox",
+    detail: "policy guarded execution active; this is not container/process isolation",
+  }
+}
+
+export async function getDoctorReport(workdir: string): Promise<{ text: string; exitCode: number }> {
   const checks: Check[] = [
     bunRuntime(),
     platformPackage(),
@@ -123,17 +154,28 @@ export async function runDoctor(workdir: string): Promise<number> {
     await canReadConfig(),
     providerEnv(),
     serverPort(),
+    sandboxMode(),
   ]
 
   const failures = checks.filter((check) => check.status === "fail")
   const warnings = checks.filter((check) => check.status === "warn")
+  const output: string[] = []
 
-  console.log("Aurict doctor")
-  console.log(`workdir: ${workdir}`)
-  console.log("")
-  for (const check of checks) console.log(line(check))
-  console.log("")
-  console.log(`${checks.length - failures.length - warnings.length} ok, ${warnings.length} warning(s), ${failures.length} failure(s)`)
+  output.push("Aurict doctor")
+  output.push(`workdir: ${workdir}`)
+  output.push("")
+  for (const check of checks) output.push(line(check))
+  output.push("")
+  output.push(`${checks.length - failures.length - warnings.length} ok, ${warnings.length} warning(s), ${failures.length} failure(s)`)
 
-  return failures.length > 0 ? 1 : 0
+  return {
+    text: output.join("\n"),
+    exitCode: failures.length > 0 ? 1 : 0,
+  }
+}
+
+export async function runDoctor(workdir: string): Promise<number> {
+  const report = await getDoctorReport(workdir)
+  console.log(report.text)
+  return report.exitCode
 }

@@ -34,6 +34,9 @@ jobs:
       - name: Run cli tests
         run: bun test packages/cli/test/ --timeout 30000
 
+      - name: Run eval smoke
+        run: bun run eval -- --smoke
+
       - name: Build platform binaries
         run: bun run scripts/build-all.ts
 

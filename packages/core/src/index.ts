@@ -26,7 +26,7 @@ export type { ToolDef, ToolContext, ExecuteResult }      from "./tool/types.js"
 
 export { PermissionEvaluator }                           from "./permission/evaluator.js"
 export { PermissionStore, PermissionGate }               from "./permission/store.js"
-export type { PermissionRule, PermissionRequest, PermissionDecision } from "./permission/types.js"
+export type { PermissionRule, PermissionRequest, PermissionDecision, PermissionResponse } from "./permission/types.js"
 export { gateGuard }                                     from "./permission/gateguard.js"
 export type { GateRule, AuditEntry }                     from "./permission/gateguard.js"
 

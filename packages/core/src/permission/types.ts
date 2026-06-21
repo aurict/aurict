@@ -26,9 +26,28 @@ export interface PermissionRequest {
     executables: string[]
     readOnly:    boolean
   }
+  files?: Array<{
+    path: string
+    action: "add" | "delete" | "update" | "move"
+    targetPath?: string
+  }>
+  diff?: {
+    added: number
+    removed: number
+    fileCount: number
+  }
+  patch?: {
+    text: string
+    granular?: boolean
+  }
 }
 
 // allow        = bu kez izin ver + session'a kaydet (tekrar sorma)
 // allow_once   = sadece bu kez izin ver, kaydetme
 // deny         = reddet, agent hata alır ama devam eder
-export type PermissionDecision = "allow" | "allow_once" | "deny"
+export type PermissionDecision = "allow" | "allow_once" | "allow_partial" | "deny"
+
+export interface PermissionResponse {
+  decision: PermissionDecision
+  approvedFiles?: string[]
+}

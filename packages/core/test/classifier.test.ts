@@ -84,6 +84,36 @@ describe("classifyCommand", () => {
     expect(r.isReadOnly).toBe(false)
   })
 
+  it("write redirection is warning even with read-only command", () => {
+    const r = classifyCommand("cat package.json > copy.json")
+    expect(r.level).toBe("warning")
+    expect(r.reason).toMatch(/redirection/i)
+  })
+
+  it("heredoc is warning", () => {
+    const r = classifyCommand("cat <<EOF\nhello\nEOF")
+    expect(r.level).toBe("warning")
+    expect(r.reason).toMatch(/heredoc/i)
+  })
+
+  it("command substitution is warning", () => {
+    const r = classifyCommand("echo $(whoami)")
+    expect(r.level).toBe("warning")
+    expect(r.reason).toMatch(/substitution/i)
+  })
+
+  it("environment assignment is warning", () => {
+    const r = classifyCommand("NODE_ENV=production node server.js")
+    expect(r.level).toBe("warning")
+    expect(r.reason).toMatch(/environment/i)
+  })
+
+  it("eval is warning", () => {
+    const r = classifyCommand("eval $SCRIPT")
+    expect(r.level).toBe("warning")
+    expect(r.reason).toMatch(/eval/i)
+  })
+
   // ── piped commands ────────────────────────────────────────────────────────
 
   it("safe pipe stays safe", () => {

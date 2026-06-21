@@ -17,6 +17,7 @@ import { progressTracker, getToolProgressMessage } from "../util/progress.js"
 import { prefetchManager, extractPrefetchHints } from "../util/prefetch.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "./types.js"
 import type { PermissionRequest } from "../permission/types.js"
+import { filterPatchTextByFiles, summarizePatchText, type PatchSummary } from "./built-in/apply-patch.js"
 
 export interface ExecutionEvent {
   type:    "permission_ask"
@@ -148,6 +149,44 @@ function isInsideWorkdir(filePath: string, workdir: string): boolean {
   return resolved.startsWith(norm) || resolved === workdir
 }
 
+function patchPattern(summary: PatchSummary): string {
+  const files = summary.files.flatMap((file) =>
+    file.action === "move" && file.targetPath ? [file.path, file.targetPath] : [file.path]
+  )
+  if (files.length === 0) return "*"
+  if (files.length <= 3) return files.join(", ")
+  return `${files.slice(0, 3).join(", ")} +${files.length - 3} more`
+}
+
+function patchPermissionMetadata(
+  summary: PatchSummary,
+  patchText?: string,
+  granular = false,
+): Pick<PermissionRequest, "files" | "diff" | "patch"> {
+  return {
+    files: summary.files.map((file) => {
+      const entry: NonNullable<PermissionRequest["files"]>[number] = {
+        path: file.path,
+        action: file.action,
+      }
+      if (file.targetPath) entry.targetPath = file.targetPath
+      return entry
+    }),
+    diff: {
+      added: summary.added,
+      removed: summary.removed,
+      fileCount: summary.files.length,
+    },
+    ...(patchText ? { patch: { text: patchText, granular } } : {}),
+  }
+}
+
+function affectedPatchPaths(summary: PatchSummary): string[] {
+  return [...new Set(summary.files.flatMap((file) =>
+    file.action === "move" && file.targetPath ? [file.path, file.targetPath] : [file.path]
+  ))]
+}
+
 export async function executeTool(
   def:     ToolDef,
   rawArgs: Record<string, unknown>,
@@ -165,6 +204,14 @@ export async function executeTool(
     return { output: "", error: `[${def.id}] invalid args: ${issues}` }
   }
   const args: Record<string, unknown> = parseResult.data
+  let patchSummary: PatchSummary | undefined
+  if (def.id === "apply_patch") {
+    try {
+      patchSummary = summarizePatchText(String(args["patchText"] ?? ""))
+    } catch (err) {
+      return { output: "", error: `Patch parse error: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
 
   // --- GateGuard kontrolü (write/edit araçları için) ---
   if (def.id === "write" || def.id === "edit") {
@@ -199,23 +246,75 @@ export async function executeTool(
               ...(summary ? { summary, permissionSummary: summary } : {}),
             },
           })
-          const userDecision = await PermissionGate.wait(id)
-          gateGuard.audit({ ts: Date.now(), tool: def.id, path: filePath, action: gateDecision, allowed: userDecision !== "deny" })
-          if (userDecision === "deny") {
+          const userResponse = await PermissionGate.wait(id)
+          gateGuard.audit({ ts: Date.now(), tool: def.id, path: filePath, action: gateDecision, allowed: userResponse.decision !== "deny" })
+          if (userResponse.decision === "deny") {
             return { output: "", error: `GateGuard: write to '${filePath}' denied by user.` }
           }
-          if (userDecision === "allow") PermissionStore.approve(def.id, filePath)
+          if (userResponse.decision === "allow") PermissionStore.approve(def.id, filePath)
+        }
+      }
+    }
+  }
+
+  if (def.id === "apply_patch" && patchSummary) {
+    const affectedPaths = affectedPatchPaths(patchSummary)
+    const denied = affectedPaths.find((filePath) => gateGuard.check(filePath) === "deny")
+    if (denied) {
+      gateGuard.audit({ ts: Date.now(), tool: def.id, path: denied, action: "deny", allowed: false })
+      return { output: "", error: `GateGuard: patch write to '${denied}' is blocked by protection rules.` }
+    }
+
+    const askPaths = affectedPaths.filter((filePath) =>
+      gateGuard.check(filePath) === "ask" && !PermissionStore.isApproved(def.id, filePath)
+    )
+    if (askPaths.length > 0) {
+      if (ctx.isSubagent) {
+        const outside = askPaths.find((filePath) => !isInsideWorkdir(filePath, ctx.workdir))
+        if (outside) {
+          gateGuard.audit({ ts: Date.now(), tool: def.id, path: outside, action: "deny", allowed: false })
+          return { output: "", error: `GateGuard: subagent patch write to '${outside}' is outside project workdir and requires user approval.` }
+        }
+        for (const filePath of askPaths) {
+          PermissionStore.approve(def.id, filePath)
+        }
+      } else {
+        const id = crypto.randomUUID()
+        const summary = def.spec?.permissionSummary
+        ExecutorEvents.emit({
+          type: "permission_ask",
+          request: {
+            id,
+            tool: def.id,
+            pattern: askPaths.join(", "),
+            level: "warning",
+            reason: "Protected file — GateGuard",
+            ...(summary ? { summary, permissionSummary: summary } : {}),
+            ...patchPermissionMetadata(patchSummary, String(args["patchText"] ?? ""), false),
+          },
+        })
+        const userResponse = await PermissionGate.wait(id)
+        for (const filePath of askPaths) {
+          gateGuard.audit({ ts: Date.now(), tool: def.id, path: filePath, action: "ask", allowed: userResponse.decision !== "deny" })
+        }
+        if (userResponse.decision === "deny") {
+          return { output: "", error: `GateGuard: patch write to '${askPaths.join(", ")}' denied by user.` }
+        }
+        if (userResponse.decision === "allow") {
+          for (const filePath of askPaths) PermissionStore.approve(def.id, filePath)
         }
       }
     }
   }
 
   // --- Permission kontrolü ---
-  const pattern = extractPattern(def.id, args)
+  const pattern = patchSummary ? patchPattern(patchSummary) : extractPattern(def.id, args)
   let decision = PermissionEvaluator.evaluate(def.id, pattern)
   let level: "safe" | "warning" | "danger" = "warning"
   let reason = ""
-  let permissionMetadata: Partial<PermissionRequest> = {}
+  let permissionMetadata: Partial<PermissionRequest> = patchSummary
+    ? patchPermissionMetadata(patchSummary, String(args["patchText"] ?? ""), true)
+    : {}
 
   // Spec tabanlı risk override
   if (def.spec) {
@@ -289,13 +388,23 @@ export async function executeTool(
         },
       })
 
-      const userDecision = await PermissionGate.wait(id)
-      if (userDecision === "deny") {
+      const userResponse = await PermissionGate.wait(id)
+      if (userResponse.decision === "deny") {
         return { output: "", error: `Permission denied by user: [${def.id}] ${pattern}` }
+      }
+      if (def.id === "apply_patch" && userResponse.decision === "allow_partial") {
+        const approvedFiles = userResponse.approvedFiles ?? []
+        try {
+          const filteredPatch = filterPatchTextByFiles(String(args["patchText"] ?? ""), approvedFiles)
+          args["patchText"] = filteredPatch
+          patchSummary = summarizePatchText(filteredPatch)
+        } catch (err) {
+          return { output: "", error: `Patch selection failed: ${err instanceof Error ? err.message : String(err)}` }
+        }
       }
       // allow_once → sadece bu kez, session'a kaydetme
       // allow      → session boyunca hatırla
-      if (userDecision === "allow") {
+      if (userResponse.decision === "allow") {
         PermissionStore.approve(def.id, pattern)
       }
     }
@@ -389,8 +498,9 @@ export async function executeTool(
 
   // --- Cache invalidation: write/edit sonrası ilgili path cache'lerini sil ---
   if (def.id === "write" || def.id === "edit" || def.id === "apply_patch") {
-    const filePath = String(args["path"] ?? "")
-    if (filePath) {
+    const changedFiles = result.metadata?.changedFiles ?? []
+    const paths = changedFiles.length > 0 ? changedFiles : [String(args["path"] ?? "")].filter(Boolean)
+    for (const filePath of paths) {
       toolResultCache.invalidateByPath(resolve(ctx.workdir, filePath))
     }
   }
@@ -455,17 +565,19 @@ export async function executeTool(
       const { findRelatedTests } = await import("../verification/detector.js")
       // apply_patch: changed_files listesinden ilk dosyayı al, yoksa path
       const rawPath  = def.id === "apply_patch"
-        ? String((args["changed_files"] as string[] | undefined)?.[0] ?? args["path"] ?? "")
+        ? String(result.metadata?.changedFiles?.[0] ?? "")
         : String(args["path"] ?? "")
-      const absFilePath = resolve(ctx.workdir, rawPath)
-      const related     = await findRelatedTests(absFilePath, ctx.workdir, execAC.signal)
-      if (related.length > 0) {
-        const rel = related.map(f =>
-          f.startsWith(ctx.workdir + "/") ? f.slice(ctx.workdir.length + 1) : f
-        )
-        result = {
-          ...result,
-          output: result.output + `\n[Verify] Related tests found: ${rel.join(", ")} — run verify(action="test", path="${rel[0]}") to check.`,
+      if (rawPath) {
+        const absFilePath = resolve(ctx.workdir, rawPath)
+        const related     = await findRelatedTests(absFilePath, ctx.workdir, execAC.signal)
+        if (related.length > 0) {
+          const rel = related.map(f =>
+            f.startsWith(ctx.workdir + "/") ? f.slice(ctx.workdir.length + 1) : f
+          )
+          result = {
+            ...result,
+            output: result.output + `\n[Verify] Related tests found: ${rel.join(", ")} — run verify(action="test", path="${rel[0]}") to check.`,
+          }
         }
       }
     } catch { /* detector failure never blocks tool result */ }

@@ -29,7 +29,7 @@ import {
   setDefault,
   setMCPLogHandler,
 } from "@aurict/core"
-import type { PermissionRequest, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown } from "@aurict/core"
+import type { PermissionRequest, PermissionResponse, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown } from "@aurict/core"
 
 import { parseSlashCommand, getCommand, allCommands } from "../commands/registry.js"
 import { Buddy, awardMessageXP } from "./Buddy.js"
@@ -42,7 +42,7 @@ import { Message, type DisplayMessage } from "./Message.js"
 import { StreamingView }    from "./StreamingView.js"
 import { TaskFloatingPanel } from "./TaskFloatingPanel.js"
 import { ChatInput }         from "./ChatInput.js"
-import { PermissionPrompt }  from "./PermissionPrompt.js"
+import { PermissionPrompt, type PermissionPromptDecision }  from "./PermissionPrompt.js"
 import { QuestionPrompt }    from "./QuestionPrompt.js"
 import { Picker }            from "./Picker.js"
 import { PromptInput }       from "./PromptInput.js"
@@ -741,23 +741,26 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   }
 
   // ── Permission ────────────────────────────────────────────────────────────
-  const handlePermission = useCallback((decision: "allow" | "allow_once" | "deny" | "deny_abort" | "edit") => {
+  const handlePermission = useCallback((decision: PermissionPromptDecision) => {
     if (!permission) return
-    if (decision === "edit") {
+    const response: PermissionResponse | null = typeof decision === "string" ? null : decision
+    const action = response?.decision ?? decision
+
+    if (action === "edit") {
       PermissionGate.respond(permission.id, "deny")
       setInput(permission.pattern)
       setPermission(null)
       addSystemMsg("Command moved to input for editing.")
       return
     }
-    if (decision === "deny_abort") {
+    if (action === "deny_abort") {
       PermissionGate.respond(permission.id, "deny")
       setPermission(null)
       if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null }
       addSystemMsg("Agent stopped by user")
       return
     }
-    PermissionGate.respond(permission.id, decision === "allow_once" ? "allow_once" : decision)
+    PermissionGate.respond(permission.id, response ?? (action === "allow_once" ? "allow_once" : action))
     setPermission(null)
   }, [permission])
 

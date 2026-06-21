@@ -1,0 +1,10 @@
+{
+  "name": "aurict-eval-sandbox-docs",
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "aurict-eval-math-range",
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

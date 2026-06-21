@@ -1,0 +1,16 @@
+{
+  "id": "greeting-service-refactor",
+  "title": "Refactor greeting salutation across multiple files",
+  "prompt": "Refactor the greeting service so the salutation lives in src/salutation.ts and welcomeUser(\"Ada\") returns \"Welcome, Ada.\". Keep welcomeUser exported from src/index.ts.",
+  "fixture": "evals/fixtures/greeting-service",
+  "referenceSolution": {
+    "src/salutation.ts": "export const SALUTATION = \"Welcome\"\n",
+    "src/greeting.ts": "import { SALUTATION } from \"./salutation\"\n\nexport function formatGreeting(name: string): string {\n  return `${SALUTATION}, ${name}.`\n}\n",
+    "src/index.ts": "import { formatGreeting } from \"./greeting\"\n\nexport function welcomeUser(name: string): string {\n  return formatGreeting(name)\n}\n"
+  },
+  "assertions": [
+    { "type": "file_contains", "path": "src/salutation.ts", "text": "SALUTATION" },
+    { "type": "file_contains", "path": "src/greeting.ts", "text": "from \"./salutation\"" },
+    { "type": "command", "cmd": "bun test", "timeoutMs": 30000 }
+  ]
+}

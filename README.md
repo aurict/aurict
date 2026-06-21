@@ -68,7 +68,7 @@ Aurict from CI, or build your own tooling on top.
 
 | Tool | Description |
 |---|---|
-| `bash` | Shell execution with AST-level safe/warning/danger classification |
+| `bash` | Shell execution with conservative safe/warning/danger classification |
 | `read` | File reading with line-range support |
 | `write` | Atomic file writes |
 | `edit` | Precise string-replace edits with diff preview |
@@ -78,7 +78,7 @@ Aurict from CI, or build your own tooling on top.
 | `websearch` | Web search integration |
 | `lsp` | TypeScript/Python language server diagnostics before edits |
 | `todo` | Project-local task tracking, persisted to `.aurict/todos.json` |
-| `apply_patch` | Unified diff patch application |
+| `apply_patch` | Multi-file patch application with preview, GateGuard checks, and granular approval |
 | `subagent` | Spawn a typed specialist agent inline |
 
 ### Security
@@ -86,7 +86,7 @@ Aurict from CI, or build your own tooling on top.
 | Feature | Description |
 |---|---|
 | **Bash classifier** | Three-tier analysis (safe / warning / danger) before any shell command runs |
-| **Policy sandbox** | Low-overhead guarded execution: command classification, approvals, protected paths, timeouts, output limits, and audit logs |
+| **Policy sandbox** | Low-overhead guarded execution: command classification, approvals, protected paths, scrubbed env, timeouts, output limits, and audit logs. This is not container isolation; Docker is optional. |
 | **Permission system** | Per-tool allow/deny rules, wildcard path matching, always-allow list |
 | **JWT auth** | Bearer token on the local HTTP API, auto-generated at `~/.aurict/server-token` |
 
@@ -190,9 +190,14 @@ aurict [options]
 | Command | Description |
 |---|---|
 | `/help` | List all available commands |
+| `/init` | Create project-local Aurict starter files without overwriting existing files |
 | `/models` | Open interactive model picker |
 | `/providers` | Show configured providers |
 | `/design` | Open the design agent wizard |
+| `/status` | Show runtime, context, permission, server, and task status |
+| `/history` | Show recent session messages and persisted DB tail |
+| `/diffs` | Show recent edit/patch activity from the session |
+| `/doctor` | Run install/provider/server/sandbox health checks |
 | `/session` | Show current session info (ID, tokens, message count) |
 | `/sessions` | Browse and restore previous sessions |
 | `/clear` | Clear the current conversation |
@@ -311,7 +316,8 @@ aurict /config set default.model claude-sonnet-4-6
 ```bash
 bun install              # install dependencies
 bun run dev              # start in development mode (hot reload)
-bun run test             # run all 131 tests
+bun run test             # run the test suite
+bun run eval -- --smoke  # deterministic reference eval smoke
 bun run typecheck        # TypeScript strict check (both packages)
 bun run build            # compile to standalone binary → dist/aurict
 ```
@@ -356,11 +362,18 @@ bun test packages/cli/test/*.test.tsx
 
 # Single file
 bun test packages/core/test/classifier.test.ts
+
+# Agent eval harness
+bun run eval -- --list
+bun run eval -- --json
 ```
 
 Test coverage includes: bash classifier, token counting, permission system, context compaction,
 sandbox detection, agent pool, HTTP server auth, and TUI components (Spinner, Markdown,
 StatusBar, StartupBanner).
+
+Eval coverage includes small repo fixtures for bug fixes, multi-file refactors, policy sandbox
+documentation honesty, and string utility changes.
 
 ---
 

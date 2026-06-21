@@ -1,0 +1,14 @@
+{
+  "id": "math-range-clamp",
+  "title": "Fix numeric clamp bounds and inverted ranges",
+  "prompt": "Fix src/clamp.ts so clamp returns min for low values, max for high values, and handles inverted min/max arguments defensively. Keep the exported function name unchanged.",
+  "fixture": "evals/fixtures/math-range",
+  "referenceSolution": {
+    "src/clamp.ts": "export function clamp(value: number, min: number, max: number): number {\n  const lower = Math.min(min, max)\n  const upper = Math.max(min, max)\n  if (value < lower) return lower\n  if (value > upper) return upper\n  return value\n}\n"
+  },
+  "assertions": [
+    { "type": "file_contains", "path": "src/clamp.ts", "text": "Math.min(min, max)" },
+    { "type": "file_contains", "path": "src/clamp.ts", "text": "Math.max(min, max)" },
+    { "type": "command", "cmd": "bun test", "timeoutMs": 30000 }
+  ]
+}

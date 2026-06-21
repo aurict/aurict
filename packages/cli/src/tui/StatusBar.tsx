@@ -32,7 +32,7 @@ interface Props {
   taskCount?:        number | undefined
   taskSummary?:      { pending: number; inProgress: number; done: number; error: number } | undefined
   taskPanelOpen?:    boolean | undefined
-  localServer?:      { enabled: boolean; port?: number; started: boolean; reused: boolean } | undefined
+  localServer?:      { enabled: boolean; port?: number; started: boolean; reused: boolean; reason?: string } | undefined
   sandboxBackend?:   "none" | "policy" | "docker" | undefined
   effort?:           number | undefined
   autopilotMode?:    boolean | undefined
@@ -89,7 +89,7 @@ function serverLabel(server: Props["localServer"], compact = false): string | nu
   if (!server) return null
   if (!server.enabled) return compact ? "api:off" : "api off"
   if (server.started) return server.port ? (compact ? `api:${server.port}` : `api ${server.port}`) : (compact ? "api:on" : "api on")
-  if (server.reused) return compact ? "api:used" : server.port ? `api ${server.port} used` : "api used"
+  if (server.reused) return compact ? "api:busy" : server.port ? `api ${server.port} busy` : "api busy"
   return null
 }
 

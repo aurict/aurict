@@ -161,14 +161,30 @@ Tasks persist to `<workdir>/.aurict/todos.json`.
 ---
 
 ### `apply_patch`
-Apply a unified diff patch to a file.
+Apply a multi-file patch in Aurict's `*** Begin Patch` format.
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `path` | string | File to patch |
-| `patch` | string | Unified diff content |
+| `patchText` | string | Full patch text with `*** Begin Patch` / `*** End Patch` markers |
 
 **Permission:** ask
+
+**Safety features:**
+- Patch is parsed and staged before any file is written.
+- All changed paths are resolved inside the current workdir.
+- GateGuard checks every target path, including add/delete/update/move operations.
+- The TUI permission prompt shows affected files and patch stats.
+- When supported by the prompt, users can approve only selected files.
+- A snapshot is taken before writes so failed write phases can be restored.
+
+Patch operations:
+
+| Operation | Header |
+|-----------|--------|
+| Add file | `*** Add File: path` |
+| Delete file | `*** Delete File: path` |
+| Update file | `*** Update File: path` |
+| Move file | `*** Move to: new-path` inside an update block |
 
 ---
 

@@ -1,8 +1,34 @@
 import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore } from "@aurict/core"
-import { writeFileSync, mkdirSync, existsSync } from "fs"
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
 import { resolve, join } from "path"
 import { THEMES, THEME_NAMES } from "../utils/theme.js"
 import type { CommandDef, CommandResult, PickerItem } from "./types.js"
+import { CURRENT_VERSION } from "../util/update-check.js"
+
+function formatRelativeTime(ts: number): string {
+  const delta = Math.max(0, Date.now() - ts)
+  const sec = Math.round(delta / 1000)
+  if (sec < 60) return `${sec}s ago`
+  const min = Math.round(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hrs = Math.round(min / 60)
+  if (hrs < 48) return `${hrs}h ago`
+  return `${Math.round(hrs / 24)}d ago`
+}
+
+function oneLine(value: unknown, max = 110): string {
+  const text = typeof value === "string" ? value : JSON.stringify(value)
+  const clean = text.replace(/\s+/g, " ").trim()
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean
+}
+
+function ensureLine(path: string, line: string): boolean {
+  const existing = existsSync(path) ? readFileSync(path, "utf8") : ""
+  if (existing.split(/\r?\n/).includes(line)) return false
+  const prefix = existing.length > 0 && !existing.endsWith("\n") ? "\n" : ""
+  writeFileSync(path, `${existing}${prefix}${line}\n`, "utf8")
+  return true
+}
 
 const commands: CommandDef[] = [
   // ── /help ─────────────────────────────────────────────────────────────────
@@ -12,8 +38,8 @@ const commands: CommandDef[] = [
     description: "List all available commands",
     handler: () => {
       const CATEGORIES: Record<string, string[]> = {
-        "Setup & Config":      ["providers", "models", "config", "theme", "keys", "settings", "version"],
-        "Session & History":   ["session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints"],
+        "Setup & Config":      ["init", "doctor", "providers", "models", "config", "theme", "keys", "settings", "version"],
+        "Session & History":   ["status", "history", "diffs", "session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints"],
         "Agents & AI":         ["agent", "agents", "coordinator", "autopilot", "undercover", "background", "btw"],
         "Context & Memory":    ["pin", "memory", "ctx", "compact", "worktree"],
         "Tools & Integration": ["commit", "watch", "unwatch", "mcp", "skill", "skills", "plugins", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores"],
@@ -209,6 +235,240 @@ const commands: CommandDef[] = [
     aliases:     ["c"],
     description: "Clear chat history",
     handler: (): CommandResult => ({ type: "clear" }),
+  },
+
+  // ── /status ──────────────────────────────────────────────────────────────
+  {
+    name:        "status",
+    aliases:     ["st"],
+    description: "Show terminal session health, context, checkpoints, and runtime state",
+    handler: (_args, ctx): CommandResult => {
+      const persistedParts = SessionManager.getPartsCount(ctx.sessionId)
+      const stats = SessionManager.getStats(ctx.sessionId)
+      const activeBg = ctx.bgTasks.filter((task) => task.status === "running").length
+      const pendingTools = ctx.messages.filter((msg) => msg.pending).length
+      const toolResults = ctx.messages.filter((msg) => msg.tool).length
+      const gateRules = gateGuard.listRules()
+      const customGateRules = Math.max(0, gateRules.length - 8)
+      const tokenTotal = (ctx.tokens?.input ?? 0) + (ctx.tokens?.output ?? 0) + (ctx.tokens?.cacheRead ?? 0) + (ctx.tokens?.cacheWrite ?? 0)
+
+      const lines = [
+        "Aurict status",
+        "",
+        `Session:      ${ctx.sessionId.slice(0, 12)}  (${persistedParts} persisted parts, ${ctx.messages.length} visible messages)`,
+        `Provider:     ${ctx.provider}`,
+        `Model:        ${ctx.model}${ctx.effort !== undefined ? `  effort=${ctx.effort}` : ""}`,
+        `Agent:        ${ctx.activeAgent}${ctx.coordinatorMode ? "  coordinator=on" : ""}${ctx.autopilotMode ? "  autopilot=on" : ""}`,
+        `Workdir:      ${ctx.workdir}`,
+        `Undercover:   ${ctx.isUndercover ? "on" : "off"}`,
+        `Context:      ${ctx.contextWindow.toLocaleString()} tokens window, ${tokenTotal.toLocaleString()} session tokens observed`,
+        `Skills:       ${ctx.skills.length > 0 ? ctx.skills.join(", ") : "none loaded"}`,
+        `Checkpoints:  ${ctx.checkpoints.length} rewind checkpoint(s), ${snapshotManager.getHistoryLength()} file snapshot(s)`,
+        `Branches:     ${ctx.branches.length} branch(es), active #${ctx.activeBranchIdx}`,
+        `Watchers:     ${ctx.watchedPaths.length}`,
+        `Background:   ${ctx.bgTasks.length} task(s), ${activeBg} running`,
+        `Tools:        ${toolResults} result message(s), ${pendingTools} pending`,
+        `GateGuard:    ${gateRules.length} rule(s), ${customGateRules} custom`,
+      ]
+
+      if (stats) {
+        lines.push(`Cost DB:      ${stats.turnCount} turn(s), $${stats.accumulatedCostUsd.toFixed(4)}, last=${stats.lastModel ?? "unknown"}`)
+      }
+
+      return { type: "text", content: lines.join("\n") }
+    },
+  },
+
+  // ── /history ─────────────────────────────────────────────────────────────
+  {
+    name:        "history",
+    aliases:     ["hist"],
+    description: "Show recent visible messages and persisted session part counts",
+    usage:       "/history [N]",
+    handler: (args, ctx): CommandResult => {
+      const limit = Math.min(50, Math.max(1, parseInt(args[0] ?? "12", 10) || 12))
+      const recent = ctx.messages.slice(-limit)
+      const persistedCount = SessionManager.getPartsCount(ctx.sessionId)
+      const persistedTail = SessionManager.getPartsTail(ctx.sessionId, Math.min(limit, 10))
+
+      const lines = [
+        `History (${recent.length}/${ctx.messages.length} visible messages, ${persistedCount} persisted parts)`,
+        "",
+      ]
+
+      if (recent.length === 0) {
+        lines.push("No visible messages yet.")
+      } else {
+        for (let i = 0; i < recent.length; i++) {
+          const msg = recent[i]!
+          const idx = ctx.messages.length - recent.length + i + 1
+          const tool = msg.tool ? ` tool=${msg.tool}` : ""
+          const pending = msg.pending ? " pending" : ""
+          lines.push(`${String(idx).padStart(3)}. ${msg.role}${tool}${pending}  ${oneLine(msg.content)}`)
+        }
+      }
+
+      if (persistedTail.length > 0) {
+        lines.push("", "Persisted tail:")
+        for (const part of persistedTail) {
+          lines.push(`  #${part.sequence} ${part.role}/${part.type} ${formatRelativeTime(part.createdAt)}  ${oneLine(part.content, 90)}`)
+        }
+      }
+
+      return { type: "text", content: lines.join("\n") }
+    },
+  },
+
+  // ── /diffs ───────────────────────────────────────────────────────────────
+  {
+    name:        "diffs",
+    aliases:     ["diff"],
+    description: "List recent diff, patch, edit, and write tool outputs in this terminal session",
+    usage:       "/diffs [N]",
+    handler: (args, ctx): CommandResult => {
+      const limit = Math.min(25, Math.max(1, parseInt(args[0] ?? "8", 10) || 8))
+      const matches = ctx.messages
+        .map((msg, idx) => ({ msg, idx }))
+        .filter(({ msg }) => {
+          const text = `${msg.content ?? ""}\n${msg.resultContent ?? ""}`
+          const tool = msg.tool ?? ""
+          return ["edit", "write", "apply_patch", "diff_view", "patch_test"].includes(tool)
+            || text.includes("__DIFF__")
+            || text.includes("Applied patch:")
+            || text.includes("Patch validation:")
+            || text.includes("--- ")
+        })
+        .slice(-limit)
+
+      if (matches.length === 0) {
+        return { type: "text", content: "No diff or patch outputs in the visible session yet." }
+      }
+
+      const lines = [`Recent diff/patch outputs (${matches.length})`, ""]
+      for (const { msg, idx } of matches) {
+        const text = `${msg.resultContent ?? ""}\n${msg.content ?? ""}`
+        const added = (text.match(/^\+(?!\+\+)/gm) ?? []).length
+        const removed = (text.match(/^-(?!--)/gm) ?? []).length
+        const files = [
+          ...text.matchAll(/(?:\+\+\+|---)\s+(?:b\/)?([^\n]+)/g),
+          ...text.matchAll(/(?:A|M|D|R)\s+([^\n]+)/g),
+        ].map((m) => m[1]?.trim()).filter(Boolean)
+        const uniqueFiles = [...new Set(files)].slice(0, 4)
+        lines.push(
+          `${String(idx + 1).padStart(3)}. ${msg.tool ?? msg.role}  +${added}/-${removed}` +
+          `${uniqueFiles.length ? `  ${uniqueFiles.join(", ")}` : ""}`
+        )
+        lines.push(`     ${oneLine(text, 120)}`)
+      }
+
+      return { type: "text", content: lines.join("\n") }
+    },
+  },
+
+  // ── /doctor ──────────────────────────────────────────────────────────────
+  {
+    name:        "doctor",
+    aliases:     ["health"],
+    description: "Run terminal install and runtime diagnostics",
+    handler: async (_args, ctx): Promise<CommandResult> => {
+      const { getDoctorReport } = await import("../util/doctor.js")
+      const report = await getDoctorReport(ctx.workdir)
+      return report.exitCode === 0
+        ? { type: "text", content: report.text }
+        : { type: "error", message: report.text }
+    },
+  },
+
+  // ── /init ────────────────────────────────────────────────────────────────
+  {
+    name:        "init",
+    aliases:     ["setup"],
+    description: "Initialize Aurict project files without overwriting existing files",
+    handler: (_args, ctx): CommandResult => {
+      const created: string[] = []
+      const skipped: string[] = []
+      const aurictDir = join(ctx.workdir, ".aurict")
+      mkdirSync(aurictDir, { recursive: true })
+
+      const agentsPath = join(ctx.workdir, "AGENTS.md")
+      if (!existsSync(agentsPath)) {
+        writeFileSync(agentsPath, [
+          "# Aurict Project Instructions",
+          "",
+          "## Project Context",
+          "- Describe the architecture, package manager, test command, and coding conventions here.",
+          "- Keep instructions concrete and repo-specific.",
+          "",
+          "## Safety",
+          "- Aurict policy sandbox is a low-overhead guarded execution layer, not container isolation.",
+          "- Review writes to protected paths before approving.",
+          "",
+        ].join("\n"), "utf8")
+        created.push("AGENTS.md")
+      } else {
+        skipped.push("AGENTS.md")
+      }
+
+      const configPath = join(aurictDir, "config.json")
+      if (!existsSync(configPath)) {
+        const cfg = {
+          defaults: {
+            provider: ctx.provider,
+            model: ctx.model,
+          },
+          compaction: {
+            tailTurns: 2,
+            strategy: "balanced",
+          },
+          agents: {
+            maxWorkers: 4,
+          },
+        }
+        writeFileSync(configPath, JSON.stringify(cfg, null, 2) + "\n", "utf8")
+        created.push(".aurict/config.json")
+      } else {
+        skipped.push(".aurict/config.json")
+      }
+
+      const protectedPath = join(aurictDir, "protected.json")
+      if (!existsSync(protectedPath)) {
+        writeFileSync(protectedPath, JSON.stringify([
+          { pattern: ".env*", action: "ask" },
+          { pattern: "package.json", action: "ask" },
+          { pattern: "bun.lock", action: "ask" },
+          { pattern: ".git/*", action: "deny" },
+          { pattern: ".aurict/*", action: "deny" },
+        ], null, 2) + "\n", "utf8")
+        created.push(".aurict/protected.json")
+      } else {
+        skipped.push(".aurict/protected.json")
+      }
+
+      const gitignorePath = join(ctx.workdir, ".gitignore")
+      if (ensureLine(gitignorePath, ".aurict/")) {
+        created.push(".gitignore entry: .aurict/")
+      } else {
+        skipped.push(".gitignore entry: .aurict/")
+      }
+
+      gateGuard.setProjectDir(ctx.workdir)
+
+      return {
+        type: "text",
+        content: [
+          "Aurict project initialized.",
+          "",
+          created.length ? `Created:\n${created.map((x) => `  - ${x}`).join("\n")}` : "Created: none",
+          "",
+          skipped.length ? `Already present:\n${skipped.map((x) => `  - ${x}`).join("\n")}` : "Already present: none",
+          "",
+          "Next:",
+          "  - Edit AGENTS.md with project-specific instructions.",
+          "  - Use /doctor to verify provider, config, and server state.",
+          "  - Use /protect <pattern> for additional sensitive files.",
+        ].join("\n"),
+      }
+    },
   },
 
   // ── /session [id] ─────────────────────────────────────────────────────────
@@ -1179,7 +1439,7 @@ const commands: CommandDef[] = [
     name:        "version",
     aliases:     ["v"],
     description: "Show Aurict version",
-    handler: (): CommandResult => ({ type: "text", content: "Aurict v0.0.1" }),
+    handler: (): CommandResult => ({ type: "text", content: `Aurict v${CURRENT_VERSION}` }),
   },
 
   // ── /exit ─────────────────────────────────────────────────────────────────

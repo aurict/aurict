@@ -1,0 +1,14 @@
+{
+  "id": "string-utils-trim",
+  "title": "Make display names robust to whitespace and casing",
+  "prompt": "Update src/formatName.ts so formatName trims surrounding whitespace, collapses internal whitespace, and title-cases each word. Keep the exported function name unchanged.",
+  "fixture": "evals/fixtures/string-utils",
+  "referenceSolution": {
+    "src/formatName.ts": "export function formatName(input: string): string {\n  return input\n    .trim()\n    .replace(/\\s+/g, \" \")\n    .split(\" \")\n    .filter(Boolean)\n    .map((word) => word[0]!.toUpperCase() + word.slice(1).toLowerCase())\n    .join(\" \")\n}\n"
+  },
+  "assertions": [
+    { "type": "file_contains", "path": "src/formatName.ts", "text": ".trim()" },
+    { "type": "file_contains", "path": "src/formatName.ts", "text": ".replace(/\\s+/g, \" \")" },
+    { "type": "command", "cmd": "bun test", "timeoutMs": 30000 }
+  ]
+}

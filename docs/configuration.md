@@ -58,6 +58,8 @@ aurict /config set compaction.tailTurns 2
 | `AWS_SECRET_ACCESS_KEY` | AWS Bedrock secret key |
 | `AWS_REGION` | AWS region for Bedrock |
 | `OLLAMA_BASE_URL` | Ollama server URL (default: `http://localhost:11434`) |
+| `AURICT_SANDBOX_BACKEND` | Sandbox backend: `policy` (default), `docker`, or `none` |
+| `AURICT_SANDBOX` | Backwards-compatible sandbox backend override |
 
 ---
 
@@ -124,12 +126,21 @@ It is a guarded execution layer around shell work:
 - command classification before execution (`safe`, `warning`, `danger`)
 - explicit approval for mutating or dangerous commands
 - protected path checks through GateGuard
+- scrubbed environment for policy-sandboxed processes
 - per-tool timeout and output truncation
 - audit and diagnostics records for tool failures
 
 Heavy process isolation backends such as Docker are intentionally not the default because they
 increase startup time and resource usage. They can be added as an optional backend later without
 changing the default policy-sandbox behavior.
+
+Backend selection:
+
+```bash
+AURICT_SANDBOX_BACKEND=policy aurict   # default guarded execution
+AURICT_SANDBOX_BACKEND=docker aurict   # optional heavier isolation
+AURICT_SANDBOX_BACKEND=none aurict     # disable sandbox backend
+```
 
 ---
 

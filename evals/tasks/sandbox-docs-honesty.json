@@ -1,0 +1,15 @@
+{
+  "id": "sandbox-docs-honesty",
+  "title": "Clarify policy sandbox wording in docs",
+  "prompt": "Update docs/security.md to explain that Aurict's default sandbox is a policy sandbox, not container isolation, and that Docker is optional for heavier isolation.",
+  "fixture": "evals/fixtures/sandbox-docs",
+  "referenceSolution": {
+    "docs/security.md": "# Security Model\n\nAurict's default sandbox is a policy sandbox: command classification, permission prompts, protected paths, scrubbed environment, timeouts, output limits, and audit records.\n\nThis is not container isolation. It is a low-overhead safety layer around normal local execution.\n\nDocker can be enabled as an optional heavier backend when process isolation is required, but it is not the default because it costs more startup time and resources.\n"
+  },
+  "assertions": [
+    { "type": "file_contains", "path": "docs/security.md", "text": "policy sandbox" },
+    { "type": "file_contains", "path": "docs/security.md", "text": "not container isolation" },
+    { "type": "file_contains", "path": "docs/security.md", "text": "Docker" },
+    { "type": "command", "cmd": "bun test", "timeoutMs": 30000 }
+  ]
+}

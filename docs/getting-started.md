@@ -43,6 +43,16 @@ aurict
 
 Aurict opens a full-terminal TUI. On first launch it will prompt for an API key if none is configured.
 
+For a new project, run:
+
+```bash
+aurict /init
+```
+
+`/init` creates starter project files only when they are missing: `AGENTS.md`,
+`.aurict/config.json`, `.aurict/protected.json`, and a `.gitignore` entry for `.aurict/`.
+It does not overwrite existing project instructions or config.
+
 ```
 aurict /config set default.provider anthropic
 aurict /config set default.model claude-sonnet-4-6

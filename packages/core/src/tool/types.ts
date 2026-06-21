@@ -32,6 +32,18 @@ export interface ToolContext {
 export interface ExecuteResult {
   output: string
   error?: string
+  metadata?: {
+    changedFiles?: string[]
+    patch?: {
+      files: Array<{
+        path: string
+        action: "add" | "delete" | "update" | "move"
+        targetPath?: string
+      }>
+      added: number
+      removed: number
+    }
+  }
 }
 
 export interface ToolDef {
