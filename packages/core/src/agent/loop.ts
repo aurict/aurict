@@ -14,7 +14,7 @@ import { loadConfig } from "../config/config.js"
 import { setTruncationConfig } from "../tool/truncation.js"
 import { calculateCostUsd } from "../provider/costs.js"
 import { extractAndStoreMemories, extractPerTurnMemories } from "../memory/extractor.js"
-import { buildGitSection, buildProactiveFileSection, buildIntentSkillSection, getSkillsForProject } from "../skill/injector.js"
+import { buildGitSection, buildProactiveFileSection, buildIntentSkillSection, getSkillsForProject, matchIntentSkills } from "../skill/injector.js"
 import { skillScoreStore } from "../skill/score-store.js"
 import { ProviderFallback, loadFallbackFromConfig } from "../provider/fallback.js"
 import { ModelRouter, loadRouterFromConfig } from "../provider/router.js"
@@ -247,6 +247,8 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
   const baseSystem      = await buildSystemPrompt(workdir, opts.system, false)
   const projectSkills   = await getSkillsForProject(workdir).catch(() => [])
   const projectSkillIds = new Set(projectSkills.map((s) => s.id))
+  const activatedSkills = matchIntentSkills(lastUserText, projectSkillIds)
+  if (activatedSkills.length > 0) opts.onSkillsActivated?.(activatedSkills)
 
   const [proactiveSection, intentSection] = await Promise.all([
     buildProactiveFileSection(lastUserText, workdir).catch(() => ""),

@@ -16,7 +16,7 @@ import { detectHallucinations, formatHallucinationWarnings } from "../verificati
 import { progressTracker, getToolProgressMessage } from "../util/progress.js"
 import { prefetchManager, extractPrefetchHints } from "../util/prefetch.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "./types.js"
-import type { PermissionRequest } from "../permission/types.js"
+import type { PermissionRequest, PermissionResponse } from "../permission/types.js"
 import { filterPatchTextByFiles, summarizePatchText, type PatchSummary } from "./built-in/apply-patch.js"
 
 export interface ExecutionEvent {
@@ -40,6 +40,11 @@ export const ExecutorEvents = {
 // Default max time a single tool call is allowed to run before it's aborted.
 // Individual tools can override this with ToolDef.timeoutMs.
 const TOOL_EXEC_TIMEOUT_MS = 120_000  // 2 minutes default
+const PERMISSION_PROMPT_TIMEOUT_MS = 60_000
+const POST_EDIT_TSC_TIMEOUT_MS = 6_000
+const POST_EDIT_ANALYSIS_TIMEOUT_MS = 3_000
+const POST_EDIT_TEST_DISCOVERY_TIMEOUT_MS = 3_000
+const HOOK_TIMEOUT_MS = 5_000
 
 // ── TypeScript file regex ──────────────────────────────────────────────────────
 const TYPED_FILE_RE = /\.(ts|tsx|js|jsx|mts|cts)$/
@@ -141,6 +146,23 @@ function withToolTimeout<T>(
   })
 }
 
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  onTimeout?: () => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      try { onTimeout?.() } catch {}
+      reject(new Error(`operation timed out after ${ms / 1000}s`))
+    }, ms)
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value) },
+      (err) => { clearTimeout(timer); reject(err) },
+    )
+  })
+}
+
 // Returns true when the file path is safely inside the project workdir.
 // Subagents auto-approve writes inside their workdir scope.
 function isInsideWorkdir(filePath: string, workdir: string): boolean {
@@ -187,24 +209,37 @@ function affectedPatchPaths(summary: PatchSummary): string[] {
   ))]
 }
 
-function isPermissionApproved(defId: string, pattern: string, patchSummary?: PatchSummary): boolean {
-  if (patchSummary) {
-    const paths = affectedPatchPaths(patchSummary)
-    return paths.length > 0 && paths.every((filePath) => PermissionStore.isApproved(defId, filePath))
-  }
-  return PermissionStore.isApproved(defId, pattern)
+function normalizePermissionPattern(defId: string, pattern: string, workdir: string): string {
+  if (defId !== "write" && defId !== "edit" && defId !== "apply_patch") return pattern
+  return resolve(workdir, pattern)
 }
 
-function approvePermission(defId: string, pattern: string, patchSummary: PatchSummary | undefined, directory: boolean): void {
+function isPermissionApproved(defId: string, pattern: string, patchSummary: PatchSummary | undefined, workdir: string): boolean {
+  if (patchSummary) {
+    const paths = affectedPatchPaths(patchSummary)
+    return paths.length > 0 && paths.every((filePath) =>
+      PermissionStore.isApproved(defId, normalizePermissionPattern(defId, filePath, workdir))
+    )
+  }
+  return PermissionStore.isApproved(defId, normalizePermissionPattern(defId, pattern, workdir))
+}
+
+function approvePermission(defId: string, pattern: string, patchSummary: PatchSummary | undefined, directory: boolean, workdir: string): void {
   if (patchSummary) {
     for (const filePath of affectedPatchPaths(patchSummary)) {
-      if (directory) PermissionStore.approveDirectory(defId, filePath)
-      else PermissionStore.approve(defId, filePath)
+      const normalized = normalizePermissionPattern(defId, filePath, workdir)
+      if (directory) PermissionStore.approveDirectory(defId, normalized)
+      else PermissionStore.approve(defId, normalized)
     }
     return
   }
-  if (directory) PermissionStore.approveDirectory(defId, pattern)
-  else PermissionStore.approve(defId, pattern)
+  const normalized = normalizePermissionPattern(defId, pattern, workdir)
+  if (directory) PermissionStore.approveDirectory(defId, normalized)
+  else PermissionStore.approve(defId, normalized)
+}
+
+function waitForPermission(id: string, ctx: ToolContext): Promise<PermissionResponse> {
+  return PermissionGate.wait(id, { signal: ctx.signal, timeoutMs: PERMISSION_PROMPT_TIMEOUT_MS })
 }
 
 export async function executeTool(
@@ -213,7 +248,10 @@ export async function executeTool(
   ctx:     ToolContext,
 ): Promise<ExecuteResult> {
   // --- v1.tool.before hook ---
-  const before = await hooks.emit("v1.tool.before", { tool: def.id, args: rawArgs })
+  const before = await withTimeout(
+    hooks.emit("v1.tool.before", { tool: def.id, args: rawArgs }),
+    HOOK_TIMEOUT_MS,
+  ).catch(() => ({ tool: def.id, args: rawArgs }))
 
   // --- Zod runtime validation (defense in depth) ---
   const parseResult = def.parameters.safeParse(before.args)
@@ -242,12 +280,13 @@ export async function executeTool(
         gateGuard.audit({ ts: Date.now(), tool: def.id, path: filePath, action: "deny", allowed: false })
         return { output: "", error: `GateGuard: write to '${filePath}' is blocked by protection rules.` }
       }
-      if (gateDecision === "ask" && !PermissionStore.isApproved(def.id, filePath)) {
+      const permissionPath = normalizePermissionPattern(def.id, filePath, ctx.workdir)
+      if (gateDecision === "ask" && !PermissionStore.isApproved(def.id, permissionPath)) {
         // Subagent context: PermissionGate is isolated per Bun Worker thread — TUI never sees it.
         // Auto-approve if the path is inside the project workdir; still block otherwise.
         if (ctx.isSubagent) {
           if (isInsideWorkdir(filePath, ctx.workdir)) {
-            PermissionStore.approve(def.id, filePath)
+            PermissionStore.approve(def.id, permissionPath)
           } else {
             gateGuard.audit({ ts: Date.now(), tool: def.id, path: filePath, action: "deny", allowed: false })
             return { output: "", error: `GateGuard: subagent write to '${filePath}' is outside project workdir and requires user approval.` }
@@ -266,13 +305,13 @@ export async function executeTool(
               ...(summary ? { summary, permissionSummary: summary } : {}),
             },
           })
-          const userResponse = await PermissionGate.wait(id)
+          const userResponse = await waitForPermission(id, ctx)
           gateGuard.audit({ ts: Date.now(), tool: def.id, path: filePath, action: gateDecision, allowed: userResponse.decision !== "deny" })
           if (userResponse.decision === "deny") {
             return { output: "", error: `GateGuard: write to '${filePath}' denied by user.` }
           }
-          if (userResponse.decision === "allow") PermissionStore.approve(def.id, filePath)
-          if (userResponse.decision === "allow_directory") PermissionStore.approveDirectory(def.id, filePath)
+          if (userResponse.decision === "allow") PermissionStore.approve(def.id, permissionPath)
+          if (userResponse.decision === "allow_directory") PermissionStore.approveDirectory(def.id, permissionPath)
         }
       }
     }
@@ -287,7 +326,8 @@ export async function executeTool(
     }
 
     const askPaths = affectedPaths.filter((filePath) =>
-      gateGuard.check(filePath) === "ask" && !PermissionStore.isApproved(def.id, filePath)
+      gateGuard.check(filePath) === "ask" &&
+      !PermissionStore.isApproved(def.id, normalizePermissionPattern(def.id, filePath, ctx.workdir))
     )
     if (askPaths.length > 0) {
       if (ctx.isSubagent) {
@@ -297,7 +337,7 @@ export async function executeTool(
           return { output: "", error: `GateGuard: subagent patch write to '${outside}' is outside project workdir and requires user approval.` }
         }
         for (const filePath of askPaths) {
-          PermissionStore.approve(def.id, filePath)
+          PermissionStore.approve(def.id, normalizePermissionPattern(def.id, filePath, ctx.workdir))
         }
       } else {
         const id = crypto.randomUUID()
@@ -314,7 +354,7 @@ export async function executeTool(
             ...patchPermissionMetadata(patchSummary, String(args["patchText"] ?? ""), false),
           },
         })
-        const userResponse = await PermissionGate.wait(id)
+        const userResponse = await waitForPermission(id, ctx)
         for (const filePath of askPaths) {
           gateGuard.audit({ ts: Date.now(), tool: def.id, path: filePath, action: "ask", allowed: userResponse.decision !== "deny" })
         }
@@ -322,10 +362,14 @@ export async function executeTool(
           return { output: "", error: `GateGuard: patch write to '${askPaths.join(", ")}' denied by user.` }
         }
         if (userResponse.decision === "allow") {
-          for (const filePath of askPaths) PermissionStore.approve(def.id, filePath)
+          for (const filePath of askPaths) {
+            PermissionStore.approve(def.id, normalizePermissionPattern(def.id, filePath, ctx.workdir))
+          }
         }
         if (userResponse.decision === "allow_directory") {
-          for (const filePath of askPaths) PermissionStore.approveDirectory(def.id, filePath)
+          for (const filePath of askPaths) {
+            PermissionStore.approveDirectory(def.id, normalizePermissionPattern(def.id, filePath, ctx.workdir))
+          }
         }
       }
     }
@@ -386,7 +430,7 @@ export async function executeTool(
     return { output: "", error: `Permission denied: [${def.id}] ${pattern}` }
   }
 
-  if (decision === "ask" && !isPermissionApproved(def.id, pattern, patchSummary)) {
+  if (decision === "ask" && !isPermissionApproved(def.id, pattern, patchSummary, ctx.workdir)) {
     // Kategori bazlı toplu onay — "Bu session boyunca tüm write işlemlerine izin ver" gibi
     if (PermissionStore.isCategoryApproved(def.id)) {
       // Kategori onayı var — bireysel onay gerekmez
@@ -395,7 +439,7 @@ export async function executeTool(
       if (level === "danger") {
         return { output: "", error: `Permission denied: [${def.id}] is too risky to auto-approve in subagent context. Level: danger.` }
       }
-      PermissionStore.approve(def.id, pattern)
+      PermissionStore.approve(def.id, normalizePermissionPattern(def.id, pattern, ctx.workdir))
     } else {
       const id = crypto.randomUUID()
       const summary = def.spec?.permissionSummary
@@ -412,7 +456,7 @@ export async function executeTool(
         },
       })
 
-      const userResponse = await PermissionGate.wait(id)
+      const userResponse = await waitForPermission(id, ctx)
       if (userResponse.decision === "deny") {
         return { output: "", error: `Permission denied by user: [${def.id}] ${pattern}` }
       }
@@ -430,10 +474,10 @@ export async function executeTool(
       // allow      → session boyunca hatırla
       // allow_directory → aynı klasör altında session boyunca hatırla
       if (userResponse.decision === "allow") {
-        approvePermission(def.id, pattern, patchSummary, false)
+        approvePermission(def.id, pattern, patchSummary, false, ctx.workdir)
       }
       if (userResponse.decision === "allow_directory") {
-        approvePermission(def.id, pattern, patchSummary, true)
+        approvePermission(def.id, pattern, patchSummary, true, ctx.workdir)
       }
     }
   }
@@ -562,13 +606,20 @@ export async function executeTool(
 
       // shouldRunTsc: comment-only veya string-only change'lerde false döner
       if (shouldRunTsc(filePath, oldContent, newContent)) {
-        const tscOut = await runIncrementalTsc(ctx.workdir, [filePath])
-        const fileErr = filterTscForFile(tscOut, filePath)
-        
-        if (fileErr && fileErr !== "✓") {
-          result = { ...result, output: result.output + `\n\n[TypeScript] Errors in this file after edit:\n${fileErr}` }
-        } else if (tscOut === "✓") {
-          result = { ...result, output: result.output + "\n[TypeScript] ✓ No errors" }
+        try {
+          const tscOut = await withTimeout(
+            runIncrementalTsc(ctx.workdir, [filePath]),
+            POST_EDIT_TSC_TIMEOUT_MS,
+          )
+          const fileErr = filterTscForFile(tscOut, filePath)
+
+          if (fileErr && fileErr !== "✓") {
+            result = { ...result, output: result.output + `\n\n[TypeScript] Errors in this file after edit:\n${fileErr}` }
+          } else if (tscOut === "✓") {
+            result = { ...result, output: result.output + "\n[TypeScript] ✓ No errors" }
+          }
+        } catch {
+          result = { ...result, output: result.output + "\n[TypeScript] Skipped (post-edit check timed out)" }
         }
       } else {
         result = { ...result, output: result.output + "\n[TypeScript] Skipped (non-type change)" }
@@ -576,7 +627,10 @@ export async function executeTool(
 
       // Faz 4: Hallucination detection
       try {
-        const hallucinations = await detectHallucinations(newContent, filePath, ctx.workdir)
+        const hallucinations = await withTimeout(
+          detectHallucinations(newContent, filePath, ctx.workdir),
+          POST_EDIT_ANALYSIS_TIMEOUT_MS,
+        )
         if (hallucinations.length > 0) {
           const warnings = formatHallucinationWarnings(hallucinations)
           result = { ...result, output: result.output + warnings }
@@ -597,7 +651,15 @@ export async function executeTool(
         : String(args["path"] ?? "")
       if (rawPath) {
         const absFilePath = resolve(ctx.workdir, rawPath)
-        const related     = await findRelatedTests(absFilePath, ctx.workdir, execAC.signal)
+        const discoveryAC = new AbortController()
+        const onParentAbort = () => discoveryAC.abort()
+        execAC.signal.addEventListener("abort", onParentAbort, { once: true })
+        const related = await withTimeout(
+          findRelatedTests(absFilePath, ctx.workdir, discoveryAC.signal),
+          POST_EDIT_TEST_DISCOVERY_TIMEOUT_MS,
+          () => discoveryAC.abort(),
+        ).catch(() => [] as string[])
+        execAC.signal.removeEventListener("abort", onParentAbort)
         if (related.length > 0) {
           const rel = related.map(f =>
             f.startsWith(ctx.workdir + "/") ? f.slice(ctx.workdir.length + 1) : f
@@ -616,17 +678,23 @@ export async function executeTool(
   // --- v1.tool.after hook (outcome-aware) ---
   const outcome = execError || result.error ? "error" : "success"
   const afterPayload = { tool: def.id, args, result, durationMs }
-  await hooks.emitWithOutcome("v1.tool.after", afterPayload, outcome, durationMs)
+  await withTimeout(
+    hooks.emitWithOutcome("v1.tool.after", afterPayload, outcome, durationMs),
+    HOOK_TIMEOUT_MS,
+  ).catch(() => {})
   const after = afterPayload
 
   if (outcome === "error") {
     const errMsg = execError ?? result.error ?? "unknown"
-    await hooks.emit("v1.tool.error", {
-      tool:       def.id,
-      args,
-      error:      errMsg,
-      durationMs,
-    })
+    await withTimeout(
+      hooks.emit("v1.tool.error", {
+        tool:       def.id,
+        args,
+        error:      errMsg,
+        durationMs,
+      }),
+      HOOK_TIMEOUT_MS,
+    ).catch(() => {})
     // Persist to .aurict/diagnostics/ for cross-session awareness
     try {
       diagnosticsStore.record(ctx.workdir, {

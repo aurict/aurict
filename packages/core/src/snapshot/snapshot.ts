@@ -3,6 +3,9 @@ import * as path from "node:path"
 import { homedir } from "node:os"
 import { rmSync } from "node:fs"
 
+const MAX_SNAPSHOT_BYTES = 1_000_000
+const MAX_HISTORY_ENTRIES = 100
+
 export interface Snapshot {
   id: string
   filePath: string
@@ -34,9 +37,18 @@ class SnapshotManager {
     if (!historyFile) return
 
     try {
+      if (this.history.length > MAX_HISTORY_ENTRIES) {
+        this.history = this.history.slice(-MAX_HISTORY_ENTRIES)
+      }
       await fs.mkdir(path.dirname(historyFile), { recursive: true })
       await fs.writeFile(historyFile, JSON.stringify(this.history, null, 2), "utf-8")
     } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code === "EROFS" || code === "EACCES" || code === "EPERM") {
+        this.storageDir = null
+        console.error("Snapshot history persistence disabled:", err)
+        return
+      }
       console.error("Snapshot history persistence failed:", err)
     }
   }
@@ -70,6 +82,11 @@ class SnapshotManager {
   async takeSnapshot(filePath: string): Promise<void> {
     const absolutePath = path.resolve(filePath)
     try {
+      const stat = await fs.stat(absolutePath)
+      if (stat.size > MAX_SNAPSHOT_BYTES) {
+        console.error(`Snapshot skipped (${filePath}): file is ${stat.size} bytes`)
+        return
+      }
       const content = await fs.readFile(absolutePath, "utf-8")
       
       this.history.push({

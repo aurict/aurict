@@ -72,17 +72,33 @@ const MANIFESTS: Array<{ file: string; label: string }> = [
 
 // ── Yardımcı: runtime spawn (3s timeout) ─────────────────────────────────────
 
+function streamText(stream: number | ReadableStream<Uint8Array> | undefined): Promise<string> {
+  if (!stream || typeof stream === "number") return Promise.resolve("")
+  return new Response(stream).text()
+}
+
 async function spawnRuntime(name: string, args: string[]): Promise<string | null> {
+  let proc: ReturnType<typeof Bun.spawn> | null = null
   try {
-    const proc = Bun.spawn([name, ...args], { stdout: "pipe", stderr: "pipe" })
-    const timer = setTimeout(() => { try { proc.kill() } catch { /* ok */ } }, 3000)
-    const [stdout, stderr] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
+    proc = Bun.spawn([name, ...args], { stdout: "pipe", stderr: "pipe" })
+    const readPromise = Promise.all([
+      streamText(proc.stdout),
+      streamText(proc.stderr),
     ])
-    clearTimeout(timer)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeoutPromise = new Promise<null>((resolve) => {
+      timer = setTimeout(() => {
+        try { proc?.kill() } catch { /* ok */ }
+        resolve(null)
+      }, 3000)
+    })
+    const result = await Promise.race([readPromise, timeoutPromise])
+    if (timer) clearTimeout(timer)
+    if (result === null) return null
+    const [stdout, stderr] = result
     return (stdout || stderr).trim() || null
   } catch {
+    try { proc?.kill() } catch { /* ok */ }
     return null
   }
 }

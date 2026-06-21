@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test"
 import { PermissionEvaluator } from "../src/permission/evaluator.js"
-import { PermissionStore } from "../src/permission/store.js"
+import { PermissionGate, PermissionStore } from "../src/permission/store.js"
 
 describe("PermissionEvaluator.evaluate", () => {
   // ── Always-allow tools ────────────────────────────────────────────────────
@@ -87,5 +87,26 @@ describe("PermissionStore directory approvals", () => {
     expect(PermissionStore.isApproved("edit", "src/features/auth/session.ts")).toBe(false)
 
     PermissionStore.clear()
+  })
+})
+
+describe("PermissionGate.wait", () => {
+  it("returns deny and clears pending when the prompt times out", async () => {
+    PermissionGate.cancelPending()
+    const res = await PermissionGate.wait("timeout-test", { timeoutMs: 10 })
+
+    expect(res.decision).toBe("deny")
+    expect(PermissionGate.hasPending()).toBe(false)
+  })
+
+  it("returns deny and clears pending when aborted", async () => {
+    PermissionGate.cancelPending()
+    const ac = new AbortController()
+    const wait = PermissionGate.wait("abort-test", { signal: ac.signal, timeoutMs: 1000 })
+    ac.abort()
+    const res = await wait
+
+    expect(res.decision).toBe("deny")
+    expect(PermissionGate.hasPending()).toBe(false)
   })
 })

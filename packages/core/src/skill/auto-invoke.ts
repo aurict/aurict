@@ -7,6 +7,103 @@ export interface AutoInvokeRule {
   priority: number
 }
 
+export interface SkillRetrievalCandidate {
+  id: string
+  score: number
+  reasons: string[]
+}
+
+export interface SkillSearchDoc {
+  id: string
+  text: string
+  priority?: number
+}
+
+const STOP_WORDS = new Set([
+  "the", "and", "for", "with", "that", "this", "from", "into", "using", "use",
+  "create", "build", "make", "implement", "advanced", "modern", "real", "time",
+  "system", "feature", "features", "smooth", "dynamic", "ensure", "based",
+  "rather", "than", "such", "while", "all", "every", "will", "should", "can",
+])
+
+function tokenizeForRetrieval(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/([a-z])([0-9])/g, "$1 $2")
+    .replace(/([0-9])([a-z])/g, "$1 $2")
+    .split(/[^a-z0-9.+#-]+/i)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
+}
+
+function phraseMatches(query: string, doc: string): string[] {
+  const phrases = [
+    "three.js", "threejs", "webgl", "web gpu", "webgpu", "canvas", "3d",
+    "n-body", "n body", "runge-kutta", "rk4", "verlet", "physics",
+    "simulation", "solar system", "orbit", "orbital", "camera controls",
+    "real-time", "real time", "performance", "animation", "visualization",
+  ]
+  return phrases.filter((phrase) => query.includes(phrase) && doc.includes(phrase))
+}
+
+export function retrieveSkillIds(
+  userText: string,
+  docs: SkillSearchDoc[],
+  opts: { limit?: number; minScore?: number } = {},
+): SkillRetrievalCandidate[] {
+  const limit = opts.limit ?? 5
+  const minScore = opts.minScore ?? 0.08
+  const queryTokens = tokenizeForRetrieval(userText)
+  if (queryTokens.length === 0 || docs.length === 0) return []
+
+  const docTokens = docs.map((doc) => tokenizeForRetrieval(doc.text))
+  const docFreq = new Map<string, number>()
+  for (const tokens of docTokens) {
+    for (const token of new Set(tokens)) {
+      docFreq.set(token, (docFreq.get(token) ?? 0) + 1)
+    }
+  }
+
+  const query = userText.toLowerCase()
+  const scored: SkillRetrievalCandidate[] = []
+
+  docs.forEach((doc, idx) => {
+    const tokens = docTokens[idx] ?? []
+    if (tokens.length === 0) return
+    const counts = new Map<string, number>()
+    for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1)
+
+    let raw = 0
+    const reasons: string[] = []
+    for (const token of new Set(queryTokens)) {
+      const tf = counts.get(token) ?? 0
+      if (tf === 0) continue
+      const idf = Math.log(1 + docs.length / (1 + (docFreq.get(token) ?? 0)))
+      raw += (1 + Math.log(tf)) * idf
+      if (reasons.length < 5) reasons.push(token)
+    }
+
+    const docText = doc.text.toLowerCase()
+    const phrases = phraseMatches(query, docText)
+    if (phrases.length > 0) {
+      raw += phrases.length * 2.5
+      for (const phrase of phrases.slice(0, 3)) {
+        if (!reasons.includes(phrase)) reasons.push(phrase)
+      }
+    }
+
+    const priorityBoost = Math.min(Math.max(doc.priority ?? 5, 0), 15) / 100
+    const score = raw / Math.sqrt(tokens.length) + priorityBoost
+    if (score >= minScore) {
+      scored.push({ id: doc.id, score: Number(score.toFixed(3)), reasons })
+    }
+  })
+
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+}
+
 const DEFAULT_RULES: AutoInvokeRule[] = [
   { trigger: "url",       match: /https?:\/\//,         skillIds: ["llm-integration"],                             priority: 10 },
   { trigger: "file-edit", match: /\.(tsx|jsx)$/,        skillIds: ["react-expert"],                                priority: 20 },

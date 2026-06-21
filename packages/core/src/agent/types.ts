@@ -1,5 +1,6 @@
 import type { CoreMessage } from "ai"
 import type { Attachment } from "../util/attachments.js"
+import type { ActivatedSkillInfo } from "../skill/injector.js"
 
 export interface AgentRunOptions {
   sessionId?:   string
@@ -21,6 +22,7 @@ export interface AgentRunOptions {
   onChunk?:       (chunk: string) => void
   onStepFinish?:  () => void
   onCompaction?:  () => void
+  onSkillsActivated?: (skills: ActivatedSkillInfo[]) => void
   onFinish?:      (result: AgentFinishResult) => void
 }
 

@@ -81,6 +81,26 @@ const DEPS_SUPPLEMENT: Record<string, string[]> = {
   "rate-limiting":           ["express-rate-limit", "rate-limiter-flexible", "@upstash/ratelimit"],
 }
 
+const KEYWORDS_SUPPLEMENT: Record<string, string[]> = {
+  "animations-patterns": [
+    "animation", "motion", "transition", "3d", "three.js", "threejs", "webgl",
+    "canvas", "camera controls", "orbit controls", "physics", "simulation",
+    "verlet", "rk4", "runge-kutta",
+  ],
+  "data-visualization": [
+    "visualization", "data viz", "chart", "graph", "3d", "webgl", "three.js",
+    "threejs", "canvas", "simulation", "real-time", "orbit", "solar system",
+    "n-body", "physics",
+  ],
+  "web-performance": [
+    "performance", "optimize", "fps", "frame rate", "webgl", "canvas", "three.js",
+    "threejs", "animation", "real-time", "simulation", "render loop",
+  ],
+  "component-design-patterns": [
+    "ui overlay", "controls", "panel", "interactive", "selected item", "dashboard",
+  ],
+}
+
 function buildDetector(triggers: SkillFrontmatter["triggers"] | undefined): SkillDetector {
   if (!triggers) return {}
   const d: SkillDetector = {}
@@ -88,6 +108,7 @@ function buildDetector(triggers: SkillFrontmatter["triggers"] | undefined): Skil
   if (triggers.deps?.length)        d.deps     = triggers.deps
   if (triggers.directories?.length) d.dirs     = triggers.directories
   if (triggers.extensions?.length)  d.patterns = triggers.extensions
+  if (triggers.keywords?.length)    d.keywords = triggers.keywords
   return d
 }
 
@@ -117,6 +138,10 @@ function scanLibrary(): Map<string, SkillDef> {
     const extraDeps = DEPS_SUPPLEMENT[id]
     if (extraDeps && extraDeps.length > 0) {
       detector.deps = [...(detector.deps ?? []), ...extraDeps]
+    }
+    const extraKeywords = KEYWORDS_SUPPLEMENT[id]
+    if (extraKeywords && extraKeywords.length > 0) {
+      detector.keywords = [...(detector.keywords ?? []), ...extraKeywords]
     }
 
     const def: SkillDef = {

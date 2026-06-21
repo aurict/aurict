@@ -3,6 +3,7 @@ export interface SkillDetector {
   deps?:     string[]    // package.json dep'leri: "react"
   dirs?:     string[]    // dizin varlığı: "app/", "prisma/"
   patterns?: string[]    // dosya yolu içerik eşleşmesi: ".tsx"
+  keywords?: string[]    // semantic retrieval keywords
 }
 
 export interface SkillDef {

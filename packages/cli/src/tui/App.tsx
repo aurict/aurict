@@ -29,7 +29,7 @@ import {
   setDefault,
   setMCPLogHandler,
 } from "@aurict/core"
-import type { PermissionRequest, PermissionResponse, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown } from "@aurict/core"
+import type { PermissionRequest, PermissionResponse, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown, ActivatedSkillInfo } from "@aurict/core"
 
 import { parseSlashCommand, getCommand, allCommands } from "../commands/registry.js"
 import { Buddy, awardMessageXP } from "./Buddy.js"
@@ -84,6 +84,16 @@ interface Props {
 }
 
 const AUTO_CONTINUE_PROMPT = "Continue from where you stopped and finish the task without waiting for me."
+
+function formatActivatedSkills(skills: ActivatedSkillInfo[]): string {
+  const labels = skills.slice(0, 5).map((skill) => {
+    const score = skill.score !== undefined ? ` ${skill.score.toFixed(2)}` : ""
+    const reasons = skill.reasons.length > 0 ? ` — ${skill.reasons.slice(0, 3).join(", ")}` : ""
+    return `${skill.id}${score}${reasons}`
+  })
+  const extra = skills.length > labels.length ? ` +${skills.length - labels.length} more` : ""
+  return `Skills loaded: ${labels.join("; ")}${extra}`
+}
 
 /**
  * Model görev ortasında metin bırakıp durdu mu?
@@ -151,6 +161,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [tokens,     setTokens]        = useState<TokenBreakdown>({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 })
   const [history,    setHistory]       = useState<CoreMessage[]>([])
   const [skillNames, setSkillNames]    = useState<string[]>([])
+  const [turnSkillNames, setTurnSkillNames] = useState<string[]>([])
   const [tasks,      setTasks]         = useState<Task[]>([])
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [isStreaming,    setIsStreaming]     = useState(false)
@@ -310,6 +321,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const streamTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tokenRateRef     = useRef(80)   // başlangıçta hızlı varsay (80 tok/s → 30ms flush)
   const lastTokenTimeRef = useRef(0)
+  const turnHadToolRef   = useRef(false)
 
   // "/" öneri filtresi
   const cmdFilter = !overlayOpen && input.startsWith("/")
@@ -1098,12 +1110,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     }
 
     setStreamingError(null)
+    setTurnSkillNames([])
     const startTime = Date.now()
     const now       = Date.now()
     const controller = new AbortController()
     abortControllerRef.current = controller
     setLoading(true)
     setIsStreaming(true)
+    turnHadToolRef.current = false
     awardMessageXP()
 
     const userMsg: CoreMessage = { role: "user", content: text }
@@ -1125,6 +1139,30 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         streamTimerRef.current = null
         if (streamTextRef.current)   setStreamingText(streamTextRef.current)
         if (streamReasonRef.current) setStreamingReason(streamReasonRef.current)
+      }
+
+      const flushAssistantSegment = (textSegment: string, reasonSegment: string) => {
+        if (!textSegment && !reasonSegment) return
+        setMessages((prev) => {
+          const next = [...prev]
+          const last = next[next.length - 1]
+          const segment = {
+            content: textSegment,
+            pending: false,
+            ...(reasonSegment ? { reasoningContent: reasonSegment } : {}),
+          }
+          if (last?.role === "assistant" && last.pending) {
+            next[next.length - 1] = { ...last, ...segment }
+          } else {
+            next.push({
+              id: crypto.randomUUID(),
+              role: "assistant" as const,
+              timestamp: Date.now(),
+              ...segment,
+            })
+          }
+          return next
+        })
       }
 
       await runAgent({
@@ -1169,23 +1207,21 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         },
         onToolCall: (tc) => {
           if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
+          turnHadToolRef.current = true
           const textBefore   = streamTextRef.current
           const reasonBefore = streamReasonRef.current
           streamTextRef.current   = ""
           streamReasonRef.current = ""
           setStreamingText(null)
           setStreamingReason(null)
+          flushAssistantSegment(textBefore, reasonBefore)
           setActiveTool(tc.tool)
           latestToolCallRef.current = { id: tc.id, tool: tc.tool, content: JSON.stringify(tc.args, null, 2) }
           setMessages((prev) => {
             const next = [...prev]
             const last = next[next.length - 1]
-            if (last?.role === "assistant" && last.pending) {
-              next[next.length - 1] = {
-                ...last, pending: false,
-                ...(textBefore   ? { content:          textBefore   } : {}),
-                ...(reasonBefore ? { reasoningContent: reasonBefore } : {}),
-              }
+            if (last?.role === "assistant" && last.pending && !last.content && !last.reasoningContent) {
+              next.pop()
             }
             next.push({ id: tc.id ?? crypto.randomUUID(), role: "tool_call" as const, content: JSON.stringify(tc.args, null, 2), tool: tc.tool, pending: true })
             return next
@@ -1228,8 +1264,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           // Allow end-of-session extraction to run again after compaction
           extractedRef.current = false
         },
+        onSkillsActivated: (skills) => {
+          if (skills.length === 0) return
+          setTurnSkillNames(skills.map((skill) => skill.id))
+          addSystemMsg(formatActivatedSkills(skills))
+        },
         onFinish: ({ tokens: t, text: finalText, newMessages }) => {
           if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
+          const finalSegmentText = turnHadToolRef.current ? streamTextRef.current : finalText
           const finalReason = streamReasonRef.current
           streamTextRef.current   = ""
           streamReasonRef.current = ""
@@ -1257,10 +1299,10 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             const next = prev.map(m => m.pending ? { ...m, pending: false } : m)
             const last = next[next.length - 1]
             const reasonSpread = finalReason ? { reasoningContent: finalReason } : {}
-            if (finalText && last?.role !== "assistant") {
-              next.push({ id: crypto.randomUUID(), role: "assistant", content: finalText, pending: false, ...reasonSpread })
+            if ((finalSegmentText || finalReason) && last?.role !== "assistant") {
+              next.push({ id: crypto.randomUUID(), role: "assistant", content: finalSegmentText, pending: false, ...reasonSpread })
             } else if (last?.role === "assistant") {
-              next[next.length - 1] = { ...last, content: finalText, pending: false, ...reasonSpread }
+              next[next.length - 1] = { ...last, content: finalSegmentText, pending: false, ...reasonSpread }
             }
             return next
           })
@@ -1276,6 +1318,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       })
     } catch (err) {
       if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
+      const partialText = streamTextRef.current
+      const partialReason = streamReasonRef.current
       streamTextRef.current   = ""
       streamReasonRef.current = ""
       const errMsg = err instanceof Error ? err.message : String(err)
@@ -1284,6 +1328,19 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       setStreamingReason(null)
       setMessages((prev) => {
         const next = prev.map(m => m.pending ? { ...m, pending: false } : m)
+        if (partialText || partialReason) {
+          const last = next[next.length - 1]
+          const segment = {
+            content: partialText,
+            pending: false,
+            ...(partialReason ? { reasoningContent: partialReason } : {}),
+          }
+          if (last?.role === "assistant" && !last.content && !last.reasoningContent) {
+            next[next.length - 1] = { ...last, ...segment }
+          } else {
+            next.push({ id: crypto.randomUUID(), role: "assistant", timestamp: Date.now(), ...segment })
+          }
+        }
         next.push({ id: crypto.randomUUID(), role: "error", content: errMsg })
         return next
       })
@@ -1295,7 +1352,9 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     } finally {
       setLoading(false)
       setIsStreaming(false)
-      setActiveTool(undefined)
+          setActiveTool(undefined)
+          turnHadToolRef.current = false
+          setTurnSkillNames([])
       abortControllerRef.current = null
       setAttachments([])
       setQueuedInput((q) => {
@@ -1629,6 +1688,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           contextTokens={contextTokens}
           workdir={workdirState}
           skills={skillNames}
+          turnSkills={turnSkillNames}
           isUndercover={isUndercover}
           coordinatorMode={coordinatorMode}
           wasCompacted={wasCompacted}

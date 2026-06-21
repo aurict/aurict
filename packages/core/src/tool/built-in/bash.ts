@@ -5,6 +5,18 @@ import { chooseSandboxBackend, startDockerSandboxedProcess, startPolicySandboxed
 import { getShell } from "../../util/shell.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
+const QUICK_READ_ONLY_COMMANDS = new Set([
+  "ls", "pwd", "date", "whoami", "which", "whereis", "stat", "file", "wc",
+  "head", "tail", "cat", "echo", "git status", "git branch", "git rev-parse",
+  "git remote",
+])
+
+function isQuickReadOnly(analysis: ReturnType<typeof classifyCommand>): boolean {
+  return analysis.isReadOnly &&
+    analysis.parsedExecutables.length > 0 &&
+    analysis.parsedExecutables.every((exec) => QUICK_READ_ONLY_COMMANDS.has(exec))
+}
+
 export const bashTool: ToolDef = {
   id:   "bash",
   spec: {
@@ -71,12 +83,20 @@ Actions:
       return { output: "", error: `Failed to start process: ${err instanceof Error ? err.message : String(err)}` }
     }
 
+    const abortSession = () => ptyManager.kill(session.id)
+    if (ctx.signal.aborted) {
+      abortSession()
+      return { output: "", error: "Command aborted before execution completed." }
+    }
+    ctx.signal.addEventListener("abort", abortSession, { once: true })
+
     if (action === "background") {
       const sandboxLabel = sandbox.backend === "docker"
         ? " (IN DOCKER SANDBOX)"
         : sandbox.backend === "policy"
           ? " (POLICY SANDBOX)"
           : ""
+      ctx.signal.removeEventListener("abort", abortSession)
       return { output: `Started background process${sandboxLabel}.\nSession ID: ${session.id}\nUse bash(action='output', sessionId='${session.id}') to read output.` }
     }
 
@@ -96,9 +116,13 @@ Actions:
       }, 100)
     }
 
-    const finished = await ptyManager.wait(session.id, 3000)
-
-    if (pollTimer) clearInterval(pollTimer)
+    let finished
+    try {
+      finished = await ptyManager.wait(session.id, 3000)
+    } finally {
+      if (pollTimer) clearInterval(pollTimer)
+      ctx.signal.removeEventListener("abort", abortSession)
+    }
 
     // Kalan son chunk'ı da emit et (interval'dan kaçmış olabilir)
     if (ctx.onChunk) {
@@ -107,8 +131,15 @@ Actions:
     }
 
     if (finished.timedOut) {
+      if (isQuickReadOnly(analysis)) {
+        ptyManager.kill(session.id)
+        return {
+          output: finished.outputBuffer,
+          error: `Read-only command did not finish within 3s and was terminated instead of being left running: ${command}`,
+        }
+      }
       return {
-        output: `Command is taking a long time. It has been AUTOMATICALLY sent to the background.\nSession ID: ${session.id}\nCurrent Output:\n${session.outputBuffer}\n\nYou can continue your work while it runs. Use bash(action='output', sessionId='${session.id}') later to check its status.`
+        output: `Command is taking a long time. It has been AUTOMATICALLY sent to the background.\nSession ID: ${session.id}\nCurrent Output:\n${finished.outputBuffer}\n\nYou can continue your work while it runs. Use bash(action='output', sessionId='${session.id}') later to check its status.`
       }
     }
 

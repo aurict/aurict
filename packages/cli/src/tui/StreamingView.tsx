@@ -59,20 +59,11 @@ function useElapsedTime(): number {
   return elapsed
 }
 
-// Reasoning bloğu sırasında yalnızca son N satırı göster —
-// tüm geçmişi render etmek terminal'i dondurur
-const MAX_REASONING_LINES = 8
-
 interface Props {
   text:       string | null
   reasoning:  string | null
   skeleton?:  boolean   // show shimmer placeholder before first token
   error?:     string    // show inline error (e.g. stream interrupted)
-}
-
-function lastLines(text: string, n: number): string[] {
-  const all = text.split("\n")
-  return all.slice(Math.max(0, all.length - n))
 }
 
 function lineCount(text: string): number {
@@ -89,8 +80,7 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
       {/* ── Reasoning akışı ── */}
       {reasoning && (() => {
         const total   = lineCount(reasoning)
-        const visible = lastLines(reasoning, MAX_REASONING_LINES)
-        const hidden  = total - visible.length
+        const visible = reasoning.split("\n")
         return (
           <Box flexDirection="column" marginBottom={text ? 1 : 0}>
             {/* Başlık: "∴ thinking… (142 lines) 3.2s" */}
@@ -103,14 +93,7 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
               <Text color={theme.textDim} dimColor>{formatElapsed(elapsed)}</Text>
             </Box>
 
-            {/* Taşan satır bildirimi */}
-            {hidden > 0 && (
-              <Box marginLeft={2}>
-                <Text color={theme.borderDim} dimColor>  ↑ {hidden} lines above</Text>
-              </Box>
-            )}
-
-            {/* Son N satır — ince ┊ sol çizgisi ile */}
+            {/* Tam reasoning akışı — ince ┊ sol çizgisi ile */}
             <Box flexDirection="column" marginLeft={2}>
               {visible.map((line, i) => (
                 <Box key={i} flexDirection="row">

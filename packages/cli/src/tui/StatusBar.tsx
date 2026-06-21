@@ -21,6 +21,7 @@ interface Props {
   contextTokens?:    number | undefined
   workdir:           string
   skills?:           string[] | undefined
+  turnSkills?:       string[] | undefined
   contextWindow?:    number | undefined
   isUndercover?:     boolean | undefined
   coordinatorMode?:  boolean | undefined
@@ -114,7 +115,7 @@ function bp(cols: number | undefined): BP {
 }
 
 export function StatusBar({
-  provider, model, tokens, contextTokens, workdir, skills = [],
+  provider, model, tokens, contextTokens, workdir, skills = [], turnSkills = [],
   contextWindow, isUndercover, coordinatorMode, branch, wasCompacted,
   activeAgent, agentColor, bgTaskCount, taskCount, taskSummary, taskPanelOpen, localServer, sandboxBackend, effort, autopilotMode, cols,
   draftSavedAt, activeAgentCount, hasBtwNote,
@@ -133,6 +134,7 @@ export function StatusBar({
   const compactRuntime = mode !== "wide"
   const serverInfo   = serverLabel(localServer, compactRuntime)
   const sandboxInfo  = sandboxLabel(sandboxBackend, compactRuntime)
+  const allSkills = [...new Set([...skills, ...turnSkills.map((skill) => `turn:${skill}`)])]
 
   // ── tiny: bare minimum ────────────────────────────────────────────────────
   if (mode === "tiny") {
@@ -244,12 +246,12 @@ export function StatusBar({
         </HStack>
       )}
 
-      {skills.length > 0 && (
+      {allSkills.length > 0 && (
         <HStack paddingX="md" gap="xs">
           <Text color={theme.borderBright}>skills</Text>
           <Text color={theme.accent}>
-            {skills.slice(0, 3).join(" · ")}
-            {skills.length > 3 ? <Text color={theme.borderBright}> +{skills.length - 3} more</Text> : null}
+            {allSkills.slice(0, 3).join(" · ")}
+            {allSkills.length > 3 ? <Text color={theme.borderBright}> +{allSkills.length - 3} more</Text> : null}
           </Text>
         </HStack>
       )}

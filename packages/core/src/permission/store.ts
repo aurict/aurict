@@ -78,7 +78,11 @@ export const PermissionStore = {
 
 // TUI → executor köprüsü: ask kararlarını bekler
 type ResponseResolver = (response: PermissionResponse) => void
-const pending = new Map<string, ResponseResolver>()
+interface PendingPermission {
+  resolve: ResponseResolver
+}
+const pending = new Map<string, PendingPermission>()
+const earlyResponses = new Map<string, PermissionResponse>()
 
 function normalizeResponse(response: PermissionDecision | PermissionResponse): PermissionResponse {
   return typeof response === "string" ? { decision: response } : response
@@ -86,18 +90,51 @@ function normalizeResponse(response: PermissionDecision | PermissionResponse): P
 
 export const PermissionGate = {
   // Executor tarafından çağrılır — kullanıcı kararını bekler
-  wait(id: string): Promise<PermissionResponse> {
+  wait(id: string, opts: { signal?: AbortSignal; timeoutMs?: number } = {}): Promise<PermissionResponse> {
     return new Promise((resolve) => {
-      pending.set(id, resolve)
+      const early = earlyResponses.get(id)
+      if (early) {
+        earlyResponses.delete(id)
+        resolve(early)
+        return
+      }
+
+      let settled = false
+      let timer: ReturnType<typeof setTimeout> | undefined
+
+      const finish = (response: PermissionResponse) => {
+        if (settled) return
+        settled = true
+        if (timer) clearTimeout(timer)
+        opts.signal?.removeEventListener("abort", onAbort)
+        pending.delete(id)
+        resolve(response)
+      }
+      const onAbort = () => finish({ decision: "deny" })
+
+      if (opts.signal?.aborted) {
+        resolve({ decision: "deny" })
+        return
+      }
+      opts.signal?.addEventListener("abort", onAbort, { once: true })
+      if (opts.timeoutMs && opts.timeoutMs > 0) {
+        timer = setTimeout(() => finish({ decision: "deny" }), opts.timeoutMs)
+      }
+
+      pending.set(id, {
+        resolve: finish,
+      })
     })
   },
 
   // TUI tarafından çağrılır — kullanıcı Y/N'ye bastı
   respond(id: string, decision: PermissionDecision | PermissionResponse): void {
-    const resolve = pending.get(id)
-    if (resolve) {
-      resolve(normalizeResponse(decision))
-      pending.delete(id)
+    const entry = pending.get(id)
+    const response = normalizeResponse(decision)
+    if (entry) {
+      entry.resolve(response)
+    } else {
+      earlyResponses.set(id, response)
     }
   },
 
@@ -107,9 +144,10 @@ export const PermissionGate = {
 
   // Abort / Ctrl+C sırasında çağrılır — bekleyen tüm izin isteklerini reddet
   cancelPending(): void {
-    for (const resolve of pending.values()) {
-      resolve({ decision: "deny" })
+    for (const entry of pending.values()) {
+      entry.resolve({ decision: "deny" })
     }
     pending.clear()
+    earlyResponses.clear()
   },
 }

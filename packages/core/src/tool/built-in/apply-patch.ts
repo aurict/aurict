@@ -4,6 +4,17 @@ import path from "node:path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { snapshotManager } from "../../snapshot/snapshot.js"
 
+async function takeSnapshotBestEffort(filePath: string): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  await Promise.race([
+    snapshotManager.takeSnapshot(filePath),
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, 5_000)
+    }),
+  ])
+  if (timer) clearTimeout(timer)
+}
+
 // ─── Patch format tipleri ──────────────────────────────────────────────────
 
 type Hunk =
@@ -570,7 +581,7 @@ export const applyPatchTool: ToolDef = {
     const mark = snapshotManager.mark()
     try {
       for (const file of plan.staged) {
-        await snapshotManager.takeSnapshot(file.absPath)
+        await takeSnapshotBestEffort(file.absPath)
       }
       for (const file of plan.staged) {
         await writeStagedFile(file)

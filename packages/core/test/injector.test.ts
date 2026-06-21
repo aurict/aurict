@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs"
 import { execSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { buildGitSection, buildProactiveFileSection } from "../src/skill/injector.js"
+import { buildGitSection, buildIntentSkillSection, buildProactiveFileSection, matchIntentSkills } from "../src/skill/injector.js"
 
 let tmpDir: string
 let gitDir: string
@@ -183,4 +183,26 @@ describe("buildProactiveFileSection — supported extensions", () => {
       expect(r).toContain(filename)
     })
   }
+})
+
+describe("intent skill retrieval", () => {
+  const solarPrompt = [
+    "Create an advanced 3D Solar System simulation with real-time physics",
+    "using an N-body mechanics framework, Runge-Kutta RK4 or Verlet integration,",
+    "smooth camera controls, orbital trails, time acceleration, and high performance.",
+  ].join(" ")
+
+  it("matches skills for 3D physics simulation prompts without explicit regex rules", () => {
+    const matches = matchIntentSkills(solarPrompt)
+    const ids = matches.map((match) => match.id)
+
+    expect(ids.length).toBeGreaterThan(0)
+    expect(ids.some((id) => ["animations-patterns", "data-visualization", "web-performance"].includes(id))).toBe(true)
+  })
+
+  it("injects retrieved skill instructions into the intent skill section", async () => {
+    const section = await buildIntentSkillSection(solarPrompt, tmpDir)
+
+    expect(section).toContain("Intent-Activated Skills")
+  })
 })

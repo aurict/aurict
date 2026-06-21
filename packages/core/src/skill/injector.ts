@@ -1,7 +1,7 @@
 import { detectSkills } from "./detector.js"
 import { loadSkills, loadSkill, loadSkillAdaptive, detectTaskType } from "./loader.js"
 import { SkillRegistry } from "./registry.js"
-import { autoInvoker } from "./auto-invoke.js"
+import { autoInvoker, retrieveSkillIds } from "./auto-invoke.js"
 import { skillScoreStore } from "./score-store.js"
 import { loadSkillOverride, applyOverride } from "./override.js"
 import { hooks } from "../hook/emitter.js"
@@ -17,6 +17,14 @@ import { join } from "node:path"
 import { homedir } from "node:os"
 import { readdirSync, existsSync, readFileSync } from "node:fs"
 import type { LoadedSkill, SkillDef } from "./types.js"
+
+export interface ActivatedSkillInfo {
+  id: string
+  name: string
+  score?: number
+  reasons: string[]
+  source: "rule" | "retrieval" | "error"
+}
 
 const MAX_SKILL_TOKENS        = 8_000   // total token budget for all skills
 const MAX_INTENT_SKILL_TOKENS = 6_000   // per-message intent skill budget
@@ -313,10 +321,11 @@ export async function buildIntentSkillSection(
 ): Promise<string> {
   if (!userText.trim()) return ""
 
-  // Intent + error detection
+  // Intent + error detection + metadata retrieval
   const intentIds = autoInvoker.checkMessage(userText)
   const errorIds  = autoInvoker.checkError(userText)
-  const allIds    = [...new Set([...intentIds, ...errorIds])]
+  const retrieval = retrieveSkillIds(userText, buildSkillSearchDocs())
+  const allIds    = [...new Set([...intentIds, ...errorIds, ...retrieval.map((m) => m.id)])]
   if (allIds.length === 0) return ""
 
   // Proje tabanlı detection'da zaten olan skill'leri filtrele
@@ -358,6 +367,64 @@ export async function buildIntentSkillSection(
     `# Intent-Activated Skills [task:${taskType}] (${labels})`,
     blocks.join("\n\n---\n\n"),
   ].join("\n\n")
+}
+
+export function matchIntentSkills(
+  userText: string,
+  existingSkillIds: Set<string> = new Set(),
+): ActivatedSkillInfo[] {
+  if (!userText.trim()) return []
+
+  const retrieval = retrieveSkillIds(userText, buildSkillSearchDocs())
+  const retrievalById = new Map(retrieval.map((match) => [match.id, match]))
+  const intentIds = autoInvoker.checkMessage(userText)
+  const errorIds = autoInvoker.checkError(userText)
+  const ids = [...new Set([...intentIds, ...errorIds, ...retrieval.map((match) => match.id)])]
+    .filter((id) => !existingSkillIds.has(id))
+
+  return ids
+    .map((id) => {
+      const def = SkillRegistry.get(id)
+      if (!def) return null
+      const retrieved = retrievalById.get(id)
+      const source: ActivatedSkillInfo["source"] = errorIds.includes(id)
+        ? "error"
+        : intentIds.includes(id)
+          ? "rule"
+          : "retrieval"
+      return {
+        id,
+        name: def.name || id,
+        ...(retrieved ? { score: retrieved.score } : {}),
+        reasons: retrieved?.reasons ?? (source === "rule" ? ["intent rule"] : ["error rule"]),
+        source,
+      }
+    })
+    .filter((info): info is ActivatedSkillInfo => info !== null)
+}
+
+function buildSkillSearchDocs() {
+  return SkillRegistry.all().map((skill) => {
+    const detectorText = [
+      ...(skill.detector.files ?? []),
+      ...(skill.detector.deps ?? []),
+      ...(skill.detector.dirs ?? []),
+      ...(skill.detector.patterns ?? []),
+      ...(skill.detector.keywords ?? []),
+    ].join(" ")
+    return {
+      id: skill.id,
+      priority: skill.priority,
+      text: [
+        skill.id,
+        skill.name,
+        skill.description,
+        skill.tags.join(" "),
+        skill.agent ?? "",
+        detectorText,
+      ].filter(Boolean).join(" "),
+    }
+  })
 }
 
 // ─── Token bütçesi ile skill seçimi ──────────────────────────────────────────

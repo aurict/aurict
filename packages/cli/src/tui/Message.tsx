@@ -141,7 +141,6 @@ function ThinkingBlock({ content }: { content: string }) {
   const theme  = useTheme()
   const all    = content.split("\n").filter((l) => l.trim())
   const total  = all.length
-  const shown  = all.slice(-3)
   return (
     <VStack gap="none" marginBottom="sm">
       <HStack gap="sm">
@@ -149,7 +148,7 @@ function ThinkingBlock({ content }: { content: string }) {
         <Text color={theme.accent} italic dimColor>thought · {total} lines</Text>
       </HStack>
       <VStack marginLeft="md">
-        {shown.map((line, i) => (
+        {all.map((line, i) => (
           <HStack key={i}>
             <Text color={theme.borderDim} dimColor>┊ </Text>
             <Text color={theme.accent} italic dimColor wrap="wrap">{line}</Text>
