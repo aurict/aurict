@@ -27,8 +27,8 @@ describe("PermissionEvaluator.evaluate", () => {
 
   // ── Deny rules ────────────────────────────────────────────────────────────
 
-  it("sudo shell is denied", () => {
-    expect(PermissionEvaluator.evaluate("shell", "sudo rm -rf /")).toBe("deny")
+  it("sudo bash is denied", () => {
+    expect(PermissionEvaluator.evaluate("bash", "sudo rm -rf /")).toBe("deny")
   })
 
   it("write to /etc/ is denied", () => {
@@ -45,16 +45,20 @@ describe("PermissionEvaluator.evaluate", () => {
 
   // ── Ask rules ─────────────────────────────────────────────────────────────
 
-  it("rm shell is ask", () => {
+  it("rm bash is ask", () => {
+    expect(PermissionEvaluator.evaluate("bash", "rm file.txt")).toBe("ask")
+  })
+
+  it("rm -rf bash is ask", () => {
+    expect(PermissionEvaluator.evaluate("bash", "rm -rf dist/")).toBe("ask")
+  })
+
+  it("curl bash is ask", () => {
+    expect(PermissionEvaluator.evaluate("bash", "curl https://example.com")).toBe("ask")
+  })
+
+  it("shell remains a backwards-compatible alias for bash", () => {
     expect(PermissionEvaluator.evaluate("shell", "rm file.txt")).toBe("ask")
-  })
-
-  it("rm -rf shell is ask", () => {
-    expect(PermissionEvaluator.evaluate("shell", "rm -rf dist/")).toBe("ask")
-  })
-
-  it("curl shell is ask", () => {
-    expect(PermissionEvaluator.evaluate("shell", "curl https://example.com")).toBe("ask")
   })
 
   // ── Unknown tool defaults to ask ──────────────────────────────────────────

@@ -27,6 +27,7 @@ import {
   depSentinel,
   PlanGate,
   setDefault,
+  setMCPLogHandler,
 } from "@aurict/core"
 import type { PermissionRequest, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown } from "@aurict/core"
 
@@ -35,6 +36,7 @@ import { Buddy, awardMessageXP } from "./Buddy.js"
 import type { CommandResult, PickerItem } from "../commands/types.js"
 import { ThemeContext, THEMES, DEFAULT_THEME } from "../utils/theme.js"
 import { KeybindingsProvider } from "../keybindings/index.js"
+import type { Context as KeybindingContext } from "../keybindings/index.js"
 
 import { Message, type DisplayMessage } from "./Message.js"
 import { StreamingView }    from "./StreamingView.js"
@@ -65,6 +67,11 @@ import { readClipboard }     from "../util/clipboard.js"
 import { useMouseEvents }    from "./mouse.js"
 import { buildDesignPrompt, recordSystemUsed, recordSkillUsed, slugify } from "@aurict/core"
 import { saveDraft, loadDraft, clearDraft, hasPendingCrashReport, writeCrashReport } from "../util/draft.js"
+import { getTerminalCaps }   from "../util/terminal-caps.js"
+import { useOverlayState }   from "./hooks/useOverlayState.js"
+import { HistorySearch }     from "./HistorySearch.js"
+import { KeyboardShortcuts } from "./KeyboardShortcuts.js"
+import type { LocalServerStatus } from "../bootstrap.js"
 
 interface Props {
   initialProvider: string
@@ -73,6 +80,7 @@ interface Props {
   system?:         string
   undercover?:     boolean
   updatePromise?:  Promise<UpdateInfo | null>
+  localServer?:    LocalServerStatus
 }
 
 /**
@@ -93,8 +101,36 @@ function stalledMidTask(text: string): boolean {
   return false
 }
 
-export function App({ initialProvider, initialModel, workdir, system, undercover, updatePromise }: Props) {
+function configuredSandboxBackend(): "none" | "policy" | "docker" {
+  const raw = process.env["AURICT_SANDBOX_BACKEND"] ?? process.env["AURICT_SANDBOX"]
+  if (raw === "none" || raw === "off" || raw === "false" || raw === "0") return "none"
+  if (raw === "docker") return "docker"
+  return "policy"
+}
+
+export function App({ initialProvider, initialModel, workdir, system, undercover, updatePromise, localServer }: Props) {
   const { exit } = useApp()
+
+  // Overlay state management — merkezi hook
+  const overlay = useOverlayState()
+  const {
+    quickSearchOpen, setQuickSearchOpen,
+    cmdPaletteOpen, setCmdPaletteOpen,
+    settingsOpen, setSettingsOpen,
+    designWizardOpen, setDesignWizardOpen,
+    historySearchOpen, setHistorySearchOpen,
+    keyboardShortcutsOpen, setKeyboardShortcutsOpen,
+    taskPanelOpen, setTaskPanelOpen,
+    updateDismissed, setUpdateDismissed,
+    attachInput, setAttachInput,
+    attachPath, setAttachPath,
+    attachments, setAttachments,
+    editingMsg, setEditingMsg,
+    planRequest, setPlanRequest,
+    expandedContent, setExpandedContent,
+    btwState, setBtwState,
+    viewingSubagentId, setViewingSubagentId,
+  } = overlay
 
   const [provider,   setProviderState] = useState(initialProvider)
   const [model,      setModelState]    = useState(initialModel)
@@ -105,9 +141,6 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [loading,    setLoading]       = useState(false)
   const [permission, setPermission]    = useState<PermissionRequest | null>(null)
   const [question,   setQuestion]      = useState<QuestionRequest | null>(null)
-  const [attachments, setAttachments]  = useState<Attachment[]>([])
-  const [attachInput, setAttachInput]  = useState(false)
-  const [attachPath,  setAttachPath]   = useState("")
   const [picker,     setPicker]        = useState<{ title: string; items: PickerItem[]; onSelect: (i: PickerItem) => void } | null>(null)
   const [prompt,     setPrompt]        = useState<{ title: string; placeholder: string | undefined; secret: boolean | undefined; onSubmit: (v: string) => void } | null>(null)
   const [tokens,     setTokens]        = useState<TokenBreakdown>({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 })
@@ -129,22 +162,18 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [activeAgent,      setActiveAgent]      = useState("omni")
   const [workdirState,     setWorkdirState]     = useState(workdir)
   const [queuedInput,      setQueuedInput]      = useState<string | undefined>(undefined)
-  const [expandedContent,  setExpandedContent]  = useState<{ content: string; toolName: string } | null>(null)
-  const [btwState,         setBtwState]         = useState<{ question: string; answer: string; loading: boolean; frame: number } | null>(null)
   const [branch,           setBranch]           = useState<string | undefined>(undefined)
   const [wasCompacted,     setWasCompacted]     = useState(false)
   const [contextTokens,    setContextTokens]    = useState(0)
   const [memoryCount,      setMemoryCount]      = useState(0)
-  const [viewingSubagentId, setViewingSubagentId] = useState<string | null>(null)
   const [bgTasks,           setBgTasks]          = useState<Array<{ id: string; prompt: string; startedAt: number; status: "running"|"done"|"error"; output?: string }>>([])
   const bgControllersRef = useRef<Map<string, AbortController>>(new Map())
 
-  // Floating Task Panel
-  const [taskPanelOpen, setTaskPanelOpen] = useState(false)
+  // Aktif subagent sayısı — agentPool.onChange ile reaktif güncellenir
+  const [activeAgentCount, setActiveAgentCount] = useState(() => agentPool.active.length)
 
   // Update notification
   const [updateInfo,        setUpdateInfo]        = useState<UpdateInfo | null>(null)
-  const [updateDismissed,   setUpdateDismissed]   = useState(false)
 
   // Draft save timestamp — triggers a brief "✓ saved" flash in StatusBar
   const [draftSavedAt, setDraftSavedAt] = useState<number | undefined>(undefined)
@@ -173,30 +202,69 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     if (e.button === "scroll-down") process.stdin.emit("data", "\x1b[B")
   }, mouseTrackingActive)
 
-  // Quick Search (Ctrl+F)
-  const [quickSearchOpen, setQuickSearchOpen] = useState(false)
-
-  // Command Palette (Ctrl+P)
-  const [cmdPaletteOpen,  setCmdPaletteOpen]  = useState(false)
   const [recentCmds,      setRecentCmds]      = useState<string[]>([])
-
-  // Message Edit (Ctrl+E)
-  const [editingMsg, setEditingMsg] = useState<{ id: string; content: string; msgIndex: number } | null>(null)
-
-  // Plan Approval
-  const [planRequest, setPlanRequest] = useState<PlanRequest | null>(null)
-
-  // Settings Panel
-  const [settingsOpen, setSettingsOpen] = useState(false)
-
-  // Design Wizard
-  const [designWizardOpen, setDesignWizardOpen] = useState(false)
+  const [designInitialBrief, setDesignInitialBrief] = useState<string | undefined>(undefined)
 
   // Herhangi bir tam-ekran overlay/modal açıkken true — useInput guard'ları bu flag'i kullanır.
-  // Yeni bir overlay state eklenirse buraya da eklenmeli.
-  const overlayOpen =
-    designWizardOpen || settingsOpen || cmdPaletteOpen || quickSearchOpen ||
-    !!planRequest || !!editingMsg || !!prompt || !!btwState || !!viewingSubagentId
+  // Merkezi hook'tan hesaplanır (useOverlayState).
+  const overlayOpen = overlay.computeOverlayOpen({ permission, picker, question, prompt })
+
+  type FocusLayer =
+    | "permission"
+    | "question"
+    | "picker"
+    | "prompt"
+    | "keyboardShortcuts"
+    | "subagent"
+    | "historySearch"
+    | "quickSearch"
+    | "commandPalette"
+    | "settings"
+    | "designWizard"
+    | "editing"
+    | "plan"
+    | "expanded"
+    | "btw"
+    | "taskPanel"
+    | "attach"
+    | "streaming"
+    | "ready"
+
+  const focusLayer: FocusLayer = useMemo(() => {
+    if (permission) return "permission"
+    if (question) return "question"
+    if (picker) return "picker"
+    if (prompt) return "prompt"
+    if (keyboardShortcutsOpen) return "keyboardShortcuts"
+    if (viewingSubagentId) return "subagent"
+    if (historySearchOpen) return "historySearch"
+    if (quickSearchOpen) return "quickSearch"
+    if (cmdPaletteOpen) return "commandPalette"
+    if (settingsOpen) return "settings"
+    if (designWizardOpen) return "designWizard"
+    if (editingMsg) return "editing"
+    if (planRequest) return "plan"
+    if (expandedContent) return "expanded"
+    if (btwState) return "btw"
+    if (taskPanelOpen) return "taskPanel"
+    if (attachInput) return "attach"
+    if (loading) return "streaming"
+    return "ready"
+  }, [
+    permission, question, picker, prompt, keyboardShortcutsOpen, viewingSubagentId,
+    historySearchOpen, quickSearchOpen, cmdPaletteOpen, settingsOpen, designWizardOpen,
+    editingMsg, planRequest, expandedContent, btwState, taskPanelOpen, attachInput, loading,
+  ])
+
+  const keybindingContext: KeybindingContext = useMemo(() => {
+    if (focusLayer === "permission") return "permission"
+    if (focusLayer === "question") return "question"
+    if (focusLayer === "picker" || focusLayer === "prompt") return "picker"
+    if (focusLayer === "taskPanel") return "task-panel"
+    if (focusLayer === "streaming") return "streaming"
+    if (focusLayer === "ready") return "ready"
+    return "modal"
+  }, [focusLayer])
 
   // Draft recovery
   const [draftRecovered, setDraftRecovered] = useState(false)
@@ -237,7 +305,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const lastTokenTimeRef = useRef(0)
 
   // "/" öneri filtresi
-  const cmdFilter = !picker && !permission && input.startsWith("/")
+  const cmdFilter = !overlayOpen && input.startsWith("/")
     ? input.slice(1)
     : null
 
@@ -249,6 +317,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     [messages]
   )
   const activeMsgs = useMemo(() => messages.filter(m => m.pending), [messages])
+  const taskSummary = useMemo(() => ({
+    pending:    tasks.filter(t => t.status === "pending").length,
+    inProgress: tasks.filter(t => t.status === "in_progress").length,
+    done:       tasks.filter(t => t.status === "done").length,
+    error:      tasks.filter(t => t.status === "error").length,
+  }), [tasks])
+  const sandboxBackend = useMemo(() => configuredSandboxBackend(), [])
+  const showStartupBanner = !viewingSubagentId
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -258,6 +334,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   }, [])
 
   useEffect(() => questionService.onQuestion((req) => setQuestion(req)), [])
+  useEffect(() => agentPool.onChange((agents) => setActiveAgentCount(agents.length)), [])
   useEffect(() => ExecutorEvents.on((e) => {
     if (e.type === "permission_ask") {
       // Autopilot modda izin isteklerini otomatik onayla
@@ -290,10 +367,19 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     return () => { if (draftTimerRef.current) clearInterval(draftTimerRef.current) }
   }, [])
 
+  // MCP log handler — MCP bağlantı mesajlarını TUI'ye system message olarak ekle
+  useEffect(() => {
+    setMCPLogHandler((message: string, isError: boolean) => {
+      addSystemMsg(isError ? `⚠ ${message}` : message)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Draft recovery on mount
   useEffect(() => {
     const draft = loadDraft()
-    if (draft && !draftRecovered) {
+    // Sadece input boşsa draft'i geri yükle — kullanıcı zaten yazmaya başlamışsa üzerine yazma
+    if (draft && !draftRecovered && !inputRef.current.trim()) {
       setDraftRecovered(true)
       setInput(draft)
       addSystemMsg(`Draft recovered from last session. Press Enter to send or Esc to discard.`)
@@ -325,10 +411,20 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     }).catch(() => {})
   }, [initialProvider, workdir])
 
-  // Bracketed paste
+  // Bracketed paste — sadece terminal destekliyorsa etkinleştir
   useEffect(() => {
+    const caps = getTerminalCaps()
+    if (!caps.bracketedPaste) return
     process.stdout.write("\x1b[?2004h")
-    return () => { process.stdout.write("\x1b[?2004l") }
+    const cleanup = () => { process.stdout.write("\x1b[?2004l") }
+    const onExit = () => cleanup()
+    process.on("exit", onExit)
+    process.on("SIGTERM", onExit)
+    return () => {
+      cleanup()
+      process.off("exit", onExit)
+      process.off("SIGTERM", onExit)
+    }
   }, [])
 
   // Dependency Sentinel
@@ -352,6 +448,97 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   // 8 ayrı useInput → 1 listener: Ink'in EventEmitter MaxListeners sorununu engeller
   const ctrlCCountRef = useRef(0)
   const ctrlCTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const closeFocusedLayer = useCallback((): boolean => {
+    switch (focusLayer) {
+      case "permission":
+      case "question":
+      case "picker":
+      case "prompt":
+      case "streaming":
+        return true
+      case "keyboardShortcuts":
+        setKeyboardShortcutsOpen(false)
+        return true
+      case "subagent":
+        setViewingSubagentId(null)
+        return true
+      case "historySearch":
+        setHistorySearchOpen(false)
+        return true
+      case "quickSearch":
+        setQuickSearchOpen(false)
+        return true
+      case "commandPalette":
+        setCmdPaletteOpen(false)
+        return true
+      case "settings":
+        setSettingsOpen(false)
+        return true
+      case "designWizard":
+        setDesignWizardOpen(false)
+        return true
+      case "editing":
+        setEditingMsg(null)
+        return true
+      case "plan":
+        if (planRequest) PlanGate.respond(planRequest.id, { type: "rejected" })
+        setPlanRequest(null)
+        return true
+      case "expanded":
+        setExpandedContent(null)
+        return true
+      case "btw":
+        setBtwState(null)
+        if (btwFrameRef.current) {
+          clearInterval(btwFrameRef.current)
+          btwFrameRef.current = null
+        }
+        return true
+      case "taskPanel":
+        setTaskPanelOpen(false)
+        return true
+      case "attach":
+        setAttachInput(false)
+        setAttachPath("")
+        return true
+      case "ready":
+        return false
+    }
+  }, [
+    focusLayer, planRequest,
+    setKeyboardShortcutsOpen, setViewingSubagentId, setHistorySearchOpen,
+    setQuickSearchOpen, setCmdPaletteOpen, setSettingsOpen, setDesignWizardOpen,
+    setEditingMsg, setPlanRequest, setExpandedContent, setBtwState,
+    setTaskPanelOpen, setAttachInput, setAttachPath,
+  ])
+
+  const togglePrimaryOverlay = useCallback((
+    target: "quickSearch" | "commandPalette" | "historySearch" | "settings" | "taskPanel" | "attach",
+  ) => {
+    const wasOpen =
+      (target === "quickSearch" && quickSearchOpen) ||
+      (target === "commandPalette" && cmdPaletteOpen) ||
+      (target === "historySearch" && historySearchOpen) ||
+      (target === "settings" && settingsOpen) ||
+      (target === "taskPanel" && taskPanelOpen) ||
+      (target === "attach" && attachInput)
+
+    overlay.closePrimaryOverlays()
+    if (wasOpen) return
+
+    if (target === "quickSearch") setQuickSearchOpen(true)
+    if (target === "commandPalette") setCmdPaletteOpen(true)
+    if (target === "historySearch") setHistorySearchOpen(true)
+    if (target === "settings") setSettingsOpen(true)
+    if (target === "taskPanel") setTaskPanelOpen(true)
+    if (target === "attach") setAttachInput(true)
+  }, [
+    quickSearchOpen, cmdPaletteOpen, historySearchOpen, settingsOpen, taskPanelOpen, attachInput,
+    overlay.closePrimaryOverlays,
+    setQuickSearchOpen, setCmdPaletteOpen, setHistorySearchOpen, setSettingsOpen,
+    setTaskPanelOpen, setAttachInput,
+  ])
 
   useInput((input, key) => {
     // ── Ctrl+C: abort / exit ──────────────────────────────────────────────
@@ -377,21 +564,61 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       return
     }
 
+    // ── ESC: aktif focus katmanını kapat ─────────────────────────────────
+    if (key.escape) {
+      if (closeFocusedLayer()) return
+      if (updateInfo && !updateDismissed) { setUpdateDismissed(true); return }
+      if (input?.startsWith("/")) { setInput(""); return }
+      if (!loading) exit()
+      return
+    }
+
+    // Attach panel gerçek input focus'u gibi davranır.
+    if (focusLayer === "attach") {
+      if (key.return) { void handleAttachSubmit(attachPath); return }
+      if (key.backspace || key.delete) { setAttachPath(p => p.slice(0, -1)); return }
+      if (input && !key.ctrl && !key.meta) { setAttachPath(p => p + input); return }
+      return
+    }
+
+    // Subagent görünümünde global kısayol yerine sadece sibling navigasyonu.
+    if (focusLayer === "subagent" && (key.leftArrow || key.rightArrow)) {
+      const subSessions = SessionManager.list()
+        .filter((s) => s.parentId === mainSessionId.current)
+        .sort((a, b) => a.createdAt - b.createdAt)
+      if (!subSessions.length) return
+      const idx  = subSessions.findIndex((s) => s.id === viewingSubagentId)
+      const next = key.leftArrow
+        ? subSessions[(idx - 1 + subSessions.length) % subSessions.length]!
+        : subSessions[(idx + 1) % subSessions.length]!
+      setViewingSubagentId(next.id)
+      return
+    }
+
+    // Modal/prompt açıkken arkadaki global kısayollar çalışmaz.
+    if (focusLayer !== "ready") return
+
     // ── Ctrl+T: task panel ────────────────────────────────────────────────
     if (key.ctrl && input === "t") {
-      if (tasks.length > 0) setTaskPanelOpen(v => !v)
+      if (tasks.length > 0) togglePrimaryOverlay("taskPanel")
       return
     }
 
     // ── Ctrl+F: quick search ──────────────────────────────────────────────
     if (key.ctrl && input === "f") {
-      if (!loading) { setQuickSearchOpen(v => !v); setTaskPanelOpen(false); setCmdPaletteOpen(false) }
+      togglePrimaryOverlay("quickSearch")
+      return
+    }
+
+    // ── Ctrl+R: history search ──────────────────────────────────────────
+    if (key.ctrl && input === "r") {
+      if (commandHistory.length > 0) togglePrimaryOverlay("historySearch")
       return
     }
 
     // ── Ctrl+P: command palette ───────────────────────────────────────────
     if (key.ctrl && input === "p") {
-      if (!loading) { setCmdPaletteOpen(v => !v); setQuickSearchOpen(false); setTaskPanelOpen(false) }
+      togglePrimaryOverlay("commandPalette")
       return
     }
 
@@ -420,7 +647,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
     // ── Ctrl+S: settings ─────────────────────────────────────────────────
     if (key.ctrl && input === "s") {
-      if (!loading) { setSettingsOpen(v => !v); setQuickSearchOpen(false); setCmdPaletteOpen(false) }
+      togglePrimaryOverlay("settings")
       return
     }
 
@@ -433,13 +660,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         .filter(({ m }) => m.role === "user" && !m.pending)
       if (userMsgs.length === 0) return
       const last = userMsgs[userMsgs.length - 1]!
+      overlay.closePrimaryOverlays()
       setEditingMsg({ id: last.m.id ?? "", content: last.m.content, msgIndex: last.i })
       return
     }
 
     // ── Ctrl+A: attachment ────────────────────────────────────────────────
     if (key.ctrl && input === "a") {
-      if (!loading && !permission && !question && !picker) setAttachInput(true)
+      togglePrimaryOverlay("attach")
       return
     }
 
@@ -447,7 +675,10 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     if (key.ctrl && input === "o") {
       if (!expandedContent && !btwState) {
         const latest = latestToolCallRef.current
-        if (latest) setExpandedContent({ content: latest.content, toolName: latest.tool })
+        if (latest) {
+          overlay.closePrimaryOverlays()
+          setExpandedContent({ content: latest.content, toolName: latest.tool })
+        }
       }
       return
     }
@@ -459,6 +690,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         .filter((s) => s.parentId === mainSessionId.current)
         .sort((a, b) => a.createdAt - b.createdAt)
       if (!subSessions.length) return
+      overlay.closePrimaryOverlays()
       if (!viewingSubagentId) {
         setViewingSubagentId(subSessions[0]!.id)
       } else {
@@ -466,20 +698,6 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         const next = subSessions[(idx + 1) % subSessions.length]!
         setViewingSubagentId(next.id)
       }
-      return
-    }
-
-    // ── Subagent ←/→ navigation ───────────────────────────────────────────
-    if (viewingSubagentId && (key.leftArrow || key.rightArrow)) {
-      const subSessions = SessionManager.list()
-        .filter((s) => s.parentId === mainSessionId.current)
-        .sort((a, b) => a.createdAt - b.createdAt)
-      if (!subSessions.length) return
-      const idx  = subSessions.findIndex((s) => s.id === viewingSubagentId)
-      const next = key.leftArrow
-        ? subSessions[(idx - 1 + subSessions.length) % subSessions.length]!
-        : subSessions[(idx + 1) % subSessions.length]!
-      setViewingSubagentId(next.id)
       return
     }
 
@@ -498,29 +716,11 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       return
     }
 
-    // ── ESC: katmanlı kapat ───────────────────────────────────────────────
-    if (key.escape) {
-      if (viewingSubagentId)  { setViewingSubagentId(null); return }
-      if (quickSearchOpen)    { setQuickSearchOpen(false); return }
-      if (cmdPaletteOpen)     { setCmdPaletteOpen(false); return }
-      if (settingsOpen)       { setSettingsOpen(false); return }
-      if (designWizardOpen)   { setDesignWizardOpen(false); return }
-      if (editingMsg)         { setEditingMsg(null); return }
-      if (planRequest)        { PlanGate.respond(planRequest.id, { type: "rejected" }); setPlanRequest(null); return }
-      if (expandedContent)    { setExpandedContent(null); return }
-      if (btwState)           { setBtwState(null); if (btwFrameRef.current) { clearInterval(btwFrameRef.current); btwFrameRef.current = null }; return }
-      if (taskPanelOpen)      { setTaskPanelOpen(false); return }
-      if (updateInfo && !updateDismissed) { setUpdateDismissed(true); return }
-      if (permission || picker || question) return
-      if (attachInput)        { setAttachInput(false); setAttachPath(""); return }
-      if (input?.startsWith("/")) { setInput(""); return }
-      if (!loading) exit()
+    // ── ?: keyboard shortcuts ─────────────────────────────────────────────
+    if (input === "?" && !loading && !overlayOpen) {
+      setKeyboardShortcutsOpen(true)
+      return
     }
-
-    // ESC işlendikten sonra: overlay açıkken tüm diğer kısayolları blokla.
-    // Ctrl+C (abort/exit) her zaman çalışır — bu guard'dan önce handle edildi.
-    // ESC her zaman çalışır — bu guard'dan önce handle edildi.
-    if (overlayOpen) return
   })
 
   // ── Setters ───────────────────────────────────────────────────────────────
@@ -541,8 +741,15 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   }
 
   // ── Permission ────────────────────────────────────────────────────────────
-  const handlePermission = useCallback((decision: "allow" | "allow_once" | "deny" | "deny_abort") => {
+  const handlePermission = useCallback((decision: "allow" | "allow_once" | "deny" | "deny_abort" | "edit") => {
     if (!permission) return
+    if (decision === "edit") {
+      PermissionGate.respond(permission.id, "deny")
+      setInput(permission.pattern)
+      setPermission(null)
+      addSystemMsg("Command moved to input for editing.")
+      return
+    }
     if (decision === "deny_abort") {
       PermissionGate.respond(permission.id, "deny")
       setPermission(null)
@@ -733,7 +940,10 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       setHistory(cp.history)
       setCheckpoints((prev) => prev.slice(0, idx + 1))
     },
-    openDesign: () => setDesignWizardOpen(true),
+    openDesign: (brief?: string) => {
+      setDesignInitialBrief(brief?.trim() || undefined)
+      setDesignWizardOpen(true)
+    },
   }), [provider, model, workdir, skillNames, setProvider, setModel, messages, history, tokens, checkpoints, branches, activeBranchIdx, watchedPaths])
 
   // ── Command executor ──────────────────────────────────────────────────────
@@ -1092,7 +1302,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   // kalmalı; aksi halde tuşlar (özellikle Enter ve yazılan metin) hem modal'a
   return (
     <ThemeContext.Provider value={activeTheme}>
-    <KeybindingsProvider initialContext={loading ? "streaming" : "ready"}>
+    <KeybindingsProvider initialContext={keybindingContext}>
     <Box flexDirection="row" width="100%">
 
       {/* ── Sol: ana içerik ─────────────────────────────────────────────── */}
@@ -1112,8 +1322,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         )}
 
         {/* Startup banner */}
-        {!viewingSubagentId && messages.length === 0 && (
-          <StartupBanner version={`v${CURRENT_VERSION}`} provider={provider} model={model} workdir={workdir} />
+        {showStartupBanner && (
+          <StartupBanner version={`v${CURRENT_VERSION}`} provider={provider} model={model} workdir={workdir} cols={termCols} />
         )}
 
         {/* Update notification */}
@@ -1196,6 +1406,21 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         <AgentStatus />
 
         {/* Overlay'ler */}
+        {keyboardShortcutsOpen && (
+          <KeyboardShortcuts onClose={() => setKeyboardShortcutsOpen(false)} />
+        )}
+
+        {historySearchOpen && (
+          <HistorySearch
+            history={commandHistory}
+            onClose={() => setHistorySearchOpen(false)}
+            onSelect={(text) => {
+              setHistorySearchOpen(false)
+              setInput(text)
+            }}
+          />
+        )}
+
         {quickSearchOpen && (
           <QuickSearch
             onClose={() => setQuickSearchOpen(false)}
@@ -1214,10 +1439,16 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             commands={allCommands()}
             recentCommands={recentCmds}
             onClose={() => setCmdPaletteOpen(false)}
-            onSelect={(cmd, args) => {
+            onSelect={(cmd, args, action) => {
               setCmdPaletteOpen(false)
               setRecentCmds(prev => [cmd.name, ...prev.filter(n => n !== cmd.name)].slice(0, 10))
-              setInput(`/${cmd.name}${args ? ` ${args}` : ""}`)
+              const raw = `/${cmd.name}${args ? ` ${args}` : ""}`
+              if (action === "run") {
+                setInput("")
+                executeCommand(raw)
+              } else {
+                setInput(raw)
+              }
             }}
           />
         )}
@@ -1236,9 +1467,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         {designWizardOpen && (
           <DesignWizard
             workdir={workdirState}
-            onClose={() => setDesignWizardOpen(false)}
+            initialBrief={designInitialBrief}
+            onClose={() => {
+              setDesignWizardOpen(false)
+              setDesignInitialBrief(undefined)
+            }}
             onLaunch={(result: DesignWizardResult) => {
               setDesignWizardOpen(false)
+              setDesignInitialBrief(undefined)
               recordSystemUsed(result.systemId)
               recordSkillUsed(result.skillId)
               const slug   = slugify(result.brief)
@@ -1379,10 +1615,15 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           agentColor={getSessionAgent(activeAgent, workdirState).color}
           bgTaskCount={bgTasks.filter(t => t.status === "running").length || undefined}
           taskCount={tasks.length || undefined}
+          taskSummary={tasks.length > 0 ? taskSummary : undefined}
           taskPanelOpen={taskPanelOpen}
+          localServer={localServer}
+          sandboxBackend={sandboxBackend}
           effort={effort}
           autopilotMode={autopilotMode}
           cols={termCols}
+          activeAgentCount={activeAgentCount > 0 ? activeAgentCount : undefined}
+          hasBtwNote={btwState !== null}
           {...(draftSavedAt !== undefined ? { draftSavedAt } : {})}
           {...(branch !== undefined ? { branch } : {})}
           {...(() => {

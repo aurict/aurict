@@ -33,3 +33,16 @@ jobs:
 
       - name: Run cli tests
         run: bun test packages/cli/test/ --timeout 30000
+
+      - name: Build platform binaries
+        run: bun run scripts/build-all.ts
+
+      - name: Smoke test packaged linux binary
+        run: ./dist/aurict-linux-x64 --version
+
+      - name: Dry-run npm wrapper packages
+        run: |
+          cd packages/cli
+          npm pack --dry-run
+          cd ../aurict
+          npm pack --dry-run

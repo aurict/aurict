@@ -11,6 +11,31 @@ interface ServerEntry {
   error?:     string
 }
 
+// MCP log queue — TUI hazır olana kadar logları tutar
+let logQueue: Array<{ message: string; isError: boolean }> = []
+let logHandler: ((message: string, isError: boolean) => void) | null = null
+
+/**
+ * MCP loglarını yakalamak için handler register et
+ * Handler set edilene kadar loglar queue'da tutulur
+ */
+export function setMCPLogHandler(handler: (message: string, isError: boolean) => void): void {
+  logHandler = handler
+  // Queue'daki logları flush et
+  for (const log of logQueue) {
+    handler(log.message, log.isError)
+  }
+  logQueue = []
+}
+
+function emitMCPLog(message: string, isError = false): void {
+  if (logHandler) {
+    logHandler(message, isError)
+  } else {
+    logQueue.push({ message, isError })
+  }
+}
+
 class MCPManager {
   private servers = new Map<string, ServerEntry>()
 
@@ -33,18 +58,25 @@ class MCPManager {
       this.servers.set(name, { client, toolIds, status: "connected" })
 
       await hooks.emit("v1.mcp.connected", { serverName: name, tools: toolIds })
-      console.error(`[mcp] ${name}: ${toolIds.length} tool(s) connected`)
+      emitMCPLog(`[mcp] ${name}: ${toolIds.length} tool(s) connected`)
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err)
       this.servers.set(name, { client, toolIds: [], status: "error", error })
-      console.error(`[mcp] ${name}: connection error — ${error}`)
+      emitMCPLog(`[mcp] ${name}: connection error — ${error}`, true)
     }
   }
 
   async disconnect(name: string): Promise<void> {
     const entry = this.servers.get(name)
     if (!entry) return
-    await entry.client.disconnect()
+
+    // Timeout ile disconnect — 1 saniye içinde bitmezse force close
+    const disconnectPromise = entry.client.disconnect()
+    const timeoutPromise = new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), 1000)
+    })
+
+    await Promise.race([disconnectPromise, timeoutPromise])
     this.servers.delete(name)
     await hooks.emit("v1.mcp.disconnected", { serverName: name })
   }
@@ -92,6 +124,3 @@ class MCPManager {
 }
 
 export const mcpManager = new MCPManager()
-
-// Uygulama kapanırken bağlantıları temizle (SIGINT → packages/cli/src/index.ts'te merkezi yönetiliyor)
-process.on("exit", () => { mcpManager.disconnectAll().catch(() => {}) })

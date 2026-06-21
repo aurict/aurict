@@ -132,6 +132,28 @@ const commands: CommandDef[] = [
         )
       }
 
+      const promptForNewKey = (providerId: string, providerName: string) => {
+        const KEY_LABELS: Record<string, string> = {
+          anthropic:  "Anthropic API Key (sk-ant-...)",
+          openai:     "OpenAI API Key (sk-...)",
+          openrouter: "OpenRouter API Key (sk-or-...)",
+          google:     "Google AI API Key",
+          opencode:   "OpenCode API Key",
+          xai:        "xAI API Key (xai-...)",
+          azure:      "Azure OpenAI API Key  (set AZURE_OPENAI_ENDPOINT separately)",
+          bedrock:    "AWS Access Key ID  (set AWS_SECRET_ACCESS_KEY + AWS_REGION separately)",
+        }
+        ctx.showPrompt(
+          KEY_LABELS[providerId] ?? `${providerName} API Key`,
+          "Paste your API key here",
+          true,
+          (key) => {
+            setApiKey(providerId, key)
+            switchToProvider(providerId)
+          },
+        )
+      }
+
       return {
         type:  "picker",
         title: "Select Provider",
@@ -140,44 +162,42 @@ const commands: CommandDef[] = [
           const provider = all.find((p) => p.id === item.id)!
 
           // Ollama key gerektirmiyor — direkt geç
-          if (item.id === "ollama" || provider.hasKey) {
+          if (item.id === "ollama") {
             switchToProvider(item.id)
             return
           }
 
-          // Key yok — önce key iste
-          const KEY_LABELS: Record<string, string> = {
-            anthropic:  "Anthropic API Key (sk-ant-...)",
-            openai:     "OpenAI API Key (sk-...)",
-            openrouter: "OpenRouter API Key (sk-or-...)",
-            google:     "Google AI API Key",
-            opencode:   "OpenCode API Key",
-            xai:        "xAI API Key (xai-...)",
-            azure:      "Azure OpenAI API Key  (set AZURE_OPENAI_ENDPOINT separately)",
-            bedrock:    "AWS Access Key ID  (set AWS_SECRET_ACCESS_KEY + AWS_REGION separately)",
-          }
-
-          ctx.showPicker(
-            `${provider.name} — No API key configured`,
-            [
-              { id: "enter", label: "Enter API key now",   hint: "Save to ~/.aurict/config.json" },
-              { id: "skip",  label: "Skip (set env var manually)", hint: `export ${item.id.toUpperCase()}_API_KEY=...` },
-            ],
-            (choice) => {
-              if (choice.id === "skip") return
-              // "prompt" result'ı doğrudan ctx üzerinden açamayız — showPrompt gerekiyor
-              // Geçici çözüm: /config set komutu bilgisini system mesajı olarak ver
-              ctx.showPrompt(
-                KEY_LABELS[item.id] ?? `${provider.name} API Key`,
-                "Paste your API key here",
-                true,
-                (key) => {
-                  setApiKey(item.id, key)
+          // Key var mı?
+          if (provider.hasKey) {
+            // Key var — mevcut key'i kullan veya sıfırla
+            ctx.showPicker(
+              `${provider.name} — API key already configured`,
+              [
+                { id: "use",   label: "Use existing key",   hint: "Continue with current key" },
+                { id: "reset", label: "Reset API key",      hint: "Enter a new API key" },
+              ],
+              (choice) => {
+                if (choice.id === "use") {
                   switchToProvider(item.id)
-                },
-              )
-            },
-          )
+                } else {
+                  promptForNewKey(item.id, provider.name)
+                }
+              },
+            )
+          } else {
+            // Key yok — önce key iste
+            ctx.showPicker(
+              `${provider.name} — No API key configured`,
+              [
+                { id: "enter", label: "Enter API key now",   hint: "Save to ~/.aurict/config.json" },
+                { id: "skip",  label: "Skip (set env var manually)", hint: `export ${item.id.toUpperCase()}_API_KEY=...` },
+              ],
+              (choice) => {
+                if (choice.id === "skip") return
+                promptForNewKey(item.id, provider.name)
+              },
+            )
+          }
         },
       }
     },
@@ -1482,8 +1502,10 @@ const commands: CommandDef[] = [
     name:        "design",
     aliases:     ["d", "ui"],
     description: "Open design wizard — pick a brief, skill, and design system",
-    handler: (_args, ctx): CommandResult => {
-      ctx.openDesign()
+    usage:       "/design [brief]",
+    handler: (args, ctx): CommandResult => {
+      const brief = args.join(" ").trim()
+      ctx.openDesign(brief || undefined)
       return { type: "text", content: "" }
     },
   },
@@ -1661,7 +1683,9 @@ for (const cmd of commands) {
 
 export function parseSlashCommand(input: string): { cmd: string; args: string[] } | null {
   if (!input.startsWith("/")) return null
-  const parts = input.slice(1).trim().split(/\s+/)
+  const body = input.slice(1).trim()
+  if (!body) return null
+  const parts = body.split(/\s+/)
   const cmd   = parts[0]?.toLowerCase() ?? ""
   const args  = parts.slice(1)
   return { cmd, args }

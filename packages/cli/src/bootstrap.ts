@@ -6,7 +6,41 @@ import type { AurictConfig } from "./config/types.js"
 
 const DEFAULT_PORT = 7777
 
-export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvider: string; serverToken: string }> {
+function isPortInUseError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false
+  const code = (err as { code?: unknown }).code
+  return code === "EADDRINUSE"
+}
+
+export interface LocalServerStatus {
+  enabled: boolean
+  port?: number
+  started: boolean
+  reused: boolean
+}
+
+type ServerStarter = (port: number) => void
+
+const defaultServerStarter: ServerStarter = (port) => {
+  const app = createApp()
+  Bun.serve({ port, hostname: "127.0.0.1", fetch: app.fetch })
+}
+
+export function startLocalServer(port: number, starter: ServerStarter = defaultServerStarter): boolean {
+  try {
+    starter(port)
+    console.error(`[aurict] Server: http://127.0.0.1:${port}`)
+    return true
+  } catch (err) {
+    if (isPortInUseError(err)) {
+      console.error(`[aurict] Server: port ${port} is already in use; continuing without local API server`)
+      return false
+    }
+    throw err
+  }
+}
+
+export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvider: string; serverToken: string; localServer: LocalServerStatus }> {
   const available      = ProviderRegistry.available()
   const defaultProvider = cfg.provider ?? ProviderRegistry.detectDefault()
 
@@ -24,11 +58,19 @@ export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvid
   const serverToken = getOrCreateToken()
   setActiveToken(serverToken)
 
+  const localServer: LocalServerStatus = {
+    enabled: cfg.server?.disabled !== true,
+    ...(cfg.server?.port !== undefined ? { port: cfg.server.port } : {}),
+    started: false,
+    reused: false,
+  }
+
   if (cfg.server?.disabled !== true) {
     const port = cfg.server?.port ?? DEFAULT_PORT
-    const app  = createApp()
-    Bun.serve({ port, hostname: "127.0.0.1", fetch: app.fetch })
-    console.error(`[aurict] Server: http://127.0.0.1:${port}`)
+    const started = startLocalServer(port)
+    localServer.port = port
+    localServer.started = started
+    localServer.reused = !started
   }
 
   // Load user-defined hooks from ~/.aurict/hooks.json + .aurict/hooks.json
@@ -46,7 +88,7 @@ export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvid
   // Custom tool'ları yükle: ~/.aurict/tools/ + .aurict/tools/
   loadCustomTools(process.cwd()).catch(() => {})
 
-  return { defaultProvider, serverToken }
+  return { defaultProvider, serverToken, localServer }
 }
 
 function envVar(id: string): string {

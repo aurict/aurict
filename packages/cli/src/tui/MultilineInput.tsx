@@ -13,6 +13,8 @@ interface Props {
   disabled:           boolean
   history:            string[]
   onPasteTruncated?:  (originalLen: number, truncatedLen: number) => void
+  onPasteStart?:      () => void
+  onPasteEnd?:        () => void
 }
 
 function splitLines(v: string): string[] {
@@ -35,20 +37,29 @@ function wordRight(line: string, col: number): number {
   return i
 }
 
-// Paste metni için: ANSI strip + \r normalizasyon + boyut sınırı
+// Paste metni için: ANSI strip + \r normalizasyon + boyut sınırı + bracketed paste cleanup
 function sanitizePaste(raw: string): string {
   return stripVTControlCharacters(raw)
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
+    .replace(/\x1b\[200~/g, "")  // Bracketed paste start
+    .replace(/\x1b\[201~/g, "")  // Bracketed paste end
+    .replace(/\[200~/g, "")      // ESC'siz variant
+    .replace(/\[201~/g, "")      // ESC'siz variant
     .slice(0, MAX_PASTE_CHARS)
 }
 
-// Normal input için: VT kaçış kodlarını sil, \r → \n dönüştür
+// Normal input için: VT kaçış kodlarını sil, \r → \n dönüştür, bracketed paste cleanup
 function sanitizeInput(raw: string): string {
-  return stripVTControlCharacters(raw).replace(/\r/g, "\n")
+  return stripVTControlCharacters(raw)
+    .replace(/\r/g, "\n")
+    .replace(/\x1b\[200~/g, "")
+    .replace(/\x1b\[201~/g, "")
+    .replace(/\[200~/g, "")
+    .replace(/\[201~/g, "")
 }
 
-export function MultilineInput({ value, onChange, onSubmit, disabled, history, onPasteTruncated }: Props) {
+export function MultilineInput({ value, onChange, onSubmit, disabled, history, onPasteTruncated, onPasteStart, onPasteEnd }: Props) {
   const theme = useTheme()
 
   const [lines, setLines]   = useState<string[]>(() => splitLines(value))
@@ -57,6 +68,12 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
   const draftRef            = useRef<string[]>([""])
   const isPastingRef        = useRef(false)
   const pasteBufferRef      = useRef("")
+  const linesRef            = useRef(lines)
+  const cursorRef           = useRef(cursor)
+  
+  // Keep refs in sync with state
+  useEffect(() => { linesRef.current = lines }, [lines])
+  useEffect(() => { cursorRef.current = cursor }, [cursor])
 
   // lines → value
   useEffect(() => {
@@ -131,22 +148,12 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
       return
     }
 
-    // ── Bracketed paste: \x1b[200~ başlangıç, \x1b[201~ bitiş ───────────
-    // Ink bazen \x1b'yi soyuyor → hem tam sequence hem de \x1b'siz variant'ı yakala
-    if (input === "\x1b[200~" || input === "[200~") {
-      isPastingRef.current   = true
-      pasteBufferRef.current = ""
-      return
-    }
-    if (input === "\x1b[201~" || input === "[201~") {
-      isPastingRef.current = false
-      const raw = pasteBufferRef.current
-      pasteBufferRef.current = ""
-      applyPaste(raw)
-      return
-    }
-    if (isPastingRef.current) {
-      pasteBufferRef.current += input
+    // ── Bracketed paste sequence fragment'lerini ignore et ─────────────
+    // Sanitize fonksiyonları bu karakterleri temizler, burada sadece ignore et
+    if (
+      input.includes("[200~") || input.includes("[201~") ||
+      input === "\x1b" || input === "\x1b["
+    ) {
       return
     }
 
@@ -349,34 +356,26 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
       const clean = sanitizeInput(input)
       if (!clean) return
 
+      // SSH coalesced Enter: "text\r" formatında gelir — son \r Enter anlamına gelir
+      // Örn: yavaş SSH'da "o" + Enter → "o\r" olarak birleşik gelir
+      if (clean.length > 1 && clean.endsWith("\n") && !clean.slice(0, -1).includes("\n")) {
+        const textPart = clean.slice(0, -1)
+        const currentLines = [...linesRef.current]
+        const line = currentLines[cursor.row] ?? ""
+        currentLines[cursor.row] = line.slice(0, cursor.col) + textPart + line.slice(cursor.col)
+        const text = currentLines.join("\n").trim()
+        if (text) {
+          setLines([""])
+          setCursor({ row: 0, col: 0 })
+          onSubmit(text)
+        }
+        return
+      }
+
       // Non-bracketed paste: \n veya \r içeriyorsa paste olarak işle
       // (bracketed paste desteklemeyen terminal/SSH için)
       if (clean.includes("\n")) {
         applyPaste(clean)
-        return
-      }
-
-      // SSH coalesced Enter: "text\r" formatında gelir — son \r Enter anlamına gelir
-      // Örn: yavaş SSH'da "o" + Enter → "o\r" olarak birleşik gelir
-      if (clean.length > 1 && clean.endsWith("\n")) {
-        const textPart = clean.slice(0, -1)
-        setLines(prev => {
-          const next = [...prev]
-          const line = next[cursor.row] ?? ""
-          next[cursor.row] = line.slice(0, cursor.col) + textPart + line.slice(cursor.col)
-          return next
-        })
-        const newCol = cursor.col + textPart.length
-        setCursor(c => ({ ...c, col: newCol }))
-        // Submit tetikle
-        setTimeout(() => {
-          const text = lines.join("\n").trim()
-          if (text) {
-            setLines([""])
-            setCursor({ row: 0, col: 0 })
-            onSubmit(text + textPart)
-          }
-        }, 0)
         return
       }
 
@@ -394,8 +393,20 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
   return (
     <Box flexDirection="column" flexGrow={1} flexShrink={1}>
       {lines.map((line, i) => {
+        // Çok satırlı input'ta satır numarası göster
+        const showLineNum = lines.length > 1
+        const lineNumWidth = String(lines.length).length
+        const lineNum = showLineNum ? String(i + 1).padStart(lineNumWidth, " ") : ""
+
         if (i !== cursor.row || disabled) {
-          return <Text key={i} wrap="wrap">{line || " "}</Text>
+          return (
+            <Box key={i} flexDirection="row">
+              {showLineNum && (
+                <Text color={theme.textDim} dimColor>{lineNum} │ </Text>
+              )}
+              <Text wrap="wrap">{line || " "}</Text>
+            </Box>
+          )
         }
         // İmleç satırı
         const safeCol = Math.min(cursor.col, line.length)
@@ -403,11 +414,16 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
         const at      = line[safeCol] ?? " "
         const after   = line.slice(safeCol + 1)
         return (
-          <Text key={i} wrap="wrap">
-            {before}
-            <Text backgroundColor={theme.accent} color="black">{at}</Text>
-            {after}
-          </Text>
+          <Box key={i} flexDirection="row">
+            {showLineNum && (
+              <Text color={theme.accent} dimColor>{lineNum} │ </Text>
+            )}
+            <Text wrap="wrap">
+              {before}
+              <Text backgroundColor={theme.accent} color="black">{at}</Text>
+              {after}
+            </Text>
+          </Box>
         )
       })}
     </Box>

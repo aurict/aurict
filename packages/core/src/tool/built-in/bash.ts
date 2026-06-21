@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { ptyManager } from "../../pty/manager.js"
 import { classifyCommand } from "../../terminal/classifier.js"
-import { shouldUseSandbox, startSandboxedProcess } from "../../terminal/sandbox.js"
+import { chooseSandboxBackend, startDockerSandboxedProcess, startPolicySandboxedProcess } from "../../terminal/sandbox.js"
 import { getShell } from "../../util/shell.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
@@ -55,13 +55,15 @@ Actions:
     if (!command) return { output: "", error: "command is required for this action" }
 
     const analysis = classifyCommand(command)
-    const sandboxed = shouldUseSandbox(command, analysis)
+    const sandbox = chooseSandboxBackend(command, analysis)
     const sh = getShell()
 
     let session
     try {
-      if (sandboxed) {
-        session = await startSandboxedProcess(sh.executable, [sh.flag, command], ctx.workdir, {})
+      if (sandbox.backend === "docker") {
+        session = await startDockerSandboxedProcess(sh.executable, [sh.flag, command], ctx.workdir, {})
+      } else if (sandbox.backend === "policy") {
+        session = await startPolicySandboxedProcess(sh.executable, [sh.flag, command], ctx.workdir, {})
       } else {
         session = await ptyManager.create(sh.executable, [sh.flag, command], ctx.workdir, {})
       }
@@ -70,7 +72,12 @@ Actions:
     }
 
     if (action === "background") {
-      return { output: `Started background process ${sandboxed ? "(IN ISOLATED SANDBOX)" : ""}.\nSession ID: ${session.id}\nUse bash(action='output', sessionId='${session.id}') to read output.` }
+      const sandboxLabel = sandbox.backend === "docker"
+        ? " (IN DOCKER SANDBOX)"
+        : sandbox.backend === "policy"
+          ? " (POLICY SANDBOX)"
+          : ""
+      return { output: `Started background process${sandboxLabel}.\nSession ID: ${session.id}\nUse bash(action='output', sessionId='${session.id}') to read output.` }
     }
 
     // action === "run"

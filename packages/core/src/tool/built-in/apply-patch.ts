@@ -23,6 +23,15 @@ interface FileUpdate {
   bom:     boolean
 }
 
+interface StagedFile {
+  relPath: string
+  absPath: string
+  beforeExists: boolean
+  beforeContent: string
+  afterExists: boolean
+  afterContent: string
+}
+
 // ─── Parser ────────────────────────────────────────────────────────────────
 
 function stripHeredoc(input: string): string {
@@ -217,6 +226,108 @@ function deriveUpdate(filePath: string, chunks: UpdateChunk[], original: string)
   return { content: next.text, bom: src.bom || next.bom }
 }
 
+async function readExistingFile(absPath: string): Promise<{ exists: boolean; content: string }> {
+  try {
+    return { exists: true, content: await readFile(absPath, "utf8") }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return { exists: false, content: "" }
+    }
+    throw err
+  }
+}
+
+async function stagePatch(workdir: string, hunks: Hunk[]): Promise<{ staged: StagedFile[]; applied: string[] }> {
+  const staged = new Map<string, StagedFile>()
+  const applied: string[] = []
+  const root = path.resolve(workdir)
+
+  const resolveInsideWorkdir = (relPath: string): string => {
+    const absPath = path.resolve(root, relPath)
+    const relative = path.relative(root, absPath)
+    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new Error(`Patch path escapes working directory: ${relPath}`)
+    }
+    return absPath
+  }
+
+  const getStaged = async (relPath: string): Promise<StagedFile> => {
+    const absPath = resolveInsideWorkdir(relPath)
+    const existing = staged.get(absPath)
+    if (existing) return existing
+
+    const current = await readExistingFile(absPath)
+    const file: StagedFile = {
+      relPath,
+      absPath,
+      beforeExists: current.exists,
+      beforeContent: current.content,
+      afterExists: current.exists,
+      afterContent: current.content,
+    }
+    staged.set(absPath, file)
+    return file
+  }
+
+  for (const hunk of hunks) {
+    if (hunk.type === "add") {
+      const file = await getStaged(hunk.path)
+      if (file.afterExists) throw new Error(`Add File target already exists: ${hunk.path}`)
+      file.afterExists = true
+      file.afterContent = hunk.contents
+      applied.push(`A ${hunk.path}`)
+      continue
+    }
+
+    if (hunk.type === "delete") {
+      const file = await getStaged(hunk.path)
+      if (!file.afterExists) throw new Error(`Delete File target does not exist: ${hunk.path}`)
+      file.afterExists = false
+      file.afterContent = ""
+      applied.push(`D ${hunk.path}`)
+      continue
+    }
+
+    const file = await getStaged(hunk.path)
+    if (!file.afterExists) throw new Error(`Update File target does not exist: ${hunk.path}`)
+    const update = deriveUpdate(hunk.path, hunk.chunks, file.afterContent)
+    const final = joinBom(update.content, update.bom)
+
+    if (hunk.movePath) {
+      const target = await getStaged(hunk.movePath)
+      if (target.afterExists) throw new Error(`Move target already exists: ${hunk.movePath}`)
+      target.afterExists = true
+      target.afterContent = final
+      file.afterExists = false
+      file.afterContent = ""
+      applied.push(`R ${hunk.path} -> ${hunk.movePath}`)
+    } else {
+      file.afterContent = final
+      applied.push(`M ${hunk.path}`)
+    }
+  }
+
+  const changed = [...staged.values()].filter((file) =>
+    file.beforeExists !== file.afterExists || file.beforeContent !== file.afterContent
+  )
+
+  return { staged: changed, applied }
+}
+
+async function writeStagedFile(file: StagedFile): Promise<void> {
+  if (!file.afterExists) {
+    try {
+      await unlink(file.absPath)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+    }
+    return
+  }
+
+  await mkdir(path.dirname(file.absPath), { recursive: true })
+  await writeFile(file.absPath, file.afterContent, "utf8")
+}
+
 // ─── Tool tanımı ────────────────────────────────────────────────────────────
 
 export const applyPatchTool: ToolDef = {
@@ -225,7 +336,8 @@ export const applyPatchTool: ToolDef = {
     "Apply a multi-file patch in the '*** Begin Patch' format. " +
     "Supports Add File, Delete File, Update File (with @@ context chunks), " +
     "and Move to (rename). All paths are resolved relative to the project working directory. " +
-    "Operations apply sequentially; earlier operations remain if a later one fails.",
+    "The patch is staged before writing; if validation fails, no file is modified. " +
+    "If a write fails after staging, Aurict restores the checkpoint it created before the write phase.",
   parameters: z.object({
     patchText: z.string().describe(
       "The full patch text. Must start with '*** Begin Patch' and end with '*** End Patch'. " +
@@ -244,61 +356,34 @@ export const applyPatchTool: ToolDef = {
       return { output: "", error: `Patch parse error: ${err instanceof Error ? err.message : String(err)}` }
     }
 
-    const applied: string[] = []
-    const errors:  string[] = []
+    let plan: { staged: StagedFile[]; applied: string[] }
+    try {
+      plan = await stagePatch(workdir, hunks)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { output: "", error: `Patch validation failed: ${msg}` }
+    }
 
-    for (const hunk of hunks) {
-      const absPath = path.resolve(workdir, hunk.path)
-
-      try {
-        await snapshotManager.takeSnapshot(absPath)
-
-        if (hunk.type === "add") {
-          // Dizin yoksa oluştur
-          await mkdir(path.dirname(absPath), { recursive: true })
-          await writeFile(absPath, hunk.contents, "utf8")
-          applied.push(`A ${hunk.path}`)
-
-        } else if (hunk.type === "delete") {
-          await unlink(absPath)
-          applied.push(`D ${hunk.path}`)
-
-        } else if (hunk.type === "update") {
-          const raw    = await readFile(absPath, "utf8")
-          const update = deriveUpdate(hunk.path, hunk.chunks, raw)
-          const final  = joinBom(update.content, update.bom)
-
-          if (hunk.movePath) {
-            // Move: farklı yola yaz, eskiyi sil
-            const newAbs = path.resolve(workdir, hunk.movePath)
-            await mkdir(path.dirname(newAbs), { recursive: true })
-            await writeFile(newAbs, final, "utf8")
-            await unlink(absPath)
-            applied.push(`R ${hunk.path} → ${hunk.movePath}`)
-          } else {
-            await writeFile(absPath, final, "utf8")
-            applied.push(`M ${hunk.path}`)
-          }
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        errors.push(`FAIL ${hunk.type} ${hunk.path}: ${msg}`)
+    const mark = snapshotManager.mark()
+    try {
+      for (const file of plan.staged) {
+        await snapshotManager.takeSnapshot(file.absPath)
       }
+      for (const file of plan.staged) {
+        await writeStagedFile(file)
+      }
+    } catch (err) {
+      await snapshotManager.restoreToMark(mark)
+      const msg = err instanceof Error ? err.message : String(err)
+      return { output: "", error: `Patch write failed; restored checkpoint: ${msg}` }
     }
 
     const lines: string[] = []
-    if (applied.length > 0) {
+    if (plan.applied.length > 0) {
       lines.push("Applied patch:")
-      lines.push(...applied)
-    }
-    if (errors.length > 0) {
-      lines.push("Errors:")
-      lines.push(...errors)
+      lines.push(...plan.applied)
     }
 
-    const output = lines.join("\n")
-    return errors.length > 0
-      ? { output, error: `${errors.length} operation(s) failed` }
-      : { output }
+    return { output: lines.join("\n") }
   },
 }

@@ -10,7 +10,7 @@
  *   const hints = useBindingHints([{ action: "submit", label: "send" }])
  */
 
-import React, { createContext, useContext, useMemo, useState, useRef } from "react"
+import React, { createContext, useContext, useEffect, useMemo, useState, useRef } from "react"
 import { useInput } from "ink"
 import { buildResolvedStore, matchInkEvent, resolveDisplayKey } from "./resolver.js"
 import { loadKeybindings } from "./persistence.js"
@@ -59,6 +59,10 @@ export function KeybindingsProvider({
   const [contextStack, setContextStack] = useState<Context[]>([initialContext])
   const [loadResult, setLoadResult]     = useState(() => loadKeybindings())
   const [version, setVersion]           = useState(0)
+
+  useEffect(() => {
+    setContextStack([initialContext])
+  }, [initialContext])
 
   // Overrides: prop > dosyadan yüklenen
   const overrides = propOverrides ?? loadResult.bindings

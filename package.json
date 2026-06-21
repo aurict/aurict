@@ -1,6 +1,6 @@
 {
   "name": "aurict",
-  "version": "1.0.1",
+  "version": "1.0.7",
   "private": true,
   "workspaces": [
     "packages/core",
@@ -9,7 +9,8 @@
     "packages/cli-linux-x64",
     "packages/cli-linux-arm64",
     "packages/cli-darwin-x64",
-    "packages/cli-darwin-arm64"
+    "packages/cli-darwin-arm64",
+    "packages/cli-win32-x64"
   ],
   "scripts": {
     "dev": "bun run packages/cli/src/index.ts",

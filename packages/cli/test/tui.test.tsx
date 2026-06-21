@@ -15,6 +15,15 @@ import { Spinner } from "../src/tui/Spinner.js"
 import { Markdown } from "../src/tui/Markdown.js"
 import { StatusBar } from "../src/tui/StatusBar.js"
 import { StartupBanner } from "../src/tui/StartupBanner.js"
+import { PermissionPrompt } from "../src/tui/PermissionPrompt.js"
+import { Message } from "../src/tui/Message.js"
+import { ExpandableOutput } from "../src/tui/ExpandableOutput.js"
+import { TaskFloatingPanel } from "../src/tui/TaskFloatingPanel.js"
+import { CommandPalette } from "../src/tui/CommandPalette.js"
+import { CommandSuggest } from "../src/tui/CommandSuggest.js"
+import { DesignWizard } from "../src/tui/DesignWizard.js"
+import { parseSlashCommand } from "../src/commands/registry.js"
+import type { CommandDef } from "../src/commands/types.js"
 
 afterEach(() => { cleanup() })
 
@@ -244,10 +253,33 @@ describe("StatusBar", () => {
 
   it("shows task hint when taskCount > 0", () => {
     const { lastFrame } = render(
-      <StatusBar {...DEFAULT_STATUS_PROPS} taskCount={3} />
+      <StatusBar
+        {...DEFAULT_STATUS_PROPS}
+        taskCount={3}
+        taskSummary={{ pending: 1, inProgress: 1, done: 1, error: 0 }}
+      />
     )
     const frame = lastFrame() ?? ""
     expect(frame).toContain("tasks")
+    expect(frame).toContain("run")
+  })
+
+  it("shows server and sandbox runtime badges when provided", () => {
+    const { lastFrame } = render(
+      <StatusBar
+        {...DEFAULT_STATUS_PROPS}
+        workdir="/p"
+        cols={140}
+        localServer={{ enabled: true, port: 7777, started: false, reused: true }}
+        sandboxBackend="policy"
+      />
+    )
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("sbx")
+    expect(frame).toContain("policy")
+    expect(frame).toContain("api")
+    expect(frame).toContain("7777")
+    expect(frame).toContain("used")
   })
 
   it("shows undercover badge when isUndercover", () => {
@@ -280,13 +312,13 @@ describe("StartupBanner", () => {
       <StartupBanner version="1.0.0" provider="anthropic" model="claude-opus-4" workdir="/tmp" />
     )
     const frame = lastFrame() ?? ""
-    // Each letter is rendered separately but they form AURICT
-    expect(frame).toContain("O")
-    expect(frame).toContain("M")
-    expect(frame).toContain("N")
+    // Her harf ayrı Text ile render ediliyor — AURICT harfleri kontrol et
+    expect(frame).toContain("A")
+    expect(frame).toContain("U")
+    expect(frame).toContain("R")
     expect(frame).toContain("I")
     expect(frame).toContain("C")
-    expect(frame).toContain("D")
+    expect(frame).toContain("T")
   })
 
   it("renders provider name", () => {
@@ -316,7 +348,199 @@ describe("StartupBanner", () => {
       <StartupBanner version="0.0.1" provider="anthropic" model="claude-opus-4" workdir="/tmp" />
     )
     const frame = lastFrame() ?? ""
+    // /help her zaman görünür (sabit), diğerleri rotatif havuzdan gelir
     expect(frame).toContain("/help")
-    expect(frame).toContain("/models")
+    expect(frame).toContain("commands")
+  })
+})
+
+// ── PermissionPrompt ─────────────────────────────────────────────────────────
+
+describe("PermissionPrompt", () => {
+  it("renders sandbox metadata for bash permission requests", () => {
+    const { lastFrame } = render(
+      <PermissionPrompt
+        request={{
+          id: "req-1",
+          tool: "bash",
+          pattern: "rm -rf dist",
+          level: "danger",
+          reason: "Destructive recursive remove (rm -rf) detected!",
+          summary: "Execute a shell command",
+          sandbox: {
+            backend: "policy",
+            reason: "Destructive recursive remove (rm -rf) detected!",
+            envScrubbed: true,
+          },
+          command: {
+            executables: ["rm"],
+            readOnly: false,
+          },
+        }}
+        onDecide={() => {}}
+      />,
+    )
+
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("DANGER")
+    expect(frame).toContain("POLICY")
+    expect(frame).toContain("env scrubbed")
+    expect(frame).toContain("$ rm -rf dist")
+    expect(frame).toContain("Edit command")
+  })
+})
+
+// ── Tool Output Rendering ────────────────────────────────────────────────────
+
+describe("Tool output rendering", () => {
+  it("summarizes and collapses long tool output", () => {
+    const output = Array.from({ length: 12 }, (_, i) => `line-${i + 1}`).join("\n")
+    const { lastFrame } = render(
+      <Message
+        message={{
+          role: "tool_call",
+          tool: "bash",
+          content: JSON.stringify({ command: "bun test" }),
+          resultContent: output,
+        }}
+        onExpand={() => {}}
+      />,
+    )
+
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("12 lines")
+    expect(frame).toContain("line-1")
+    expect(frame).toContain("line-12")
+    expect(frame).toContain("5 hidden lines")
+    expect(frame).toContain("Ctrl+O expand latest")
+  })
+
+  it("renders empty expanded output explicitly", () => {
+    const { lastFrame } = render(
+      <ExpandableOutput content="" toolName="bash" onClose={() => {}} />,
+    )
+
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("0 lines")
+    expect(frame).toContain("(empty output)")
+  })
+})
+
+// ── Task Panel ───────────────────────────────────────────────────────────────
+
+describe("TaskFloatingPanel", () => {
+  it("renders task status summary and progress", () => {
+    const { lastFrame } = render(
+      <TaskFloatingPanel
+        tasks={[
+          { id: "1", subject: "Implement UI state", status: "done", blockedBy: [] },
+          { id: "2", subject: "Polish task panel", status: "in_progress", blockedBy: [], owner: "ui" },
+          { id: "3", subject: "Write tests", status: "pending", blockedBy: ["2"] },
+          { id: "4", subject: "Fix render bug", status: "error", blockedBy: [], error: "Snapshot mismatch" },
+        ]}
+        onClose={() => {}}
+      />,
+    )
+
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("Tasks (4)")
+    expect(frame).toContain("50%")
+    expect(frame).toContain("run 1")
+    expect(frame).toContain("wait 1")
+    expect(frame).toContain("done 1")
+    expect(frame).toContain("err 1")
+    expect(frame).toContain("@ui")
+    expect(frame).toContain("Snapshot mismatch")
+  })
+})
+
+// ── Command UX ───────────────────────────────────────────────────────────────
+
+const TEST_COMMANDS: CommandDef[] = [
+  {
+    name: "model",
+    aliases: ["m"],
+    description: "List and select models",
+    usage: "/model [provider]",
+    handler: () => ({ type: "text", content: "" }),
+  },
+  {
+    name: "memory",
+    aliases: ["mem"],
+    description: "Manage persistent memory",
+    usage: "/memory add <text>",
+    handler: () => ({ type: "text", content: "" }),
+  },
+  {
+    name: "theme",
+    aliases: ["t"],
+    description: "Change the color theme",
+    usage: "/theme <name>",
+    handler: () => ({ type: "text", content: "" }),
+  },
+]
+
+describe("Command UX", () => {
+  it("renders command palette categories and aliases", () => {
+    const { lastFrame } = render(
+      <CommandPalette
+        commands={TEST_COMMANDS}
+        recentCommands={[]}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />,
+    )
+
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("Model")
+    expect(frame).toContain("Memory")
+    expect(frame).toContain("Settings")
+    expect(frame).toContain("/m")
+    expect(frame).toContain("/mem")
+    expect(frame).toContain("Ctrl+Enter run")
+  })
+
+  it("renders slash command suggestions with category and usage", () => {
+    const { lastFrame } = render(
+      <CommandSuggest
+        filter="mem"
+        commands={TEST_COMMANDS}
+        isActive
+        onExecute={() => {}}
+        onFill={() => {}}
+      />,
+    )
+
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("/memory")
+    expect(frame).toContain("Memory")
+    expect(frame).toContain("/mem")
+    expect(frame).toContain("/memory add <text>")
+  })
+
+  it("does not parse an empty slash command", () => {
+    expect(parseSlashCommand("/")).toBeNull()
+    expect(parseSlashCommand("/   ")).toBeNull()
+  })
+})
+
+// ── Design Wizard ────────────────────────────────────────────────────────────
+
+describe("DesignWizard", () => {
+  it("starts at workflow selection when initial brief is provided", () => {
+    const { lastFrame } = render(
+      <DesignWizard
+        workdir="/tmp"
+        initialBrief="dark analytics dashboard for a SaaS product"
+        onLaunch={() => {}}
+        onClose={() => {}}
+      />,
+    )
+
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("Design Wizard")
+    expect(frame).toContain("2/4")
+    expect(frame).toContain("Choose the design workflow")
+    expect(frame).toContain("Tab suggestion")
   })
 })

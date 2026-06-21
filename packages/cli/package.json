@@ -29,7 +29,8 @@
     "@aurict/cli-linux-x64": "1.0.7",
     "@aurict/cli-linux-arm64": "1.0.7",
     "@aurict/cli-darwin-x64": "1.0.7",
-    "@aurict/cli-darwin-arm64": "1.0.7"
+    "@aurict/cli-darwin-arm64": "1.0.7",
+    "@aurict/cli-win32-x64": "1.0.7"
   },
   "scripts": {
     "dev": "bun run ../cli/src/index.ts"

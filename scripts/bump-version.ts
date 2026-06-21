@@ -19,6 +19,7 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 
 // package.json files to update (version field)
 const PACKAGES = [
+  "package.json",
   "packages/aurict/package.json",
   "packages/cli/package.json",
   "packages/core/package.json",

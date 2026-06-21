@@ -2,6 +2,13 @@ import React, { useState, useEffect } from "react"
 import { Box, Text, useInput } from "ink"
 import type { CommandDef } from "../commands/types.js"
 import { useTheme } from "../utils/theme.js"
+import {
+  COMMAND_CATEGORY_META,
+  commandCategory,
+  commandIcon,
+  commandSearchText,
+  commandSortKey,
+} from "../commands/ui-metadata.js"
 
 const MAX_SHOW = 8
 
@@ -22,12 +29,13 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
 
   const allMatches = commands.filter((c) => {
     const f = filter.toLowerCase()
+    const aliases = c.aliases ?? []
     return (
       c.name.startsWith(f) ||
-      (c.aliases ?? []).some((a) => a.startsWith(f)) ||
-      (f.length >= 2 && c.description.toLowerCase().includes(f))
+      aliases.some((a) => a.startsWith(f)) ||
+      (f.length >= 2 && commandSearchText(c).includes(f))
     )
-  })
+  }).sort((a, b) => commandSortKey(a).localeCompare(commandSortKey(b)))
   const filtered  = allMatches.slice(0, MAX_SHOW)
   const hiddenCount = allMatches.length - filtered.length
 
@@ -47,22 +55,27 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
       <Box flexDirection="column">
         {filtered.map((cmd, i) => {
           const sel = i === idx
+          const category = COMMAND_CATEGORY_META[commandCategory(cmd)]
           return (
-            <Box key={cmd.name} gap={1}>
-              <Text color={sel ? theme.accent : theme.textDim}>{sel ? "▶" : " "}</Text>
-              <Text color={sel ? theme.accent : theme.textPrimary} bold={sel}>
-                {"/" + cmd.name.padEnd(13)}
-              </Text>
-              {cmd.aliases?.length ? (
-                <Text color={theme.textDim} dimColor>{"[" + cmd.aliases.join(",") + "]  "}</Text>
-              ) : (
-                <Text>{"  "}</Text>
-              )}
-              <Text color={sel ? theme.textPrimary : theme.textDim} dimColor={!sel}>
-                {cmd.description}
-              </Text>
+            <Box key={cmd.name} flexDirection="column">
+              <Box gap={1}>
+                <Text color={sel ? theme.accent : theme.textDim}>{sel ? "▶" : " "}</Text>
+                <Text color={sel ? theme.accent : theme.textDim}>{commandIcon(cmd)}</Text>
+                <Text color={sel ? theme.accent : theme.textPrimary} bold={sel}>
+                  {"/" + cmd.name.padEnd(13)}
+                </Text>
+                <Text color={theme.textDim} dimColor>{category.label.padEnd(8)}</Text>
+                {cmd.aliases?.length ? (
+                  <Text color={theme.textDim} dimColor>{cmd.aliases.slice(0, 3).map(a => `/${a}`).join(" ")}</Text>
+                ) : null}
+                <Text color={sel ? theme.textPrimary : theme.textDim} dimColor={!sel}>
+                  {cmd.description}
+                </Text>
+              </Box>
               {sel && cmd.usage ? (
-                <Text color={theme.textDim} dimColor>{"  · " + cmd.usage}</Text>
+                <Box paddingLeft={4}>
+                  <Text color={theme.textDim} dimColor>{cmd.usage}</Text>
+                </Box>
               ) : null}
             </Box>
           )

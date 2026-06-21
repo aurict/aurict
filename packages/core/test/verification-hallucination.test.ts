@@ -132,6 +132,47 @@ import { c } from './c'
       cleanup()
     }
   })
+
+  it("detects missing export in existing module", async () => {
+    const { dir, cleanup, createFile } = createTempDir()
+    try {
+      createFile("existing.ts", `export const foo = 5`)
+      
+      const warnings = await detectHallucinations(
+        `import { foo, bar } from './existing'`,
+        "test.ts",
+        dir
+      )
+      
+      const missingExport = warnings.filter(w => w.type === "missing-export")
+      expect(missingExport.length).toBe(1)
+      expect(missingExport[0]!.message).toContain("'bar' is not exported")
+    } finally {
+      cleanup()
+    }
+  })
+
+  it("detects signature mismatch", async () => {
+    const { dir, cleanup, createFile } = createTempDir()
+    try {
+      createFile("math.ts", `export function add(a: number, b: number) { return a + b }`)
+      
+      const warnings = await detectHallucinations(
+        `import { add } from './math'
+add(1);
+add(1, 2, 3);`,
+        "test.ts",
+        dir
+      )
+      
+      const signatureWarnings = warnings.filter(w => w.type === "signature-mismatch")
+      expect(signatureWarnings.length).toBe(2)
+      expect(signatureWarnings[0]!.message).toContain("expects 2-2 arguments, but got 1")
+      expect(signatureWarnings[1]!.message).toContain("expects 2-2 arguments, but got 3")
+    } finally {
+      cleanup()
+    }
+  })
 })
 
 describe("formatHallucinationWarnings", () => {

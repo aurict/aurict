@@ -15,6 +15,17 @@ export interface PermissionRequest {
   pattern: string           // komut veya dosya yolu
   level?:  "safe" | "warning" | "danger"
   reason?: string
+  summary?: string
+  permissionSummary?: string
+  sandbox?: {
+    backend: "none" | "policy" | "docker"
+    reason:  string
+    envScrubbed?: boolean
+  }
+  command?: {
+    executables: string[]
+    readOnly:    boolean
+  }
 }
 
 // allow        = bu kez izin ver + session'a kaydet (tekrar sorma)

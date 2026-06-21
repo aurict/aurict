@@ -1,12 +1,57 @@
 import { z } from "zod"
-import { execSync } from "child_process"
+import { execFile } from "child_process"
+import { promisify } from "util"
+import { existsSync, statSync } from "fs"
+import { join } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
-function git(cmd: string, cwd: string): string {
+const execFileAsync = promisify(execFile)
+
+// Git lock file kontrolü — başka bir git process çalışıyorsa erken uyarı
+function checkGitLock(cwd: string): void {
+  const lockFile = join(cwd, ".git", "index.lock")
+  if (existsSync(lockFile)) {
+    try {
+      const stat = statSync(lockFile)
+      const ageMs = Date.now() - stat.mtimeMs
+      if (ageMs > 5000) { // 5 saniyeden eskiyse
+        throw new Error(`Git lock file detected (age: ${Math.round(ageMs/1000)}s). Another git process may be running. Remove .git/index.lock if safe.`)
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("Git lock file")) throw e
+      // Lock file okunamıyorsa sessizce geç
+    }
+  }
+}
+
+// Asenkron git komutu çalıştırma — timeout ve progress desteği
+async function git(
+  cmd: string,
+  cwd: string,
+  timeoutMs = 10000,
+  onChunk?: (chunk: string) => void,
+): Promise<string> {
+  // Lock file kontrolü
+  checkGitLock(cwd)
+
+  // Progress reporting — uzun süren komutlar için
+  if (onChunk) {
+    onChunk(`⏳ Running git ${cmd.split(" ")[0]}...\n`)
+  }
+
   try {
-    return execSync(`git ${cmd}`, { cwd, encoding: "utf8", stdio: ["pipe","pipe","pipe"] }).trim()
-  } catch (e) {
-    const msg = (e as { stderr?: string; message?: string }).stderr || (e as Error).message || String(e)
+    const { stdout } = await execFileAsync("git", cmd.split(/\s+/), {
+      cwd,
+      encoding: "utf8",
+      timeout: timeoutMs,
+      maxBuffer: 10 * 1024 * 1024, // 10 MB
+    })
+    return stdout.trim()
+  } catch (e: any) {
+    if (e.killed) {
+      throw new Error(`Git command timed out after ${timeoutMs}ms`)
+    }
+    const msg = e.stderr || e.message || String(e)
     throw new Error(msg.trim())
   }
 }
@@ -43,14 +88,14 @@ Use status before diff to understand the scope. Use log to understand context.`,
     try {
       switch (action) {
         case "status": {
-          const out = git("status --short", cwd)
+          const out = await git("status --short", cwd, 10000, ctx.onChunk)
           return { output: out || "Working tree clean." }
         }
 
         case "diff": {
           const target = file ? `-- "${file}"` : ""
-          const staged = git(`diff --cached ${target}`, cwd)
-          const unstaged = git(`diff ${target}`, cwd)
+          const staged = await git(`diff --cached ${target}`, cwd, 10000, ctx.onChunk)
+          const unstaged = await git(`diff ${target}`, cwd, 10000, ctx.onChunk)
           const combined = [
             staged    ? `=== Staged ===\n${staged}`    : "",
             unstaged  ? `=== Unstaged ===\n${unstaged}` : "",
@@ -59,38 +104,38 @@ Use status before diff to understand the scope. Use log to understand context.`,
         }
 
         case "log": {
-          const out = git(`log --oneline -${count}`, cwd)
+          const out = await git(`log --oneline -${count}`, cwd, 10000, ctx.onChunk)
           return { output: out || "No commits yet." }
         }
 
         case "commit": {
           if (!message) return { output: "", error: "Commit message required." }
-          git("add -A", cwd)
-          const out = git(`commit -m "${message.replace(/"/g, "'")}"`, cwd)
+          await git("add -A", cwd, 10000, ctx.onChunk)
+          const out = await git(`commit -m "${message.replace(/"/g, "'")}"`, cwd, 10000, ctx.onChunk)
           return { output: out }
         }
 
         case "branch": {
           if (name) {
             try {
-              git(`checkout -b "${name}"`, cwd)
+              await git(`checkout -b "${name}"`, cwd, 10000, ctx.onChunk)
               return { output: `Created and switched to branch: ${name}` }
             } catch {
-              git(`checkout "${name}"`, cwd)
+              await git(`checkout "${name}"`, cwd, 10000, ctx.onChunk)
               return { output: `Switched to branch: ${name}` }
             }
           }
-          const out = git("branch -a", cwd)
+          const out = await git("branch -a", cwd, 10000, ctx.onChunk)
           return { output: out }
         }
 
         case "stash": {
           const sub = file ?? "push"
           if (sub === "pop") {
-            const out = git("stash pop", cwd)
+            const out = await git("stash pop", cwd, 10000, ctx.onChunk)
             return { output: out }
           }
-          const out = git("stash push", cwd)
+          const out = await git("stash push", cwd, 10000, ctx.onChunk)
           return { output: out }
         }
 

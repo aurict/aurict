@@ -83,7 +83,7 @@ const CHANGELOG = [
       { type: "new", text: "Multi-agent orchestration — 9 specialist agents (Explore, Code, Review, Test, Docs, Security, Debug, Performance, Analytics)" },
       { type: "new", text: "218+ contextual skills auto-injected based on project framework and language" },
       { type: "new", text: "Bash classifier — safe commands run instantly, dangerous ones require confirmation" },
-      { type: "new", text: "Sandbox execution — risky processes run in Docker isolation" },
+      { type: "new", text: "Policy sandbox — risky processes run with guarded execution and Docker remains optional" },
       { type: "new", text: "MCP client — reads claude_desktop_config.json, all existing servers work instantly" },
       { type: "new", text: "Design agent wizard — 150+ design systems, 111 skill templates" },
       { type: "new", text: "Custom tool loader — drop .js ESM files in .aurict/tools/" },

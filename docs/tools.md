@@ -5,8 +5,9 @@ Aurict provides a typed, permission-controlled tool layer. Every tool call goes 
 1. **Zod schema validation** — args are validated before execution
 2. **GateGuard** — path-based protection rules
 3. **Permission evaluator** — allow / ask / deny decision
-4. **Timeout protection** — 2-minute default per tool call
-5. **Post-processing** — error hints, output summarization, TypeScript verification
+4. **Policy sandbox** — low-overhead guarded execution for shell work: command classification, approvals, timeouts, output limits, and audit trail
+5. **Timeout protection** — 2-minute default per tool call
+6. **Post-processing** — error hints, output summarization, TypeScript verification
 
 ---
 
@@ -18,8 +19,8 @@ Read a file or a line range within a file.
 | Param | Type | Description |
 |-------|------|-------------|
 | `path` | string | Absolute or relative path |
-| `start_line` | number? | First line to read (1-indexed) |
-| `end_line` | number? | Last line to read (inclusive) |
+| `offset` | number? | First line to read (1-indexed) |
+| `limit` | number? | Maximum number of lines to return |
 
 **Permission:** always-allow (safe)
 
@@ -63,15 +64,19 @@ Execute a shell command.
 
 | Param | Type | Description |
 |-------|------|-------------|
+| `action` | `"run"\|"background"\|"stdin"\|"output"\|"kill"` | Operation to perform. Default: `run` |
 | `command` | string | Shell command to run |
-| `timeout` | number? | Max milliseconds (default: 120 000) |
+| `sessionId` | string? | Background process session ID for `stdin`, `output`, and `kill` |
+| `input` | string? | Text to send for `stdin` |
 
 **Permission:** safe commands auto-allow; warning requires approval; danger always asks
 
-The command is classified by an AST-level bash analyzer before execution:
+The command is classified by a bash analyzer before execution:
 - **safe** — read-only (`ls`, `cat`, `grep`, `find`, `git status`, …)
 - **warning** — writes or network (`npm install`, `git commit`, file writes)
 - **danger** — destructive (`rm -rf`, `git reset --hard`, `dd`, format commands)
+
+`run` waits up to 3 seconds. Longer commands are moved to the background and return a session ID.
 
 ---
 
@@ -110,7 +115,7 @@ Fetch a URL and return its text content.
 | `url` | string | URL to fetch |
 | `format` | `"text"\|"markdown"` | Output format (default: `markdown`) |
 
-**Permission:** ask
+**Permission:** always-allow by default
 
 HTML is automatically stripped to readable text.
 
@@ -124,7 +129,7 @@ Search the web.
 | `query` | string | Search query |
 | `limit` | number? | Max results (default: 5) |
 
-**Permission:** ask
+**Permission:** always-allow by default
 
 ---
 

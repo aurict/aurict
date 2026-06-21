@@ -3,13 +3,20 @@ import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
 import { Typo } from "./design-system/index.js"
 import type { CommandDef } from "../commands/types.js"
+import {
+  COMMAND_CATEGORY_META,
+  commandCategory,
+  commandIcon,
+  commandSearchText,
+  commandSortKey,
+} from "../commands/ui-metadata.js"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   commands:       CommandDef[]
   recentCommands: string[]   // ordered by most-recent-first
-  onSelect:       (cmd: CommandDef, args: string) => void
+  onSelect:       (cmd: CommandDef, args: string, action: "fill" | "run") => void
   onClose:        () => void
 }
 
@@ -17,13 +24,16 @@ interface Props {
 
 function score(cmd: CommandDef, query: string): number {
   if (!query) return 0
-  const q   = query.toLowerCase()
+  const q    = query.toLowerCase()
   const name = cmd.name.toLowerCase()
-  const desc = cmd.description.toLowerCase()
+  const aliases = cmd.aliases ?? []
+  const search = commandSearchText(cmd)
   if (name === q)           return 100
   if (name.startsWith(q))   return 80
+  if (aliases.some(a => a === q)) return 76
+  if (aliases.some(a => a.startsWith(q))) return 70
   if (name.includes(q))     return 60
-  if (desc.includes(q))     return 30
+  if (search.includes(q))   return 30
   // character match
   let ni = 0; let qi = 0; let hits = 0
   while (ni < name.length && qi < q.length) {
@@ -53,33 +63,6 @@ function highlight(text: string, query: string): Array<{ s: string; bold: boolea
   return result
 }
 
-// ── Category icons ─────────────────────────────────────────────────────────────
-
-const CATEGORY_ICONS: Record<string, string> = {
-  clear:      "⊘",
-  help:       "?",
-  models:     "◈",
-  providers:  "◈",
-  theme:      "◉",
-  session:    "◷",
-  sessions:   "◷",
-  agents:     "⬡",
-  mcp:        "⬡",
-  skills:     "⬡",
-  commit:     "⌥",
-  background: "⟳",
-  config:     "⚙",
-  pin:        "◆",
-  pet:        "♥",
-  name:       "♥",
-  companion:  "♥",
-  keybindings:"⌨",
-}
-
-function cmdIcon(name: string): string {
-  return CATEGORY_ICONS[name] ?? "/"
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function CommandPalette({ commands, recentCommands, onSelect, onClose }: Props) {
@@ -94,7 +77,7 @@ export function CommandPalette({ commands, recentCommands, onSelect, onClose }: 
       const recent  = recentCommands
         .map(n => commands.find(c => c.name === n))
         .filter(Boolean) as CommandDef[]
-      const rest    = commands.filter(c => !recentSet.has(c.name))
+      const rest    = commands.filter(c => !recentSet.has(c.name)).sort((a, b) => commandSortKey(a).localeCompare(commandSortKey(b)))
       return [
         ...recent.map(c => ({ cmd: c, isRecent: true,  sc: 0 })),
         ...rest.map(c   => ({ cmd: c, isRecent: false, sc: 0 })),
@@ -105,7 +88,7 @@ export function CommandPalette({ commands, recentCommands, onSelect, onClose }: 
     return commands
       .map(c => ({ cmd: c, isRecent: recentCommands.includes(c.name), sc: score(c, query.trim()) }))
       .filter(r => r.sc > 0)
-      .sort((a, b) => b.sc - a.sc)
+      .sort((a, b) => b.sc - a.sc || commandSortKey(a.cmd).localeCompare(commandSortKey(b.cmd)))
       .slice(0, 14)
   }, [commands, recentCommands, query])
 
@@ -117,7 +100,7 @@ export function CommandPalette({ commands, recentCommands, onSelect, onClose }: 
     if (key.downArrow) { setCursor(c => Math.min(results.length - 1, c + 1)); return }
     if (key.return) {
       const r = results[clampedCursor]
-      if (r) onSelect(r.cmd, "")
+      if (r) onSelect(r.cmd, "", key.ctrl ? "run" : "fill")
       return
     }
     if (key.backspace || key.delete) { setQuery(q => q.slice(0, -1)); setCursor(0); return }
@@ -139,7 +122,7 @@ export function CommandPalette({ commands, recentCommands, onSelect, onClose }: 
       {/* Header */}
       <Box justifyContent="space-between">
         <Typo variant="bodyEmphasis" tone="primary">Command Palette</Typo>
-        <Typo variant="caption" tone="muted">Esc close  ↑↓ select  Enter run</Typo>
+        <Typo variant="caption" tone="muted">Esc close  ↑↓ select  Enter fill  Ctrl+Enter run</Typo>
       </Box>
 
       {/* Search */}
@@ -160,6 +143,10 @@ export function CommandPalette({ commands, recentCommands, onSelect, onClose }: 
         const selected = i === clampedCursor
         const showSectionHeader = showRecentHeader && !r.isRecent && (i === 0 || results[i-1]?.isRecent === true)
         const showRecentSectionHeader = showRecentHeader && r.isRecent && i === 0
+        const prevCategory = i > 0 ? commandCategory(results[i - 1]!.cmd) : null
+        const category = commandCategory(r.cmd)
+        const showCategoryHeader = !showRecentHeader && (!prevCategory || prevCategory !== category)
+        const categoryMeta = COMMAND_CATEGORY_META[category]
 
         const nameParts = highlight(r.cmd.name, query)
 
@@ -171,14 +158,18 @@ export function CommandPalette({ commands, recentCommands, onSelect, onClose }: 
             {showSectionHeader && (
               <Text color={theme.textDim} dimColor>  All commands</Text>
             )}
+            {showCategoryHeader && (
+              <Text color={theme.textDim} dimColor>  {categoryMeta.icon} {categoryMeta.label}</Text>
+            )}
             <Box gap={1} paddingLeft={1}>
               <Text color={selected ? theme.accent : theme.textDim}>
                 {selected ? "▶" : " "}
               </Text>
               <Text color={selected ? theme.accent : theme.textSecondary}>
-                {cmdIcon(r.cmd.name)}
+                {commandIcon(r.cmd)}
               </Text>
               <Box flexGrow={1}>
+                <Text color={selected ? theme.textDim : theme.borderBright}>/</Text>
                 {nameParts.map((p, j) => (
                   <Text
                     key={j}
@@ -187,8 +178,11 @@ export function CommandPalette({ commands, recentCommands, onSelect, onClose }: 
                   >{p.s}</Text>
                 ))}
               </Box>
+              {r.cmd.aliases?.length ? (
+                <Text color={theme.textDim} dimColor>{r.cmd.aliases.slice(0, 2).map(a => `/${a}`).join(" ")}</Text>
+              ) : null}
               <Text color={theme.textDim} dimColor wrap="truncate-end">
-                {r.cmd.description.slice(0, 30)}
+                {r.cmd.description.slice(0, 34)}
               </Text>
               {r.isRecent && !query && (
                 <Text color={theme.textDim} dimColor>★</Text>
@@ -203,6 +197,7 @@ export function CommandPalette({ commands, recentCommands, onSelect, onClose }: 
         <>
           <Text color={theme.borderDim}>{"─".repeat(56)}</Text>
           <Text color={theme.textDim} dimColor>  {results[clampedCursor]!.cmd.usage}</Text>
+          <Text color={theme.borderBright} dimColor>  Enter fills input. Ctrl+Enter runs the selected command.</Text>
         </>
       )}
     </Box>

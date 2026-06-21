@@ -2,12 +2,12 @@ import type { PermissionAction, PermissionRule } from "./types.js"
 
 // Varsayılan kurallar — config ile override edilebilir
 const DEFAULT_RULES: PermissionRule[] = [
-  // ── Destructive shell commands ────────────────────────────────────────────
-  { tool: "shell", pattern: "sudo *",     action: "deny",   scope: "global" },
-  { tool: "shell", pattern: "rm -rf *",   action: "ask",    scope: "global" },
-  { tool: "shell", pattern: "rm *",       action: "ask",    scope: "global" },
-  { tool: "shell", pattern: "curl *",     action: "ask",    scope: "global" },
-  { tool: "shell", pattern: "wget *",     action: "ask",    scope: "global" },
+  // ── Destructive bash commands ─────────────────────────────────────────────
+  { tool: "bash", pattern: "sudo *",      action: "deny",   scope: "global" },
+  { tool: "bash", pattern: "rm -rf *",    action: "ask",    scope: "global" },
+  { tool: "bash", pattern: "rm *",        action: "ask",    scope: "global" },
+  { tool: "bash", pattern: "curl *",      action: "ask",    scope: "global" },
+  { tool: "bash", pattern: "wget *",      action: "ask",    scope: "global" },
 
   // ── Sensitive write paths ─────────────────────────────────────────────────
   { tool: "write", pattern: "/etc/*",     action: "deny",   scope: "global" },
@@ -61,9 +61,11 @@ function matchWildcard(pattern: string, value: string): boolean {
 
 export const PermissionEvaluator = {
   evaluate(tool: string, pattern: string): PermissionAction {
+    const normalizedTool = tool === "shell" ? "bash" : tool
+    const acceptedTools = normalizedTool === "bash" ? new Set(["bash", "shell"]) : new Set([normalizedTool])
     // En spesifik eşleşen kuralı bul (önce project/session, sonra global)
     const matches = rules.filter(
-      (r) => (r.tool === tool || r.tool === "*") && matchWildcard(r.pattern, pattern),
+      (r) => (acceptedTools.has(r.tool) || r.tool === "*") && matchWildcard(r.pattern, pattern),
     )
     if (matches.length === 0) return "ask"
     // Son eşleşen kural kazanır (en altta olan en spesifik)

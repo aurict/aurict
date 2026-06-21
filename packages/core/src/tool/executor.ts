@@ -6,6 +6,7 @@ import { PermissionGate, PermissionStore } from "../permission/store.js"
 import { gateGuard } from "../permission/gateguard.js"
 import { addPart } from "../storage/queries.js"
 import { classifyCommand } from "../terminal/classifier.js"
+import { chooseSandboxBackend } from "../terminal/sandbox.js"
 import { diagnosticsStore } from "../diagnostics/store.js"
 import { truncateOutput, resolveTruncationConfig } from "./truncation.js"
 import { toolResultCache } from "./cache.js"
@@ -186,9 +187,17 @@ export async function executeTool(
           }
         } else {
           const id = crypto.randomUUID()
+          const summary = def.spec?.permissionSummary
           ExecutorEvents.emit({
             type: "permission_ask",
-            request: { id, tool: def.id, pattern: filePath, level: "warning", reason: "Protected file — GateGuard" },
+            request: {
+              id,
+              tool: def.id,
+              pattern: filePath,
+              level: "warning",
+              reason: "Protected file — GateGuard",
+              ...(summary ? { summary, permissionSummary: summary } : {}),
+            },
           })
           const userDecision = await PermissionGate.wait(id)
           gateGuard.audit({ ts: Date.now(), tool: def.id, path: filePath, action: gateDecision, allowed: userDecision !== "deny" })
@@ -206,6 +215,7 @@ export async function executeTool(
   let decision = PermissionEvaluator.evaluate(def.id, pattern)
   let level: "safe" | "warning" | "danger" = "warning"
   let reason = ""
+  let permissionMetadata: Partial<PermissionRequest> = {}
 
   // Spec tabanlı risk override
   if (def.spec) {
@@ -228,8 +238,20 @@ export async function executeTool(
 
   if (def.id === "bash") {
     const analysis = classifyCommand(pattern)
+    const sandbox = chooseSandboxBackend(pattern, analysis)
     level = analysis.level
     reason = analysis.reason
+    permissionMetadata = {
+      sandbox: {
+        backend: sandbox.backend,
+        reason: sandbox.reason,
+        envScrubbed: sandbox.backend === "policy",
+      },
+      command: {
+        executables: analysis.parsedExecutables,
+        readOnly: analysis.isReadOnly,
+      },
+    }
     if (analysis.isReadOnly) {
       decision = "allow" // Auto-approve zararsız komutlar
     } else if (analysis.level === "danger") {
@@ -253,7 +275,19 @@ export async function executeTool(
       PermissionStore.approve(def.id, pattern)
     } else {
       const id = crypto.randomUUID()
-      ExecutorEvents.emit({ type: "permission_ask", request: { id, tool: def.id, pattern, level, reason } })
+      const summary = def.spec?.permissionSummary
+      ExecutorEvents.emit({
+        type: "permission_ask",
+        request: {
+          id,
+          tool: def.id,
+          pattern,
+          level,
+          reason,
+          ...(summary ? { summary, permissionSummary: summary } : {}),
+          ...permissionMetadata,
+        },
+      })
 
       const userDecision = await PermissionGate.wait(id)
       if (userDecision === "deny") {

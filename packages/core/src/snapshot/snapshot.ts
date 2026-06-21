@@ -1,44 +1,114 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import * as fs from "node:fs/promises"
+import * as path from "node:path"
+import { homedir } from "node:os"
+import { rmSync } from "node:fs"
 
 export interface Snapshot {
-  id: string;
-  filePath: string;
-  originalContent: string;
-  timestamp: number;
+  id: string
+  filePath: string
+  originalContent: string
+  existed: boolean
+  timestamp: number
 }
 
 class SnapshotManager {
-  private history: Snapshot[] = [];
+  private history: Snapshot[] = []
+  private storageDir: string | null =
+    process.env["AURICT_SNAPSHOT_DIR"] ?? path.join(homedir(), ".aurict", "snapshots")
+
+  setStorageDir(dir: string | null): void {
+    this.storageDir = dir
+    this.history = []
+  }
+
+  getStorageDir(): string | null {
+    return this.storageDir
+  }
+
+  private getHistoryFile(): string | null {
+    return this.storageDir ? path.join(this.storageDir, "history.json") : null
+  }
+
+  private async persistHistory(): Promise<void> {
+    const historyFile = this.getHistoryFile()
+    if (!historyFile) return
+
+    try {
+      await fs.mkdir(path.dirname(historyFile), { recursive: true })
+      await fs.writeFile(historyFile, JSON.stringify(this.history, null, 2), "utf-8")
+    } catch (err) {
+      console.error("Snapshot history persistence failed:", err)
+    }
+  }
+
+  async loadPersisted(): Promise<number> {
+    const historyFile = this.getHistoryFile()
+    if (!historyFile) return 0
+
+    try {
+      const raw = await fs.readFile(historyFile, "utf-8")
+      const parsed = JSON.parse(raw) as Snapshot[]
+      this.history = Array.isArray(parsed)
+        ? parsed.map((snap) => ({
+          ...snap,
+          existed: snap.existed ?? snap.originalContent !== "",
+        }))
+        : []
+      return this.history.length
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.error("Snapshot history load failed:", err)
+      }
+      return 0
+    }
+  }
 
   /**
    * Dosyanın mevcut halini belleğe kopyalar (yedekler).
    * @param filePath Yedeklenecek dosya yolu
    */
   async takeSnapshot(filePath: string): Promise<void> {
+    const absolutePath = path.resolve(filePath)
     try {
-      const absolutePath = path.resolve(filePath);
-      const content = await fs.readFile(absolutePath, "utf-8");
+      const content = await fs.readFile(absolutePath, "utf-8")
       
       this.history.push({
         id: crypto.randomUUID(),
         filePath: absolutePath,
         originalContent: content,
+        existed: true,
         timestamp: Date.now(),
-      });
+      })
+      await this.persistHistory()
     } catch (err) {
       // Dosya henüz yoksa (yeni oluşturuluyorsa) yedeklenecek bir şey yok
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         this.history.push({
           id: crypto.randomUUID(),
-          filePath: path.resolve(filePath),
-          originalContent: "", // Boş içerik
+          filePath: absolutePath,
+          originalContent: "",
+          existed: false,
           timestamp: Date.now(),
-        });
+        })
+        await this.persistHistory()
       } else {
-        console.error(`Snapshot failed (${filePath}):`, err);
+        console.error(`Snapshot failed (${filePath}):`, err)
       }
     }
+  }
+
+  private async restoreSnapshot(snap: Snapshot): Promise<void> {
+    if (!snap.existed) {
+      try {
+        await fs.unlink(snap.filePath)
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+      }
+      return
+    }
+
+    await fs.mkdir(path.dirname(snap.filePath), { recursive: true })
+    await fs.writeFile(snap.filePath, snap.originalContent, "utf-8")
   }
 
   /**
@@ -46,22 +116,18 @@ class SnapshotManager {
    * @returns Geri yüklenen dosyanın yolu veya yapılamadıysa null
    */
   async undoLast(): Promise<string | null> {
-    const last = this.history.pop();
+    const last = this.history.pop()
     if (!last) {
-      return null;
+      return null
     }
 
     try {
-      if (last.originalContent === "") {
-        // Önceden dosya yoktu, geri alırken silebiliriz veya boşaltabiliriz.
-        await fs.writeFile(last.filePath, "");
-      } else {
-        await fs.writeFile(last.filePath, last.originalContent, "utf-8");
-      }
-      return last.filePath;
+      await this.restoreSnapshot(last)
+      await this.persistHistory()
+      return last.filePath
     } catch (err) {
-      console.error(`Restore failed (${last.filePath}):`, err);
-      return null;
+      console.error(`Restore failed (${last.filePath}):`, err)
+      return null
     }
   }
 
@@ -84,17 +150,13 @@ class SnapshotManager {
     // Tersine çevir: en son alınan snapshot önce geri yüklenir
     for (const snap of toRestore.reverse()) {
       try {
-        if (snap.originalContent === "") {
-          // Dosya daha önce yoktu — boşalt (silmiyoruz, riskli)
-          await import("node:fs/promises").then(({ writeFile }) => writeFile(snap.filePath, ""))
-        } else {
-          await import("node:fs/promises").then(({ writeFile }) => writeFile(snap.filePath, snap.originalContent, "utf-8"))
-        }
+        await this.restoreSnapshot(snap)
         restored.push(snap.filePath)
       } catch {
         /* ignore individual restore failures */
       }
     }
+    await this.persistHistory()
     return restored
   }
 
@@ -102,8 +164,10 @@ class SnapshotManager {
    * Geçmişi temizler.
    */
   clear(): void {
-    this.history = [];
+    this.history = []
+    const historyFile = this.getHistoryFile()
+    if (historyFile) rmSync(historyFile, { force: true })
   }
 }
 
-export const snapshotManager = new SnapshotManager();
+export const snapshotManager = new SnapshotManager()

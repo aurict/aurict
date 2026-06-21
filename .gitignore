@@ -8,7 +8,10 @@ dist/
 
 # Platform binary files — built at CI time, not committed
 packages/cli-*/bin/aurict
+packages/cli-*/bin/aurict.exe
+
+# Local package verification cache
+.npm-cache/
 
 # Runtime data
 .aurict/
-

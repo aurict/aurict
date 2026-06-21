@@ -83,7 +83,7 @@ Aurict from CI, or build your own tooling on top.
 | Feature | Description |
 |---|---|
 | **Bash classifier** | Three-tier analysis (safe / warning / danger) before any shell command runs |
-| **Sandbox execution** | Risky executables (node, python, ruby, bash, sh scripts) run in Docker isolation |
+| **Policy sandbox** | Risky executables run through command classification, approvals, protected paths, scrubbed env, timeouts, output limits, and audit logs; Docker is optional for heavier isolation |
 | **Permission system** | Per-tool allow/deny rules, wildcard path matching, always-allow list |
 | **JWT auth** | Bearer token on the local HTTP API, auto-generated at `~/.aurict/server-token` |
 
@@ -301,7 +301,7 @@ curl -X POST http://localhost:7777/v1/session \
   -d '{"provider":"anthropic","model":"claude-sonnet-4-6"}'
 
 # List sessions
-curl http://localhost:7777/v1/sessions \
+curl http://localhost:7777/v1/session \
   -H "Authorization: Bearer $TOKEN"
 
 # Send a message (SSE stream)

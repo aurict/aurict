@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
 import { DesignLoader, matchDesign, loadDesignPrefs } from "@aurict/core"
@@ -14,6 +14,7 @@ export interface DesignWizardResult {
 
 interface Props {
   workdir: string
+  initialBrief?: string | undefined
   onLaunch: (result: DesignWizardResult) => void
   onClose:  () => void
 }
@@ -28,12 +29,39 @@ function fuzzyFilter<T>(items: T[], getText: (item: T) => string, query: string)
   return items.filter(item => getText(item).toLowerCase().includes(q))
 }
 
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text
+  return text.slice(0, Math.max(0, max - 1)) + "…"
+}
+
+function assetBadges(skill: Skill): string {
+  const badges: string[] = []
+  if (skill.hasTemplate) badges.push("template")
+  if (skill.hasLayouts) badges.push("layouts")
+  return badges.join(" · ")
+}
+
+function WizardHeader({ step, title, detail }: { step: number; title: string; detail?: string }) {
+  const theme = useTheme()
+  const marks = [1, 2, 3, 4].map(i => i < step ? "●" : i === step ? "◆" : "·").join(" ")
+  return (
+    <Box flexDirection="column" gap={0}>
+      <Box justifyContent="space-between">
+        <Text color={theme.accent} bold>✦ Design Wizard</Text>
+        <Text color={theme.textDim} dimColor>{marks}  {step}/4</Text>
+      </Box>
+      <Text color={theme.textPrimary} bold>{title}</Text>
+      {detail && <Text color={theme.textDim} dimColor>{truncate(detail, 76)}</Text>}
+    </Box>
+  )
+}
+
 // ── Step components ────────────────────────────────────────────────────────────
 
-function BriefStep({ onNext, onClose }: { onNext: (brief: string) => void; onClose: () => void }) {
+function BriefStep({ initialBrief, onNext, onClose }: { initialBrief?: string; onNext: (brief: string) => void; onClose: () => void }) {
   const theme   = useTheme()
-  const [text, setText] = useState("")
-  const [cursor, setCursor] = useState(0)
+  const [text, setText] = useState(initialBrief ?? "")
+  const [cursor, setCursor] = useState((initialBrief ?? "").length)
 
   useInput((input, key) => {
     if (key.escape)  { onClose(); return }
@@ -56,9 +84,9 @@ function BriefStep({ onNext, onClose }: { onNext: (brief: string) => void; onClo
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>1/4 — Brief</Text></Text>
-      <Text color={theme.textSecondary}>What do you want to design? Write a brief description:</Text>
-      <Box borderStyle="single" borderColor={theme.accent} paddingX={1} width={70}>
+      <WizardHeader step={1} title="Describe the UI you want" />
+      <Text color={theme.textSecondary}>Write the outcome, product type, mood, and key screens.</Text>
+      <Box borderStyle="single" borderColor={theme.accent} paddingX={1} width={68}>
         <Text>
           {before}
           <Text backgroundColor={theme.accent} color="black">{at}</Text>
@@ -67,7 +95,7 @@ function BriefStep({ onNext, onClose }: { onNext: (brief: string) => void; onClo
       </Box>
       <Text color={theme.textDim} dimColor>Enter to continue · Esc to cancel</Text>
       <Text color={theme.textDim} dimColor italic>
-        e.g. "Linear-style SaaS landing page"  ·  "Dark dashboard, analytics"  ·  "Stripe-style pricing"
+        e.g. "Linear-style SaaS app dashboard" · "Stripe-style pricing" · "Mobile onboarding"
       </Text>
     </Box>
   )
@@ -91,23 +119,25 @@ function SkillStep({
 
   useInput((input, key) => {
     if (key.escape)   { onBack(); return }
+    if (key.tab)      { onSelect(match.skill.id); return }
     if (key.return)   { const s = filtered[cursor]; if (s) onSelect(s.id); return }
     if (key.upArrow)  { setCursor(c => Math.max(0, c - 1)); return }
-    if (key.downArrow){ setCursor(c => Math.min(total - 1, c + 1)); return }
+    if (key.downArrow){ setCursor(c => Math.min(Math.max(0, total - 1), c + 1)); return }
     if (key.backspace || key.delete) { setQuery(q => q.slice(0, -1)); setCursor(0); return }
     if (input && !key.ctrl && !key.meta) { setQuery(q => q + input); setCursor(0); return }
   })
 
   const shown   = filtered.slice(0, 10)
-  const safeCur = Math.min(cursor, shown.length - 1)
+  const safeCur = Math.max(0, Math.min(cursor, Math.max(0, shown.length - 1)))
+  const current = shown[safeCur]
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>2/4 — Skill (template type)</Text></Text>
+      <WizardHeader step={2} title="Choose the design workflow" detail={`Matched from brief · skill score ${match.skillScore}`} />
       <Box>
         <Text color={theme.textDim}>Suggested: </Text>
         <Text color={theme.accent} bold>{match.skill.name}</Text>
-        <Text color={theme.textDim}> — Enter to accept, or pick another below</Text>
+        <Text color={theme.textDim}> — Tab accepts suggestion</Text>
       </Box>
       <Box borderStyle="single" borderColor={theme.borderDim} paddingX={1} width={50}>
         <Text color={theme.textDim}>/ </Text>
@@ -123,13 +153,24 @@ function SkillStep({
                 {s.name || s.id}
               </Text>
               <Text color={theme.textDim} dimColor>{s.mode}</Text>
+              {assetBadges(s) && <Text color={theme.borderBright} dimColor>{assetBadges(s)}</Text>}
               {s.id === match.skill.id && <Text color={theme.accent} dimColor>★</Text>}
             </Box>
           )
         })}
+        {total === 0 && <Text color={theme.textDim} dimColor>  No workflow matched this filter.</Text>}
         {total > 10 && <Text color={theme.textDim} dimColor>  …{total - 10} more ({total} total)</Text>}
       </Box>
-      <Text color={theme.textDim} dimColor>↑↓ navigate · / filter · Enter select · Esc back</Text>
+      {current && (
+        <Box flexDirection="column" borderStyle="single" borderColor={theme.borderDim} paddingX={1}>
+          <Text color={theme.textPrimary} bold>{current.name}</Text>
+          <Text color={theme.textDim}>{truncate(current.description || "No description provided.", 88)}</Text>
+          <Text color={theme.borderBright} dimColor>
+            mode: {current.mode}{assetBadges(current) ? ` · ${assetBadges(current)}` : ""}
+          </Text>
+        </Box>
+      )}
+      <Text color={theme.textDim} dimColor>↑↓ navigate · type to filter · Tab suggestion · Enter select · Esc back</Text>
     </Box>
   )
 }
@@ -162,9 +203,10 @@ function SystemStep({
 
   useInput((input, key) => {
     if (key.escape)    { onBack(); return }
+    if (key.tab)       { onSelect(match.system.id); return }
     if (key.return)    { const s = shown[safeCur]; if (s) onSelect(s.id); return }
     if (key.upArrow)   { setCursor(c => Math.max(0, c - 1)); return }
-    if (key.downArrow) { setCursor(c => Math.min(shown.length - 1, c + 1)); return }
+    if (key.downArrow) { setCursor(c => Math.min(Math.max(0, shown.length - 1), c + 1)); return }
     if (key.backspace || key.delete) { setQuery(q => q.slice(0, -1)); setCursor(0); return }
     if (input && !key.ctrl && !key.meta) { setQuery(q => q + input); setCursor(0); return }
   })
@@ -173,11 +215,12 @@ function SystemStep({
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>3/4 — Design System (brand)</Text></Text>
+      <WizardHeader step={3} title="Choose the visual system" detail={`Matched from brief · system score ${match.systemScore}`} />
       <Box>
         <Text color={theme.textDim}>Suggested: </Text>
         <Text color={theme.accent} bold>{match.system.name}</Text>
         <Text color={theme.textDim}> · {match.system.category}</Text>
+        <Text color={theme.textDim}> · Tab accepts</Text>
       </Box>
       <Box borderStyle="single" borderColor={theme.borderDim} paddingX={1} width={50}>
         <Text color={theme.textDim}>/ </Text>
@@ -185,7 +228,7 @@ function SystemStep({
       </Box>
       <Box flexDirection="row" gap={2} alignItems="flex-start">
         {/* Liste */}
-        <Box flexDirection="column" width={30}>
+        <Box flexDirection="column" width={34}>
           {shown.map((s, i) => {
             const selected = i === safeCur
             const isMatch  = s.id === match.system.id
@@ -194,7 +237,7 @@ function SystemStep({
               <Box key={s.id} gap={1}>
                 <Text color={selected ? theme.accent : theme.borderDim}>{selected ? "▶" : " "}</Text>
                 <Text color={selected ? theme.textPrimary : theme.textSecondary} bold={selected}>
-                  {s.name}
+                  {truncate(s.name, 22)}
                 </Text>
                 {isMatch  && <Text color={theme.accent} dimColor>★</Text>}
                 {isRecent && !isMatch && <Text color={theme.textDim} dimColor>↺</Text>}
@@ -206,14 +249,19 @@ function SystemStep({
 
         {/* Önizleme */}
         {cur && (
-          <Box flexDirection="column" width={32} borderStyle="single" borderColor={theme.borderDim} paddingX={1}>
+          <Box flexDirection="column" width={34} borderStyle="single" borderColor={theme.borderDim} paddingX={1}>
             <Text color={theme.accent} bold>{cur.name}</Text>
             <Text color={theme.textDim} dimColor>{cur.category}</Text>
-            {cur.tagline && <Text color={theme.textSecondary} italic dimColor>{cur.tagline.slice(0, 60)}</Text>}
+            {cur.tagline && <Text color={theme.textSecondary} italic dimColor>{truncate(cur.tagline, 72)}</Text>}
+            {match.alternatives.length > 0 && (
+              <Text color={theme.borderBright} dimColor>
+                alternatives: {match.alternatives.slice(0, 3).map(s => s.name).join(", ")}
+              </Text>
+            )}
           </Box>
         )}
       </Box>
-      <Text color={theme.textDim} dimColor>↑↓ navigate · / filter · Enter select · Esc back</Text>
+      <Text color={theme.textDim} dimColor>↑↓ navigate · type to filter · Tab suggestion · Enter select · Esc back</Text>
     </Box>
   )
 }
@@ -236,16 +284,17 @@ function ConfirmStep({
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color={theme.accent} bold>✦ Design Wizard  <Text color={theme.textDim} bold={false}>4/4 — Confirm</Text></Text>
+      <WizardHeader step={4} title="Review and launch" detail="Aurict will turn this selection into an implementation prompt." />
       <Box flexDirection="column" borderStyle="round" borderColor={theme.accent} paddingX={2} paddingY={1} gap={0}>
         <Box gap={2}>
           <Text color={theme.textDim} dimColor>{"Brief      "}</Text>
-          <Text color={theme.textPrimary} bold>{brief}</Text>
+          <Text color={theme.textPrimary} bold>{truncate(brief, 76)}</Text>
         </Box>
         <Box gap={2}>
           <Text color={theme.textDim} dimColor>{"Skill      "}</Text>
           <Text color={theme.textPrimary}>{skill?.name ?? skillId}</Text>
           <Text color={theme.textDim} dimColor>{skill?.mode}</Text>
+          {skill && assetBadges(skill) && <Text color={theme.borderBright} dimColor>{assetBadges(skill)}</Text>}
         </Box>
         <Box gap={2}>
           <Text color={theme.textDim} dimColor>{"Design sys "}</Text>
@@ -261,18 +310,22 @@ function ConfirmStep({
         <Text color={theme.success} bold>Enter</Text><Text color={theme.textSecondary}>— launch</Text>
         <Text color={theme.textDim} bold>Esc</Text><Text color={theme.textDim} dimColor>— back</Text>
       </Box>
+      <Text color={theme.textDim} dimColor>The generated prompt will be sent as the next user message.</Text>
     </Box>
   )
 }
 
 // ── Main Wizard ───────────────────────────────────────────────────────────────
 
-export function DesignWizard({ workdir, onLaunch, onClose }: Props) {
-  const [step,     setStep]     = useState<Step>("brief")
-  const [brief,    setBrief]    = useState("")
-  const [skillId,  setSkillId]  = useState("")
-  const [systemId, setSystemId] = useState("")
-  const [match,    setMatch]    = useState<MatchResult | null>(null)
+export function DesignWizard({ workdir, initialBrief, onLaunch, onClose }: Props) {
+  const theme = useTheme()
+  const initial = initialBrief?.trim() ?? ""
+  const initialMatch = useMemo(() => initial ? matchDesign(initial) : null, [initial])
+  const [step,     setStep]     = useState<Step>(initialMatch ? "skill" : "brief")
+  const [brief,    setBrief]    = useState(initial)
+  const [skillId,  setSkillId]  = useState(initialMatch?.skill.id ?? "")
+  const [systemId, setSystemId] = useState(initialMatch?.system.id ?? "")
+  const [match,    setMatch]    = useState<MatchResult | null>(initialMatch)
 
   const systems = useMemo(() => DesignLoader.listSystems(), [])
   const skills  = useMemo(() => DesignLoader.listSkills(),  [])
@@ -292,13 +345,13 @@ export function DesignWizard({ workdir, onLaunch, onClose }: Props) {
     <Box
       flexDirection="column"
       borderStyle="round"
-      borderColor={useTheme().accent}
+      borderColor={theme.accent}
       paddingX={2}
       paddingY={1}
       width={72}
     >
       {step === "brief" && (
-        <BriefStep onNext={handleBrief} onClose={onClose} />
+        <BriefStep initialBrief={brief} onNext={handleBrief} onClose={onClose} />
       )}
       {step === "skill" && match && (
         <SkillStep

@@ -41,6 +41,7 @@ export class MCPClient {
         command: this.config.command,
         args:    this.config.args ?? [],
         env:     { ...process.env, ...(this.config.env ?? {}) } as Record<string, string>,
+        stderr:  "ignore",  // Prevent Python traceback on SIGINT
       })
     }
 
@@ -100,7 +101,12 @@ export class MCPClient {
 
   async disconnect(): Promise<void> {
     if (this.connected) {
-      await this.client.close()
+      try {
+        // Graceful shutdown — client.close() child process'e SIGTERM gönderir
+        await this.client.close()
+      } catch {
+        // Close başarısız olsa bile devam et — process zaten kapanıyor olabilir
+      }
       this.connected = false
     }
   }

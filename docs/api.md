@@ -1,225 +1,187 @@
-# HTTP API Reference
+# Local HTTP API Reference
 
-Aurict exposes a local HTTP API on `localhost:4111` (configurable). All endpoints require a bearer token.
+Aurict is terminal-first, but the CLI starts a local HTTP/SSE API for sessions,
+provider metadata, MCP management, and SDK integrations.
 
-## Authentication
+Default bind address: `127.0.0.1:7777`.
 
-The token is auto-generated at `~/.aurict/server-token` on first run.
+All endpoints are under `/v1`. The bearer token is generated at
+`~/.aurict/server-token` on first run and is required for every endpoint except
+`GET /v1/health`.
 
 ```bash
 TOKEN=$(cat ~/.aurict/server-token)
-curl -H "Authorization: Bearer $TOKEN" http://localhost:4111/health
+BASE="http://127.0.0.1:7777"
 ```
 
 ---
 
-## Endpoints
+## Health
 
-### `GET /health`
+### `GET /v1/health`
 
 Returns server status.
 
-```json
-{ "status": "ok", "version": "1.0.3" }
+```bash
+curl "$BASE/v1/health"
 ```
-
----
-
-### `GET /sessions`
-
-List all sessions.
 
 ```json
-[
-  {
-    "id": "sess_abc123",
-    "createdAt": "2026-01-15T10:30:00Z",
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-6",
-    "messageCount": 24,
-    "tokens": { "input": 45000, "output": 8200 }
-  }
-]
+{ "status": "ok", "version": "0.0.1" }
 ```
 
 ---
 
-### `GET /sessions/:id`
+## Providers
 
-Get a specific session.
+### `GET /v1/provider`
 
----
-
-### `GET /sessions/:id/messages`
-
-Get all messages in a session.
-
-```json
-[
-  { "role": "user", "content": "Refactor the auth middleware" },
-  { "role": "assistant", "content": "I'll start by reading the current implementation..." }
-]
-```
-
----
-
-### `POST /sessions/:id/messages`
-
-Send a message to a session and get a response.
-
-**Request:**
-```json
-{
-  "content": "What does the database schema look like?",
-  "stream": false
-}
-```
-
-**Response:**
-```json
-{
-  "role": "assistant",
-  "content": "The database has 5 tables...",
-  "tokens": { "input": 1200, "output": 340 }
-}
-```
-
-**Streaming response** (`"stream": true`):
-
-Returns Server-Sent Events:
-
-```
-data: {"type":"text","delta":"The database"}
-data: {"type":"text","delta":" has 5 tables"}
-data: {"type":"tool_call","tool":"read","args":{"path":"src/db/schema.ts"}}
-data: {"type":"tool_result","tool":"read","output":"..."}
-data: {"type":"done","tokens":{"input":1200,"output":340}}
-```
-
----
-
-### `POST /sessions`
-
-Create a new session.
-
-**Request:**
-```json
-{
-  "provider": "anthropic",
-  "model": "claude-sonnet-4-6",
-  "workdir": "/path/to/project",
-  "system": "Optional additional system prompt"
-}
-```
-
-**Response:**
-```json
-{
-  "id": "sess_xyz789",
-  "createdAt": "2026-01-15T10:35:00Z"
-}
-```
-
----
-
-### `DELETE /sessions/:id`
-
-Delete a session and its messages.
-
----
-
-### `GET /sessions/:id/stream`
-
-SSE stream for real-time updates from an active session.
-
-```
-event: text
-data: {"delta":"..."}
-
-event: tool_call
-data: {"tool":"bash","args":{"command":"bun test"}}
-
-event: tool_result
-data: {"tool":"bash","result":"..."}
-
-event: done
-data: {"tokens":{"input":2000,"output":500}}
-```
-
----
-
-### `GET /tools`
-
-List all available tools (built-in + MCP).
-
-```json
-[
-  { "id": "read",     "description": "Read a file or line range", "riskLevel": "safe" },
-  { "id": "write",    "description": "Write content to a file",   "riskLevel": "medium" },
-  { "id": "bash",     "description": "Execute a shell command",   "riskLevel": "variable" },
-  { "id": "github__create_issue", "description": "Create a GitHub issue", "source": "mcp:github" }
-]
-```
-
----
-
-### `GET /models`
-
-List all available models across configured providers.
-
-```json
-[
-  { "provider": "anthropic", "id": "claude-sonnet-4-6", "contextWindow": 200000 },
-  { "provider": "openai",    "id": "gpt-4o",            "contextWindow": 128000 }
-]
-```
-
----
-
-### `GET /memories`
-
-List stored memories for a project.
-
-**Query params:** `workdir=<path>`
-
-```json
-[
-  { "id": 1, "category": "preference", "content": "User prefers bun over npm", "scope": "global" },
-  { "id": 2, "category": "project",    "content": "Database schema is in src/db/schema.ts", "scope": "project" }
-]
-```
-
----
-
-## Using the API from scripts
+Lists configured providers, their default model, and available model ids.
 
 ```bash
-#!/usr/bin/env bash
-TOKEN=$(cat ~/.aurict/server-token)
-BASE="http://localhost:4111"
-
-# Create a session
-SESS=$(curl -s -X POST "$BASE/sessions" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"provider":"anthropic","model":"claude-sonnet-4-6","workdir":"/my/project"}' \
-  | jq -r '.id')
-
-# Send a message
-curl -s -X POST "$BASE/sessions/$SESS/messages" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"content":"List all TODO comments in the codebase","stream":false}' \
-  | jq -r '.content'
+curl "$BASE/v1/provider" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
 
-## SDK usage
+## Sessions
+
+### `GET /v1/session`
+
+Lists sessions known to the local session manager.
+
+```bash
+curl "$BASE/v1/session" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### `POST /v1/session`
+
+Creates a session.
+
+```bash
+curl -X POST "$BASE/v1/session" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "title": "Refactor auth",
+    "system": "Optional additional system prompt"
+  }'
+```
+
+Response:
+
+```json
+{ "id": "sess_abc123" }
+```
+
+### `GET /v1/session/:id`
+
+Returns a single session record.
+
+```bash
+curl "$BASE/v1/session/<id>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### `POST /v1/session/:id/message`
+
+Adds a user message and streams the assistant response as Server-Sent Events.
+
+```bash
+curl -N -X POST "$BASE/v1/session/<id>/message" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"List the risky files touched by the last change"}'
+```
+
+Example stream:
+
+```text
+data: {"type":"text","delta":"I will inspect the recent diff."}
+event: done
+data: {"type":"done","tokens":{"input":1200,"output":240}}
+```
+
+### `GET /v1/session/:id/events`
+
+Subscribes to structured session events emitted by the local runtime.
+
+```bash
+curl -N "$BASE/v1/session/<id>/events" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Event payloads may include:
+
+```json
+{ "type": "text", "data": { "delta": "...", "sessionId": "sess_abc123" } }
+{ "type": "tool_call", "data": { "id": "call_1", "tool": "read", "args": { "path": "src/index.ts" } } }
+{ "type": "tool_result", "data": { "id": "call_1", "result": "...", "status": "ok" } }
+{ "type": "permission", "data": { "id": "perm_1", "tool": "bash", "pattern": "npm install" } }
+{ "type": "done", "data": { "sessionId": "sess_abc123" } }
+```
+
+---
+
+## MCP
+
+### `GET /v1/mcp`
+
+Lists connected MCP servers.
+
+```bash
+curl "$BASE/v1/mcp" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### `POST /v1/mcp`
+
+Connects an MCP server.
+
+```bash
+curl -X POST "$BASE/v1/mcp" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "filesystem",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+  }'
+```
+
+### `DELETE /v1/mcp/:name`
+
+Disconnects an MCP server.
+
+```bash
+curl -X DELETE "$BASE/v1/mcp/filesystem" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## SDK
 
 ```typescript
-import { createApp } from "@aurict/core"
+import { AurictClient } from "@aurict/sdk"
 
-const app = createApp()
-const server = Bun.serve({ port: 4111, fetch: app.fetch })
+const client = new AurictClient({
+  baseUrl: "http://127.0.0.1:7777",
+  token: process.env.AURICT_TOKEN,
+})
+
+const sessionId = await client.createSession({
+  provider: "anthropic",
+  model: "claude-sonnet-4-6",
+})
+
+await client.sendMessage(sessionId, {
+  content: "Summarize this repo",
+  onText: (delta) => process.stdout.write(delta),
+  onDone: (tokens) => console.log(tokens),
+})
 ```

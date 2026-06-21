@@ -74,7 +74,7 @@ export const FEATURES = [
   {
     icon: "sandbox",
     title: "Sandbox Execution",
-    description: "Risky executables — node scripts, python, ruby, bash — run in Docker isolation. Your machine stays safe regardless of what the AI tries to run.",
+    description: "Risky executables run through a low-overhead policy sandbox: command classification, approvals, protected paths, scrubbed env, timeouts, output limits, and audit trails. Docker remains optional for heavier isolation.",
     tag: "Security",
     color: "#ff6b6b",
   },

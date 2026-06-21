@@ -116,14 +116,34 @@ aurict /gate list
 
 ---
 
+## Sandbox model
+
+Aurict uses a low-overhead policy sandbox by default. This is not a Docker container.
+It is a guarded execution layer around shell work:
+
+- command classification before execution (`safe`, `warning`, `danger`)
+- explicit approval for mutating or dangerous commands
+- protected path checks through GateGuard
+- per-tool timeout and output truncation
+- audit and diagnostics records for tool failures
+
+Heavy process isolation backends such as Docker are intentionally not the default because they
+increase startup time and resource usage. They can be added as an optional backend later without
+changing the default policy-sandbox behavior.
+
+---
+
 ## HTTP API port
 
-The local HTTP server starts on `localhost:4111` by default.
+The local HTTP server starts on `localhost:7777` by default.
 
-```bash
-# Override port
-aurict --port 5000
+You can override this in config:
 
-# Disable HTTP server
-aurict --no-server
+```json
+{
+  "server": {
+    "port": 5000,
+    "disabled": false
+  }
+}
 ```

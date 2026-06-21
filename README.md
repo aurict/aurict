@@ -27,7 +27,8 @@ that you're using Next.js with Tailwind and Drizzle. It already knows.
 **It works with real tools, not simulated ones.**
 Every file read, shell command, and code edit happens through a typed, permission-controlled
 tool layer. Commands are classified as safe, warning, or dangerous before execution. Risky
-executables run inside an isolated sandbox. You always know what's happening and why.
+execution is constrained by a low-overhead policy sandbox: permission gates, protected paths,
+timeouts, output limits, and audit trails. You always know what's happening and why.
 
 **It thinks in parallel, not in sequence.**
 Long tasks — refactoring a module, writing a test suite, auditing security — are broken into
@@ -85,7 +86,7 @@ Aurict from CI, or build your own tooling on top.
 | Feature | Description |
 |---|---|
 | **Bash classifier** | Three-tier analysis (safe / warning / danger) before any shell command runs |
-| **Sandbox execution** | Risky executables (node, python, ruby, bash, sh scripts) run in Docker isolation |
+| **Policy sandbox** | Low-overhead guarded execution: command classification, approvals, protected paths, timeouts, output limits, and audit logs |
 | **Permission system** | Per-tool allow/deny rules, wildcard path matching, always-allow list |
 | **JWT auth** | Bearer token on the local HTTP API, auto-generated at `~/.aurict/server-token` |
 
@@ -271,7 +272,7 @@ curl -X POST http://localhost:7777/v1/session \
   -d '{"provider":"anthropic","model":"claude-sonnet-4-6"}'
 
 # List sessions
-curl http://localhost:7777/v1/sessions \
+curl http://localhost:7777/v1/session \
   -H "Authorization: Bearer $TOKEN"
 
 # Send a message (SSE stream)

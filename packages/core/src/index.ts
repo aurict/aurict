@@ -59,7 +59,7 @@ export type { AgentRunOptions, AgentFinishResult, AgentStatus, TokenBreakdown } 
 export { agentPool }                                     from "./agent/pool.js"
 export { loadCustomAgents, getCustomAgent }              from "./agent/custom.js"
 export type { CustomAgentDef }                           from "./agent/custom.js"
-export { mcpManager }                                    from "./mcp/manager.js"
+export { mcpManager, setMCPLogHandler }                     from "./mcp/manager.js"
 export { ensureDefaultMCPServers }                       from "./mcp/config.js"
 export { DEFAULT_MCP_SERVERS, MCP_SERVER_DESCRIPTIONS, getMcpActivationMessage } from "./mcp/defaults.js"
 export type { MCPServerConfig, MCPConfig, MCPToolInfo, MCPResourceInfo, MCPResourceContent }  from "./mcp/types.js"

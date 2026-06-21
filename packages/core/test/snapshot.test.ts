@@ -1,18 +1,21 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test"
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { snapshotManager } from "../src/snapshot/snapshot.js"
 
 let tmpDir: string
+const originalStorageDir = snapshotManager.getStorageDir()
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "aurict-snap-"))
+  snapshotManager.setStorageDir(join(tmpDir, ".aurict", "snapshots"))
   snapshotManager.clear()
 })
 
 afterEach(() => {
   snapshotManager.clear()
+  snapshotManager.setStorageDir(originalStorageDir)
   rmSync(tmpDir, { recursive: true, force: true })
 })
 
@@ -80,12 +83,12 @@ describe("snapshotManager — non-existent file (ENOENT)", () => {
     expect(snapshotManager.getHistoryLength()).toBe(1)
   })
 
-  it("undoLast on new-file snapshot writes empty string", async () => {
+  it("undoLast on new-file snapshot deletes the created file", async () => {
     const file = join(tmpDir, "new-file.ts")
     await snapshotManager.takeSnapshot(file)
     writeFileSync(file, "some content added later")
     await snapshotManager.undoLast()
-    expect(readFileSync(file, "utf8")).toBe("")
+    expect(existsSync(file)).toBe(false)
   })
 })
 
@@ -181,5 +184,19 @@ describe("snapshotManager.getHistoryLength + clear", () => {
     writeFileSync(file, "j")
     await snapshotManager.takeSnapshot(file)
     expect(snapshotManager.mark()).toBe(snapshotManager.getHistoryLength())
+  })
+
+  it("persists snapshot history to disk", async () => {
+    const file = join(tmpDir, "persist.txt")
+    const historyFile = join(tmpDir, ".aurict", "snapshots", "history.json")
+    writeFileSync(file, "persisted")
+
+    await snapshotManager.takeSnapshot(file)
+
+    expect(existsSync(historyFile)).toBe(true)
+    const persisted = JSON.parse(readFileSync(historyFile, "utf8"))
+    expect(persisted).toHaveLength(1)
+    expect(persisted[0].filePath).toBe(file)
+    expect(persisted[0].existed).toBe(true)
   })
 })

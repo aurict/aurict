@@ -1,30 +1,135 @@
 import { stat } from "node:fs/promises"
 import { resolve, dirname, join } from "node:path"
+import * as ts from "typescript"
 
 /**
  * Hallucination Detection
  * 
- * Agent'ın ürettiği kodda hallucination tespit eder:
- * 1. Import edilen modüller var mı?
- * 2. Import edilen semboller export ediliyor mu?
- * 3. Kullanılan method'lar/fonksiyonlar mevcut mu?
+ * AST-based validation of imports, exports, and function signature matches.
  */
 
 export interface HallucinationWarning {
-  type: "missing-module" | "missing-export" | "missing-method"
+  type: "missing-module" | "missing-export" | "missing-method" | "signature-mismatch"
   message: string
   file: string
   line?: number
 }
 
+function walk(node: ts.Node, callback: (node: ts.Node) => void) {
+  callback(node)
+  ts.forEachChild(node, (child) => walk(child, callback))
+}
+
+function hasExportModifier(node: ts.Node): boolean {
+  const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined
+  return modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) || false
+}
+
+function getParamCountRange(parameters: ts.NodeArray<ts.ParameterDeclaration>) {
+  let min = 0
+  let max = 0
+  for (const param of parameters) {
+    if (param.dotDotDotToken) {
+      max = Infinity // Rest parameters
+    } else {
+      if (!param.initializer && !param.questionToken) {
+        min++
+      }
+      if (max !== Infinity) {
+        max++
+      }
+    }
+  }
+  return { min, max }
+}
+
+interface TargetFileInfo {
+  exportedNames: Set<string>
+  functionParamCounts: Map<string, { min: number; max: number }>
+}
+
+async function parseTargetFile(filePath: string): Promise<TargetFileInfo | null> {
+  try {
+    const content = await Bun.file(filePath).text()
+    const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true)
+    
+    const exportedNames = new Set<string>()
+    const functionParamCounts = new Map<string, { min: number; max: number }>()
+
+    walk(sourceFile, (node) => {
+      // export const / let / var
+      if (ts.isVariableStatement(node) && hasExportModifier(node)) {
+        for (const decl of node.declarationList.declarations) {
+          if (ts.isIdentifier(decl.name)) {
+            exportedNames.add(decl.name.text)
+          }
+        }
+      }
+      // export function
+      if (ts.isFunctionDeclaration(node) && hasExportModifier(node) && node.name) {
+        exportedNames.add(node.name.text)
+        const range = getParamCountRange(node.parameters)
+        functionParamCounts.set(node.name.text, range)
+      }
+      // export class
+      if (ts.isClassDeclaration(node) && hasExportModifier(node) && node.name) {
+        exportedNames.add(node.name.text)
+      }
+      // export interface
+      if (ts.isInterfaceDeclaration(node) && hasExportModifier(node) && node.name) {
+        exportedNames.add(node.name.text)
+      }
+      // export type
+      if (ts.isTypeAliasDeclaration(node) && hasExportModifier(node) && node.name) {
+        exportedNames.add(node.name.text)
+      }
+      // export enum
+      if (ts.isEnumDeclaration(node) && hasExportModifier(node) && node.name) {
+        exportedNames.add(node.name.text)
+      }
+      // export { x, y }
+      if (ts.isExportDeclaration(node)) {
+        if (node.exportClause && ts.isNamedExports(node.exportClause)) {
+          for (const elem of node.exportClause.elements) {
+            exportedNames.add(elem.name.text)
+          }
+        }
+      }
+    })
+
+    return { exportedNames, functionParamCounts }
+  } catch {
+    return null
+  }
+}
+
 /**
- * Dosya içeriğindeki import'ları kontrol eder.
- * 
- * @param content Dosya içeriği
- * @param filePath Dosya yolu
- * @param workdir Çalışma dizini
- * @returns Hallucination warning'leri
+ * Modül dosya yolunu bulmaya çalışır.
  */
+async function resolveModulePath(importPath: string, fromDir: string): Promise<string | null> {
+  const basePath = resolve(fromDir, importPath)
+  const extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".mts", ".cts"]
+  const indexFiles = ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"]
+
+  for (const ext of extensions) {
+    const p = basePath + ext
+    try {
+      await stat(p)
+      return p
+    } catch {}
+  }
+
+  for (const indexFile of indexFiles) {
+    const p = basePath + indexFile
+    try {
+      await stat(p)
+      return p
+    } catch {}
+  }
+
+  return null
+}
+
 export async function detectHallucinations(
   content: string,
   filePath: string,
@@ -33,48 +138,106 @@ export async function detectHallucinations(
   const warnings: HallucinationWarning[] = []
   const fileDir = dirname(resolve(workdir, filePath))
 
-  // Import pattern'larını bul
-  const importPatterns = [
-    // import { foo } from './bar'
-    { regex: /import\s+(?:type\s+)?{([^}]+)}\s+from\s+['"]([^'"]+)['"]/g, importsGroup: 1, pathGroup: 2 },
-    // import foo from './bar'
-    { regex: /import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/g, importsGroup: 1, pathGroup: 2 },
-    // import * as foo from './bar'
-    { regex: /import\s+\*\s+as\s+\w+\s+from\s+['"]([^'"]+)['"]/g, importsGroup: 0, pathGroup: 1 },
-  ]
+  let sourceFile: ts.SourceFile
+  try {
+    sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true)
+  } catch {
+    // Sözdizimi hatalıysa AST oluşturma başarısız olur, tsc uyarısı yakalayacak
+    return []
+  }
 
-  for (const { regex, importsGroup, pathGroup } of importPatterns) {
-    let match
-    while ((match = regex.exec(content)) !== null) {
-      const imports = importsGroup > 0 ? (match[importsGroup] ?? "") : ""
-      const fromPath = match[pathGroup] ?? ""
+  const localImports: Array<{
+    moduleSpecifier: string
+    namedImports: string[]
+    line: number
+    resolvedPath?: string
+    exportsInfo?: TargetFileInfo
+  }> = []
 
-      // Sadece relative import'ları kontrol et
-      if (!fromPath.startsWith(".")) continue
+  const methodCalls: Array<{
+    methodName: string
+    argCount: number
+    line: number
+  }> = []
 
-      // Modülün var olup olmadığını kontrol et
-      const moduleExists = await checkModuleExists(fromPath, fileDir)
-      if (!moduleExists) {
-        warnings.push({
-          type: "missing-module",
-          message: `Imported module not found: ${fromPath}`,
-          file: filePath,
-        })
-        continue
-      }
-
-      // Named imports için export kontrolü
-      if (imports && imports.trim()) {
-        const names = imports.split(",").map(s => s.trim().split(/\s+as\s+/)[0]?.trim()).filter((n): n is string => Boolean(n))
-        for (const name of names) {
-          const exportExists = await checkExportExists(name, fromPath, fileDir)
-          if (!exportExists) {
-            warnings.push({
-              type: "missing-export",
-              message: `'${name}' is not exported from '${fromPath}'`,
-              file: filePath,
-            })
+  // AST'yi gez
+  walk(sourceFile, (node) => {
+    // import { x } from "./y"
+    if (ts.isImportDeclaration(node)) {
+      const moduleSpecifier = (node.moduleSpecifier as ts.StringLiteral).text
+      if (moduleSpecifier.startsWith(".")) {
+        const namedImports: string[] = []
+        if (node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) {
+          for (const el of node.importClause.namedBindings.elements) {
+            namedImports.push(el.name.text)
           }
+        }
+        const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart())
+        localImports.push({ moduleSpecifier, namedImports, line: line + 1 })
+      }
+    }
+
+    // method calling: foo(...)
+    if (ts.isCallExpression(node)) {
+      let methodName = ""
+      if (ts.isIdentifier(node.expression)) {
+        methodName = node.expression.text
+      } else if (ts.isPropertyAccessExpression(node.expression)) {
+        methodName = node.expression.name.text
+      }
+      if (methodName) {
+        const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart())
+        methodCalls.push({ methodName, argCount: node.arguments.length, line: line + 1 })
+      }
+    }
+  })
+
+  // Import edilen modüllerin varlığını ve export'larını kontrol et
+  for (const imp of localImports) {
+    const resolved = await resolveModulePath(imp.moduleSpecifier, fileDir)
+    if (!resolved) {
+      warnings.push({
+        type: "missing-module",
+        message: `Imported module not found: ${imp.moduleSpecifier}`,
+        file: filePath,
+        line: imp.line,
+      })
+      continue
+    }
+
+    imp.resolvedPath = resolved
+    const info = await parseTargetFile(resolved)
+    if (info) {
+      imp.exportsInfo = info
+      // Named exports kontrol et
+      for (const name of imp.namedImports) {
+        if (!info.exportedNames.has(name)) {
+          warnings.push({
+            type: "missing-export",
+            message: `'${name}' is not exported from '${imp.moduleSpecifier}'`,
+            file: filePath,
+            line: imp.line,
+          })
+        }
+      }
+    }
+  }
+
+  // Metot çağrılarının imzalarını kontrol et
+  for (const call of methodCalls) {
+    // Bu çağrı import edilmiş bir yerel fonksiyona mı ait?
+    const sourceImport = localImports.find(imp => imp.namedImports.includes(call.methodName))
+    if (sourceImport?.exportsInfo) {
+      const sig = sourceImport.exportsInfo.functionParamCounts.get(call.methodName)
+      if (sig) {
+        if (call.argCount < sig.min || call.argCount > sig.max) {
+          const expectedRange = sig.max === Infinity ? `>= ${sig.min}` : `${sig.min}-${sig.max}`
+          warnings.push({
+            type: "signature-mismatch",
+            message: `Function '${call.methodName}' expects ${expectedRange} arguments, but got ${call.argCount}`,
+            file: filePath,
+            line: call.line,
+          })
         }
       }
     }
@@ -83,94 +246,6 @@ export async function detectHallucinations(
   return warnings
 }
 
-/**
- * Modülün var olup olmadığını kontrol eder.
- * 
- * .ts, .tsx, .js, .jsx, /index.ts uzantılarını dener.
- */
-async function checkModuleExists(importPath: string, fromDir: string): Promise<boolean> {
-  const basePath = resolve(fromDir, importPath)
-  
-  // Olası uzantılar
-  const extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".mts", ".cts"]
-  const indexFiles = ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"]
-
-  // Direkt dosya kontrolü
-  for (const ext of extensions) {
-    try {
-      await stat(basePath + ext)
-      return true
-    } catch {
-      // Devam et
-    }
-  }
-
-  // Directory + index dosyası kontrolü
-  for (const indexFile of indexFiles) {
-    try {
-      await stat(basePath + indexFile)
-      return true
-    } catch {
-      // Devam et
-    }
-  }
-
-  return false
-}
-
-/**
- * İsim'in modülden export edilip edilmediğini kontrol eder.
- * 
- * Basit bir grep-based kontrol — tam doğruluk için TypeScript AST gerekir.
- */
-async function checkExportExists(
-  name: string,
-  importPath: string,
-  fromDir: string,
-): Promise<boolean> {
-  const basePath = resolve(fromDir, importPath)
-  
-  // Olası dosya yolları
-  const extensions = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts"]
-  const possiblePaths = [
-    ...extensions.map(ext => basePath + ext),
-    ...extensions.map(ext => join(basePath, `index${ext}`)),
-  ]
-
-  for (const filePath of possiblePaths) {
-    try {
-      const content = await Bun.file(filePath).text()
-      
-      // Export pattern'ları kontrol et
-      // export const foo, export function foo, export class foo
-      const exportPatterns = [
-        new RegExp(`export\\s+(?:const|let|var|function|class|interface|type|enum)\\s+${escapeRegex(name)}\\b`),
-        // export default
-        new RegExp(`export\\s+default\\s+`),
-        // export { foo }
-        new RegExp(`export\\s+{[^}]*\\b${escapeRegex(name)}\\b[^}]*}`),
-        // export * from (re-export)
-        /export\s+\*\s+from/,
-      ]
-
-      for (const pattern of exportPatterns) {
-        if (pattern.test(content)) {
-          return true
-        }
-      }
-    } catch {
-      // Dosya okunamadı, devam et
-    }
-  }
-
-  // Export bulunamadı — ama bu kesin değil, conservative approach
-  // Warning dönmek yerine true dönelim (false positive'den kaçın)
-  return true
-}
-
-/**
- * Warning'leri formatlar ve agent'a gösterilecek hale getirir.
- */
 export function formatHallucinationWarnings(warnings: HallucinationWarning[]): string {
   if (warnings.length === 0) return ""
 
@@ -183,11 +258,4 @@ export function formatHallucinationWarnings(warnings: HallucinationWarning[]): s
   ]
 
   return lines.join("\n")
-}
-
-/**
- * Regex için escape function.
- */
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }

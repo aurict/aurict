@@ -3,19 +3,14 @@ import { EventEmitter } from "node:events"
 // Bileşen sayısı arttıkça varsayılan 10 limit aşılır — 50'ye çıkar.
 EventEmitter.defaultMaxListeners = 50
 
-import React from "react"
-import { render } from "ink"
-import { bootstrap } from "./bootstrap.js"
-import { runAgent, ProviderRegistry, mcpManager, loadPlugins, runRecipe, parseRecipeFile } from "@aurict/core"
-import { loadConfig as loadOmniConfig } from "@aurict/core"
 import { loadConfig, parseFlags, applyFlags } from "./config/loader.js"
-import { App } from "./tui/App.js"
-import { SetupWizard } from "./tui/SetupWizard.js"
-import { checkForUpdate } from "./util/update-check.js"
+
+let mcpManagerRef: { disconnectAll(): Promise<void> } | null = null
 
 // ─── Terminal Güvenlik Katmanı ────────────────────────────────────────────────
 function restoreTerminal() {
   try {
+    if (!process.stdout.isTTY) return
     process.stdout.write("\x1b[?25h")    // cursor göster
     process.stdout.write("\x1b[?2004l")  // bracketed paste kapat
     process.stdout.write("\x1b[0m")      // renkleri sıfırla
@@ -26,9 +21,19 @@ function restoreTerminal() {
 process.on("exit", restoreTerminal)
 process.on("SIGTERM", () => { restoreTerminal(); process.exit(0) })
 process.on("SIGINT",  () => {
-  mcpManager.disconnectAll()
-    .then(()  => { restoreTerminal(); process.exit(0) })
-    .catch(() => { restoreTerminal(); process.exit(1) })
+  if (!mcpManagerRef) {
+    restoreTerminal()
+    process.exit(0)
+  }
+  // MCP server'ları kapat — timeout ile, 1 saniye içinde bitmezse force exit
+  const disconnectTimeout = setTimeout(() => {
+    restoreTerminal()
+    process.exit(0)
+  }, 1000)
+
+  mcpManagerRef.disconnectAll()
+    .then(()  => { clearTimeout(disconnectTimeout); restoreTerminal(); process.exit(0) })
+    .catch(() => { clearTimeout(disconnectTimeout); restoreTerminal(); process.exit(1) })
 })
 process.on("uncaughtException",  (err) => {
   restoreTerminal()
@@ -47,31 +52,6 @@ process.on("unhandledRejection", (r) => {
 const flags   = parseFlags()
 const workdir = process.cwd()
 
-// Load API keys from ~/.aurict/config.json into process.env (only if not already set by shell)
-const omniCfg = loadOmniConfig(workdir)
-const PROVIDER_ENV_MAP: Record<string, string[]> = {
-  anthropic:  ["ANTHROPIC_API_KEY"],
-  openai:     ["OPENAI_API_KEY"],
-  openrouter: ["OPENROUTER_API_KEY"],
-  google:     ["GOOGLE_GENERATIVE_AI_API_KEY"],
-  opencode:   ["OPENCODE_API_KEY"],
-  xai:        ["XAI_API_KEY"],
-  azure:      ["AZURE_OPENAI_API_KEY"],
-  bedrock:    ["AWS_ACCESS_KEY_ID"],
-  ollama:     [],
-}
-for (const [provider, val] of Object.entries(omniCfg.providers ?? {})) {
-  if (!val.apiKey) continue
-  const envVars = PROVIDER_ENV_MAP[provider] ?? [`${provider.toUpperCase()}_API_KEY`]
-  for (const envVar of envVars) {
-    if (!process.env[envVar]) process.env[envVar] = val.apiKey
-  }
-  // Azure also needs baseUrl for the endpoint
-  if (provider === "azure" && val.baseUrl && !process.env["AZURE_OPENAI_ENDPOINT"]) {
-    process.env["AZURE_OPENAI_ENDPOINT"] = val.baseUrl
-  }
-}
-
 // --version
 if (flags.version) {
   console.log("Aurict v1.0.7")
@@ -85,6 +65,7 @@ Aurict v1.0.7 — Terminal AI assistant
 
 Usage:
   aurict [options]
+  aurict doctor              Run local install diagnostics
   aurict run <recipe.yaml>   Run a recipe (automated multi-step task)
 
 Options:
@@ -119,8 +100,58 @@ Environment variables:
   process.exit(0)
 }
 
-// ─── aurict run <recipe.yaml> ────────────────────────────────────────────────
 const [subCmd, recipeFile] = process.argv.slice(2)
+if (subCmd === "doctor") {
+  const { runDoctor } = await import("./util/doctor.js")
+  const exitCode = await runDoctor(workdir)
+  process.exit(exitCode)
+}
+
+const React = (await import("react")).default
+const { render } = await import("ink")
+const { bootstrap } = await import("./bootstrap.js")
+const { App } = await import("./tui/App.js")
+const { SetupWizard } = await import("./tui/SetupWizard.js")
+const { ErrorBoundary, writeTUIcrashReport } = await import("./tui/ErrorBoundary.js")
+const { checkForUpdate } = await import("./util/update-check.js")
+const core = await import("@aurict/core")
+const {
+  runAgent,
+  ProviderRegistry,
+  mcpManager,
+  loadPlugins,
+  runRecipe,
+  parseRecipeFile,
+  loadConfig: loadOmniConfig,
+} = core
+mcpManagerRef = mcpManager
+
+// Load API keys from ~/.aurict/config.json into process.env (only if not already set by shell)
+const omniCfg = loadOmniConfig(workdir)
+const PROVIDER_ENV_MAP: Record<string, string[]> = {
+  anthropic:  ["ANTHROPIC_API_KEY"],
+  openai:     ["OPENAI_API_KEY"],
+  openrouter: ["OPENROUTER_API_KEY"],
+  google:     ["GOOGLE_GENERATIVE_AI_API_KEY"],
+  opencode:   ["OPENCODE_API_KEY"],
+  xai:        ["XAI_API_KEY"],
+  azure:      ["AZURE_OPENAI_API_KEY"],
+  bedrock:    ["AWS_ACCESS_KEY_ID"],
+  ollama:     [],
+}
+for (const [provider, val] of Object.entries(omniCfg.providers ?? {})) {
+  if (!val.apiKey) continue
+  const envVars = PROVIDER_ENV_MAP[provider] ?? [`${provider.toUpperCase()}_API_KEY`]
+  for (const envVar of envVars) {
+    if (!process.env[envVar]) process.env[envVar] = val.apiKey
+  }
+  // Azure also needs baseUrl for the endpoint
+  if (provider === "azure" && val.baseUrl && !process.env["AZURE_OPENAI_ENDPOINT"]) {
+    process.env["AZURE_OPENAI_ENDPOINT"] = val.baseUrl
+  }
+}
+
+// ─── aurict run <recipe.yaml> ────────────────────────────────────────────────
 if (subCmd === "run") {
   if (!recipeFile) {
     console.error("Usage: aurict run <recipe.yaml|recipe.json>")
@@ -161,7 +192,7 @@ await loadPlugins()
 
 // Config yükle: global < proje < CLI flags
 const cfg      = applyFlags(loadConfig(workdir), flags)
-const { defaultProvider } = await bootstrap(cfg)
+const { defaultProvider, localServer } = await bootstrap(cfg)
 
 const provider   = cfg.provider ?? loadOmniConfig(workdir).defaults?.provider ?? defaultProvider
 const plugin     = ProviderRegistry.get(provider)
@@ -188,11 +219,15 @@ if (process.stdin.isTTY) {
               initialModel:    chosenModel,
               workdir,
               updatePromise,
+              localServer,
               ...(cfg.system !== undefined ? { system: cfg.system } : {}),
               ...(cfg.undercover !== undefined ? { undercover: cfg.undercover } : {}),
             }
             const { waitUntilExit: wait } = render(
-              React.createElement(App, appProps),
+              React.createElement(ErrorBoundary, {
+                onError: writeTUIcrashReport,
+                children: React.createElement(App, appProps),
+              }),
               { exitOnCtrlC: false },
             )
             wait().then(resolve)
@@ -203,13 +238,17 @@ if (process.stdin.isTTY) {
     })
   } else {
     const { waitUntilExit } = render(
-      React.createElement(App, {
-        initialProvider: provider,
-        initialModel:    model,
-        workdir,
-        updatePromise,
-        ...(cfg.system !== undefined ? { system: cfg.system } : {}),
-        ...(cfg.undercover !== undefined ? { undercover: cfg.undercover } : {}),
+      React.createElement(ErrorBoundary, {
+        onError: writeTUIcrashReport,
+        children: React.createElement(App, {
+          initialProvider: provider,
+          initialModel:    model,
+          workdir,
+          updatePromise,
+          localServer,
+          ...(cfg.system !== undefined ? { system: cfg.system } : {}),
+          ...(cfg.undercover !== undefined ? { undercover: cfg.undercover } : {}),
+        }),
       }),
       { exitOnCtrlC: false },  // Ctrl+C'yi App.tsx'te useInput ile yönetiyoruz
     )

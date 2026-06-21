@@ -36,6 +36,12 @@ import { mermaidTool }     from "./built-in/mermaid-tool.js"
 import { verifyTool }      from "./built-in/verify.js"
 import { scratchpadTool }  from "./built-in/scratchpad.js"
 import { critiqueTool }    from "./built-in/critique.js"
+import { envInspectTool }  from "./built-in/env-inspect.js"
+import { checkpointTool }  from "./built-in/checkpoint.js"
+import { diffViewTool }    from "./built-in/diff-view.js"
+import { fileStatTool }    from "./built-in/file-stat.js"
+import { processMonitorTool } from "./built-in/process-monitor.js"
+import { patchTestTool }   from "./built-in/patch-test.js"
 
 const tools = new Map<string, ToolDef>()
 
@@ -53,6 +59,7 @@ for (const t of [
   httpRequestTool, jwtDecodeTool, regexTestTool, jqTool,
   pptxTool, renderPdfTool, chartTool, mermaidTool,
   verifyTool, scratchpadTool, critiqueTool,
+  envInspectTool, checkpointTool, diffViewTool, fileStatTool, processMonitorTool, patchTestTool,
 ]) {
   tools.set(t.id, t)
 

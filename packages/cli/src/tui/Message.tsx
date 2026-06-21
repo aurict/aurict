@@ -38,6 +38,8 @@ export interface DisplayMessage {
 
 const MAX_TOOL_LINES   = 8
 const MAX_STREAM_LINES = 8
+const TOOL_PREVIEW_HEAD_LINES = 5
+const TOOL_PREVIEW_TAIL_LINES = 2
 
 function useTerminalCols(): number {
   const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
@@ -61,6 +63,26 @@ function prepareLines(content: string, maxCols: number): string[] {
     .split("\n")
     .map(l => l.replace(/\t/g, "    "))
     .map(l => l.length > maxCols ? l.slice(0, maxCols - 1) + "…" : l)
+}
+
+function formatBytes(text: string): string {
+  const bytes = new TextEncoder().encode(text).length
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function lineCount(text: string): number {
+  if (!text) return 0
+  return text.endsWith("\n") ? text.split("\n").length - 1 : text.split("\n").length
+}
+
+function previewToolLines(lines: string[]): string[] {
+  if (lines.length <= MAX_TOOL_LINES) return lines
+  return [
+    ...lines.slice(0, TOOL_PREVIEW_HEAD_LINES),
+    ...lines.slice(-TOOL_PREVIEW_TAIL_LINES),
+  ]
 }
 
 // ── Timestamp ─────────────────────────────────────────────────────────────────
@@ -168,6 +190,7 @@ function PendingToolCall({
       {streamLines && streamLines.length > 0 && (
         <Box
           marginLeft={3}
+          flexDirection="column"
           borderStyle="single"
           borderTop={false} borderBottom={false} borderRight={false}
           borderColor={theme.borderDim}
@@ -255,7 +278,8 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
     if (message.pending && message.tool === "subagent") return null
 
     const summary     = summarizeArgs(message.tool ?? "tool", message.content)
-    const isError     = !!(message.resultContent?.startsWith("ERROR:"))
+    const rawOutput   = message.resultContent ?? ""
+    const isError     = !!(rawOutput.startsWith("ERROR:"))
     const color       = toolColor(message.tool, isError, !!message.pending, theme)
 
     if (message.pending) {
@@ -269,10 +293,14 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
     }
 
     // Tamamlandı — header + sol bar output
-    const safeW  = Math.max(20, termCols - 10)
-    const lines  = prepareLines(message.resultContent ?? "", safeW)
-    const hasMore = lines.length > MAX_TOOL_LINES
-    const visible = lines.slice(0, MAX_TOOL_LINES)
+    const safeW       = Math.max(20, termCols - 10)
+    const lines       = prepareLines(rawOutput, safeW)
+    const totalLines  = lineCount(rawOutput)
+    const hasOutput   = rawOutput.trim().length > 0
+    const hasMore     = lines.length > MAX_TOOL_LINES
+    const visible     = hasOutput ? previewToolLines(lines) : []
+    const hiddenLines = Math.max(0, lines.length - visible.length)
+    const outputStats = `${totalLines} ${totalLines === 1 ? "line" : "lines"} · ${formatBytes(rawOutput)}`
 
     return (
       <VStack marginBottom="md" paddingX="xs">
@@ -291,12 +319,13 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
                 : `${(message.durationMs / 1000).toFixed(1)}s`}
             </Typo>
           )}
+          <Typo variant="caption" tone="muted" dimColor>{outputStats}</Typo>
           {message.timestamp && <Timestamp ts={message.timestamp} />}
         </HStack>
 
         {/* Output — sol kenar bar */}
-        {message.resultContent && (() => {
-          const diffMatch = message.resultContent.match(/^.*\n__DIFF__\n([\s\S]*?)\n__NEW__\n([\s\S]*)$/)
+        {message.resultContent !== undefined && (() => {
+          const diffMatch = rawOutput.match(/^.*\n__DIFF__\n([\s\S]*?)\n__NEW__\n([\s\S]*)$/)
           if (diffMatch && message.tool === "edit") {
             return (
               <Box marginLeft={3} marginRight={2}>
@@ -307,20 +336,24 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
           return (
             <Box
               marginLeft={3}
+              flexDirection="column"
               borderStyle="single"
               borderTop={false} borderBottom={false} borderRight={false}
               borderColor={color}
               paddingLeft={1}
             >
-              {looksLikeDiff(message.resultContent)
-                ? <DiffRenderer rawDiff={message.resultContent} enableModeToggle enableHunkNav />
+              {looksLikeDiff(rawOutput)
+                ? <DiffRenderer rawDiff={rawOutput} enableModeToggle enableHunkNav />
                 : (<>
+                    {!hasOutput && (
+                      <Text color={theme.textDim} dimColor>(empty output)</Text>
+                    )}
                     {visible.map((line, i) => (
                       <Text key={i} color={isError ? theme.error : theme.textSecondary}>{line || " "}</Text>
                     ))}
                     {hasMore && (
                       <Text color={theme.textDim} dimColor>
-                        ⋯ {lines.length - MAX_TOOL_LINES} more lines{onExpand ? " [Ctrl+O]" : ""}
+                        ⋯ {hiddenLines} hidden lines{onExpand ? " · Ctrl+O expand latest" : ""}
                       </Text>
                     )}
                   </>)

@@ -89,7 +89,7 @@ const COMPARISONS: Comparison[] = [
       "9 AI providers — not tied to one",
       "218+ contextual skills",
       "Bash classifier for safety",
-      "Sandbox execution in Docker",
+      "Policy sandbox for guarded terminal execution",
       "Design agent wizard",
       "Windows native binary",
     ],

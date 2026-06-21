@@ -12,29 +12,34 @@ import React from "react"
 import { Text } from "ink"
 import type { TokenBreakdown } from "@aurict/core"
 import { useTheme } from "../utils/theme.js"
-import { HStack, VStack, Surface, ContextBar, KeyHint, Badge } from "./design-system/index.js"
+import { HStack, VStack, Surface, ContextBar, KeyHint, Badge, useSpinnerFrame } from "./design-system/index.js"
 
 interface Props {
-  provider:         string
-  model:            string
-  tokens:           TokenBreakdown
-  contextTokens?:   number | undefined
-  workdir:          string
-  skills?:          string[] | undefined
-  contextWindow?:   number | undefined
-  isUndercover?:    boolean | undefined
-  coordinatorMode?: boolean | undefined
-  branch?:          string | undefined
-  wasCompacted?:    boolean | undefined
-  activeAgent?:     string | undefined
-  agentColor?:      string | undefined
-  bgTaskCount?:     number | undefined
-  taskCount?:       number | undefined
-  taskPanelOpen?:   boolean | undefined
-  effort?:          number | undefined
-  autopilotMode?:   boolean | undefined
-  cols?:            number | undefined
-  draftSavedAt?:    number | undefined
+  provider:          string
+  model:             string
+  tokens:            TokenBreakdown
+  contextTokens?:    number | undefined
+  workdir:           string
+  skills?:           string[] | undefined
+  contextWindow?:    number | undefined
+  isUndercover?:     boolean | undefined
+  coordinatorMode?:  boolean | undefined
+  branch?:           string | undefined
+  wasCompacted?:     boolean | undefined
+  activeAgent?:      string | undefined
+  agentColor?:       string | undefined
+  bgTaskCount?:      number | undefined
+  taskCount?:        number | undefined
+  taskSummary?:      { pending: number; inProgress: number; done: number; error: number } | undefined
+  taskPanelOpen?:    boolean | undefined
+  localServer?:      { enabled: boolean; port?: number; started: boolean; reused: boolean } | undefined
+  sandboxBackend?:   "none" | "policy" | "docker" | undefined
+  effort?:           number | undefined
+  autopilotMode?:    boolean | undefined
+  cols?:             number | undefined
+  draftSavedAt?:     number | undefined
+  activeAgentCount?: number | undefined
+  hasBtwNote?:       boolean | undefined
 }
 
 function fmtK(n: number): string {
@@ -66,6 +71,39 @@ function truncDir(dir: string, maxLen: number): string {
   return `…/${last}`
 }
 
+function taskLabel(summary: Props["taskSummary"], fallbackCount: number | undefined): string | null {
+  const total = fallbackCount ?? (
+    summary ? summary.pending + summary.inProgress + summary.done + summary.error : 0
+  )
+  if (!total) return null
+  if (!summary) return `${total}`
+  const parts: string[] = []
+  if (summary.inProgress > 0) parts.push(`${summary.inProgress} run`)
+  if (summary.pending > 0) parts.push(`${summary.pending} wait`)
+  if (summary.error > 0) parts.push(`${summary.error} err`)
+  if (parts.length === 0) parts.push(`${summary.done}/${total} done`)
+  return parts.join(" ")
+}
+
+function serverLabel(server: Props["localServer"], compact = false): string | null {
+  if (!server) return null
+  if (!server.enabled) return compact ? "api:off" : "api off"
+  if (server.started) return server.port ? (compact ? `api:${server.port}` : `api ${server.port}`) : (compact ? "api:on" : "api on")
+  if (server.reused) return compact ? "api:used" : server.port ? `api ${server.port} used` : "api used"
+  return null
+}
+
+function sandboxLabel(backend: Props["sandboxBackend"], compact = false): string | null {
+  if (!backend) return null
+  if (compact) {
+    if (backend === "policy") return "sbx:pol"
+    if (backend === "docker") return "sbx:doc"
+    return "sbx:off"
+  }
+  if (backend === "none") return "sbx none"
+  return `sbx ${backend}`
+}
+
 type BP = "tiny" | "compact" | "normal" | "wide"
 function bp(cols: number | undefined): BP {
   const c = cols ?? 120
@@ -78,11 +116,12 @@ function bp(cols: number | undefined): BP {
 export function StatusBar({
   provider, model, tokens, contextTokens, workdir, skills = [],
   contextWindow, isUndercover, coordinatorMode, branch, wasCompacted,
-  activeAgent, agentColor, bgTaskCount, taskCount, taskPanelOpen, effort, autopilotMode, cols,
-  draftSavedAt,
+  activeAgent, agentColor, bgTaskCount, taskCount, taskSummary, taskPanelOpen, localServer, sandboxBackend, effort, autopilotMode, cols,
+  draftSavedAt, activeAgentCount, hasBtwNote,
 }: Props) {
-  const theme    = useTheme()
-  const mode     = bp(cols)
+  const theme       = useTheme()
+  const mode        = bp(cols)
+  const spinFrame   = useSpinnerFrame("dots")  // animasyonlu spinner frame
   const dir      = workdir.replace(process.env["HOME"] ?? "", "~")
   const cw           = contextWindow ?? 200_000
   const ctxUsed      = contextTokens ?? 0
@@ -90,6 +129,10 @@ export function StatusBar({
   const cumTotal     = tokens.input + tokens.output
   const thinkTag     = effortLabel(effort)
   const draftFresh   = draftSavedAt !== undefined && Date.now() - draftSavedAt < 3_000
+  const taskInfo     = taskLabel(taskSummary, taskCount)
+  const compactRuntime = mode !== "wide"
+  const serverInfo   = serverLabel(localServer, compactRuntime)
+  const sandboxInfo  = sandboxLabel(sandboxBackend, compactRuntime)
 
   // ── tiny: bare minimum ────────────────────────────────────────────────────
   if (mode === "tiny") {
@@ -124,6 +167,7 @@ export function StatusBar({
             <HStack gap="xs">
               {coordinatorMode && <Text color={theme.accent} dimColor>coord</Text>}
               {autopilotMode   && <Text color={theme.warning}>⚡</Text>}
+              {sandboxInfo     && <Text color={sandboxBackend === "none" ? theme.warning : theme.accent}>{sandboxInfo}</Text>}
               <Text color={theme.textPrimary}>{provider.slice(0, 6)}</Text>
               <Text color={theme.borderBright}>/</Text>
               <Text color={theme.warning}>{shortModel(model)}</Text>
@@ -158,6 +202,15 @@ export function StatusBar({
               {coordinatorMode && <Badge tone="accent" variant="ghost">coord</Badge>}
               {autopilotMode   && <Badge tone="warning" variant="solid">⚡ auto</Badge>}
               {draftFresh      && <Text color={theme.success} dimColor>✓ saved</Text>}
+              {hasBtwNote      && <Badge tone="accent" variant="ghost">📌</Badge>}
+              {sandboxInfo      && <Text color={sandboxBackend === "none" ? theme.warning : theme.accent}>{sandboxInfo}</Text>}
+              {serverInfo       && <Text color={localServer?.reused || localServer?.enabled === false ? theme.warning : theme.textDim}>{serverInfo}</Text>}
+              {taskInfo && (
+                <Text color={taskPanelOpen ? theme.accent : theme.textDim}>{taskPanelOpen ? "tasks open" : `tasks ${taskInfo}`}</Text>
+              )}
+              {activeAgentCount !== undefined && activeAgentCount > 0 && (
+                <Text color={theme.warning}>{spinFrame} {activeAgentCount}</Text>
+              )}
               {cumTotal > 0    && <Text color={theme.textDim}>{fmtK(cumTotal)}tok</Text>}
               {thinkTag        && <Text color={theme.accent} dimColor>{thinkTag}</Text>}
               <Text color={theme.textPrimary}>{provider}</Text>
@@ -212,6 +265,36 @@ export function StatusBar({
             {coordinatorMode && <Badge tone="accent"   variant="ghost">coordinator</Badge>}
             {autopilotMode   && <Badge tone="warning"  variant="solid">⚡ auto</Badge>}
             {draftFresh      && <Text color={theme.success} dimColor>✓ saved</Text>}
+            {hasBtwNote      && <Badge tone="accent" variant="ghost">📌 note</Badge>}
+            {sandboxInfo && (
+              <>
+                <Badge tone={sandboxBackend === "none" ? "warning" : "accent"} variant="ghost">{sandboxInfo}</Badge>
+                <Text color={theme.borderBright}>·</Text>
+              </>
+            )}
+            {serverInfo && (
+              <>
+                <Badge tone={localServer?.reused || localServer?.enabled === false ? "warning" : "muted"} variant="ghost">{serverInfo}</Badge>
+                <Text color={theme.borderBright}>·</Text>
+              </>
+            )}
+            {taskInfo && (
+              <>
+                <Badge tone={taskPanelOpen ? "accent" : "muted"} variant="ghost">
+                  {`tasks ${taskInfo}`}
+                </Badge>
+                <Text color={theme.borderBright}>·</Text>
+              </>
+            )}
+            {activeAgentCount !== undefined && activeAgentCount > 0 && (
+              <>
+                <Badge tone="warning" variant="ghost">
+                  {spinFrame} {activeAgentCount} agent{activeAgentCount > 1 ? "s" : ""}
+                </Badge>
+                <Text color={theme.borderBright} dimColor>ctrl+x</Text>
+                <Text color={theme.borderBright}>·</Text>
+              </>
+            )}
             {cumTotal > 0 && (
               <>
                 <Text color={theme.textDim}>{fmtK(cumTotal)}</Text>

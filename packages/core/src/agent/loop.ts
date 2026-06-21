@@ -72,7 +72,10 @@ function buildAITools(
   const result: Record<string, any> = {}
   for (const def of ToolRegistry.list()) {
     const captured = def
-    result[def.id] = tool({
+    // Sanitize tool ID for API compatibility: replace ':' with '_'
+    // Some providers (DeepSeek, etc.) only allow ^[a-zA-Z0-9_-]+$ pattern
+    const sanitizedId = def.id.replace(/:/g, "_")
+    result[sanitizedId] = tool({
       description: def.description,
       parameters:  def.parameters as never,
       execute: async (args: Record<string, unknown>) => {

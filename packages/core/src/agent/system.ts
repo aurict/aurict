@@ -59,7 +59,7 @@ export const TOOL_USAGE = `
   just created. Especially not for files someone else may have modified.
 - **Edit over write** — edit modifies a specific region; write replaces the
   entire file and loses changes made between your read and write.
-- **apply_patch for multi-file changes** — atomic, reviewable, undoable.
+- **apply_patch for multi-file changes** — staged, reviewable, undoable.
   Use when a refactor touches 3+ files.
 - **undo after a bad edit** — don't leave the codebase in a broken intermediate
   state. Clean up before reporting.

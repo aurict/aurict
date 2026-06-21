@@ -50,14 +50,16 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Publishing version $VERSION"
-          for pkg in packages/aurict packages/cli-linux-x64 packages/cli-linux-arm64 packages/cli-darwin-x64 packages/cli-darwin-arm64 packages/cli-win32-x64; do
+          for pkg in packages/aurict packages/cli packages/cli-linux-x64 packages/cli-linux-arm64 packages/cli-darwin-x64 packages/cli-darwin-arm64 packages/cli-win32-x64; do
             bun x json -I -f $pkg/package.json -e "this.version='$VERSION'"
           done
-          bun x json -I -f packages/aurict/package.json -e "
-            Object.keys(this.optionalDependencies || {}).forEach(k => {
-              this.optionalDependencies[k] = '$VERSION'
-            })
-          "
+          for pkg in packages/aurict packages/cli; do
+            bun x json -I -f $pkg/package.json -e "
+              Object.keys(this.optionalDependencies || {}).forEach(k => {
+                this.optionalDependencies[k] = '$VERSION'
+              })
+            "
+          done
 
       - name: Publish platform packages
         run: |

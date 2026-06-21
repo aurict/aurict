@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from "react"
+import React, { useState, useEffect, useRef, memo } from "react"
 import { Box, Text } from "ink"
 import { useTheme } from "../utils/theme.js"
 
@@ -32,6 +32,33 @@ function SkeletonLine({ color }: { color: string }) {
   return <Text color={color} dimColor>{SKELETON_FRAMES[frame]}</Text>
 }
 
+// Elapsed time formatter
+function formatElapsed(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  const s = ms / 1000
+  if (s < 60) return `${s.toFixed(1)}s`
+  const m = Math.floor(s / 60)
+  const remaining = Math.floor(s % 60)
+  return `${m}m ${remaining}s`
+}
+
+// Elapsed time hook — component mount'tan itibaren geçen süreyi takip eder
+function useElapsedTime(): number {
+  const [elapsed, setElapsed] = useState(0)
+  const startRef = useRef(Date.now())
+
+  useEffect(() => {
+    startRef.current = Date.now()
+    setElapsed(0)
+    const t = setInterval(() => {
+      setElapsed(Date.now() - startRef.current)
+    }, 100)
+    return () => clearInterval(t)
+  }, [])
+
+  return elapsed
+}
+
 // Reasoning bloğu sırasında yalnızca son N satırı göster —
 // tüm geçmişi render etmek terminal'i dondurur
 const MAX_REASONING_LINES = 8
@@ -54,6 +81,7 @@ function lineCount(text: string): number {
 
 export const StreamingView = memo(function StreamingView({ text, reasoning, skeleton, error }: Props) {
   const theme = useTheme()
+  const elapsed = useElapsedTime()
 
   return (
     <Box flexDirection="column" paddingX={1} marginBottom={1}>
@@ -65,13 +93,14 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
         const hidden  = total - visible.length
         return (
           <Box flexDirection="column" marginBottom={text ? 1 : 0}>
-            {/* Başlık: "∴ thinking… (142 lines)" */}
+            {/* Başlık: "∴ thinking… (142 lines) 3.2s" */}
             <Box gap={1}>
               <Text color={theme.borderDim}>∴</Text>
               <Text color={theme.accent} italic dimColor>thinking…</Text>
               {total > 1 && (
                 <Text color={theme.borderDim} dimColor>({total} lines)</Text>
               )}
+              <Text color={theme.textDim} dimColor>{formatElapsed(elapsed)}</Text>
             </Box>
 
             {/* Taşan satır bildirimi */}
@@ -114,6 +143,7 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
           <Box flexDirection="column" paddingLeft={1}>
             <SkeletonLine color={theme.accent} />
             <SkeletonLine color={theme.borderDim} />
+            <Text color={theme.textDim} dimColor>{formatElapsed(elapsed)}</Text>
           </Box>
         </Box>
       )}
@@ -133,6 +163,7 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
           >
             <Text wrap="wrap">{text}</Text>
             <Text color={theme.accent}>▋</Text>
+            <Text color={theme.textDim} dimColor> {formatElapsed(elapsed)}</Text>
           </Box>
         </Box>
       )}

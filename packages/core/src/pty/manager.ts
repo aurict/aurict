@@ -22,6 +22,10 @@ interface InternalSession extends PtySession {
   readPromise: Promise<void>
 }
 
+interface PtyCreateOptions {
+  inheritEnv?: boolean
+}
+
 class PtyManager {
   private sessions = new Map<string, InternalSession>()
 
@@ -31,6 +35,7 @@ class PtyManager {
     args:     string[] = [],
     cwd?:     string,
     env?:     Record<string, string>,
+    options:  PtyCreateOptions = {},
   ): Promise<PtySession> {
     if (this.sessions.size >= MAX_SESSION) {
       // En eski exited session'ı temizle
@@ -45,7 +50,9 @@ class PtyManager {
 
     const proc = Bun.spawn([command, ...args], {
       cwd:   effectiveCwd,
-      env:   env ? { ...process.env, ...env } : process.env,
+      env:   env
+        ? (options.inheritEnv === false ? env : { ...process.env, ...env })
+        : process.env,
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
