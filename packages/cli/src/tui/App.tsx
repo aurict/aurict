@@ -83,6 +83,8 @@ interface Props {
   localServer?:    LocalServerStatus
 }
 
+const AUTO_CONTINUE_PROMPT = "Continue from where you stopped and finish the task without waiting for me."
+
 /**
  * Model görev ortasında metin bırakıp durdu mu?
  * Token kesintisi (açık kod bloğu) veya devam ifadesi varsa true döner.
@@ -98,6 +100,8 @@ function stalledMidTask(text: string): boolean {
   if (t.endsWith("…") || t.endsWith("...")) return true
   // "devam edeceğim / will continue / let me now / şimdi yapacağım" sonunda durma
   if (/(?:will\s+(?:now\s+)?continue|let me (?:now |proceed|continue)|devam edece[gğ]im|şimdi\s+\w+\s+yapaca[gğ]ım)[.…]?\s*$/i.test(t)) return true
+  // Açık kalan yönlendirme / liste / cümle kalıbı
+  if (/(?:next|then|after that|now I(?:'ll| will)|şimdi|sonra|devamında)[,:]?\s*$/i.test(t)) return true
   return false
 }
 
@@ -136,6 +140,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [model,      setModelState]    = useState(initialModel)
   const [effort,     setEffort]        = useState<number | undefined>(undefined)
   const [termCols,   setTermCols]      = useState(() => process.stdout.columns ?? 80)
+  const [termRows,   setTermRows]      = useState(() => process.stdout.rows ?? 24)
   const [messages,   setMessages]      = useState<DisplayMessage[]>([])
   const [input,      setInput]         = useState("")
   const [loading,    setLoading]       = useState(false)
@@ -149,6 +154,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [tasks,      setTasks]         = useState<Task[]>([])
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [isStreaming,    setIsStreaming]     = useState(false)
+  const [startupBannerVisible, setStartupBannerVisible] = useState(true)
 
   // Streaming display — messages array'den ayrı tutulur (render storm önlenir)
   const [streamingText,   setStreamingText]   = useState<string | null>(null)
@@ -296,6 +302,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
   // Auto-continue: model görev ortasında durduğunda otomatik devam
   const autoContinueRef  = useRef<{ needed: boolean; count: number }>({ needed: false, count: 0 })
+  const autoContinueSubmittingRef = useRef(false)
 
   // Adaptive throttle refs
   const streamTextRef    = useRef("")
@@ -324,11 +331,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     error:      tasks.filter(t => t.status === "error").length,
   }), [tasks])
   const sandboxBackend = useMemo(() => configuredSandboxBackend(), [])
-  const showStartupBanner = !viewingSubagentId
+  const showStartupBanner = !viewingSubagentId && startupBannerVisible
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
   useEffect(() => {
-    const handler = () => setTermCols(process.stdout.columns ?? 80)
+    const handler = () => {
+      setTermCols(process.stdout.columns ?? 80)
+      setTermRows(process.stdout.rows ?? 24)
+    }
     process.stdout.on("resize", handler)
     return () => { process.stdout.off("resize", handler) }
   }, [])
@@ -1024,8 +1034,12 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     if (skipSubmitRef.current) { skipSubmitRef.current = false; return }
     let text = userInput.trim()
     if (!text) return
-    // Kullanıcı elle mesaj gönderince auto-continue sayacını sıfırla
-    autoContinueRef.current.count = 0
+    setStartupBannerVisible(false)
+    // Kullanıcı elle mesaj gönderince auto-continue sayacını sıfırla;
+    // otomatik devam mesajları kendi limitini korumalı.
+    const isAutoContinueSubmit = autoContinueSubmittingRef.current
+    autoContinueSubmittingRef.current = false
+    if (!isAutoContinueSubmit) autoContinueRef.current.count = 0
 
     // @path.ext[:symbol] syntax — file attachment or symbol context injection
     // @auth.ts          → attach whole file (image) or inline code for text files
@@ -1252,7 +1266,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           })
 
           // Stall tespiti: model görev ortasında metin bırakıp durduysa otomatik devam et
-          if (stalledMidTask(finalText) && autoContinueRef.current.count < 3) {
+          const likelyNeedsContinuation = stalledMidTask(finalText) || (!finalText.trim() && newMessages.length > 0)
+          if (likelyNeedsContinuation && autoContinueRef.current.count < 3) {
             autoContinueRef.current = { needed: true, count: autoContinueRef.current.count + 1 }
           } else {
             autoContinueRef.current.needed = false
@@ -1284,10 +1299,13 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       abortControllerRef.current = null
       setAttachments([])
       setQueuedInput((q) => {
-        const autoMsg = autoContinueRef.current.needed ? "continue" : undefined
+        const autoMsg = q === undefined && autoContinueRef.current.needed ? AUTO_CONTINUE_PROMPT : undefined
         autoContinueRef.current.needed = false
         const toSend = q ?? autoMsg
-        if (toSend) setTimeout(() => handleSubmit(toSend), 80)
+        if (toSend) {
+          if (autoMsg) autoContinueSubmittingRef.current = true
+          setTimeout(() => handleSubmit(toSend), 80)
+        }
         return undefined
       })
     }
@@ -1326,7 +1344,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
         {/* Startup banner */}
         {showStartupBanner && (
-          <StartupBanner version={`v${CURRENT_VERSION}`} provider={provider} model={model} workdir={workdir} cols={termCols} />
+          <StartupBanner version={`v${CURRENT_VERSION}`} provider={provider} model={model} workdir={workdir} cols={termCols} rows={termRows} />
         )}
 
         {/* Update notification */}
@@ -1391,11 +1409,11 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         ))}
 
         {/* Canlı streaming + skeleton (metin gelmeden önce shimmer) */}
-        {!viewingSubagentId && (loading || streamingText || streamingReason || streamingError) && !activeTool && (
+        {!viewingSubagentId && (streamingText || streamingReason || streamingError || (loading && !activeTool)) && (
           <StreamingView
             text={streamingText}
             reasoning={streamingReason}
-            skeleton={loading && !streamingText && !streamingReason}
+            skeleton={loading && !activeTool && !streamingText && !streamingReason}
             {...(streamingError ? { error: streamingError } : {})}
           />
         )}

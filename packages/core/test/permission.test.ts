@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test"
 import { PermissionEvaluator } from "../src/permission/evaluator.js"
+import { PermissionStore } from "../src/permission/store.js"
 
 describe("PermissionEvaluator.evaluate", () => {
   // ── Always-allow tools ────────────────────────────────────────────────────
@@ -72,5 +73,19 @@ describe("PermissionEvaluator.evaluate", () => {
   it("wildcard * matches any value", () => {
     expect(PermissionEvaluator.evaluate("task", "anything")).toBe("allow")
     expect(PermissionEvaluator.evaluate("memory", "random-pattern")).toBe("allow")
+  })
+})
+
+describe("PermissionStore directory approvals", () => {
+  it("approves paths inside the remembered directory only", () => {
+    PermissionStore.clear()
+    PermissionStore.approveDirectory("write", "src/features/auth/login.ts")
+
+    expect(PermissionStore.isApproved("write", "src/features/auth/session.ts")).toBe(true)
+    expect(PermissionStore.isApproved("write", "src/features/auth/nested/token.ts")).toBe(true)
+    expect(PermissionStore.isApproved("write", "src/features/profile.ts")).toBe(false)
+    expect(PermissionStore.isApproved("edit", "src/features/auth/session.ts")).toBe(false)
+
+    PermissionStore.clear()
   })
 })

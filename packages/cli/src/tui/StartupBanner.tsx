@@ -130,15 +130,17 @@ interface Props {
   model:    string
   workdir:  string
   cols?:    number
+  rows?:    number
 }
 
-export function StartupBanner({ version, provider, model, workdir, cols }: Props) {
+export function StartupBanner({ version, provider, model, workdir, cols, rows }: Props) {
   const theme = useTheme()
   const user  = process.env["USER"] || process.env["USERNAME"] || "user"
   const dir   = workdir.replace(process.env["HOME"] ?? "", "~")
 
   const tips = seededPick(TIP_POOL, 2)
   const isNarrow = cols !== undefined && cols < 85
+  const showFullLogo = cols === undefined || (cols >= 120 && (rows ?? 24) >= 30)
 
   // Re-render/resize durumunda repliğin değişmesini engellemek için mount anında bir kez seçilir
   const quote = React.useMemo(() => {
@@ -150,14 +152,15 @@ export function StartupBanner({ version, provider, model, workdir, cols }: Props
   if (isNarrow) {
     return (
       <VStack paddingX="md" paddingY="sm" gap="sm" borderStyle="round" borderColor={theme.borderDim}>
-        {/* Logo */}
-        <Center>
-          <VStack gap="none">
-            {ASCII_LOGO.map((row, i) => (
-              <Text key={i} color={row.color} bold>{row.text}</Text>
-            ))}
-          </VStack>
-        </Center>
+        {showFullLogo && (
+          <Center>
+            <VStack gap="none">
+              {ASCII_LOGO.map((row, i) => (
+                <Text key={i} color={row.color} bold>{row.text}</Text>
+              ))}
+            </VStack>
+          </Center>
+        )}
         <HStack justify="center" marginBottom="xs">
           <Text color="#475569">AURICT v{version}</Text>
         </HStack>
@@ -197,14 +200,15 @@ export function StartupBanner({ version, provider, model, workdir, cols }: Props
           <Text color={theme.textSecondary} bold>Welcome back {user}!</Text>
         </Center>
 
-        {/* Minimal aurict.png logosu */}
-        <Center>
-          <VStack gap="none">
-            {LOGO_AVATAR.map((row, i) => (
-              <Text key={i} color={row.color}>{row.text}</Text>
-            ))}
-          </VStack>
-        </Center>
+        {showFullLogo && (
+          <Center>
+            <VStack gap="none">
+              {LOGO_AVATAR.map((row, i) => (
+                <Text key={i} color={row.color}>{row.text}</Text>
+              ))}
+            </VStack>
+          </Center>
+        )}
 
         <VStack gap="none" align="center">
           <Text color={theme.textDim}>
@@ -227,12 +231,16 @@ export function StartupBanner({ version, provider, model, workdir, cols }: Props
         {/* Çok Geniş ekranlarda replik logonun yanına, orta genişlikte ise altına gelir */}
         {cols && cols >= 120 ? (
           <HStack gap="md" align="center">
-            <VStack gap="none">
-              {ASCII_LOGO.map((row, i) => (
-                <Text key={i} color={row.color} bold>{row.text}</Text>
-              ))}
-            </VStack>
-            <Divider orientation="vertical" color={theme.borderDim} />
+            {showFullLogo && (
+              <>
+                <VStack gap="none">
+                  {ASCII_LOGO.map((row, i) => (
+                    <Text key={i} color={row.color} bold>{row.text}</Text>
+                  ))}
+                </VStack>
+                <Divider orientation="vertical" color={theme.borderDim} />
+              </>
+            )}
             <VStack width={30} gap="none">
               <Text color={theme.accent} italic>"{quote}"</Text>
               <Text color={theme.textDim} dimColor>— Rick C-137</Text>
@@ -240,11 +248,13 @@ export function StartupBanner({ version, provider, model, workdir, cols }: Props
           </HStack>
         ) : (
           <VStack gap="xs">
-            <VStack gap="none">
-              {ASCII_LOGO.map((row, i) => (
-                <Text key={i} color={row.color} bold>{row.text}</Text>
-              ))}
-            </VStack>
+            {showFullLogo && (
+              <VStack gap="none">
+                {ASCII_LOGO.map((row, i) => (
+                  <Text key={i} color={row.color} bold>{row.text}</Text>
+                ))}
+              </VStack>
+            )}
             {cols && cols >= 85 && (
               <VStack marginTop="xs">
                 <Text color={theme.accent} italic>"{quote}"</Text>

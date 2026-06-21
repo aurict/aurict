@@ -4,6 +4,7 @@ import { getToolCategory } from "./categories.js"
 
 // Session boyunca onaylanan/reddedilen izinleri tutar
 const approved = new Set<string>()
+const approvedDirs = new Set<string>()
 // Kategori bazlı session izinleri ("write" → "allow_session")
 const categoryApprovals = new Map<ToolCategory, CategoryPermission>()
 
@@ -11,15 +12,42 @@ function key(tool: string, pattern: string) {
   return `${tool}:${pattern}`
 }
 
+function normalizePathLike(path: string): string {
+  return path.replace(/\\/g, "/").replace(/\/+$/g, "") || "/"
+}
+
+function dirname(path: string): string {
+  const normalized = normalizePathLike(path)
+  if (normalized === "/") return "/"
+  const idx = normalized.lastIndexOf("/")
+  if (idx <= 0) return "."
+  return normalized.slice(0, idx)
+}
+
+function isInsideDir(path: string, dir: string): boolean {
+  const p = normalizePathLike(path)
+  const d = normalizePathLike(dir)
+  return p === d || p.startsWith(d.endsWith("/") ? d : `${d}/`)
+}
+
 export const PermissionStore = {
   isApproved(tool: string, pattern: string): boolean {
-    return approved.has(key(tool, pattern))
+    if (approved.has(key(tool, pattern))) return true
+    for (const dir of approvedDirs) {
+      const [dirTool, dirPath] = dir.split(":", 2)
+      if (dirTool === tool && dirPath && isInsideDir(pattern, dirPath)) return true
+    }
+    return false
   },
   approve(tool: string, pattern: string): void {
     approved.add(key(tool, pattern))
   },
+  approveDirectory(tool: string, pattern: string): void {
+    approvedDirs.add(key(tool, dirname(pattern)))
+  },
   clear(): void {
     approved.clear()
+    approvedDirs.clear()
     categoryApprovals.clear()
   },
 
@@ -39,6 +67,12 @@ export const PermissionStore = {
   },
   listCategoryApprovals(): Array<{ category: ToolCategory; perm: CategoryPermission }> {
     return [...categoryApprovals.entries()].map(([category, perm]) => ({ category, perm }))
+  },
+  listDirectoryApprovals(): Array<{ tool: string; dir: string }> {
+    return [...approvedDirs].map((entry) => {
+      const idx = entry.indexOf(":")
+      return { tool: entry.slice(0, idx), dir: entry.slice(idx + 1) }
+    })
   },
 }
 

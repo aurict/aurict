@@ -42,10 +42,11 @@ export interface PermissionRequest {
   }
 }
 
-// allow        = bu kez izin ver + session'a kaydet (tekrar sorma)
-// allow_once   = sadece bu kez izin ver, kaydetme
-// deny         = reddet, agent hata alır ama devam eder
-export type PermissionDecision = "allow" | "allow_once" | "allow_partial" | "deny"
+// allow           = bu kez izin ver + session'a kaydet (tekrar sorma)
+// allow_directory = bu kez izin ver + aynı klasör altında session boyunca hatırla
+// allow_once      = sadece bu kez izin ver, kaydetme
+// deny            = reddet, agent hata alır ama devam eder
+export type PermissionDecision = "allow" | "allow_directory" | "allow_once" | "allow_partial" | "deny"
 
 export interface PermissionResponse {
   decision: PermissionDecision

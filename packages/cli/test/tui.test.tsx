@@ -22,6 +22,7 @@ import { TaskFloatingPanel } from "../src/tui/TaskFloatingPanel.js"
 import { CommandPalette } from "../src/tui/CommandPalette.js"
 import { CommandSuggest } from "../src/tui/CommandSuggest.js"
 import { DesignWizard } from "../src/tui/DesignWizard.js"
+import { sanitizePaste } from "../src/tui/MultilineInput.js"
 import { parseSlashCommand } from "../src/commands/registry.js"
 import type { CommandDef } from "../src/commands/types.js"
 
@@ -387,6 +388,32 @@ describe("PermissionPrompt", () => {
     expect(frame).toContain("env scrubbed")
     expect(frame).toContain("$ rm -rf dist")
     expect(frame).toContain("Edit command")
+  })
+
+  it("offers directory approval for write requests", () => {
+    const { lastFrame } = render(
+      <PermissionPrompt
+        request={{
+          id: "req-write",
+          tool: "write",
+          pattern: "src/components/Button.tsx",
+          level: "warning",
+          reason: "Write a file",
+        }}
+        onDecide={() => {}}
+      />,
+    )
+
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("Allow directory")
+    expect(frame).toContain("remember this folder")
+  })
+})
+
+describe("MultilineInput", () => {
+  it("strips bracketed paste markers without dropping pasted content", () => {
+    expect(sanitizePaste("\x1b[200~first line\nsecond line\x1b[201~"))
+      .toBe("first line\nsecond line")
   })
 })
 

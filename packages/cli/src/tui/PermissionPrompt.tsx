@@ -74,6 +74,7 @@ export function PermissionPrompt({ request, onDecide }: Props) {
   const risk      = riskLabel(request.level)
   const sandbox   = sandboxLabel(request)
   const isBashTool = request.tool === "bash" || request.tool === "shell"
+  const supportsDirectoryApproval = request.tool === "write" || request.tool === "edit" || request.tool === "apply_patch"
   const files = request.files ?? []
   const diff = request.diff
   const patchText = request.patch?.text
@@ -91,6 +92,7 @@ export function PermissionPrompt({ request, onDecide }: Props) {
   const options: Option[] = granularPatch
     ? [
         { id: "allow_partial", label: "Apply selected", hint: `${selectedCount}/${files.length} file${files.length === 1 ? "" : "s"}` },
+        { id: "allow_directory", label: "Apply + allow dirs", hint: "remember touched folders for this session" },
         { id: "allow_once", label: "Apply all once", hint: "ignore file selection for this patch" },
         { id: "deny", label: "Deny", hint: "reject patch, AI receives error", color: theme.error },
       ]
@@ -103,6 +105,7 @@ export function PermissionPrompt({ request, onDecide }: Props) {
       ]
     : [
         { id: "allow_once", label: "Allow once",       hint: "just this time, don't remember" },
+        ...(supportsDirectoryApproval ? [{ id: "allow_directory" as const, label: "Allow directory", hint: "remember this folder for session" }] : []),
         { id: "allow",      label: "Allow for session", hint: "remember until exit" },
         ...(isBashTool ? [{ id: "edit" as const, label: "Edit command", hint: "deny and move command to input", color: theme.accent }] : []),
         { id: "deny",       label: "Deny",              hint: "reject, AI continues with error",   color: theme.error },

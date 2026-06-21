@@ -3,6 +3,7 @@ import { hooks }          from "../hook/emitter.js"
 import { SessionManager } from "../session/manager.js"
 import { ensureWorkspace } from "./workspace.js"
 import { loadConfig }     from "../config/config.js"
+import type { Session }   from "../session/types.js"
 import type { WorkerRequest, WorkerMessage, WorkerControl, AgentType } from "./protocol.js"
 import { AGENT_TYPE_TOOLS } from "./protocol.js"
 
@@ -65,12 +66,20 @@ class AgentPool {
     this.recoverOrphanedSessions()
   }
 
-  private recoverOrphanedSessions() {
-    const running = SessionManager.list().filter(
-      (s) => (s as any).status === "running" && s.parentId !== null,
-    )
+  private listSubagentSessions(parentSessionId?: string): Session[] {
+    try {
+      return SessionManager.list().filter((s) =>
+        parentSessionId ? s.parentId === parentSessionId : s.parentId !== null,
+      )
+    } catch {
+      return []
+    }
+  }
+
+  private recoverOrphanedSessions(): void {
+    const running = this.listSubagentSessions().filter((s) => s.status === "running")
     for (const s of running) {
-      SessionManager.end(s.id, "crashed")
+      void SessionManager.end(s.id, "crashed").catch(() => {})
     }
   }
 
@@ -79,9 +88,7 @@ class AgentPool {
   }
 
   listSessions(parentSessionId?: string) {
-    return SessionManager.list().filter((s) =>
-      parentSessionId ? s.parentId === parentSessionId : s.parentId !== null,
-    )
+    return this.listSubagentSessions(parentSessionId)
   }
 
   onChange(cb: (agents: AgentInfo[]) => void): () => void {
