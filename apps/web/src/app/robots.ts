@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow:  ["/api/"],
       },
     ],
-    sitemap: "https://aurict.dev/sitemap.xml",
-    host:    "https://aurict.dev",
+    sitemap: "https://aurict.com/sitemap.xml",
+    host:    "https://aurict.com",
   }
 }

@@ -96,7 +96,7 @@ apps/web/src/
 - Geist Sans + Geist Mono fonts
 - Metadata: "Aurict — Terminal AI Coding Assistant"
 - Dark background (`#0a0a0a`), film grain overlay
-- Site URL: `https://aurict.dev`
+- Site URL: `https://aurict.com`
 
 ### `src/app/page.tsx` — Home Page
 - Composes: Nav → Hero → Features → Install → Waitlist → Footer

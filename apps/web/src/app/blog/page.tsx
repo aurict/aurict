@@ -60,8 +60,8 @@ const breadcrumbJsonLd = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aurict.dev" },
-    { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://aurict.dev/blog" },
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aurict.com" },
+    { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://aurict.com/blog" },
   ],
 }
 
@@ -70,8 +70,8 @@ const blogJsonLd = {
   "@type": "Blog",
   "name": "Aurict Blog",
   "description": "AI coding insights, tutorials, and comparisons",
-  "url": "https://aurict.dev/blog",
-  "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.dev" },
+  "url": "https://aurict.com/blog",
+  "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.com" },
 }
 
 export default function BlogPage() {

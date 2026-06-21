@@ -2,7 +2,7 @@
 
 **A terminal-native AI coding assistant built for the way developers actually work.**
 
-**[aurict.dev](https://aurict.dev)** · [npm](https://www.npmjs.com/package/aurict) · [Docs](https://aurict.dev/docs) · [Changelog](https://aurict.dev/changelog)
+**[aurict.com](https://aurict.com)** · [npm](https://www.npmjs.com/package/aurict) · [Docs](https://aurict.com/docs) · [Changelog](https://aurict.com/changelog)
 
 ```
 ❯ aurict
@@ -382,4 +382,4 @@ StatusBar, StartupBanner).
 
 ## License
 
-MIT — see [aurict.dev](https://aurict.dev) for full documentation and community.
+MIT — see [aurict.com](https://aurict.com) for full documentation and community.

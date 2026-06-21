@@ -5,11 +5,11 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title:       "Changelog — Release History",
   description: "Aurict version history and release notes. Latest: v1.0.7 — setup wizard, /cost cache breakdown, UI polish, and QuickSearch recency.",
-  alternates:  { canonical: "https://aurict.dev/changelog" },
+  alternates:  { canonical: "https://aurict.com/changelog" },
   openGraph: {
     title:       "Aurict Changelog — Release History",
     description: "Version history and release notes for Aurict, the open-source terminal AI coding assistant.",
-    url:         "https://aurict.dev/changelog",
+    url:         "https://aurict.com/changelog",
   },
 }
 
@@ -17,8 +17,8 @@ const breadcrumbJsonLd = {
   "@context": "https://schema.org",
   "@type":    "BreadcrumbList",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Home",      "item": "https://aurict.dev" },
-    { "@type": "ListItem", "position": 2, "name": "Changelog", "item": "https://aurict.dev/changelog" },
+    { "@type": "ListItem", "position": 1, "name": "Home",      "item": "https://aurict.com" },
+    { "@type": "ListItem", "position": 2, "name": "Changelog", "item": "https://aurict.com/changelog" },
   ],
 }
 

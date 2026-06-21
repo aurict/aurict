@@ -12,7 +12,7 @@ import { FAQ } from "@/components/sections/FAQ"
 import { Footer } from "@/components/sections/Footer"
 
 export const metadata: Metadata = {
-  alternates: { canonical: "https://aurict.dev" },
+  alternates: { canonical: "https://aurict.com" },
 }
 
 const faqJsonLd = {
@@ -64,21 +64,21 @@ const howToJsonLd = {
       "position": 1,
       "name":     "Install",
       "text":     "Run npm install -g aurict in your terminal. Works on macOS, Linux, and Windows.",
-      "url":      "https://aurict.dev/#install",
+      "url":      "https://aurict.com/#install",
     },
     {
       "@type":    "HowToStep",
       "position": 2,
       "name":     "Run",
       "text":     "Navigate to your project directory and run aurict to launch the terminal UI.",
-      "url":      "https://aurict.dev/#install",
+      "url":      "https://aurict.com/#install",
     },
     {
       "@type":    "HowToStep",
       "position": 3,
       "name":     "Configure",
       "text":     "On first launch, an interactive wizard guides you through selecting a provider, entering your API key, and choosing a model.",
-      "url":      "https://aurict.dev/docs",
+      "url":      "https://aurict.com/docs",
     },
   ],
 }
@@ -92,11 +92,11 @@ const jsonLd = {
       "applicationCategory": "DeveloperApplication",
       "operatingSystem":     "macOS, Linux, Windows",
       "description":         "Open-source terminal AI coding assistant with 9 specialist agents, 218+ auto-injected contextual skills, bash classifier, MCP client, and support for 9 AI providers. Install with one npm command.",
-      "url":                 "https://aurict.dev",
+      "url":                 "https://aurict.com",
       "downloadUrl":         "https://www.npmjs.com/package/aurict",
       "installUrl":          "https://www.npmjs.com/package/aurict",
       "softwareVersion":     "1.0.7",
-      "releaseNotes":        "https://aurict.dev/changelog",
+      "releaseNotes":        "https://aurict.com/changelog",
       "license":             "https://opensource.org/licenses/MIT",
       "author": {
         "@type": "Organization",
@@ -108,7 +108,7 @@ const jsonLd = {
         "price":         "0",
         "priceCurrency": "USD",
       },
-      "screenshot":  "https://aurict.dev/opengraph-image",
+      "screenshot":  "https://aurict.com/opengraph-image",
       "featureList": [
         "9 specialist AI agents (Explore, Code, Review, Test, Docs, Security, Debug, Performance, Analytics)",
         "218+ auto-injected contextual skills",
@@ -123,14 +123,14 @@ const jsonLd = {
     },
     {
       "@type":       "WebSite",
-      "url":         "https://aurict.dev",
+      "url":         "https://aurict.com",
       "name":        "Aurict",
       "description": "Open-source terminal AI coding assistant",
     },
     {
       "@type":  "Organization",
       "name":   "aurict",
-      "url":    "https://aurict.dev",
+      "url":    "https://aurict.com",
       "sameAs": [
         "https://github.com/aurict/aurict",
         "https://www.npmjs.com/package/aurict",

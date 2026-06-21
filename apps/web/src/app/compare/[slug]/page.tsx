@@ -179,11 +179,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: comp.title,
     description: comp.description,
-    alternates: { canonical: `https://aurict.dev/compare/${slug}` },
+    alternates: { canonical: `https://aurict.com/compare/${slug}` },
     openGraph: {
       title: comp.title,
       description: comp.description,
-      url: `https://aurict.dev/compare/${slug}`,
+      url: `https://aurict.com/compare/${slug}`,
     },
   }
 }
@@ -199,7 +199,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
     "@type": "Article",
     "headline": comp.title,
     "description": comp.description,
-    "url": `https://aurict.dev/compare/${slug}`,
+    "url": `https://aurict.com/compare/${slug}`,
     "author": { "@type": "Organization", "name": "Aurict" },
   }
 

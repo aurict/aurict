@@ -151,11 +151,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: uc.title,
     description: uc.description,
-    alternates: { canonical: `https://aurict.dev/use-cases/${slug}` },
+    alternates: { canonical: `https://aurict.com/use-cases/${slug}` },
     openGraph: {
       title: uc.title,
       description: uc.description,
-      url: `https://aurict.dev/use-cases/${slug}`,
+      url: `https://aurict.com/use-cases/${slug}`,
     },
   }
 }

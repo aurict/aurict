@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
           <p style="color:#a1a1aa;font-size:14px">Email:</p>
           <p style="font-size:16px;color:#f5f5f5">${safeEmail}</p>
           <hr style="border:none;border-top:1px solid #262626;margin:24px 0"/>
-          <p style="color:#52525b;font-size:12px">Sent from aurict.dev waitlist form</p>
+          <p style="color:#52525b;font-size:12px">Sent from aurict.com waitlist form</p>
         </div>
       `,
     })

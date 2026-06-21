@@ -5,11 +5,11 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title:       "Documentation — Getting Started",
   description: "Install Aurict, configure providers and API keys, create custom tools and skills, connect MCP servers, manage sessions, use hooks, and understand multi-agent orchestration.",
-  alternates:  { canonical: "https://aurict.dev/docs" },
+  alternates:  { canonical: "https://aurict.com/docs" },
   openGraph: {
     title:       "Aurict Documentation — Getting Started",
     description: "Complete guide to installing, configuring, and extending Aurict — the open-source terminal AI coding assistant.",
-    url:         "https://aurict.dev/docs",
+    url:         "https://aurict.com/docs",
   },
 }
 
@@ -17,8 +17,8 @@ const breadcrumbJsonLd = {
   "@context": "https://schema.org",
   "@type":    "BreadcrumbList",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Home",          "item": "https://aurict.dev" },
-    { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://aurict.dev/docs" },
+    { "@type": "ListItem", "position": 1, "name": "Home",          "item": "https://aurict.com" },
+    { "@type": "ListItem", "position": 2, "name": "Documentation", "item": "https://aurict.com/docs" },
   ],
 }
 
@@ -27,9 +27,9 @@ const articleJsonLd = {
   "@type":       "TechArticle",
   "headline":    "Aurict Documentation — Getting Started",
   "description": "Complete installation, configuration, and extension guide for Aurict terminal AI coding assistant.",
-  "url":         "https://aurict.dev/docs",
+  "url":         "https://aurict.com/docs",
   "author": { "@type": "Organization", "name": "aurict", "url": "https://github.com/aurict" },
-  "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.dev" },
+  "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.com" },
   "datePublished": "2026-06-07",
   "dateModified":  "2026-06-09",
 }

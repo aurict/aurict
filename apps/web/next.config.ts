@@ -3,19 +3,19 @@ import type { NextConfig } from "next"
 const nextConfig: NextConfig = {
   output: process.env.DOCKER_BUILD ? "standalone" : undefined,
 
-  // aurict.com → aurict.dev kalıcı yönlendirme
+  // aurict.dev → aurict.com kalıcı yönlendirme
   async redirects() {
     return [
       {
         source:      "/:path*",
-        has:         [{ type: "host", value: "aurict.com" }],
-        destination: "https://aurict.dev/:path*",
+        has:         [{ type: "host", value: "aurict.dev" }],
+        destination: "https://aurict.com/:path*",
         permanent:   true,
       },
       {
         source:      "/:path*",
-        has:         [{ type: "host", value: "www.aurict.com" }],
-        destination: "https://aurict.dev/:path*",
+        has:         [{ type: "host", value: "www.aurict.dev" }],
+        destination: "https://aurict.com/:path*",
         permanent:   true,
       },
     ]

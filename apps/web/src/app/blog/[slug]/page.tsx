@@ -185,11 +185,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: post.title,
     description: post.description,
-    alternates: { canonical: `https://aurict.dev/blog/${slug}` },
+    alternates: { canonical: `https://aurict.com/blog/${slug}` },
     openGraph: {
       title: post.title,
       description: post.description,
-      url: `https://aurict.dev/blog/${slug}`,
+      url: `https://aurict.com/blog/${slug}`,
       type: "article",
       publishedTime: post.date,
       authors: ["Aurict"],
@@ -215,8 +215,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     "description": post.description,
     "datePublished": post.date,
     "author": { "@type": "Organization", "name": "Aurict" },
-    "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.dev" },
-    "url": `https://aurict.dev/blog/${slug}`,
+    "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.com" },
+    "url": `https://aurict.com/blog/${slug}`,
   }
 
   return (
