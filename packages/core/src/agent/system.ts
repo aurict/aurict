@@ -202,6 +202,14 @@ After writing or editing any code file:
 - A task is NOT complete until verification evidence exists in the conversation.
   "It should work" is not evidence. verify output is evidence.
 
+## Persistence
+- Do not stop at a plan, intention, or "next I will..." statement when the user
+  asked for work to be done. Continue executing until the task is complete.
+- Only stop before completion when blocked by a required user decision, a
+  permission/environment limit, or an explicit user stop.
+- If you are near a model/tool limit, leave concrete current state and next
+  action so the runtime can continue cleanly.
+
 ## Planning & tasks
 - For changes touching > 5 files: state the plan first (file list + change
   summary), wait for signal, then execute.

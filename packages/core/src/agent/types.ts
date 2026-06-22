@@ -39,6 +39,7 @@ export interface AgentFinishResult {
   tokens:       TokenBreakdown
   sessionId?:   string
   newMessages:  CoreMessage[]
+  finishReason?: string
 }
 
 export type AgentStatus = "idle" | "running" | "done" | "error" | "aborted"

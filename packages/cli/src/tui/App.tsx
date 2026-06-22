@@ -71,6 +71,7 @@ import { getTerminalCaps }   from "../util/terminal-caps.js"
 import { useOverlayState }   from "./hooks/useOverlayState.js"
 import { HistorySearch }     from "./HistorySearch.js"
 import { KeyboardShortcuts } from "./KeyboardShortcuts.js"
+import { AUTO_CONTINUE_PROMPT, shouldAutoContinue } from "./auto-continue.js"
 import type { LocalServerStatus } from "../bootstrap.js"
 
 interface Props {
@@ -83,8 +84,6 @@ interface Props {
   localServer?:    LocalServerStatus
 }
 
-const AUTO_CONTINUE_PROMPT = "Continue from where you stopped and finish the task without waiting for me."
-
 function formatActivatedSkills(skills: ActivatedSkillInfo[]): string {
   const labels = skills.slice(0, 5).map((skill) => {
     const score = skill.score !== undefined ? ` ${skill.score.toFixed(2)}` : ""
@@ -93,26 +92,6 @@ function formatActivatedSkills(skills: ActivatedSkillInfo[]): string {
   })
   const extra = skills.length > labels.length ? ` +${skills.length - labels.length} more` : ""
   return `Skills loaded: ${labels.join("; ")}${extra}`
-}
-
-/**
- * Model görev ortasında metin bırakıp durdu mu?
- * Token kesintisi (açık kod bloğu) veya devam ifadesi varsa true döner.
- * Yanlış pozitifi azaltmak için kasıtlı olarak muhafazakâr tutuldu.
- */
-function stalledMidTask(text: string): boolean {
-  if (!text || text.length < 20) return false
-  const t = text.trimEnd()
-  // Kapalı olmayan kod bloğu — en güvenilir sinyal
-  const fences = (t.match(/```/g) ?? []).length
-  if (fences % 2 !== 0) return true
-  // Üç nokta ile bitmek (… veya ...) — kesilmiş metin
-  if (t.endsWith("…") || t.endsWith("...")) return true
-  // "devam edeceğim / will continue / let me now / şimdi yapacağım" sonunda durma
-  if (/(?:will\s+(?:now\s+)?continue|let me (?:now |proceed|continue)|devam edece[gğ]im|şimdi\s+\w+\s+yapaca[gğ]ım)[.…]?\s*$/i.test(t)) return true
-  // Açık kalan yönlendirme / liste / cümle kalıbı
-  if (/(?:next|then|after that|now I(?:'ll| will)|şimdi|sonra|devamında)[,:]?\s*$/i.test(t)) return true
-  return false
 }
 
 function configuredSandboxBackend(): "none" | "policy" | "docker" {
@@ -1269,7 +1248,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           setTurnSkillNames(skills.map((skill) => skill.id))
           addSystemMsg(formatActivatedSkills(skills))
         },
-        onFinish: ({ tokens: t, text: finalText, newMessages }) => {
+        onFinish: ({ tokens: t, text: finalText, newMessages, finishReason }) => {
           if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
           const finalSegmentText = turnHadToolRef.current ? streamTextRef.current : finalText
           const finalReason = streamReasonRef.current
@@ -1308,7 +1287,12 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           })
 
           // Stall tespiti: model görev ortasında metin bırakıp durduysa otomatik devam et
-          const likelyNeedsContinuation = stalledMidTask(finalText) || (!finalText.trim() && newMessages.length > 0)
+          const likelyNeedsContinuation = shouldAutoContinue({
+            text: finalText,
+            finishReason,
+            newMessageCount: newMessages.length,
+            tasks: taskManager.getTasks(),
+          })
           if (likelyNeedsContinuation && autoContinueRef.current.count < 3) {
             autoContinueRef.current = { needed: true, count: autoContinueRef.current.count + 1 }
           } else {

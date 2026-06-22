@@ -22,7 +22,7 @@ import { metrics } from "../util/metrics.js"
 import { extractText } from "../session/context-compactor.js"
 import type { AgentRunOptions, AgentFinishResult, TokenBreakdown } from "./types.js"
 
-const DEFAULT_MAX_STEPS = 40
+const DEFAULT_MAX_STEPS = 80
 
 // ─── Faz 3: Adaptive Step Limit ───────────────────────────────────────────────
 /**
@@ -35,24 +35,28 @@ function computeAdaptiveMaxSteps(
 ): number {
   const lastUserMsg = [...messages].reverse().find(m => m.role === "user")
   const text = lastUserMsg ? extractText(lastUserMsg) : ""
+  const lower = text.toLowerCase()
+  const looksActionable = /\b(fix|implement|build|create|add|update|refactor|debug|test|run|verify|make|change|edit|write|generate|complete|finish|continue|devam|tamamla|d[uü]zelt|ekle|olu[sş]tur|g[uü]ncelle|test et|do[gğ]rula|bitir|yap)\b/i.test(lower)
 
-  // Çok kısa mesaj + tool yok + ek yok → trivial (10 step)
-  if (text.length < 100 && !hasAttachments) {
-    return 10
+  if (hasAttachments) {
+    return 80
   }
 
-  // Kısa mesaj + az tool → simple (20 step)
-  if (text.length < 500) {
+  // Very short non-action questions should stay cheap, but short actionable
+  // prompts like "fix tests" can still require many tool steps.
+  if (text.length < 100 && !looksActionable) {
     return 20
   }
 
-  // Orta uzunluk → moderate (35 step)
-  if (text.length < 2000) {
-    return 35
+  if (text.length < 500) {
+    return looksActionable ? DEFAULT_MAX_STEPS : 40
   }
 
-  // Uzun mesaj → complex (50 step)
-  return 50
+  if (text.length < 2000) {
+    return 100
+  }
+
+  return 120
 }
 
 // AI SDK tool() fonksiyonunun dönüş tipiyle exactOptionalPropertyTypes çakışıyor
@@ -309,6 +313,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
 
   let fullText = ""
   let breakdown: TokenBreakdown = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 }
+  let finishReason: string | undefined
 
   // opts.stream=false → pipe/non-interactive mod, kesinlikle generate
   // opts.stream=true veya undefined → provider'ın streaming desteğine bak
@@ -376,6 +381,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     const u    = await result.usage as Record<string, unknown>
     const meta = await (result as any).experimental_providerMetadata as Record<string, unknown> | undefined
     breakdown  = extractTokenBreakdown(u, meta)
+    finishReason = String(await (result as any).finishReason ?? "")
 
     const finalResponse = await result.response
     newMessages = finalResponse.messages
@@ -398,6 +404,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     const u    = result.usage as Record<string, unknown>
     const meta = (result as any).experimental_providerMetadata as Record<string, unknown> | undefined
     breakdown  = extractTokenBreakdown(u, meta)
+    finishReason = String((result as any).finishReason ?? "")
     newMessages = result.response.messages
   }
 
@@ -417,6 +424,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     text:      fullText,
     tokens:    breakdown,
     newMessages,
+    ...(finishReason ? { finishReason } : {}),
     ...(sessionId !== undefined ? { sessionId } : {}),
   }
 
