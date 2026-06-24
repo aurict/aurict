@@ -1,4 +1,4 @@
-import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore } from "@aurict/core"
+import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore, installRemotePlugin, listInstalledPlugins, uninstallPlugin, fetchRegistry, searchRegistry, findInRegistry } from "@aurict/core"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
 import { resolve, join } from "path"
 import { THEMES, THEME_NAMES } from "../utils/theme.js"
@@ -42,7 +42,7 @@ const commands: CommandDef[] = [
         "Session & History":   ["status", "history", "diffs", "session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints"],
         "Agents & AI":         ["agent", "agents", "coordinator", "autopilot", "undercover", "background", "btw"],
         "Context & Memory":    ["pin", "memory", "ctx", "compact", "worktree"],
-        "Tools & Integration": ["commit", "watch", "unwatch", "mcp", "skill", "skills", "plugins", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores"],
+        "Tools & Integration": ["commit", "watch", "unwatch", "mcp", "skill", "plugin", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores"],
         "Info & Misc":         ["help", "cost", "export", "share", "stash", "crashes", "exit", "pet", "name", "companion"],
       }
       const cmdMap = new Map(commands.map(c => [c.name, c]))
@@ -878,22 +878,170 @@ const commands: CommandDef[] = [
     },
   },
 
-  // ── /plugins ──────────────────────────────────────────────────────────────
+  // ── /plugin ───────────────────────────────────────────────────────────────
   {
-    name:        "plugins",
-    aliases:     ["plugin"],
-    description: "List loaded plugins from ~/.aurict/plugins/",
-    handler: (): CommandResult => {
-      const loaded = getLoadedPlugins()
-      if (loaded.length === 0) {
-        return { type: "text", content: `No plugins loaded.\nDrop .js/.mjs files in: ${PLUGIN_DIR}` }
+    name:        "plugin",
+    aliases:     ["plugins"],
+    description: "Plugin & skill marketplace: search, install, remove",
+    usage:       "/plugin list | search [query] | add <name|url> | remove <id> | update",
+    handler: async (args): Promise<CommandResult> => {
+      const sub = args[0]?.toLowerCase()
+
+      // ── list ──
+      if (!sub || sub === "list" || sub === "ls") {
+        const loaded    = getLoadedPlugins()
+        const installed = listInstalledPlugins()
+        const skills    = listInstalledSkills()
+
+        const lines: string[] = []
+
+        if (loaded.length > 0) {
+          lines.push("Active plugins (this session):")
+          for (const p of loaded) {
+            lines.push(p.error
+              ? `  ✗ ${p.file.padEnd(28)} ERROR: ${p.error}`
+              : `  ✓ ${p.name.padEnd(26)} ${p.tools}t ${p.provs}p`)
+          }
+          lines.push("")
+        }
+
+        if (installed.length > 0) {
+          lines.push("Installed plugins (restart to activate):")
+          for (const p of installed) {
+            lines.push(`  • ${p.name.padEnd(26)} ${p.id}  (${p.source})`)
+          }
+          lines.push("")
+        }
+
+        if (skills.length > 0) {
+          lines.push("Installed skills:")
+          for (const s of skills) {
+            lines.push(`  • ${s.name.padEnd(26)} ${s.id}  (${s.source})`)
+          }
+          lines.push("")
+        }
+
+        if (lines.length === 0) {
+          return {
+            type: "text",
+            content: [
+              "No plugins or skills installed.",
+              "",
+              "Browse the marketplace:  /plugin search",
+              "Install by name:         /plugin add <name>",
+              "Install from URL:        /plugin add <url>",
+              `Plugin dir:              ${PLUGIN_DIR}`,
+            ].join("\n"),
+          }
+        }
+
+        lines.push(`Plugin dir: ${PLUGIN_DIR}`)
+        return { type: "text", content: lines.join("\n") }
       }
-      const lines = loaded.map((p) =>
-        p.error
-          ? `  ✗ ${p.file.padEnd(30)} ERROR: ${p.error}`
-          : `  ✓ ${p.name.padEnd(28)} ${p.tools}t ${p.provs}p  (${p.file})`
-      )
-      return { type: "text", content: `Plugins (${loaded.length}):\n${lines.join("\n")}\n\nDir: ${PLUGIN_DIR}` }
+
+      // ── search ──
+      if (sub === "search" || sub === "find" || sub === "browse") {
+        const query = args.slice(1).join(" ")
+        let registry
+        try {
+          registry = await fetchRegistry()
+        } catch (e) {
+          return { type: "error", message: `Registry unreachable: ${e instanceof Error ? e.message : String(e)}\nYou can still install directly: /plugin add <url>` }
+        }
+        const results = searchRegistry(registry, query)
+        if (results.length === 0) {
+          return { type: "text", content: query ? `No results for "${query}".` : "Registry is empty." }
+        }
+        const lines = [
+          query ? `Results for "${query}" (${results.length}):` : `Marketplace (${results.length} packages):`,
+          "",
+          ...results.map((e) =>
+            `  [${e.type === "skill" ? "skill  " : "plugin "}] ${e.name.padEnd(24)} ${e.description}\n` +
+            `             /plugin add ${e.id}`
+          ),
+          "",
+          `Registry updated: ${registry.updatedAt}`,
+        ]
+        return { type: "text", content: lines.join("\n") }
+      }
+
+      // ── add / install ──
+      if (sub === "add" || sub === "install") {
+        const target = args[1]
+        if (!target) return { type: "error", message: "Usage: /plugin add <name|url>" }
+
+        const isUrl = target.startsWith("http://") || target.startsWith("https://")
+
+        if (isUrl) {
+          // Direct URL install — detect skill vs plugin by extension
+          const isSkill = target.endsWith(".md")
+          try {
+            if (isSkill) {
+              const meta = await installRemoteSkill(target)
+              return { type: "text", content: `Skill installed: ${meta.id} (${meta.name})\nRestart Aurict to activate.` }
+            } else {
+              const meta = await installRemotePlugin(target)
+              return { type: "text", content: `Plugin installed: ${meta.id}\nRestart Aurict to activate.\nDir: ${PLUGIN_DIR}` }
+            }
+          } catch (e) {
+            return { type: "error", message: `Install failed: ${e instanceof Error ? e.message : String(e)}` }
+          }
+        }
+
+        // Name-based install — look up registry
+        let registry
+        try {
+          registry = await fetchRegistry()
+        } catch (e) {
+          return { type: "error", message: `Registry unreachable: ${e instanceof Error ? e.message : String(e)}\nInstall directly with a URL: /plugin add <url>` }
+        }
+
+        const entry = findInRegistry(registry, target)
+        if (!entry) {
+          return { type: "error", message: `"${target}" not found in registry.\nTry /plugin search ${target}\nOr install directly: /plugin add <url>` }
+        }
+
+        try {
+          if (entry.type === "skill") {
+            const meta = await installRemoteSkill(entry.url)
+            return { type: "text", content: `Skill installed: ${meta.id} (${meta.name})\nRestart Aurict to activate.` }
+          } else {
+            const meta = await installRemotePlugin(entry.url, entry.name)
+            return { type: "text", content: `Plugin installed: ${meta.id} (${meta.name})\nRestart Aurict to activate.\nDir: ${PLUGIN_DIR}` }
+          }
+        } catch (e) {
+          return { type: "error", message: `Install failed: ${e instanceof Error ? e.message : String(e)}` }
+        }
+      }
+
+      // ── remove / uninstall ──
+      if (sub === "remove" || sub === "rm" || sub === "uninstall") {
+        const id = args[1]
+        if (!id) return { type: "error", message: "Usage: /plugin remove <id>" }
+
+        const pluginOk = uninstallPlugin(id)
+        if (pluginOk) return { type: "text", content: `Plugin removed: ${id}\nRestart Aurict to deactivate.` }
+
+        const skillOk = uninstallSkill(id)
+        if (skillOk) return { type: "text", content: `Skill removed: ${id}` }
+
+        return { type: "error", message: `Not found: ${id}\nRun /plugin list to see installed packages.` }
+      }
+
+      // ── update (refresh registry cache) ──
+      if (sub === "update" || sub === "refresh") {
+        try {
+          const registry = await fetchRegistry(true)
+          return { type: "text", content: `Registry updated: ${registry.entries.length} packages available.\nUpdated at: ${registry.updatedAt}` }
+        } catch (e) {
+          return { type: "error", message: `Registry update failed: ${e instanceof Error ? e.message : String(e)}` }
+        }
+      }
+
+      return {
+        type: "error",
+        message: "Usage: /plugin list | search [query] | add <name|url> | remove <id> | update",
+      }
     },
   },
 

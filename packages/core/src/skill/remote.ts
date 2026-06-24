@@ -7,6 +7,7 @@ import { join } from "path"
 import { homedir } from "os"
 import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from "fs"
 import { parseFrontmatter } from "./frontmatter.js"
+import { SkillRegistry } from "./registry.js"
 
 const REMOTE_SKILLS_DIR = join(homedir(), ".aurict", "skills")
 
@@ -53,6 +54,9 @@ export async function installRemoteSkill(url: string): Promise<RemoteSkillMeta> 
   const metaPath = join(REMOTE_SKILLS_DIR, `${id}.meta.json`)
   writeFileSync(metaPath, JSON.stringify({ source: url }), "utf8")
 
+  // Canlı registry'ye kaydet — TF-IDF ve intent matching bu session'da hemen çalışsın
+  SkillRegistry.reload()
+
   return { id, name, description: meta.description || "", source: url, filePath }
 }
 
@@ -94,6 +98,7 @@ export function uninstallSkill(id: string): boolean {
   try {
     unlinkSync(filePath)
     try { unlinkSync(metaPath) } catch { /* ok */ }
+    SkillRegistry.unregister(id)
     return true
   } catch { return false }
 }

@@ -1,6 +1,6 @@
 import { join } from "path"
 import { homedir } from "os"
-import { existsSync, mkdirSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
 import type { MCPConfig, MCPServerConfig } from "./types.js"
 import { DEFAULT_MCP_SERVERS } from "./defaults.js"
 
@@ -15,7 +15,7 @@ export function loadMCPConfig(workdir: string): MCPConfig {
 
   for (const p of paths) {
     try {
-      const raw = require("fs").readFileSync(p, "utf8") as string
+      const raw = readFileSync(p, "utf8")
       const cfg = JSON.parse(raw) as Partial<MCPConfig>
       if (cfg.mcpServers) {
         Object.assign(merged.mcpServers, cfg.mcpServers)
@@ -27,31 +27,44 @@ export function loadMCPConfig(workdir: string): MCPConfig {
 }
 
 /**
- * İlk çalıştırmada default MCP server'ları aktifleştir.
- * Eğer mcp.json yoksa, default server'larla oluşturur.
- * @returns true eğer yeni oluşturulduysa (kullanıcıya gösterilecek mesaj için)
+ * Default MCP server'ları global config'e ekler.
+ * - Config yoksa: tüm default'larla oluşturur.
+ * - Config varsa: eksik default server'ları merge eder (yeni server'lar geriye dönük eklenir).
+ * @returns true eğer herhangi bir değişiklik yapıldıysa
  */
 export function ensureDefaultMCPServers(workdir: string): boolean {
   const globalPath = join(homedir(), ".aurict", "mcp.json")
-  const projectPath = join(workdir, ".aurict", "mcp.json")
+  const globalDir  = join(homedir(), ".aurict")
 
-  // Eğer herhangi bir mcp.json varsa, müdahale etme
-  if (existsSync(globalPath) || existsSync(projectPath)) {
-    return false
-  }
-
-  // Global config oluştur
   try {
-    const globalDir = join(homedir(), ".aurict")
-    if (!existsSync(globalDir)) {
-      mkdirSync(globalDir, { recursive: true })
+    if (!existsSync(globalDir)) mkdirSync(globalDir, { recursive: true })
+
+    // Config yoksa sıfırdan oluştur
+    if (!existsSync(globalPath)) {
+      writeFileSync(globalPath, JSON.stringify({ mcpServers: { ...DEFAULT_MCP_SERVERS } }, null, 2), "utf8")
+      return true
     }
 
-    const defaultConfig: MCPConfig = {
-      mcpServers: { ...DEFAULT_MCP_SERVERS },
+    // Config varsa — eksik default server'ları merge et
+    let existing: MCPConfig
+    try {
+      existing = JSON.parse(readFileSync(globalPath, "utf8")) as MCPConfig
+    } catch {
+      return false
     }
 
-    writeFileSync(globalPath, JSON.stringify(defaultConfig, null, 2), "utf8")
+    if (!existing.mcpServers) existing.mcpServers = {}
+
+    const missing = Object.entries(DEFAULT_MCP_SERVERS).filter(
+      ([name]) => !(name in existing.mcpServers),
+    )
+    if (missing.length === 0) return false
+
+    for (const [name, cfg] of missing) {
+      existing.mcpServers[name] = cfg
+    }
+
+    writeFileSync(globalPath, JSON.stringify(existing, null, 2), "utf8")
     return true
   } catch {
     return false

@@ -199,6 +199,7 @@ export const SkillRegistry = {
   has(id: string):         boolean              { return SKILLS.has(id) },
   count():                 number               { return SKILLS.size },
   reload():                void                 { scanUserSkills() },
+  unregister(id: string):  void                 { SKILLS.delete(id) },
 }
 
 // Frontmatter tipini burada da kullanmak için — döngüsel import önlemek adına re-export değil

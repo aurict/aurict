@@ -20,6 +20,10 @@ export const DEFAULT_MCP_SERVERS: Record<string, McpServerConfig> = {
     command: "uvx",
     args: ["mcp-server-fetch"],
   },
+  codegraph: {
+    command: "codegraph",
+    args: ["serve", "--mcp"],
+  },
 }
 
 /**
@@ -29,6 +33,7 @@ export const MCP_SERVER_DESCRIPTIONS: Record<string, string> = {
   filesystem: "File operations — read, write, search, directory management",
   git: "Git operations — status, diff, commit, branch, log",
   fetch: "Web content fetching — HTTP requests, HTML to markdown",
+  codegraph: "Semantic code intelligence — symbol graph, call paths, blast radius (github.com/colbymchenry/codegraph)",
 }
 
 /**
@@ -44,6 +49,11 @@ export function getMcpActivationMessage(servers: Record<string, McpServerConfig>
 
   return `✓ Default MCP servers enabled:
 ${serverList}
+
+  ℹ codegraph setup (one-time, per machine):
+    1. npx @colbymchenry/codegraph   — install & wire up
+    2. codegraph init                — index each project
+    GitHub: github.com/colbymchenry/codegraph
 
 Use /mcp to manage MCP servers`
 }
