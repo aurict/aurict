@@ -12,13 +12,14 @@ import React, { useState, useEffect, memo } from "react"
 import { Box, Text } from "ink"
 import { Markdown } from "./Markdown.js"
 import { DiffRenderer } from "./DiffRenderer/index.js"
+import { ToolUseLoader } from "./ToolUseLoader.js"
 
 function looksLikeDiff(text: string): boolean {
   const first10 = text.split("\n").slice(0, 10)
   return first10.some((l) => l.startsWith("---") || l.startsWith("+++") || /^@@.*@@/.test(l))
 }
 import { useTheme } from "../utils/theme.js"
-import { HStack, VStack, Typo, Badge, useSpinnerFrame } from "./design-system/index.js"
+import { HStack, VStack, Typo } from "./design-system/index.js"
 
 // ── Tipler ────────────────────────────────────────────────────────────────────
 
@@ -36,10 +37,8 @@ export interface DisplayMessage {
 
 // ── Yardımcı ──────────────────────────────────────────────────────────────────
 
-const MAX_TOOL_LINES   = 8
+const MAX_TOOL_LINES   = 3   // OpenClaude: MAX_LINES_TO_SHOW = 3
 const MAX_STREAM_LINES = 8
-const TOOL_PREVIEW_HEAD_LINES = 5
-const TOOL_PREVIEW_TAIL_LINES = 2
 
 function useTerminalCols(): number {
   const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
@@ -78,11 +77,72 @@ function lineCount(text: string): number {
 }
 
 function previewToolLines(lines: string[]): string[] {
-  if (lines.length <= MAX_TOOL_LINES) return lines
-  return [
-    ...lines.slice(0, TOOL_PREVIEW_HEAD_LINES),
-    ...lines.slice(-TOOL_PREVIEW_TAIL_LINES),
-  ]
+  return lines.slice(0, MAX_TOOL_LINES)
+}
+
+function maybeFormatJson(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return text
+  try {
+    const pretty = JSON.stringify(JSON.parse(trimmed), null, 2)
+    return pretty.length <= 10_000 ? pretty : text
+  } catch {
+    return text
+  }
+}
+
+function extractEditPath(output: string): string | undefined {
+  const m = output.match(/^Replaced \d+ occurrence(?:s)? in (.+)$/m)
+  return m?.[1]?.trim()
+}
+
+function parsePatchSummary(output: string): { files: string[]; added: number; removed: number } | null {
+  if (!output.includes("Applied patch:") && !output.includes("Changed files:")) return null
+  const changed = output.match(/^Changed files:\s*(.+)$/m)?.[1]
+  const stats = output.match(/^Stats:\s*\+(\d+)\s+-(\d+)$/m)
+  const applied = [...output.matchAll(/^\s*(?:Add File|Delete File|Update File|Move to):\s*(.+)$/gm)].map((m) => m[1]?.trim()).filter(Boolean) as string[]
+  const files = changed
+    ? changed.split(",").map((part) => part.trim()).filter(Boolean)
+    : applied
+  if (files.length === 0 && !stats) return null
+  return {
+    files,
+    added: stats ? Number(stats[1]) : 0,
+    removed: stats ? Number(stats[2]) : 0,
+  }
+}
+
+function PatchSummaryView({ output, width }: { output: string; width: number }) {
+  const theme = useTheme()
+  const summary = parsePatchSummary(output)
+  if (!summary) return null
+  const nameWidth = Math.max(18, width - 18)
+
+  return (
+    <VStack width={width} gap="none">
+      <HStack width={width} gap="sm">
+        <Text color={theme.borderBright}>╭─</Text>
+        <Typo variant="label" tone="primary">patch applied</Typo>
+        <Text color={theme.success} bold>{`+${summary.added}`}</Text>
+        <Text color={theme.error} bold>{`-${summary.removed}`}</Text>
+      </HStack>
+      {summary.files.map((file, index) => {
+        const isMove = file.includes(" -> ")
+        const action = isMove ? "move" : "update"
+        return (
+          <HStack key={`${file}-${index}`} width={width} gap="sm">
+            <Text color={theme.borderDim}>│</Text>
+            <Text color={isMove ? theme.warning : theme.accent}>{action.padEnd(6)}</Text>
+            <Text color={theme.textSecondary}>{file.length > nameWidth ? file.slice(0, nameWidth - 1) + "…" : file}</Text>
+          </HStack>
+        )
+      })}
+      <HStack width={width} gap="sm">
+        <Text color={theme.borderBright}>╰─</Text>
+        <Text color={theme.textDim} dimColor>{summary.files.length} file{summary.files.length === 1 ? "" : "s"} touched</Text>
+      </HStack>
+    </VStack>
+  )
 }
 
 // ── Timestamp ─────────────────────────────────────────────────────────────────
@@ -135,37 +195,27 @@ function toolColor(tool: string | undefined, isError: boolean, isPending: boolea
   return theme.accentAlt
 }
 
-// ── Thinking bloğu ────────────────────────────────────────────────────────────
+// ── Thinking bloğu — OpenClaude ∴ pattern ────────────────────────────────────
 
-function ThinkingBlock({ content }: { content: string }) {
-  const theme  = useTheme()
-  const all    = content.split("\n").filter((l) => l.trim())
-  const total  = all.length
+function ThinkingMessage({ content, onExpand }: { content: string; onExpand?: () => void }) {
+  const theme = useTheme()
+  const lines = content.split("\n").filter((l) => l.trim()).length
   return (
-    <VStack gap="none" marginBottom="sm">
-      <HStack gap="sm">
-        <Text color={theme.borderDim}>∴</Text>
-        <Text color={theme.accent} italic dimColor>thought · {total} lines</Text>
-      </HStack>
-      <VStack marginLeft="md">
-        {all.map((line, i) => (
-          <HStack key={i}>
-            <Text color={theme.borderDim} dimColor>┊ </Text>
-            <Text color={theme.accent} italic dimColor wrap="wrap">{line}</Text>
-          </HStack>
-        ))}
-      </VStack>
-    </VStack>
+    <HStack gap="sm" marginBottom="xs">
+      <Text color={theme.borderDim} dimColor italic>∴</Text>
+      <Text color={theme.accent} dimColor italic>Thinking</Text>
+      <Text color={theme.textDim} dimColor>({lines} {lines === 1 ? "line" : "lines"})</Text>
+      {onExpand && <Text color={theme.textDim} dimColor>· Ctrl+O expand</Text>}
+    </HStack>
   )
 }
 
-// ── Pending tool — spinner + opsiyonel canlı çıktı ───────────────────────────
+// ── Pending tool — ToolUseLoader + opsiyonel canlı çıktı ────────────────────
 
 function PendingToolCall({
   tool, command, streamingOutput,
 }: { tool: string; command: string; streamingOutput?: string }) {
   const theme   = useTheme()
-  const spin    = useSpinnerFrame("dots")
   const [ms, setMs] = useState(0)
   useEffect(() => {
     const t = setInterval(() => setMs(n => n + 100), 100)
@@ -173,15 +223,14 @@ function PendingToolCall({
   }, [])
   const elapsed = ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
 
-  // Streaming output: ANSI'den arındır, son MAX_STREAM_LINES satırı göster
   const streamLines = streamingOutput
     ? stripAnsi(streamingOutput).split("\n").slice(-MAX_STREAM_LINES)
     : null
 
   return (
-    <VStack marginBottom="md" paddingX="xs">
+    <VStack marginBottom="md" paddingX="sm">
       <HStack gap="sm">
-        <Text color={theme.accent}>{spin}</Text>
+        <ToolUseLoader shouldAnimate isUnresolved isError={false} />
         <Typo variant="bodyEmphasis" tone="primary">{tool}</Typo>
         <Typo variant="body" tone="muted">{command.slice(0, 65)}{command.length > 65 ? "…" : ""}</Typo>
         <Typo variant="caption" tone="muted" dimColor>{elapsed}</Typo>
@@ -218,14 +267,18 @@ interface Props {
 export const Message = memo(function Message({ message, onExpand, onExpandThinking }: Props) {
   const theme    = useTheme()
   const termCols = useTerminalCols()
+  const bodyWidth = Math.max(20, termCols - 9)
+  const userWidth = Math.max(20, termCols - 18)
 
   // ── User ──────────────────────────────────────────────────────────────────────
   if (message.role === "user") {
     return (
-      <VStack marginBottom="sm" paddingX="xs">
+      <VStack marginBottom="sm" paddingX="sm">
         <HStack gap="sm">
-          <Text color={theme.userColor} bold>❯</Text>
-          <Text wrap="wrap" color={theme.textPrimary}>{message.content}</Text>
+          <Text color={theme.textDim}>{">"}</Text>
+          <Box width={userWidth}>
+            <Text wrap="wrap" color={theme.textPrimary}>{message.content}</Text>
+          </Box>
           {message.timestamp && <Timestamp ts={message.timestamp} />}
         </HStack>
       </VStack>
@@ -239,32 +292,29 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
     const pending     = !!message.pending
 
     return (
-      <VStack marginBottom="sm" paddingX="xs">
+      <VStack marginBottom="sm" paddingX="sm">
 
-        {/* Thinking bloğu */}
+        {/* ∴ Thinking — collapsed, Ctrl+O ile overlay açılır */}
         {hasThinking && !pending && (
-          <ThinkingBlock content={message.reasoningContent!} />
+          <ThinkingMessage
+            content={message.reasoningContent!}
+            {...(onExpandThinking ? { onExpand: onExpandThinking } : {})}
+          />
         )}
 
-        {/* ● + sol kenar dikey bar */}
-        <HStack gap="sm">
+        {/* ● dot + içerik — OpenClaude AssistantTextMessage pattern */}
+        <Box flexDirection="row">
           <Box width={2} flexShrink={0}>
             <Text color={pending && !hasText ? theme.accent : theme.assistantDot}>
               {pending && !hasText ? "○" : "●"}
             </Text>
           </Box>
-          <Box
-            flexGrow={1}
-            borderStyle="single"
-            borderTop={false} borderBottom={false} borderRight={false}
-            borderColor={pending ? theme.accent : theme.borderDim}
-            paddingLeft={1}
-          >
-            {hasText && <Markdown content={message.content} />}
+          <Box flexDirection="column" flexShrink={1} width={bodyWidth}>
+            {hasText && <Markdown content={message.content} width={Math.max(10, bodyWidth - 2)} />}
             {pending  && <Text color={theme.accent}>▋</Text>}
             {!hasText && !pending && <Text color={theme.textDim} dimColor italic>…</Text>}
           </Box>
-        </HStack>
+        </Box>
 
         {message.timestamp && !pending && <Timestamp ts={message.timestamp} />}
       </VStack>
@@ -292,25 +342,24 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
     }
 
     // Tamamlandı — header + sol bar output
-    const safeW       = Math.max(20, termCols - 10)
-    const lines       = prepareLines(rawOutput, safeW)
-    const totalLines  = lineCount(rawOutput)
-    const hasOutput   = rawOutput.trim().length > 0
-    const hasMore     = lines.length > MAX_TOOL_LINES
-    const visible     = hasOutput ? previewToolLines(lines) : []
-    const hiddenLines = Math.max(0, lines.length - visible.length)
-    const outputStats = `${totalLines} ${totalLines === 1 ? "line" : "lines"} · ${formatBytes(rawOutput)}`
+    const safeW        = Math.max(20, termCols - 12)
+    const displayOutput = maybeFormatJson(rawOutput)
+    const lines        = prepareLines(displayOutput, safeW)
+    const totalLines   = lineCount(displayOutput)
+    const hasOutput    = rawOutput.trim().length > 0
+    const hasMore      = lines.length > MAX_TOOL_LINES
+    const visible      = hasOutput ? previewToolLines(lines) : []
+    const hiddenLines  = Math.max(0, lines.length - visible.length)
+    const outputStats  = `${totalLines} ${totalLines === 1 ? "line" : "lines"} · ${formatBytes(rawOutput)}`
+    const diffWidth   = Math.max(40, termCols - 12)
 
     return (
-      <VStack marginBottom="md" paddingX="xs">
-        {/* Header: ◆ tool  arg  ✓ done  0.3s */}
+      <VStack marginBottom="md" paddingX="sm">
+        {/* Header: loader, tool, args, timing */}
         <HStack gap="sm">
-          <Text color={color}>◆</Text>
+          <ToolUseLoader shouldAnimate={false} isUnresolved={false} isError={isError} />
           <Typo variant="bodyEmphasis" tone="primary">{message.tool ?? "tool"}</Typo>
           <Typo variant="body" tone="muted">{summary}</Typo>
-          <Badge tone={isError ? "error" : "success"} variant="solid">
-            {isError ? "✗ fail" : "✓ done"}
-          </Badge>
           {message.durationMs !== undefined && message.durationMs > 0 && (
             <Typo variant="caption" tone="muted" dimColor>
               {message.durationMs < 1000
@@ -326,15 +375,31 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
         {message.resultContent !== undefined && (() => {
           const diffMatch = rawOutput.match(/^.*\n__DIFF__\n([\s\S]*?)\n__NEW__\n([\s\S]*)$/)
           if (diffMatch && message.tool === "edit") {
+            const editPath = extractEditPath(rawOutput)
             return (
               <Box marginLeft={3} marginRight={2}>
-                <DiffRenderer oldText={diffMatch[1]!} newText={diffMatch[2]!} enableModeToggle enableHunkNav />
+                <DiffRenderer
+                  oldText={diffMatch[1]!}
+                  newText={diffMatch[2]!}
+                  {...(editPath ? { fileName: editPath } : {})}
+                  initialMode="unified"
+                  width={diffWidth}
+                  enableModeToggle
+                  enableHunkNav
+                />
               </Box>
             )
+          }
+          if (message.tool === "apply_patch") {
+            const patchSummary = <PatchSummaryView output={rawOutput} width={diffWidth} />
+            if (parsePatchSummary(rawOutput)) {
+              return <Box marginLeft={3} marginRight={2}>{patchSummary}</Box>
+            }
           }
           return (
             <Box
               marginLeft={3}
+              width={Math.max(20, termCols - 8)}
               flexDirection="column"
               borderStyle="single"
               borderTop={false} borderBottom={false} borderRight={false}
@@ -342,10 +407,10 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
               paddingLeft={1}
             >
               {looksLikeDiff(rawOutput)
-                ? <DiffRenderer rawDiff={rawOutput} enableModeToggle enableHunkNav />
+                ? <DiffRenderer rawDiff={rawOutput} width={diffWidth} initialMode="unified" enableModeToggle enableHunkNav />
                 : (<>
                     {!hasOutput && (
-                      <Text color={theme.textDim} dimColor>(empty output)</Text>
+                      <Text color={theme.textDim} dimColor>(No output)</Text>
                     )}
                     {visible.map((line, i) => (
                       <Text key={i} color={isError ? theme.error : theme.textSecondary}>{line || " "}</Text>
@@ -368,7 +433,7 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
   if (message.role === "system") {
     return (
       <HStack marginBottom="sm" paddingX="md" gap="sm">
-        <Text color={theme.borderBright} dimColor>◆</Text>
+        <Text color={theme.borderBright} dimColor>·</Text>
         <Typo variant="body" tone="secondary">{message.content}</Typo>
         {message.timestamp && <Timestamp ts={message.timestamp} />}
       </HStack>

@@ -30,15 +30,55 @@ const defaultServerStarter: ServerStarter = (port) => {
 export function startLocalServer(port: number, starter: ServerStarter = defaultServerStarter): boolean {
   try {
     starter(port)
-    console.error(`[aurict] Server: http://127.0.0.1:${port}`)
     return true
   } catch (err) {
     if (isPortInUseError(err)) {
-      console.error(`[aurict] Server: port ${port} is already in use; continuing TUI-only and reusing the existing port if it belongs to Aurict`)
       return false
     }
     throw err
   }
+}
+
+function padRow(label: string, value: string, width: number): string {
+  const raw = ` ${label.padEnd(9)} ${value}`
+  return `│${raw}${" ".repeat(Math.max(0, width - raw.length))}│`
+}
+
+function printStartupStatus({
+  ready,
+  missing,
+  defaultProvider,
+  localServer,
+}: {
+  ready: string[]
+  missing: string[]
+  defaultProvider: string
+  localServer: LocalServerStatus
+}) {
+  const providerText = ready.length > 0 ? ready.join(", ") : "no API key found"
+  const serverText = !localServer.enabled
+    ? "disabled"
+    : localServer.started && localServer.port
+      ? `http://127.0.0.1:${localServer.port}`
+      : localServer.reused && localServer.port
+        ? `port ${localServer.port} already in use`
+        : "unavailable"
+  const hintText = ready.length > 0
+    ? "use /providers to switch"
+    : `set ${missing.slice(0, 3).join(", ")}`
+  const rows = [
+    ["Providers", providerText],
+    ["Active", defaultProvider],
+    ["Server", serverText],
+    ["Hint", hintText],
+  ] as const
+  const width = Math.max(42, ...rows.map(([label, value]) => ` ${label.padEnd(9)} ${value}`.length))
+  console.error("")
+  console.error(`╭${"─".repeat(width)}╮`)
+  console.error(padRow("Aurict", "ready", width))
+  console.error(`├${"─".repeat(width)}┤`)
+  for (const [label, value] of rows) console.error(padRow(label, value, width))
+  console.error(`╰${"─".repeat(width)}╯`)
 }
 
 export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvider: string; serverToken: string; localServer: LocalServerStatus }> {
@@ -47,14 +87,6 @@ export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvid
 
   const ready   = available.filter((p) => p.hasKey).map((p) => p.name)
   const missing = available.filter((p) => !p.hasKey && p.id !== "ollama").map((p) => envVar(p.id))
-
-  if (ready.length > 0) {
-    console.error(`[aurict] Providers: ${ready.join(", ")} ✓`)
-    console.error(`[aurict] Active: ${defaultProvider}  |  use /providers to switch`)
-  } else {
-    console.error("[aurict] Warning: no API key found")
-    console.error(`[aurict] Set one of: ${missing.join(", ")}`)
-  }
 
   const serverToken = getOrCreateToken()
   setActiveToken(serverToken)
@@ -74,6 +106,8 @@ export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvid
     localServer.reused = !started
     if (!started) localServer.reason = "port-in-use"
   }
+
+  printStartupStatus({ ready, missing, defaultProvider, localServer })
 
   // Load user-defined hooks from ~/.aurict/hooks.json + .aurict/hooks.json
   loadUserHooks(process.cwd())

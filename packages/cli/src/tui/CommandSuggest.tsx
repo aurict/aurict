@@ -10,10 +10,15 @@ import {
   commandSortKey,
 } from "../commands/ui-metadata.js"
 
-const MAX_SHOW = 8
-const NAME_WIDTH = 16
-const CATEGORY_WIDTH = 10
-const ALIAS_WIDTH = 18
+const MAX_SHOW = 6
+const NAME_WIDTH = 14
+const CATEGORY_WIDTH = 9
+const ALIAS_WIDTH = 14
+
+function fit(text: string, width: number): string {
+  if (width <= 1) return ""
+  return text.length <= width ? text.padEnd(width) : text.slice(0, width - 1) + "…"
+}
 
 interface Props {
   filter:    string         // "/" sonrası yazılan metin
@@ -41,6 +46,8 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
   }).sort((a, b) => commandSortKey(a).localeCompare(commandSortKey(b)))
   const filtered  = allMatches.slice(0, MAX_SHOW)
   const hiddenCount = allMatches.length - filtered.length
+  const termCols = process.stdout.columns ?? 80
+  const descWidth = Math.max(16, Math.min(72, termCols - NAME_WIDTH - CATEGORY_WIDTH - ALIAS_WIDTH - 14))
 
   useInput((_char, key) => {
     if (!filtered.length) return
@@ -53,41 +60,37 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
   if (!isActive || !filtered.length) return null
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={theme.borderActive} paddingX={1} marginX={1}>
-      <Text color={theme.accent} dimColor bold>Commands  </Text>
+    <Box flexDirection="column" borderStyle="single" borderColor={theme.borderActive} paddingX={1} marginX={1}>
+      <Text color={theme.accent} dimColor bold>commands</Text>
       <Box flexDirection="column">
         {filtered.map((cmd, i) => {
           const sel = i === idx
           const category = COMMAND_CATEGORY_META[commandCategory(cmd)]
           return (
-            <Box key={cmd.name} flexDirection="column">
-              <Box gap={1}>
-                <Text color={sel ? theme.accent : theme.textDim}>{sel ? "▶" : " "}</Text>
+            <Box key={cmd.name}>
+              <Box>
+                <Text color={sel ? theme.accent : theme.textDim}>{sel ? "› " : "  "}</Text>
                 <Text color={sel ? theme.accent : theme.textDim}>{commandIcon(cmd)}</Text>
+                <Text> </Text>
                 <Text color={sel ? theme.accent : theme.textPrimary} bold={sel}>
-                  {("/" + cmd.name).padEnd(NAME_WIDTH)}
+                  {fit("/" + cmd.name, NAME_WIDTH)}
                 </Text>
-                <Text color={theme.textDim} dimColor>{category.label.padEnd(CATEGORY_WIDTH)}</Text>
+                <Text color={theme.textDim} dimColor>{fit(category.label, CATEGORY_WIDTH)}</Text>
                 <Text color={theme.textDim} dimColor>
-                  {(cmd.aliases?.slice(0, 3).map(a => `/${a}`).join(" ") ?? "").padEnd(ALIAS_WIDTH)}
+                  {fit(cmd.aliases?.slice(0, 2).map(a => `/${a}`).join(" ") ?? "", ALIAS_WIDTH)}
                 </Text>
                 <Text color={sel ? theme.textPrimary : theme.textDim} dimColor={!sel} wrap="truncate-end">
-                  {cmd.description}
+                  {fit(cmd.description, descWidth)}
                 </Text>
               </Box>
-              {sel && cmd.usage ? (
-                <Box paddingLeft={4}>
-                  <Text color={theme.textDim} dimColor>{cmd.usage}</Text>
-                </Box>
-              ) : null}
             </Box>
           )
         })}
       </Box>
       {hiddenCount > 0 && (
-        <Text color={theme.textDim} dimColor>  +{hiddenCount} more — type to narrow</Text>
+        <Text color={theme.textDim} dimColor>  +{hiddenCount} more - type to narrow</Text>
       )}
-      <Text color={theme.textDim} dimColor>↑↓ select  Tab fill  Enter run  Esc close</Text>
+      <Text color={theme.textDim} dimColor>  up/down select  tab fill  enter run  esc close</Text>
     </Box>
   )
 }

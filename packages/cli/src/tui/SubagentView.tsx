@@ -65,26 +65,28 @@ interface Props {
 export function SubagentView({ sessionId, parentSessionId, onClose, onPrev, onNext, siblingIndex, siblingCount }: Props) {
   const theme = useTheme()
   const [parts, setParts] = useState<Part[]>(() => SessionManager.getPartsTail(sessionId, MAX_PARTS))
-  // totalCount tracks real DB count (may exceed MAX_PARTS) for the scroll indicator
   const [totalCount, setTotalCount] = useState(() => SessionManager.getPartsCount(sessionId))
+  // Canlı streaming metni — DB'ye henüz yazılmamış, tool call'lar arası LLM çıktısı
+  const [liveText, setLiveText] = useState(() => agentPool.getLiveText(sessionId))
   const PAGE = Math.max(10, (process.stdout.rows ?? 24) - 8)
   const [offset, setOffset] = useState<number>(-1)   // -1 = "tail" modu: en sona kilitli
 
-  // Çalışan agent için canlı güncelleme — COUNT-only poll, load only when changed
+  // agentPool.onChange → push-based: her text delta'sında anında güncelle
+  // DB part sayısı değişince de parts'ı yenile (tool_call / done gelince)
   useEffect(() => {
-    const isRunning = agentPool.active.some((a) => a.sessionId === sessionId)
-    if (!isRunning) return
-    let lastCount = parts.length
-    const t = setInterval(() => {
+    const unsub = agentPool.onChange(() => {
+      setLiveText(agentPool.getLiveText(sessionId))
       const newCount = SessionManager.getPartsCount(sessionId)
-      if (newCount !== lastCount) {
-        lastCount = newCount
-        setTotalCount(newCount)
-        setParts(SessionManager.getPartsTail(sessionId, MAX_PARTS))
-      }
-    }, 400)
-    return () => clearInterval(t)
-  }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+      setTotalCount((prev) => {
+        if (newCount !== prev) {
+          setParts(SessionManager.getPartsTail(sessionId, MAX_PARTS))
+          return newCount
+        }
+        return prev
+      })
+    })
+    return unsub
+  }, [sessionId])
 
   // Session değişince parts'ı yenile + tail moduna dön
   useEffect(() => {
@@ -175,13 +177,22 @@ export function SubagentView({ sessionId, parentSessionId, onClose, onPrev, onNe
 
       {/* Messages */}
       <Box flexDirection="column" flexGrow={1} paddingX={2} paddingY={1}>
-        {shown.length === 0 ? (
+        {shown.length === 0 && !liveText ? (
           <Text color={theme.textDim} dimColor italic>Waiting for agent to start…</Text>
         ) : (
           shown.map((line, i) => (
             <Text key={i} color={line.color} {...(line.dim ? { dimColor: true } : {})}>{line.text}</Text>
           ))
         )}
+        {/* Canlı streaming metni — tail modunda, DB'ye yazılmamış anlık LLM çıktısı */}
+        {isRunning && isTail && liveText && liveText
+          .split("\n")
+          .filter((l) => l.trim())
+          .slice(-6)
+          .map((l, i) => (
+            <Text key={`live-${i}`} color={theme.textSecondary}>{l}</Text>
+          ))
+        }
       </Box>
 
       {/* Navigation footer */}

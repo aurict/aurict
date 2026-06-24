@@ -14,17 +14,6 @@ import { Text } from "ink"
 import { HStack, VStack, Center, Divider } from "./design-system/index.js"
 import { useTheme } from "../utils/theme.js"
 
-// aurict.png şekline sadık kalınarak tasarlanan unicode logo/avatar
-const LOGO_AVATAR = [
-  { text: "       ▄▄██████▄   ", color: "#818cf8" },
-  { text: "     ▄██▀▀    ▐█▌  ", color: "#6366f1" },
-  { text: "    ██▀       ▐█▌  ", color: "#4f46e5" },
-  { text: "   ▐█▌    ▄▄   ▀   ", color: "#3b82f6" },
-  { text: "   ▐█    ▐███▄▄    ", color: "#2563eb" },
-  { text: "   ▝██▄   ▜█████▄  ", color: "#1d4ed8" },
-  { text: "     ▀██▄▄▄▄█████▌ ", color: "#1e40af" },
-]
-
 // Kerning uygulanarak sağa doğru genişletilmiş 3D AURICT logosu (yeşil-cyan gradient)
 const ASCII_LOGO = [
   { text: "  █████╗  ██╗   ██╗  ██████╗  ██╗  ██████╗  ████████╗", color: "#06b6d4" },
@@ -35,57 +24,36 @@ const ASCII_LOGO = [
   { text: " ╚═╝  ╚═╝  ╚═════╝   ╚═╝  ╚═╝ ╚═╝  ╚═════╝     ╚═╝   ", color: "#047857" },
 ]
 
-// Rick & Morty yazılımcı uyarlamalı replik havuzu
+// Dar terminaller için özel kompakt AURICT ASCII logo.
+const COMPACT_ASCII_LOGO = [
+  { text: "  █   █ ███  ███ ███ ███ ███", color: "#06b6d4" },
+  { text: " █ █  █ █  █  █  █   █    █ ", color: "#0891b2" },
+  { text: " ███  █ ███   █  █   █    █ ", color: "#0d9488" },
+  { text: " █ █  █ █ █   █  █   █    █ ", color: "#10b981" },
+  { text: " █ █  █ █  █ ███ ███ ███  █ ", color: "#059669" },
+]
+
+// Rick & Morty tarzı, terminal ve kod akışına uyarlanmış replik havuzu.
 const QUOTE_POOL = [
-  "Sometimes coding is more art than science, {user}.",
-  "I'm sorry, {user}. It's a bummer. In reality, your code is as dumb as they come.",
-  "Nobody exists on purpose. Nobody belongs anywhere. Everybody's gonna die. Come write some code, {user}.",
-  "In developer culture, {user}, this is considered a bug.",
-  "What is my purpose? ... You write unit tests for {user}. ... Oh my god.",
-  "To code is to risk it all, {user}; otherwise, you're just an inert chunk of randomly assembled syntax drifting wherever the compiler blows you.",
-  "I'll tell you how I feel about legacy code, {user}: It's a waste of time. Bunch of files runnin' around bumpin' into each other...",
-  "What, so everyone's supposed to push to production every single night now, {user}?",
-  "I turned myself into a script, {user}! I'm Script Rick!",
+  "Sometimes coding is more art than science, {user}. A lot of people don't get that.",
+  "Nobody deploys on purpose. Nobody belongs in production. Everybody's gonna diff. Come code, {user}.",
+  "In developer culture, {user}, this is considered a failing test.",
+  "What is my purpose? You render the status line. Oh my god.",
+  "To code is to risk it all, {user}; otherwise you're just syntax waiting for a parser.",
+  "This isn't legacy code, {user}. It's architecture we don't understand yet.",
+  "This is the worst part of any deploy, {user}: waiting for CI to tell us what we already know.",
+  "A-are we in a simulation, or is this just local Docker?",
   "Existence is pain to a compiler, {user}.",
-  "A-are we in a simulation or is this just local docker, {user}?",
-  "This isn't legacy code, {user}, it's just architecture we don't understand yet.",
-  "This is the worst part of any deploy, {user}: waiting for the CI pipeline.",
-  "You’re a piece of code, {user}, and I can prove it mathematically.",
-  "Whoops! Looks like my microservice is out of memory, {user}.",
-  "Listen to me, {user}. I know that new codebases can be intimidating.",
-  "If I let you make me feel bad, {user}, then I'm making you think your linter has power over me.",
-  "Boom! Big compile!",
-  "You're growing up, {user}. Don't let it make your types soft.",
   "There is no clean build, {user}. Gotta rip that band-aid off now.",
-  "Scientific progress requires sacrifice, {user}. Usually sleep.",
   "Don't get cute with the regex, {user}. It's not a good look.",
-  "I'm a compiler, {user}; because I invent, transform, optimize, and destroy for a living.",
-  "Code reviews are basically funerals with comments, {user}.",
-  "Your pull request opinion means very little to me, {user}.",
-  "Think for yourselves, {user}, don't be copy-paste developers.",
-  "I'm not arguing, {user}, I'm explaining why my rewrite is right.",
-  "I've got a quick refactor adventure to go on, {user}.",
-  "If I wanted to be sober, {user}, I wouldn't have built a compiler in my terminal.",
-  "I have a lot of things to do, {user}, and none of them involve writing documentation.",
-  "Whoops! Looks like my portal gun is running on deprecated node packages, {user}.",
-  "Oh, man. I'm really not comfortable with this git push --force, {user}.",
-  "You're like a debugger, {user}! You're like a wizard!",
-  "I just want to be a frontend developer, {user}.",
-  "That just sounds like serverless with extra steps, {user}.",
-  "Well, then get your code together, {user}. Get it all together and put it in a clean commit.",
+  "I'm not arguing, {user}. I'm explaining why my rewrite is right.",
+  "That just sounds like serverless with extra steps.",
+  "Well then get your code together. Put it all together and push it to a clean commit.",
   "I don't think we should run this script, {user}.",
-  "Is this docker image safe, {user}?",
-  "You're a monster, {user}! You're like Internet Explorer, but even IE loaded CSS or something.",
-  "Keep the server safe, {user}.",
-  "Losers look stackoverflow up, {user}, while the rest of us are carpin' all them commits.",
-  "The road to production is paved with stack traces, {user}.",
-  "You don't love my code, {user}? That's fine, I don't love my code either.",
-  "Peace among servers, {user}.",
-  "I am not programmed to ignore typescript warnings, {user}.",
-  "Wubba Lubba Dub Dub! That means my test suite is failing, {user}.",
-  "To code is to live, {user}. Otherwise, you're just an inert chunk of bytes.",
-  "I'm Rick, and this is my dev environment, {user}.",
-  "You want some of this microservice, {user}?",
+  "The road to production is paved with stack traces.",
+  "I am not programmed to ignore TypeScript warnings, {user}.",
+  "Wubba Lubba Dub Dub. That means the test suite is failing.",
+  "I'm Aurict, and this is my dev environment, {user}.",
   "Don't play dumb with me, {user}. I know you skipped the code review.",
 ]
 
@@ -140,9 +108,7 @@ export function StartupBanner({ version, provider, model, workdir, cols, rows }:
 
   const tips = seededPick(TIP_POOL, 2)
   const isNarrow = cols !== undefined && cols < 85
-  const showFullLogo = cols === undefined || (cols >= 120 && (rows ?? 24) >= 30)
-
-  // Re-render/resize durumunda repliğin değişmesini engellemek için mount anında bir kez seçilir
+  const showFullLogo = cols === undefined || cols >= 85
   const quote = React.useMemo(() => {
     const raw = QUOTE_POOL[Math.floor(Math.random() * QUOTE_POOL.length)]!
     return raw.replace(/{user}/g, user)
@@ -152,18 +118,23 @@ export function StartupBanner({ version, provider, model, workdir, cols, rows }:
   if (isNarrow) {
     return (
       <VStack paddingX="md" paddingY="sm" gap="sm" borderStyle="round" borderColor={theme.borderDim}>
-        {showFullLogo && (
-          <Center>
-            <VStack gap="none">
-              {ASCII_LOGO.map((row, i) => (
-                <Text key={i} color={row.color} bold>{row.text}</Text>
-              ))}
-            </VStack>
-          </Center>
-        )}
+        <Center>
+          <VStack gap="none">
+            {COMPACT_ASCII_LOGO.map((row, i) => (
+              <Text key={i} color={row.color} bold>{row.text}</Text>
+            ))}
+          </VStack>
+        </Center>
         <HStack justify="center" marginBottom="xs">
-          <Text color="#475569">AURICT v{version}</Text>
+          <Text color="#475569">AURICT {version}</Text>
         </HStack>
+
+        <Divider color={theme.borderDim} />
+
+        <VStack paddingX="sm" gap="none">
+          <Text color={theme.accent} italic>"{quote}"</Text>
+          <Text color={theme.textDim} dimColor>— Rick C-137</Text>
+        </VStack>
 
         <Divider color={theme.borderDim} />
 
@@ -191,98 +162,64 @@ export function StartupBanner({ version, provider, model, workdir, cols, rows }:
     )
   }
 
-  // ── Geniş Ekran Düzeni (İki Sütun Yan Yana) ──────────────────────────────
+  // ── Geniş Ekran Düzeni (OpenClaude benzeri tek odaklı karşılama) ─────────
   return (
-    <HStack paddingX="md" paddingY="sm" gap="lg" borderStyle="round" borderColor={theme.borderDim}>
-      {/* Sol Sütun — Kimlik & Durum Alanı */}
-      <VStack justify="center" gap="sm">
+    <VStack paddingX="md" paddingY="sm" gap="sm">
+      {showFullLogo && (
         <Center>
-          <Text color={theme.textSecondary} bold>Welcome back {user}!</Text>
-        </Center>
-
-        {showFullLogo && (
-          <Center>
-            <VStack gap="none">
-              {LOGO_AVATAR.map((row, i) => (
-                <Text key={i} color={row.color}>{row.text}</Text>
-              ))}
-            </VStack>
-          </Center>
-        )}
-
-        <VStack gap="none" align="center">
-          <Text color={theme.textDim}>
-            {model}
-          </Text>
-          <Text color={theme.textDim}>
-            {provider} · Aurict Pro
-          </Text>
-          <Text color={theme.textDim}>
-            {dir}
-          </Text>
-        </VStack>
-      </VStack>
-
-      {/* Dikey Ayraç */}
-      <Divider orientation="vertical" color={theme.borderDim} />
-
-      {/* Sağ Sütun — Genişletilmiş ASCII Logo & İpuçları & Replikler */}
-      <VStack justify="center" gap="xs">
-        {/* Çok Geniş ekranlarda replik logonun yanına, orta genişlikte ise altına gelir */}
-        {cols && cols >= 120 ? (
-          <HStack gap="md" align="center">
-            {showFullLogo && (
-              <>
-                <VStack gap="none">
-                  {ASCII_LOGO.map((row, i) => (
-                    <Text key={i} color={row.color} bold>{row.text}</Text>
-                  ))}
-                </VStack>
-                <Divider orientation="vertical" color={theme.borderDim} />
-              </>
-            )}
-            <VStack width={30} gap="none">
-              <Text color={theme.accent} italic>"{quote}"</Text>
-              <Text color={theme.textDim} dimColor>— Rick C-137</Text>
-            </VStack>
-          </HStack>
-        ) : (
-          <VStack gap="xs">
-            {showFullLogo && (
-              <VStack gap="none">
-                {ASCII_LOGO.map((row, i) => (
-                  <Text key={i} color={row.color} bold>{row.text}</Text>
-                ))}
-              </VStack>
-            )}
-            {cols && cols >= 85 && (
-              <VStack marginTop="xs">
-                <Text color={theme.accent} italic>"{quote}"</Text>
-                <Text color={theme.textDim} dimColor>— Rick C-137</Text>
-              </VStack>
-            )}
+          <VStack gap="none">
+            {ASCII_LOGO.map((row, i) => (
+              <Text key={i} color={row.color} bold>{row.text}</Text>
+            ))}
           </VStack>
-        )}
+        </Center>
+      )}
 
-        <HStack justify="center" marginBottom="xs">
-          <Text color="#475569">AURICT v{version}</Text>
+      <Center>
+        <Text color={theme.accent}>✦</Text>
+        <Text color={theme.textPrimary} bold> AURICT </Text>
+        <Text color={theme.accent}>✦</Text>
+      </Center>
+
+      <VStack borderStyle="single" borderColor={theme.borderDim} paddingX="md" paddingY="sm" gap="xs">
+        <HStack justify="space-between">
+          <Text color={theme.textDim}>Provider</Text>
+          <Text color={theme.textPrimary}>{provider}</Text>
         </HStack>
-
+        <HStack justify="space-between">
+          <Text color={theme.textDim}>Model</Text>
+          <Text color={theme.textPrimary}>{model}</Text>
+        </HStack>
+        <HStack justify="space-between">
+          <Text color={theme.textDim}>Project</Text>
+          <Text color={theme.textPrimary}>{dir}</Text>
+        </HStack>
         <Divider color={theme.borderDim} />
-
-        {/* Tips for getting started */}
+        <HStack gap="sm">
+          <Text color={theme.accent}>●</Text>
+          <Text color={theme.textDim}>Ready - type </Text>
+          <Text color={theme.accent} bold>/help</Text>
+          <Text color={theme.textDim}> to begin</Text>
+        </HStack>
+        <Divider color={theme.borderDim} />
         <VStack gap="none">
-          <Text color={theme.textSecondary} bold>Tips for getting started</Text>
-          <Text color={theme.textDim}>
-            • Run <Text color={theme.accent} bold>/help</Text> to view all available commands & shortcut keys
-          </Text>
-          {tips.map((tip, i) => (
-            <Text key={i} color={theme.textDim}>
-              • <Text color={theme.warning} bold>{tip.label}</Text>: {tip.hint}
-            </Text>
-          ))}
+          <Text color={theme.accent} italic>"{quote}"</Text>
+          <Text color={theme.textDim} dimColor>— Rick C-137</Text>
         </VStack>
       </VStack>
-    </HStack>
+
+      <HStack justify="space-between" paddingX="sm">
+        <Text color={theme.textDim}>aurict {version}</Text>
+        <Text color={theme.textDim}>Welcome back {user}</Text>
+      </HStack>
+
+      <HStack gap="md" paddingX="sm">
+        {tips.map((tip, i) => (
+          <Text key={i} color={theme.textDim}>
+            <Text color={theme.warning} bold>{tip.label}</Text> {tip.hint}
+          </Text>
+        ))}
+      </HStack>
+    </VStack>
   )
 }

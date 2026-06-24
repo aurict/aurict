@@ -68,6 +68,7 @@ export interface WorkerRequest {
   sessionId:     string      // worker'ın kendi session ID'si
   workspacePath: string      // shared workspace dizini (multi-agent iletişim)
   envVars?:      Record<string, string>  // API keys from parent process
+  parentContext?: string     // son N parent mesajının özeti — subagent'a bağlam sağlar
 }
 
 // Parent → Worker (control)

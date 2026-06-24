@@ -7,6 +7,13 @@ import type { Session }   from "../session/types.js"
 import type { WorkerRequest, WorkerMessage, WorkerControl, AgentType } from "./protocol.js"
 import { AGENT_TYPE_TOOLS } from "./protocol.js"
 
+export class PoolFullError extends Error {
+  constructor(max: number) {
+    super(`Worker pool full (max ${max})`)
+    this.name = "PoolFullError"
+  }
+}
+
 const DEFAULT_WORKER_TIMEOUT  = 300_000   // 5 dakika — heartbeat'le reset edilir
 const HEARTBEAT_GRACE         = 45_000    // heartbeat gelmezse bu kadar sonra timeout
 const DEFAULT_MAX_WORKERS     = 4
@@ -96,6 +103,14 @@ class AgentPool {
     return () => { this.listeners = this.listeners.filter((l) => l !== cb) }
   }
 
+  /** Verilen sessionId için DB'ye henüz yazılmamış canlı streaming metnini döner. */
+  getLiveText(sessionId: string): string {
+    for (const entry of this.entries.values()) {
+      if (entry.info.sessionId === sessionId) return entry.textBuffer
+    }
+    return ""
+  }
+
   private notify() {
     const list = this.active
     for (const l of this.listeners) l(list)
@@ -171,11 +186,12 @@ class AgentPool {
     workerSessionId: string
     allowedTools?:   string[]
     onText?:         (delta: string) => void
+    parentContext?:  string
   }): Promise<string> {
     const agentsCfg  = loadConfig(opts.workdir).agents ?? {}
     const maxWorkers = agentsCfg.maxWorkers ?? DEFAULT_MAX_WORKERS
     if (this.entries.size >= maxWorkers) {
-      return Promise.reject(new Error(`Worker pool full (max ${maxWorkers})`))
+      return Promise.reject(new PoolFullError(maxWorkers))
     }
 
     const subSessionId = SessionManager.create(
@@ -250,6 +266,7 @@ class AgentPool {
         sessionId:     subSessionId,
         workspacePath,
         envVars:       collectEnvVars(),
+        ...(opts.parentContext ? { parentContext: opts.parentContext } : {}),
       }
       worker.postMessage(req)
     })
@@ -276,10 +293,16 @@ class AgentPool {
       case "text": {
         entry.onText?.(msg.delta)
         entry.textBuffer += msg.delta
+        sseManager.emit(parentSessionId, {
+          type: "agent_text",
+          data: { id, delta: msg.delta, agentType: entry.info.type, sessionId: entry.info.sessionId },
+        })
         if (msg.delta.trim()) {
           const last = msg.delta.split("\n").filter((l) => l.trim()).pop()
-          if (last) { entry.info.lastLine = last.slice(0, 80); this.notify() }
+          if (last) entry.info.lastLine = last.slice(0, 80)
         }
+        // Her delta'da notify — SubagentView'ın getLiveText'i anlık okuyabilmesi için
+        this.notify()
         break
       }
 

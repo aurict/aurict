@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
+import { dirname as pathDirname } from "node:path"
 import type { PermissionDecision, PermissionResponse, CategoryPermission } from "./types.js"
 import type { ToolCategory } from "../tool/types.js"
 import { getToolCategory } from "./categories.js"
@@ -7,6 +9,12 @@ const approved = new Set<string>()
 const approvedDirs = new Set<string>()
 // Kategori bazlı session izinleri ("write" → "allow_session")
 const categoryApprovals = new Map<ToolCategory, CategoryPermission>()
+
+interface PersistedData {
+  version: 1
+  approved:     string[]
+  approvedDirs: string[]
+}
 
 function key(tool: string, pattern: string) {
   return `${tool}:${pattern}`
@@ -49,6 +57,28 @@ export const PermissionStore = {
     approved.clear()
     approvedDirs.clear()
     categoryApprovals.clear()
+  },
+
+  loadPersisted(path: string): void {
+    try {
+      const raw  = readFileSync(path, "utf8")
+      const data = JSON.parse(raw) as PersistedData
+      if (data.version !== 1) return
+      for (const entry of data.approved)     approved.add(entry)
+      for (const entry of data.approvedDirs) approvedDirs.add(entry)
+    } catch { /* file absent or malformed — silent skip */ }
+  },
+
+  savePersisted(path: string): void {
+    try {
+      mkdirSync(pathDirname(path), { recursive: true })
+      const data: PersistedData = {
+        version:      1,
+        approved:     [...approved],
+        approvedDirs: [...approvedDirs],
+      }
+      writeFileSync(path, JSON.stringify(data, null, 2), "utf8")
+    } catch { /* non-fatal */ }
   },
 
   // ── Kategori bazlı onay ────────────────────────────────────────────────────

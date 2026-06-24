@@ -27,18 +27,14 @@ interface Props {
 }
 
 // Ghost hint içeriği — terminale sığacak şekilde kısa tutuldu
-const GHOST_HINT_WIDE  = "/ commands  ·  ctrl+t tasks  ·  ctrl+x agents  ·  shift+enter newline"
-const GHOST_HINT_SHORT = "/ commands  ·  ctrl+t  ·  ctrl+x  ·  shift+enter"
+const GHOST_HINT_WIDE  = "Try /help, /model, /agents, or paste a file path. Shift+Enter inserts a newline."
+const GHOST_HINT_SHORT = "/help  /model  /agents  Shift+Enter newline"
 
 export function ChatInput({ value, onChange, onSubmit, disabled, history = [], queued, onPasteTruncated }: Props) {
   const theme = useTheme()
   const [isPasting, setIsPasting] = useState(false)
   const promptChar = "❯"
-  const borderColor = isPasting
-    ? theme.warning
-    : disabled
-      ? theme.borderBright
-      : theme.accent
+  const borderColor = isPasting ? theme.warning : disabled ? theme.borderDim : theme.borderBright
 
   // Ghost hint: sadece input boş, disabled değil ve paste yokken göster
   const showGhostHint = !disabled && !isPasting && value === "" && !queued
@@ -57,10 +53,10 @@ export function ChatInput({ value, onChange, onSubmit, disabled, history = [], q
       )}
 
       <Surface
-        variant="raised"
+        variant="flat"
         tone="default"
         accentColor={borderColor}
-        paddingX="sm"
+        paddingX="md"
         paddingY="none"
         flexGrow={1}
         flexShrink={1}
@@ -68,10 +64,10 @@ export function ChatInput({ value, onChange, onSubmit, disabled, history = [], q
         <HStack flexGrow={1} flexShrink={1} gap="xs">
           <Typo
             variant="bodyEmphasis"
-            tone={disabled ? "muted" : isPasting ? "warning" : "success"}
+            tone={disabled ? "muted" : isPasting ? "warning" : "accent"}
             bold
           >
-            {isPasting ? "📋" : promptChar}
+            {isPasting ? "paste" : promptChar}
           </Typo>
           <Box flexGrow={1} flexShrink={1}>
             <MultilineInput
@@ -85,7 +81,7 @@ export function ChatInput({ value, onChange, onSubmit, disabled, history = [], q
               onPasteEnd={() => setIsPasting(false)}
             />
           </Box>
-          {disabled && <Typo variant="body" tone="muted" dimColor>⟳</Typo>}
+          {disabled && <Typo variant="body" tone="muted" dimColor>working</Typo>}
         </HStack>
       </Surface>
 

@@ -23,16 +23,36 @@ export interface Theme {
 }
 
 export const THEMES: Record<string, Theme> = {
-  // 1. Dark (varsayılan)
+  // 1. Aurict Ion (varsayılan)
   dark: {
-    name: "Dark (One Dark)",
-    accent: "#7ab4e8", accentAlt: "#56b6c2",
-    success: "#4eba65", error: "#ff6b6b", warning: "#d77757",
-    userColor: "#7ab4e8", assistantDot: "#d77757",
-    toolColor: "#8b949e", systemColor: "#a1a1aa",
-    textPrimary: "#e2e2e8", textSecondary: "#c9d1d9", textDim: "#8b949e",
-    borderDim: "#3b4048", borderBright: "#52525b", borderActive: "#7ab4e8",
-    bgHighlight: "#373737", buddyMain: "#d77757", buddyEar: "#b05030",
+    name: "Aurict Ion",
+    accent: "#22d3ee", accentAlt: "#34d399",
+    success: "#34d399", error: "#fb7185", warning: "#facc15",
+    userColor: "#e6f7fb", assistantDot: "#22d3ee",
+    toolColor: "#78909c", systemColor: "#78909c",
+    textPrimary: "#e6f7fb", textSecondary: "#b8d7df", textDim: "#78909c",
+    borderDim: "#1e2a32", borderBright: "#304854", borderActive: "#22d3ee",
+    bgHighlight: "#0d1820", buddyMain: "#22d3ee", buddyEar: "#0e7490",
+  },
+  "aurict-obsidian": {
+    name: "Aurict Obsidian",
+    accent: "#60a5fa", accentAlt: "#a78bfa",
+    success: "#22c55e", error: "#ef4444", warning: "#eab308",
+    userColor: "#e5e7eb", assistantDot: "#60a5fa",
+    toolColor: "#8b95a1", systemColor: "#8b95a1",
+    textPrimary: "#e5e7eb", textSecondary: "#cbd5e1", textDim: "#8b95a1",
+    borderDim: "#242833", borderBright: "#3a4252", borderActive: "#60a5fa",
+    bgHighlight: "#10131a", buddyMain: "#60a5fa", buddyEar: "#2563eb",
+  },
+  "aurict-spectral": {
+    name: "Aurict Spectral",
+    accent: "#2dd4bf", accentAlt: "#a3e635",
+    success: "#a3e635", error: "#f43f5e", warning: "#fbbf24",
+    userColor: "#e7fff8", assistantDot: "#2dd4bf",
+    toolColor: "#77958d", systemColor: "#77958d",
+    textPrimary: "#e7fff8", textSecondary: "#b7e6d8", textDim: "#77958d",
+    borderDim: "#16342f", borderBright: "#28564e", borderActive: "#2dd4bf",
+    bgHighlight: "#0a1d19", buddyMain: "#2dd4bf", buddyEar: "#0f766e",
   },
   // 2. Dracula
   dracula: {

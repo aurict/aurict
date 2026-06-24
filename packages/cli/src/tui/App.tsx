@@ -1,12 +1,17 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import crypto from "node:crypto"
-import { Box, Text, useInput, useApp, Static } from "ink"
+import { join } from "node:path"
+import { homedir, tmpdir } from "node:os"
+import { writeFileSync, readFileSync, unlinkSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import { Box, Text, useInput, useApp } from "ink"
 import {
   runAgent,
   ProviderRegistry,
   SessionManager,
   ExecutorEvents,
   PermissionGate,
+  PermissionStore,
   getSkillsForProject,
   agentPool,
   questionService,
@@ -29,19 +34,18 @@ import {
   setDefault,
   setMCPLogHandler,
 } from "@aurict/core"
-import type { PermissionRequest, PermissionResponse, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown, ActivatedSkillInfo } from "@aurict/core"
+import type { PermissionRequest, PermissionResponse, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown } from "@aurict/core"
 
 import { parseSlashCommand, getCommand, allCommands } from "../commands/registry.js"
-import { Buddy, awardMessageXP } from "./Buddy.js"
 import type { CommandResult, PickerItem } from "../commands/types.js"
 import { ThemeContext, THEMES, DEFAULT_THEME } from "../utils/theme.js"
 import { KeybindingsProvider } from "../keybindings/index.js"
 import type { Context as KeybindingContext } from "../keybindings/index.js"
 
 import { Message, type DisplayMessage } from "./Message.js"
-import { StreamingView }    from "./StreamingView.js"
 import { TaskFloatingPanel } from "./TaskFloatingPanel.js"
 import { ChatInput }         from "./ChatInput.js"
+import { AlternateScreen }   from "./AlternateScreen.js"
 import { PermissionPrompt, type PermissionPromptDecision }  from "./PermissionPrompt.js"
 import { QuestionPrompt }    from "./QuestionPrompt.js"
 import { Picker }            from "./Picker.js"
@@ -49,9 +53,11 @@ import { PromptInput }       from "./PromptInput.js"
 import { StatusBar }         from "./StatusBar.js"
 import { CommandSuggest }    from "./CommandSuggest.js"
 import { StartupBanner }     from "./StartupBanner.js"
-import { Spinner }           from "./Spinner.js"
 import { AgentStatus }       from "./AgentStatus.js"
+import { ConversationViewport } from "./ConversationViewport.js"
+import { FullscreenLayout }     from "./FullscreenLayout.js"
 import { SubagentView }      from "./SubagentView.js"
+import { FileMention }       from "./FileMention.js"
 import { ExpandableOutput }  from "./ExpandableOutput.js"
 import { BtwPanel }          from "./BtwPanel.js"
 import { QuickSearch }       from "./QuickSearch.js"
@@ -71,7 +77,7 @@ import { getTerminalCaps }   from "../util/terminal-caps.js"
 import { useOverlayState }   from "./hooks/useOverlayState.js"
 import { HistorySearch }     from "./HistorySearch.js"
 import { KeyboardShortcuts } from "./KeyboardShortcuts.js"
-import { AUTO_CONTINUE_PROMPT, shouldAutoContinue } from "./auto-continue.js"
+import { AUTO_CONTINUE_PROMPT, shouldAutoContinue, hasOpenTasks } from "./auto-continue.js"
 import type { LocalServerStatus } from "../bootstrap.js"
 
 interface Props {
@@ -84,22 +90,14 @@ interface Props {
   localServer?:    LocalServerStatus
 }
 
-function formatActivatedSkills(skills: ActivatedSkillInfo[]): string {
-  const labels = skills.slice(0, 5).map((skill) => {
-    const score = skill.score !== undefined ? ` ${skill.score.toFixed(2)}` : ""
-    const reasons = skill.reasons.length > 0 ? ` — ${skill.reasons.slice(0, 3).join(", ")}` : ""
-    return `${skill.id}${score}${reasons}`
-  })
-  const extra = skills.length > labels.length ? ` +${skills.length - labels.length} more` : ""
-  return `Skills loaded: ${labels.join("; ")}${extra}`
-}
-
 function configuredSandboxBackend(): "none" | "policy" | "docker" {
   const raw = process.env["AURICT_SANDBOX_BACKEND"] ?? process.env["AURICT_SANDBOX"]
   if (raw === "none" || raw === "off" || raw === "false" || raw === "0") return "none"
   if (raw === "docker") return "docker"
   return "policy"
 }
+
+const PERM_FILE = join(homedir(), ".aurict", "permissions.json")
 
 export function App({ initialProvider, initialModel, workdir, system, undercover, updatePromise, localServer }: Props) {
   const { exit } = useApp()
@@ -133,12 +131,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [messages,   setMessages]      = useState<DisplayMessage[]>([])
   const [input,      setInput]         = useState("")
   const [loading,    setLoading]       = useState(false)
-  const [permission, setPermission]    = useState<PermissionRequest | null>(null)
+  const [permissionQueue, setPermissionQueue] = useState<PermissionRequest[]>([])
+  const permission = permissionQueue[0] ?? null
   const [question,   setQuestion]      = useState<QuestionRequest | null>(null)
   const [picker,     setPicker]        = useState<{ title: string; items: PickerItem[]; onSelect: (i: PickerItem) => void } | null>(null)
   const [prompt,     setPrompt]        = useState<{ title: string; placeholder: string | undefined; secret: boolean | undefined; onSubmit: (v: string) => void } | null>(null)
   const [tokens,     setTokens]        = useState<TokenBreakdown>({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 })
   const [history,    setHistory]       = useState<CoreMessage[]>([])
+  const historyRef = useRef<CoreMessage[]>([])
   const [skillNames, setSkillNames]    = useState<string[]>([])
   const [turnSkillNames, setTurnSkillNames] = useState<string[]>([])
   const [tasks,      setTasks]         = useState<Task[]>([])
@@ -176,6 +176,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
   // Streaming inline error
   const [streamingError, setStreamingError] = useState<string | null>(null)
+  useEffect(() => { historyRef.current = history }, [history])
+
   useEffect(() => {
     if (!updatePromise) return
     updatePromise.then((info) => { if (info) setUpdateInfo(info) }).catch(() => {})
@@ -186,16 +188,19 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const autopilotRef = useRef(false)
   useEffect(() => { autopilotRef.current = autopilotMode }, [autopilotMode])
 
-  // Mouse tracking is only active when an overlay (Picker/PermissionPrompt/QuestionPrompt)
-  // is open. This lets the terminal emulator handle native scroll (Picker navigation
-  // works via arrow-key injection below) while keeping scrollback free during streaming.
-  const mouseTrackingActive = picker !== null || permission !== null || question !== null
+  // Alternate screen içinde native terminal scrollback yok; mouse wheel'i
+  // overlay navigation veya konuşma viewport scroll'u için kullan.
+  const mouseTrackingActive = true
 
   useMouseEvents((e) => {
     if (e.type !== "scroll") return
-    // Inject synthetic arrow keys so Picker responds to mouse wheel
-    if (e.button === "scroll-up")   process.stdin.emit("data", "\x1b[A")
-    if (e.button === "scroll-down") process.stdin.emit("data", "\x1b[B")
+    if (picker !== null || permission !== null || question !== null) {
+      if (e.button === "scroll-up")   process.stdin.emit("data", "\x1b[A")
+      if (e.button === "scroll-down") process.stdin.emit("data", "\x1b[B")
+      return
+    }
+    if (overlayOpen || viewingSubagentId) return
+    scrollConversation(e.button === "scroll-up" ? 3 : -3)
   }, mouseTrackingActive)
 
   const [recentCmds,      setRecentCmds]      = useState<string[]>([])
@@ -294,27 +299,40 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const autoContinueRef  = useRef<{ needed: boolean; count: number }>({ needed: false, count: 0 })
   const autoContinueSubmittingRef = useRef(false)
 
+  // Scroll lock: Ctrl+L ile aktif edilir, animation timer'ları ve stream flush'ı dondurur
+  const [scrollLocked, setScrollLocked] = useState(false)
+  const scrollLockedRef = useRef(false)
+  useEffect(() => { scrollLockedRef.current = scrollLocked }, [scrollLocked])
+  const [conversationOffsetRows, setConversationOffsetRows] = useState(0)
+  // Unseen count: scroll lock olduğunda yeni gelen mesaj sayısı
+  const scrollLockMsgCountRef = useRef(0)
+  useEffect(() => { if (scrollLocked) scrollLockMsgCountRef.current = messages.length }, [scrollLocked])
+  const unseenCount = scrollLocked ? Math.max(0, messages.length - scrollLockMsgCountRef.current) : 0
+
   // Adaptive throttle refs
   const streamTextRef    = useRef("")
   const streamReasonRef  = useRef("")
   const streamTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tokenRateRef     = useRef(80)   // başlangıçta hızlı varsay (80 tok/s → 30ms flush)
   const lastTokenTimeRef = useRef(0)
-  const turnHadToolRef   = useRef(false)
+  const turnHadToolRef     = useRef(false)
+  const turnAssistantIdRef = useRef<string | null>(null)
 
   // "/" öneri filtresi
   const cmdFilter = !overlayOpen && input.startsWith("/")
     ? input.slice(1)
     : null
 
+  // "@" dosya tamamlama filtresi — "@" sonraki path prefix'i yakala
+  const mentionFilter = !overlayOpen && !loading && cmdFilter === null
+    ? (input.match(/@([\w./~-]*)$/)?.[1] ?? null)
+    : null
+
   // ── Static için finalize mesajlar ─────────────────────────────────────────
-  const finalizedMsgs = useMemo(
-    () => messages
-      .filter(m => !m.pending)
-      .map((m, i) => m.id ? m : { ...m, id: `fallback-${i}` }),
-    [messages]
-  )
-  const activeMsgs = useMemo(() => messages.filter(m => m.pending), [messages])
+  const showStartupBanner = !viewingSubagentId && startupBannerVisible
+  // Viewport yüksekliği artık Yoga'nın ölçtüğü gerçek değerden geliyor (FullscreenLayout callback).
+  // İlk render için fallback: termRows - 8 (yaklaşık chrome rezervasyonu).
+  const [measuredViewportRows, setMeasuredViewportRows] = useState(() => Math.max(6, termRows - 8))
   const taskSummary = useMemo(() => ({
     pending:    tasks.filter(t => t.status === "pending").length,
     inProgress: tasks.filter(t => t.status === "in_progress").length,
@@ -322,7 +340,36 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     error:      tasks.filter(t => t.status === "error").length,
   }), [tasks])
   const sandboxBackend = useMemo(() => configuredSandboxBackend(), [])
-  const showStartupBanner = !viewingSubagentId && startupBannerVisible
+
+  const scrollConversation = useCallback((deltaRows: number) => {
+    if (deltaRows === 0) return
+    setConversationOffsetRows((prev) => Math.max(0, prev + deltaRows))
+  }, [])
+
+  const pageConversation = useCallback((direction: -1 | 1) => {
+    const page = Math.max(3, Math.floor(measuredViewportRows * 0.8))
+    scrollConversation(direction * page)
+  }, [measuredViewportRows, scrollConversation])
+
+  // Ctrl+G: mevcut input'u $EDITOR'da açar — spawnSync ile event loop'u bloklar,
+  // alternate screen'i geçici devre dışı bırakır, editör kapanınca geri döner.
+  const openExternalEditor = useCallback(() => {
+    if (loadingRef.current) return
+    const editor  = process.env["EDITOR"] ?? process.env["VISUAL"] ?? "vi"
+    const tmpPath = join(tmpdir(), `aurict-input-${Date.now()}.txt`)
+    try {
+      writeFileSync(tmpPath, inputRef.current, "utf8")
+      process.stdout.write("\x1b[?1049l")                  // alternate screen'den çık
+      spawnSync(editor, [tmpPath], { stdio: "inherit" })   // editörü çalıştır
+      process.stdout.write("\x1b[?1049h\x1b[2J\x1b[H")   // alternate screen'e geri dön + temizle
+      const content = readFileSync(tmpPath, "utf8").replace(/\n$/, "")
+      setInput(content)
+    } catch {
+      process.stdout.write("\x1b[?1049h\x1b[2J\x1b[H")
+    } finally {
+      try { unlinkSync(tmpPath) } catch { /* ignore */ }
+    }
+  }, [])  // loadingRef + inputRef stable ref'ler, deps gereksiz
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -334,6 +381,9 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     return () => { process.stdout.off("resize", handler) }
   }, [])
 
+  // Kalıcı izinleri başlangıçta yükle
+  useEffect(() => { PermissionStore.loadPersisted(PERM_FILE) }, [])
+
   useEffect(() => questionService.onQuestion((req) => setQuestion(req)), [])
   useEffect(() => agentPool.onChange((agents) => setActiveAgentCount(agents.length)), [])
   useEffect(() => ExecutorEvents.on((e) => {
@@ -343,7 +393,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         PermissionGate.respond(e.request.id, "allow")
         return
       }
-      setPermission(e.request)
+      setPermissionQueue(q => [...q, e.request])
     }
   }), [])
   useEffect(() => {
@@ -550,7 +600,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         PermissionGate.cancelPending()
         PlanGate.cancelPending()
         setPlanRequest(null)
-        setPermission(null)
+        setPermissionQueue([])
         setMessages((prev) => prev.map(m => m.pending ? { ...m, pending: false } : m))
         setStreamingText(null)
         setStreamingReason(null)
@@ -596,8 +646,55 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       return
     }
 
+    // ── Ctrl+L: scroll lock ── (streaming dahil her layerde çalışır)
+    if (key.ctrl && input === "l") {
+      setScrollLocked((v) => !v)
+      return
+    }
+
+    // ── Ctrl+K: tüm subagentları durdur ──────────────────────────────────
+    if (key.ctrl && input === "k") {
+      const active = agentPool.active
+      if (active.length > 0) {
+        active.forEach((a) => agentPool.cancel(a.id))
+        addSystemMsg(`Killed ${active.length} subagent${active.length === 1 ? "" : "s"}`)
+      }
+      return
+    }
+
     // Modal/prompt açıkken arkadaki global kısayollar çalışmaz.
     if (focusLayer !== "ready") return
+
+    // ── Ctrl+G: harici editörde yaz ───────────────────────────────────────
+    if (key.ctrl && input === "g") {
+      openExternalEditor()
+      return
+    }
+
+    if (key.shift && key.upArrow) {
+      scrollConversation(3)
+      return
+    }
+    if (key.shift && key.downArrow) {
+      scrollConversation(-3)
+      return
+    }
+    if ((key as typeof key & { pageUp?: boolean }).pageUp) {
+      pageConversation(1)
+      return
+    }
+    if ((key as typeof key & { pageDown?: boolean }).pageDown) {
+      pageConversation(-1)
+      return
+    }
+    if (key.ctrl && input === "b") {
+      setConversationOffsetRows(1_000_000)
+      return
+    }
+    if (key.ctrl && input === "n") {
+      setConversationOffsetRows(0)
+      return
+    }
 
     // ── Ctrl+T: task panel ────────────────────────────────────────────────
     if (key.ctrl && input === "t") {
@@ -750,19 +847,27 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     if (action === "edit") {
       PermissionGate.respond(permission.id, "deny")
       setInput(permission.pattern)
-      setPermission(null)
+      setPermissionQueue(q => q.slice(1))
       addSystemMsg("Command moved to input for editing.")
       return
     }
     if (action === "deny_abort") {
       PermissionGate.respond(permission.id, "deny")
-      setPermission(null)
+      setPermissionQueue(q => q.slice(1))
       if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null }
       addSystemMsg("Agent stopped by user")
       return
     }
     PermissionGate.respond(permission.id, response ?? (action === "allow_once" ? "allow_once" : action))
-    setPermission(null)
+    // "allow" ve "allow_directory" kararlarını diske kaydet — session sonrası da hatırlansın
+    if (action === "allow") {
+      PermissionStore.approve(permission.tool, permission.pattern)
+      PermissionStore.savePersisted(PERM_FILE)
+    } else if (action === "allow_directory") {
+      PermissionStore.approveDirectory(permission.tool, permission.pattern)
+      PermissionStore.savePersisted(PERM_FILE)
+    }
+    setPermissionQueue(q => q.slice(1))
   }, [permission])
 
   // ── Question ──────────────────────────────────────────────────────────────
@@ -1026,6 +1131,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     let text = userInput.trim()
     if (!text) return
     setStartupBannerVisible(false)
+    setScrollLocked(false)
+    setConversationOffsetRows(0)
     // Kullanıcı elle mesaj gönderince auto-continue sayacını sıfırla;
     // otomatik devam mesajları kendi limitini korumalı.
     const isAutoContinueSubmit = autoContinueSubmittingRef.current
@@ -1096,12 +1203,12 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     abortControllerRef.current = controller
     setLoading(true)
     setIsStreaming(true)
-    turnHadToolRef.current = false
-    awardMessageXP()
+    turnHadToolRef.current     = false
+    turnAssistantIdRef.current = null
 
     const userMsg: CoreMessage = { role: "user", content: text }
     setMessages((prev) => [...prev, { role: "user", content: text, timestamp: now, id: crypto.randomUUID() }])
-    const newHistory = [...history, userMsg]
+    const newHistory = [...historyRef.current, userMsg]
     setMessages((prev) => [...prev, { role: "assistant", content: "", pending: true, timestamp: Date.now(), id: crypto.randomUUID() }])
 
     try {
@@ -1164,9 +1271,9 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           else             streamTextRef.current   += delta
 
           // Her delta'da flush gecikmesini rate'e göre yeniden hesapla.
-          // Timer varsa iptal et — yeni (doğru) gecikmeyle yeniden kur.
+          // Scroll lock aktifken 2s gecikme — terminal yeniden çizilmez.
           const rate = tokenRateRef.current
-          const ms   = rate > 40 ? 16 : rate > 15 ? 32 : rate > 5 ? 80 : 200
+          const ms   = scrollLockedRef.current ? 2000 : (rate > 40 ? 16 : rate > 15 ? 32 : rate > 5 ? 80 : 200)
           if (streamTimerRef.current) clearTimeout(streamTimerRef.current)
           streamTimerRef.current = setTimeout(flushStream, ms)
         },
@@ -1193,7 +1300,23 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           streamReasonRef.current = ""
           setStreamingText(null)
           setStreamingReason(null)
-          flushAssistantSegment(textBefore, reasonBefore)
+          // İlk araç çağrısında pre-tool metni stabil ID'li pending mesaj olarak commit et.
+          // onFinish bu mesajı loop.ts'teki tam finalText ile güncelleyecek — cümleler birleşir.
+          if ((textBefore || reasonBefore) && !turnAssistantIdRef.current) {
+            const assistantId = crypto.randomUUID()
+            turnAssistantIdRef.current = assistantId
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: assistantId,
+                role: "assistant" as const,
+                content: textBefore,
+                pending: true,
+                timestamp: Date.now(),
+                ...(reasonBefore ? { reasoningContent: reasonBefore } : {}),
+              },
+            ])
+          }
           setActiveTool(tc.tool)
           latestToolCallRef.current = { id: tc.id, tool: tc.tool, content: JSON.stringify(tc.args, null, 2) }
           setMessages((prev) => {
@@ -1246,12 +1369,12 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         onSkillsActivated: (skills) => {
           if (skills.length === 0) return
           setTurnSkillNames(skills.map((skill) => skill.id))
-          addSystemMsg(formatActivatedSkills(skills))
         },
         onFinish: ({ tokens: t, text: finalText, newMessages, finishReason }) => {
           if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
           const finalSegmentText = turnHadToolRef.current ? streamTextRef.current : finalText
           const finalReason = streamReasonRef.current
+          const stableAssistantId = turnAssistantIdRef.current
           streamTextRef.current   = ""
           streamReasonRef.current = ""
           setStreamingText(null)
@@ -1273,11 +1396,24 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
               .then(() => { try { setMemoryCount(memoryStore.list(workdirState).length) } catch { /* ignore */ } })
               .catch(() => {})
           }
-          setHistory([...newHistory, ...newMessages] as CoreMessage[])
+          const updatedHistory = [...newHistory, ...newMessages] as CoreMessage[]
+          historyRef.current = updatedHistory
+          setHistory(updatedHistory)
           setMessages((prev) => {
             const next = prev.map(m => m.pending ? { ...m, pending: false } : m)
-            const last = next[next.length - 1]
             const reasonSpread = finalReason ? { reasoningContent: finalReason } : {}
+            // Araç çağrısı olan turn: pre-tool pending mesajı tam metinle güncelle.
+            // stableAssistantId mesajı zaten tool_call'ların üstünde — doğru okuma sırası korunur.
+            if (stableAssistantId) {
+              const idx = next.findIndex(m => m.id === stableAssistantId)
+              if (idx !== -1) {
+                const existing = next[idx]!
+                next[idx] = { ...existing, role: "assistant" as const, content: finalText || finalSegmentText, pending: false, ...reasonSpread }
+                return next
+              }
+            }
+            // Araç çağrısı olmayan turn veya stabil mesaj bulunamadı: mevcut davranış.
+            const last = next[next.length - 1]
             if ((finalSegmentText || finalReason) && last?.role !== "assistant") {
               next.push({ id: crypto.randomUUID(), role: "assistant", content: finalSegmentText, pending: false, ...reasonSpread })
             } else if (last?.role === "assistant") {
@@ -1286,15 +1422,25 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             return next
           })
 
-          // Stall tespiti: model görev ortasında metin bırakıp durduysa otomatik devam et
+          // Stall tespiti: model görev ortasında metin bırakıp durduysa otomatik devam et.
+          // Task-driven strateji: açık task'lar varken devam et (güvenlik tavanı: 15),
+          // task yoksa stall pattern tespitine göre en fazla 5 devam.
+          const currentTasks = taskManager.getTasks()
           const likelyNeedsContinuation = shouldAutoContinue({
             text: finalText,
             finishReason,
             newMessageCount: newMessages.length,
-            tasks: taskManager.getTasks(),
+            tasks: currentTasks,
           })
-          if (likelyNeedsContinuation && autoContinueRef.current.count < 3) {
-            autoContinueRef.current = { needed: true, count: autoContinueRef.current.count + 1 }
+          if (likelyNeedsContinuation) {
+            const count = autoContinueRef.current.count
+            const tasksDriving = hasOpenTasks(currentTasks)
+            const limit = tasksDriving ? 15 : 5
+            if (count < limit) {
+              autoContinueRef.current = { needed: true, count: count + 1 }
+            } else {
+              autoContinueRef.current.needed = false
+            }
           } else {
             autoContinueRef.current.needed = false
           }
@@ -1365,111 +1511,76 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   // Herhangi bir overlay/modal açıkken ChatInput'un useInput'u devre dışı
   // kalmalı; aksi halde tuşlar (özellikle Enter ve yazılan metin) hem modal'a
   return (
+    <AlternateScreen>
     <ThemeContext.Provider value={activeTheme}>
     <KeybindingsProvider initialContext={keybindingContext}>
-    <Box flexDirection="row" width="100%">
+    <Box flexDirection="row" width="100%" height={termRows}>
 
       {/* ── Sol: ana içerik ─────────────────────────────────────────────── */}
-      <Box flexGrow={1} flexDirection="column">
+      <FullscreenLayout
+        rows={termRows}
+        onScrollableHeight={(rows) => setMeasuredViewportRows(Math.max(6, rows))}
 
-        {/* Subagent görünümü */}
-        {viewingSubagentId && (
-          <SubagentView
-            sessionId={viewingSubagentId}
-            parentSessionId={mainSessionId.current}
-            siblingIndex={subIdx + 1}
-            siblingCount={subSessions.length}
-            onClose={() => setViewingSubagentId(null)}
-            onPrev={() => { const prev = subSessions[(subIdx - 1 + subSessions.length) % subSessions.length]; if (prev) setViewingSubagentId(prev.id) }}
-            onNext={() => { const next = subSessions[(subIdx + 1) % subSessions.length]; if (next) setViewingSubagentId(next.id) }}
-          />
-        )}
+        header={<>
+          {/* Subagent görünümü */}
+          {viewingSubagentId && (
+            <SubagentView
+              sessionId={viewingSubagentId}
+              parentSessionId={mainSessionId.current}
+              siblingIndex={subIdx + 1}
+              siblingCount={subSessions.length}
+              onClose={() => setViewingSubagentId(null)}
+              onPrev={() => { const prev = subSessions[(subIdx - 1 + subSessions.length) % subSessions.length]; if (prev) setViewingSubagentId(prev.id) }}
+              onNext={() => { const next = subSessions[(subIdx + 1) % subSessions.length]; if (next) setViewingSubagentId(next.id) }}
+            />
+          )}
+          {/* Startup banner */}
+          {showStartupBanner && (
+            <StartupBanner version={`v${CURRENT_VERSION}`} provider={provider} model={model} workdir={workdir} cols={termCols} rows={termRows} />
+          )}
+          {/* Update notification */}
+          {updateInfo && !updateDismissed && (
+            <Box paddingX={2} marginBottom={1}>
+              <Text color="#f59e0b">◆ </Text>
+              <Text color="#fbbf24">Update available: </Text>
+              <Text color="#94a3b8">v{updateInfo.current}</Text>
+              <Text color="#64748b"> → </Text>
+              <Text color="#34d399" bold>v{updateInfo.latest}  </Text>
+              <Text color="#64748b">npm install -g aurict</Text>
+              <Text color="#475569">  (esc to dismiss)</Text>
+            </Box>
+          )}
+          {/* Session title */}
+          {!viewingSubagentId && sessionTitle && history.length > 0 && (
+            <Box paddingX={2} marginBottom={1}>
+              <Text color={activeTheme.textDim}>◈ </Text>
+              <Text color={activeTheme.textSecondary} italic>{sessionTitle}</Text>
+            </Box>
+          )}
+        </>}
 
-        {/* Startup banner */}
-        {showStartupBanner && (
-          <StartupBanner version={`v${CURRENT_VERSION}`} provider={provider} model={model} workdir={workdir} cols={termCols} rows={termRows} />
-        )}
+        scrollable={<>
+          {/* Konuşma viewport'u */}
+          {!viewingSubagentId && (
+            <ConversationViewport
+              height={measuredViewportRows}
+              width={Math.max(20, termCols - 9)}
+              messages={messages}
+              loading={loading}
+              streamingText={streamingText}
+              streamingReason={streamingReason}
+              streamingError={streamingError}
+              scrollLocked={scrollLocked}
+              offsetRowsFromBottom={conversationOffsetRows}
+              {...(unseenCount > 0 ? { unseenCount } : {})}
+              {...(activeTool !== undefined ? { activeTool } : {})}
+              onExpandTool={(content, toolName) => setExpandedContent({ content, toolName })}
+              onExpandThinking={(content) => setExpandedContent({ content, toolName: "∴ thinking" })}
+            />
+          )}
+        </>}
 
-        {/* Update notification */}
-        {updateInfo && !updateDismissed && (
-          <Box paddingX={2} marginBottom={1}>
-            <Text color="#f59e0b">◆ </Text>
-            <Text color="#fbbf24">Update available: </Text>
-            <Text color="#94a3b8">v{updateInfo.current}</Text>
-            <Text color="#64748b"> → </Text>
-            <Text color="#34d399" bold>v{updateInfo.latest}  </Text>
-            <Text color="#64748b">npm install -g aurict</Text>
-            <Text color="#475569">  (esc to dismiss)</Text>
-          </Box>
-        )}
-
-        {/* Session title */}
-        {!viewingSubagentId && sessionTitle && history.length > 0 && (
-          <Box paddingX={2} marginBottom={1}>
-            <Text color={activeTheme.textDim}>◈ </Text>
-            <Text color={activeTheme.textSecondary} italic>{sessionTitle}</Text>
-          </Box>
-        )}
-
-        {/* Statik geçmiş — bir kez render edilir */}
-        {!viewingSubagentId && (
-          <Static items={finalizedMsgs}>
-            {(m) => (
-              <Message
-                key={m.id}
-                message={m}
-                onExpand={
-                  m.role === "tool_call" && m.resultContent && m.resultContent.split("\n").length > 6
-                    ? () => setExpandedContent({ content: m.resultContent!, toolName: m.tool ?? "tool" })
-                    : undefined
-                }
-                onExpandThinking={
-                  m.role === "assistant" && m.reasoningContent
-                    ? () => setExpandedContent({ content: m.reasoningContent!, toolName: "∴ thinking" })
-                    : undefined
-                }
-              />
-            )}
-          </Static>
-        )}
-
-        {/* Pending (çalışan) mesajlar */}
-        {!viewingSubagentId && activeMsgs.map((m, i) => (
-          <Message
-            key={m.id ?? `active-${i}`}
-            message={m}
-            onExpand={
-              m.role === "tool_call" && m.resultContent && m.resultContent.split("\n").length > 6
-                ? () => setExpandedContent({ content: m.resultContent!, toolName: m.tool ?? "tool" })
-                : undefined
-            }
-            onExpandThinking={
-              m.role === "assistant" && m.reasoningContent
-                ? () => setExpandedContent({ content: m.reasoningContent!, toolName: "∴ thinking" })
-                : undefined
-            }
-          />
-        ))}
-
-        {/* Canlı streaming + skeleton (metin gelmeden önce shimmer) */}
-        {!viewingSubagentId && (streamingText || streamingReason || streamingError || (loading && !activeTool)) && (
-          <StreamingView
-            text={streamingText}
-            reasoning={streamingReason}
-            skeleton={loading && !activeTool && !streamingText && !streamingReason}
-            {...(streamingError ? { error: streamingError } : {})}
-          />
-        )}
-
-        {/* Spinner — sadece tool çalışırken (text/reasoning yok) */}
-        {!viewingSubagentId && loading && activeTool && !streamingText && !streamingReason && (
-          <Spinner activeTool={activeTool} />
-        )}
-
-        {/* Subagent listesi */}
-        <AgentStatus />
-
-        {/* Overlay'ler */}
+        overlay={<>
         {keyboardShortcutsOpen && (
           <KeyboardShortcuts onClose={() => setKeyboardShortcutsOpen(false)} />
         )}
@@ -1604,6 +1715,15 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           onFill={handleCmdFill}
         />
 
+        {mentionFilter !== null && (
+          <FileMention
+            filter={mentionFilter}
+            workdir={workdirState}
+            isActive={true}
+            onSelect={(path) => setInput((prev) => prev.replace(/@([\w./~-]*)$/, `@${path}`))}
+          />
+        )}
+
         {question && (
           <QuestionPrompt request={question} onAnswer={handleQuestionAnswer} onReject={handleQuestionReject} />
         )}
@@ -1640,15 +1760,26 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           />
         )}
 
+        </>}
+
+        bottom={<>
+        {/* Aktif subagent satırları — bottom'da olursa FullscreenLayout scrollable'ı doğru ölçer */}
+        <AgentStatus />
         {/* Input alanı */}
         <Box flexDirection="row" alignItems="flex-end">
-          <Buddy
-            state={loading ? (activeTool ? "working" : "thinking") : "idle"}
-            workdir={workdirState}
-            {...(activeTool !== undefined ? { activeTool } : {})}
-          />
           {permission
-            ? <PermissionPrompt request={permission} onDecide={handlePermission} />
+            ? (
+              <Box flexDirection="column" width="100%">
+                <PermissionPrompt request={permission} onDecide={handlePermission} />
+                {permissionQueue.length > 1 && (
+                  <Box paddingX={2}>
+                    <Text color={activeTheme.textDim} dimColor>
+                      +{permissionQueue.length - 1} more permission{permissionQueue.length - 1 === 1 ? "" : "s"} queued
+                    </Text>
+                  </Box>
+                )}
+              </Box>
+            )
             : !picker && !question && !attachInput && !expandedContent && !overlayOpen && (
               <ChatInput
                 value={input}
@@ -1689,6 +1820,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           cols={termCols}
           activeAgentCount={activeAgentCount > 0 ? activeAgentCount : undefined}
           hasBtwNote={btwState !== null}
+          scrollLocked={scrollLocked}
           {...(draftSavedAt !== undefined ? { draftSavedAt } : {})}
           {...(branch !== undefined ? { branch } : {})}
           {...(() => {
@@ -1698,7 +1830,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             } catch { return {} }
           })()}
         />
-      </Box>
+        </>}
+      />
 
       {/* ── Sağ: Floating Task Panel (Ctrl+T ile açılır) ────────────────── */}
       {taskPanelOpen && tasks.length > 0 && !viewingSubagentId && (
@@ -1708,5 +1841,6 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     </Box>
     </KeybindingsProvider>
     </ThemeContext.Provider>
+    </AlternateScreen>
   )
 }

@@ -11,6 +11,7 @@ let mcpManagerRef: { disconnectAll(): Promise<void> } | null = null
 function restoreTerminal() {
   try {
     if (!process.stdout.isTTY) return
+    process.stdout.write("\x1b[?1049l")  // alternate screen'den çık
     process.stdout.write("\x1b[?25h")    // cursor göster
     process.stdout.write("\x1b[?2004l")  // bracketed paste kapat
     process.stdout.write("\x1b[0m")      // renkleri sıfırla

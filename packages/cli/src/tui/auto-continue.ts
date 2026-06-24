@@ -34,7 +34,7 @@ export function stalledMidTask(text: string): boolean {
   return false
 }
 
-function hasOpenTasks(tasks: Task[]): boolean {
+export function hasOpenTasks(tasks: Task[]): boolean {
   return tasks.some((task) => task.status === "pending" || task.status === "in_progress")
 }
 

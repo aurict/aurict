@@ -1,11 +1,13 @@
 import { z } from "zod"
 import { join } from "path"
 import { writeFile } from "node:fs/promises"
-import { agentPool } from "../../agent/pool.js"
-import { AGENT_TYPE_TOOLS } from "../../agent/protocol.js"
+import { agentPool, PoolFullError } from "../../agent/pool.js"
+import { AGENT_TYPE_TOOLS, AGENT_MAX_STEPS } from "../../agent/protocol.js"
 import { getAgentPrompt } from "../../agent/agent-prompts.js"
 import { ensureWorkspace } from "../../agent/workspace.js"
+import { SessionManager } from "../../session/manager.js"
 import type { AgentType } from "../../agent/protocol.js"
+import type { Part } from "../../session/types.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
 const AGENT_TYPES = Object.keys(AGENT_TYPE_TOOLS) as [AgentType, ...AgentType[]]
@@ -16,10 +18,24 @@ function roleSlug(role: string): string {
 }
 
 /**
- * Subagent sonucunu workspace'e yazar.
- * LLM'in write çağırıp çağırmadığından bağımsız — her zaman garantili.
- * Dosya adı role slug'ından türetilir: iki aynı-tip agent çakışmaz.
+ * Son N parent part'ından subagent için okunabilir bağlam üretir.
+ * Sadece user/assistant text part'ları dahil edilir; tool noise atlanır.
+ * Her part 400 karakter ile kısıtlanır — bağlam şişmesi önlenir.
  */
+function buildParentContext(parts: Part[]): string {
+  const relevant = parts.filter(
+    (p) => (p.role === "user" || p.role === "assistant") && p.type === "text" && p.content.trim(),
+  )
+  if (relevant.length === 0) return ""
+  return relevant
+    .map((p) => {
+      const label   = p.role === "user" ? "User" : "Assistant"
+      const snippet = p.content.length > 400 ? p.content.slice(0, 400) + "…" : p.content
+      return `${label}: ${snippet}`
+    })
+    .join("\n\n")
+}
+
 async function persistToWorkspace(
   workdir:   string,
   sessionId: string,
@@ -35,7 +51,7 @@ async function persistToWorkspace(
 
 export const subagentTool: ToolDef = {
   id: "subagent",
-  timeoutMs: 600_000,  // 10 min — pool's own WORKER_TIMEOUT is 5 min, this gives safe headroom
+  timeoutMs: 600_000,
   description: `Spawn a parallel worker agent to perform a specific task.
 
 WHEN TO USE:
@@ -60,15 +76,15 @@ Agent types and their tools:
 - security:    read, glob, grep, lsp  (security scanning)
 - debug:       read, glob, grep, bash, lsp  (debugging)
 
-The subagent CANNOT see your conversation history — include ALL needed context in the prompt.
-Write the prompt as if the subagent has never seen this codebase before.`,
+The subagent receives recent parent conversation context automatically.
+Focus your prompt on the specific task — no need to repeat what was already discussed.`,
 
   parameters: z.object({
     type:   z.enum(AGENT_TYPES)
               .default("explore")
               .describe("Agent type — determines which tools the worker can use"),
     role:   z.string().describe("Brief worker title, e.g. 'Codebase Scanner', 'Test Runner', 'Code Reviewer'"),
-    prompt: z.string().describe("Complete, self-contained instructions. Include: goal, relevant file paths or patterns, expected output format."),
+    prompt: z.string().describe("Task instructions. Include: goal, relevant file paths or patterns, expected output format."),
   }),
 
   async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
@@ -80,8 +96,11 @@ Write the prompt as if the subagent has never seen this codebase before.`,
     const model     = ctx.model ?? undefined
     const sessionId = ctx.sessionId ?? "main"
 
-    const id      = `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-    const session = `${id}-session`
+    // Parent konuşmasının son 12 part'ından bağlam üret
+    const recentParts   = SessionManager.getPartsTail(sessionId, 12)
+    const parentContext = buildParentContext(recentParts)
+
+    const id = `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
     try {
       const result = await agentPool.spawn({
@@ -93,34 +112,28 @@ Write the prompt as if the subagent has never seen this codebase before.`,
         model:           model ?? "claude-sonnet-4-6",
         workdir:         ctx.workdir,
         sessionId,
-        workerSessionId: session,
+        workerSessionId: `${id}-session`,
         allowedTools,
+        ...(parentContext ? { parentContext } : {}),
       })
 
-      // Sonucu dosyaya sessizce yaz — uzun oturumlarda context compaction sigortası.
-      // LLM'e dosya yolu söylenmiyor: koordinatör direkt context'teki sonucu kullanır.
       persistToWorkspace(ctx.workdir, sessionId, role, result).catch(() => {})
 
-      return {
-        output: `Subagent [${role}] completed:\n\n${result}`,
-      }
+      return { output: `Subagent [${role}] completed:\n\n${result}` }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      // Pool dolu ise fallback: runAgent direkt
-      if (msg.includes("dolu") || msg.includes("max")) {
+      if (err instanceof PoolFullError) {
         const { runAgent } = await import("../../agent/loop.js")
         const r = await runAgent({
           provider,
           ...(model !== undefined ? { model } : {}),
           workdir:  ctx.workdir,
-          system:   getAgentPrompt(agentType),
+          system:   getAgentPrompt(agentType, AGENT_MAX_STEPS[agentType]),
           messages: [{ role: "user", content: prompt }],
         })
-        try {
-          await persistToWorkspace(ctx.workdir, sessionId, role, r.text)
-        } catch { /* ignore */ }
+        try { await persistToWorkspace(ctx.workdir, sessionId, role, r.text) } catch { /* ignore */ }
         return { output: `Subagent [${role}] (direct):\n\n${r.text}` }
       }
+      const msg = err instanceof Error ? err.message : String(err)
       return { output: "", error: `Subagent [${role}] failed: ${msg}` }
     }
   },

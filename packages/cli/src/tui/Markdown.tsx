@@ -12,7 +12,10 @@ function useTerminalCols(): number {
   return cols
 }
 
-interface Props { content: string }
+interface Props {
+  content: string
+  width?: number
+}
 
 // ── Block tipleri ─────────────────────────────────────────────────────────────
 
@@ -171,7 +174,7 @@ function parseBlocks(content: string): Block[] {
 
 // ── Inline renderer ───────────────────────────────────────────────────────────
 
-function renderInline(text: string, key: number): React.ReactNode {
+function renderInline(text: string, key: number, width?: number): React.ReactNode {
   const parts: React.ReactNode[] = []
   // Bold, italic, strikethrough, inline code, link — includes __ and _ variants
   const re = /(\[([^\]]+)\]\(([^)]+)\)|`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|_[^_\n]+_|\*[^*\n]+\*|~~[^~\n]+~~)/g
@@ -205,7 +208,11 @@ function renderInline(text: string, key: number): React.ReactNode {
     cur = m.index + tok.length
   }
   if (cur < text.length) parts.push(<Text key={k++}>{text.slice(cur)}</Text>)
-  return <Text key={key}>{parts}</Text>
+  return (
+    <Text key={key} wrap="wrap" {...(width !== undefined ? { width } : {})}>
+      {parts}
+    </Text>
+  )
 }
 
 // ── Syntax highlight satırı ───────────────────────────────────────────────────
@@ -280,9 +287,10 @@ function TableView({
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
-export function Markdown({ content }: Props) {
+export function Markdown({ content, width }: Props) {
   const blocks    = parseBlocks(content)
-  const termWidth = useTerminalCols()
+  const terminalCols = useTerminalCols()
+  const termWidth = Math.max(20, width ?? terminalCols)
 
   return (
     <Box flexDirection="column">
@@ -293,7 +301,7 @@ export function Markdown({ content }: Props) {
             return (
               <Box key={bi} flexDirection="column" marginTop={1} marginBottom={0}>
                 <Box gap={1}>
-                  <Text bold color="#e2e2e8">{renderInline(b.text, 0)}</Text>
+                  <Text bold color="#e2e2e8">{renderInline(b.text, 0, termWidth)}</Text>
                 </Box>
                 <Text color="#3b4048">{"─".repeat(Math.min(b.text.length + 2, termWidth - 4))}</Text>
               </Box>
@@ -303,7 +311,7 @@ export function Markdown({ content }: Props) {
             return (
               <Box key={bi} marginTop={1} marginBottom={0} gap={1}>
                 <Text bold color="#7ab4e8">◆</Text>
-                <Text bold color="#e2e2e8">{renderInline(b.text, 0)}</Text>
+                <Text bold color="#e2e2e8">{renderInline(b.text, 0, termWidth - 4)}</Text>
               </Box>
             )
 
@@ -311,7 +319,7 @@ export function Markdown({ content }: Props) {
             return (
               <Box key={bi} marginTop={1} marginBottom={0} gap={1}>
                 <Text color="#5a7a9a">▸</Text>
-                <Text bold color="#c9d1d9">{renderInline(b.text, 0)}</Text>
+                <Text bold color="#c9d1d9">{renderInline(b.text, 0, termWidth - 4)}</Text>
               </Box>
             )
 
@@ -353,7 +361,7 @@ export function Markdown({ content }: Props) {
                     return (
                       <Box key={ii} gap={1} paddingLeft={indent}>
                         <Text color="#52525b">○</Text>
-                        {renderInline(item.text, ii)}
+                        {renderInline(item.text, ii, Math.max(10, termWidth - indent - 4))}
                       </Box>
                     )
                   }
@@ -361,7 +369,7 @@ export function Markdown({ content }: Props) {
                   return (
                     <Box key={ii} gap={1} paddingLeft={indent}>
                       <Text color="#7ab4e8">{b.ordered ? `${ii + 1}.` : "•"}</Text>
-                      {renderInline(item.text, ii)}
+                      {renderInline(item.text, ii, Math.max(10, termWidth - indent - 4))}
                     </Box>
                   )
                 })}
@@ -399,7 +407,7 @@ export function Markdown({ content }: Props) {
             return (
               <Box key={bi} flexDirection="column">
                 {(b as { kind: "text"; lines: string[] }).lines.map((line, li) =>
-                  renderInline(line, li)
+                  renderInline(line, li, termWidth)
                 )}
               </Box>
             )

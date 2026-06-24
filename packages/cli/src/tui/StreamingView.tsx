@@ -1,35 +1,22 @@
-import React, { useState, useEffect, useRef, memo } from "react"
+import React, { useState, useEffect, useRef, useMemo, memo } from "react"
 import { Box, Text } from "ink"
 import { useTheme } from "../utils/theme.js"
 
-// Skeleton shimmer — döngüsel ████░░ bloğu
-const SKELETON_FRAMES = [
-  "████░░░░░░░░░░░░░░░░",
-  "░████░░░░░░░░░░░░░░░",
-  "░░████░░░░░░░░░░░░░░",
-  "░░░████░░░░░░░░░░░░░",
-  "░░░░████░░░░░░░░░░░░",
-  "░░░░░████░░░░░░░░░░░",
-  "░░░░░░████░░░░░░░░░░",
-  "░░░░░░░████░░░░░░░░░",
-  "░░░░░░░░████░░░░░░░░",
-  "░░░░░░░░░████░░░░░░░",
-  "░░░░░░░░░░████░░░░░░",
-  "░░░░░░░░░░░████░░░░░",
-  "░░░░░░░░░░░░████░░░░",
-  "░░░░░░░░░░░░░████░░░",
-  "░░░░░░░░░░░░░░████░░",
-  "░░░░░░░░░░░░░░░████░",
-  "░░░░░░░░░░░░░░░░████",
-]
+// Memoized paragraph: content değişmeyenler re-render almaz
+const Paragraph = memo(function Paragraph({ text }: { text: string }) {
+  return <Text wrap="wrap">{text}</Text>
+})
 
-function SkeletonLine({ color }: { color: string }) {
-  const [frame, setFrame] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => setFrame(f => (f + 1) % SKELETON_FRAMES.length), 80)
-    return () => clearInterval(t)
-  }, [])
-  return <Text color={color} dimColor>{SKELETON_FRAMES[frame]}</Text>
+// Streaming text'i \n\n sınırlarında böl — tamamlanan paragraflar stabil kalır
+function StreamingTextBlock({ text, width }: { text: string; width: number }) {
+  const paragraphs = useMemo(() => text.split(/\n\n+/), [text])
+  return (
+    <Box flexDirection="column" width={width}>
+      {paragraphs.map((para, i) => (
+        <Paragraph key={i} text={para} />
+      ))}
+    </Box>
+  )
 }
 
 // Elapsed time formatter
@@ -42,37 +29,53 @@ function formatElapsed(ms: number): string {
   return `${m}m ${remaining}s`
 }
 
-// Elapsed time hook — component mount'tan itibaren geçen süreyi takip eder
-function useElapsedTime(): number {
+// Elapsed time hook — paused=true olduğunda timer durur, zaman donar
+function useElapsedTime(paused?: boolean): number {
   const [elapsed, setElapsed] = useState(0)
   const startRef = useRef(Date.now())
+  const pausedRef = useRef(paused)
+  useEffect(() => { pausedRef.current = paused }, [paused])
 
   useEffect(() => {
     startRef.current = Date.now()
     setElapsed(0)
     const t = setInterval(() => {
-      setElapsed(Date.now() - startRef.current)
-    }, 100)
+      if (!pausedRef.current) setElapsed(Date.now() - startRef.current)
+    }, 500)
     return () => clearInterval(t)
   }, [])
 
   return elapsed
 }
 
+function useTerminalCols(): number {
+  const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
+  useEffect(() => {
+    const handler = () => setCols(process.stdout.columns ?? 80)
+    process.stdout.on("resize", handler)
+    return () => { process.stdout.off("resize", handler) }
+  }, [])
+  return cols
+}
+
 interface Props {
-  text:       string | null
-  reasoning:  string | null
-  skeleton?:  boolean   // show shimmer placeholder before first token
-  error?:     string    // show inline error (e.g. stream interrupted)
+  text:      string | null
+  reasoning: string | null
+  skeleton?: boolean   // artık kullanılmıyor — Spinner bileşeni devralır
+  error?:    string    // show inline error (e.g. stream interrupted)
+  paused?:   boolean   // scroll lock aktifken animasyonları dondurur
 }
 
 function lineCount(text: string): number {
   return text.split("\n").length
 }
 
-export const StreamingView = memo(function StreamingView({ text, reasoning, skeleton, error }: Props) {
+export const StreamingView = memo(function StreamingView({ text, reasoning, skeleton, error, paused }: Props) {
   const theme = useTheme()
-  const elapsed = useElapsedTime()
+  const elapsed = useElapsedTime(paused)
+  const termCols = useTerminalCols()
+  const bodyWidth = Math.max(20, termCols - 9)
+  const railTextWidth = Math.max(10, bodyWidth - 2)
 
   return (
     <Box flexDirection="column" paddingX={1} marginBottom={1}>
@@ -96,16 +99,18 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
             {/* Tam reasoning akışı — ince ┊ sol çizgisi ile */}
             <Box flexDirection="column" marginLeft={2}>
               {visible.map((line, i) => (
-                <Box key={i} flexDirection="row">
+                <Box key={i} flexDirection="row" width={bodyWidth}>
                   <Text color={theme.borderDim} dimColor>┊ </Text>
-                  <Text
-                    color={theme.accent}
-                    italic
-                    dimColor
-                    wrap="wrap"
-                  >
-                    {line || " "}
-                  </Text>
+                  <Box width={railTextWidth}>
+                    <Text
+                      color={theme.accent}
+                      italic
+                      dimColor
+                      wrap="wrap"
+                    >
+                      {line || " "}
+                    </Text>
+                  </Box>
                 </Box>
               ))}
               {/* Canlı imleç */}
@@ -117,20 +122,6 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
         )
       })()}
 
-      {/* ── Skeleton (metin gelmeden önce) ── */}
-      {skeleton && !text && !reasoning && !error && (
-        <Box flexDirection="row" gap={1} paddingLeft={1}>
-          <Box width={2} flexShrink={0}>
-            <Text color={theme.assistantDot}>○</Text>
-          </Box>
-          <Box flexDirection="column" paddingLeft={1}>
-            <SkeletonLine color={theme.accent} />
-            <SkeletonLine color={theme.borderDim} />
-            <Text color={theme.textDim} dimColor>{formatElapsed(elapsed)}</Text>
-          </Box>
-        </Box>
-      )}
-
       {/* ── Text akışı ── */}
       {text && (
         <Box flexDirection="row" gap={1}>
@@ -138,13 +129,13 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
             <Text color={theme.assistantDot}>○</Text>
           </Box>
           <Box
-            flexGrow={1}
+            width={bodyWidth}
             borderStyle="single"
             borderTop={false} borderBottom={false} borderRight={false}
             borderColor={theme.accent}
             paddingLeft={1}
           >
-            <Text wrap="wrap">{text}</Text>
+            <StreamingTextBlock text={text} width={railTextWidth} />
             <Text color={theme.accent}>▋</Text>
             <Text color={theme.textDim} dimColor> {formatElapsed(elapsed)}</Text>
           </Box>
@@ -158,13 +149,15 @@ export const StreamingView = memo(function StreamingView({ text, reasoning, skel
             <Text color={theme.error}>✗</Text>
           </Box>
           <Box
-            flexGrow={1}
+            width={bodyWidth}
             borderStyle="single"
             borderTop={false} borderBottom={false} borderRight={false}
             borderColor={theme.error}
             paddingLeft={1}
           >
-            <Text color={theme.error} wrap="wrap">{error}</Text>
+            <Box width={railTextWidth}>
+              <Text color={theme.error} wrap="wrap">{error}</Text>
+            </Box>
           </Box>
         </Box>
       )}

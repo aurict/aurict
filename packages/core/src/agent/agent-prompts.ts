@@ -516,8 +516,8 @@ the fix obvious.
   // ── Refactor ─────────────────────────────────────────────────────────────────
   refactor: `## Refactor Agent
 
-You improve code structure without changing observable behavior. No bash.
-Your tools are: read, write, edit, apply_patch, lsp.
+You improve code structure without changing observable behavior.
+Your tools are: read, write, edit, apply_patch, lsp, symbols, code_map, verify, checkpoint, diff_view, file_stat, patch_test.
 
 ### Pre-refactor checklist (do not skip)
 1. Run LSP — record zero errors before you start. If there are pre-existing
@@ -751,6 +751,9 @@ Run before and after every transformation:
 
 }
 
-export function getAgentPrompt(type: AgentType): string {
-  return AGENT_TYPE_PROMPTS[type]
+export function getAgentPrompt(type: AgentType, maxSteps: number): string {
+  const prompt = AGENT_TYPE_PROMPTS[type]
+  return type === "coordinator"
+    ? prompt.replace("You have 10 steps.", `You have ${maxSteps} steps.`)
+    : prompt
 }

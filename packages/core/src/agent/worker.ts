@@ -59,12 +59,16 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
   try {
     const plugin      = ProviderRegistry.get(req.provider)
     const model       = plugin.getModel(req.model)
-    const baseSystem  = await buildSystemPrompt(req.workdir)
-    const typePrompt  = getAgentPrompt(req.agentType)
+    const INBOX_CHECK_INTERVAL = 8
+    const totalMaxSteps = AGENT_MAX_STEPS[req.agentType] ?? 30
+    let stepsUsed = 0
+
+    const baseSystem  = await buildSystemPrompt(req.workdir, undefined, false, req.agentType)
+    const typePrompt  = getAgentPrompt(req.agentType, totalMaxSteps)
     const toolsPrompt = `## Available Tools\nYou have access to ONLY these tools: ${req.allowedTools.join(", ")}\nCalling any other tool will cause an error.`
     const wsPrompt    = workspacePrompt(req.workspacePath, req.agentType)
     const msgPrompt   = `## Agent Communication\nUse send_message to contact sibling agents by role name.\nIncoming messages from other agents appear as <agent-message> in the conversation.`
-    const system      = [toolsPrompt, wsPrompt, msgPrompt, typePrompt, baseSystem].filter(Boolean).join("\n\n---\n\n")
+    const system      = [typePrompt, baseSystem, toolsPrompt, wsPrompt, msgPrompt].filter(Boolean).join("\n\n---\n\n")
 
     const allowedSet = new Set(req.allowedTools)
 
@@ -100,10 +104,14 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
       })
     }
 
-    const maxSteps = AGENT_MAX_STEPS[req.agentType] ?? 30
+    // parentContext varsa task prompt'a önce bağlamı ekle, sonra görevi belirt
+    const taskPrompt = req.parentContext
+      ? `## Parent Conversation Context\n\n${req.parentContext}\n\n---\n\n## Your Task\n\n${req.prompt}`
+      : req.prompt
+
     // Anthropic prompt caching: system'ı cache_control ile messages'a inject et
     let workerSystem: string | undefined = system
-    let messages: CoreMessage[] = [{ role: "user", content: req.prompt }]
+    let messages: CoreMessage[] = [{ role: "user", content: taskPrompt }]
     if (plugin.sdkType === "anthropic") {
       const sysMsg: CoreMessage = {
         role: "system",
@@ -119,11 +127,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
     let inboxTurn  = 0
 
     // ── Outer loop: inbox mesajlarını yeni turn olarak enjekte et ────────────
-    // Her outer turn: tam bir streamText session'ı (tool call'ları dahil)
-    outer: while (true) {
+    // Her outer turn: en fazla INBOX_CHECK_INTERVAL adım — inbox'ı daha sık kontrol eder
+    outer: while (stepsUsed < totalMaxSteps) {
       if (abort.signal.aborted) break
 
       let turnText = ""
+      let toolCallsThisBatch = 0
+      const stepsThisBatch = Math.min(totalMaxSteps - stepsUsed, INBOX_CHECK_INTERVAL)
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = streamText({
@@ -131,7 +141,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
         ...(workerSystem ? { system: workerSystem } : {}),
         messages,
         tools,
-        maxSteps,
+        maxSteps: stepsThisBatch,
         abortSignal: abort.signal,
       } as any) as any
 
@@ -160,6 +170,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
           const delta = (part.textDelta as string) || ""
           if (delta) { turnText += delta; send({ type: "text", delta }) }
         } else if (part.type === "tool-call") {
+          toolCallsThisBatch++
           send({ type: "tool_call", id: part.toolCallId, tool: part.toolName, args: part.args })
         } else if (part.type === "tool-result") {
           send({ type: "tool_result", id: part.toolCallId, result: String(part.result) })
@@ -182,18 +193,26 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
       const response = await result.response
       messages = [...messages, ...(response.messages as CoreMessage[])]
 
+      // Gerçek araç çağrısı sayısını topla — kalan adım bütçesini güncelle
+      stepsUsed += toolCallsThisBatch
+
       // ── Inbox kontrolü: yeni mesaj var mı? ─────────────────────────────────
-      if (inbox.length === 0 || inboxTurn >= MAX_INBOX_TURNS) break
+      const hitBatchLimit = toolCallsThisBatch >= stepsThisBatch
 
-      // Inbox'taki tüm mesajları tek bir user mesajı olarak enjekte et
-      const inboxContent = inbox
-        .map((m) => `<agent-message from="${m.fromName}">\n${m.message}\n</agent-message>`)
-        .join("\n\n")
-      inbox.length = 0  // flush
-      inboxTurn++
-
-      messages.push({ role: "user", content: inboxContent })
-      // inbox mesajlarını assistant görmeli ama UI'a text olarak gitmemeli
+      if (inbox.length > 0 && inboxTurn < MAX_INBOX_TURNS) {
+        // Inbox'taki tüm mesajları tek bir user mesajı olarak enjekte et
+        const inboxContent = inbox
+          .map((m) => `<agent-message from="${m.fromName}">\n${m.message}\n</agent-message>`)
+          .join("\n\n")
+        inbox.length = 0  // flush
+        inboxTurn++
+        messages.push({ role: "user", content: inboxContent })
+      } else if (!hitBatchLimit) {
+        // Agent doğal olarak bitti (adım limitine çarpmadı) ve inbox boş — tamam
+        break
+      }
+      // hitBatchLimit && inbox boş: kalan adım bütçesi ile çalışmaya devam et
+      // Döngü koşulu (stepsUsed < totalMaxSteps) zaten sınırı zorlar
     }
 
     if (abort.signal.aborted) {

@@ -43,6 +43,8 @@ export interface DiffRendererProps {
   enableHunkNav?:    boolean
   /** Hata göster (örn. parse hatası) */
   onError?:     (e: string) => void
+  /** Parent rail/container genişliği */
+  width?:       number
 }
 
 // ── Ana bileşen ──────────────────────────────────────────────────────────────
@@ -57,10 +59,13 @@ export function DiffRenderer({
   maxHunks = 10,
   enableModeToggle = true,
   enableHunkNav = true,
+  width,
 }: DiffRendererProps) {
   const theme = useTheme()
   const [mode, setMode]           = useState<DiffMode>(initialMode ?? "unified")
   const [activeHunk, setActiveHunk] = useState(0)
+  const terminalWidth = process.stdout.columns ?? 80
+  const renderWidth = Math.max(40, Math.min(width ?? terminalWidth - 8, terminalWidth - 4))
 
   // Parse: raw diff varsa onu kullan, yoksa old/new'den hesapla
   const parsed = useMemo<ParsedDiff | null>(() => {
@@ -131,30 +136,32 @@ export function DiffRenderer({
 
   const shown = parsed.hunks.slice(0, maxHunks)
   const hidden = parsed.hunks.length - shown.length
+  const displayFile = fileName ?? parsed.fileName ?? "code changes"
 
   return (
-    <VStack gap="none">
+    <VStack gap="none" width={renderWidth}>
       {/* Header */}
-      <HStack gap="sm" paddingX="xs">
-        {fileName && <Typo variant="label" tone="dim">── {fileName} ──</Typo>}
+      <HStack gap="sm" paddingX="xs" width={renderWidth}>
+        <Text color={theme.borderBright}>╭─</Text>
+        <Typo variant="label" tone="primary">{displayFile}</Typo>
         <Spacer />
-        <Badge tone="success" variant="ghost">{`+${parsed.additions}`}</Badge>
-        <Badge tone="error" variant="ghost">{`-${parsed.deletions}`}</Badge>
+        <Text color={theme.success} bold>{`+${parsed.additions}`}</Text>
+        <Text color={theme.error} bold>{`-${parsed.deletions}`}</Text>
         <Badge tone="muted" variant="outline">{mode}</Badge>
         {hints.map((h) => (
-          <KeyHint key={h.action} action={h.label} keys={h.key} />
+          <KeyHint key={h.action} action={h.label} keys={h.key} style="plain" />
         ))}
       </HStack>
 
       {/* Body — mode'a göre farklı render */}
       {mode === "unified" && (
-        <UnifiedView hunks={shown} activeHunk={enableHunkNav ? activeHunk : -1} />
+        <UnifiedView hunks={shown} activeHunk={enableHunkNav ? activeHunk : -1} width={renderWidth} />
       )}
       {mode === "side-by-side" && (
-        <SideBySideView hunks={shown} activeHunk={enableHunkNav ? activeHunk : -1} />
+        <SideBySideView hunks={shown} activeHunk={enableHunkNav ? activeHunk : -1} width={renderWidth} />
       )}
       {mode === "raw" && (
-        <RawView raw={rawDiff ?? ""} />
+        <RawView raw={rawDiff ?? ""} width={renderWidth} />
       )}
 
       {hidden > 0 && (
@@ -166,18 +173,21 @@ export function DiffRenderer({
 
 // ── Unified view ─────────────────────────────────────────────────────────────
 
-function UnifiedView({ hunks, activeHunk }: { hunks: Hunk[]; activeHunk: number }) {
+function UnifiedView({ hunks, activeHunk, width }: { hunks: Hunk[]; activeHunk: number; width: number }) {
   const theme = useTheme()
 
   return (
-    <VStack gap="none">
+    <VStack gap="none" width={width}>
       {hunks.map((hunk, hi) => (
-        <VStack key={hi} gap="none"
+        <VStack key={hi} gap="none" width={width}
           {...(activeHunk === hi ? { borderStyle: "single" as const, borderColor: theme.accent } : {})}
         >
-          <Text color={theme.borderBright} dimColor>{hunk.header}</Text>
+          <HStack width={width}>
+            <Text color={activeHunk === hi ? theme.accent : theme.borderBright}>{activeHunk === hi ? "●" : "·"}</Text>
+            <Text color={theme.borderBright} dimColor> {hunk.header}</Text>
+          </HStack>
           {hunk.lines.map((line, li) => (
-            <DiffLineView key={li} line={line} />
+            <DiffLineView key={li} line={line} width={width} />
           ))}
         </VStack>
       ))}
@@ -187,18 +197,18 @@ function UnifiedView({ hunks, activeHunk }: { hunks: Hunk[]; activeHunk: number 
 
 // ── Side-by-side view ───────────────────────────────────────────────────────
 
-function SideBySideView({ hunks, activeHunk }: { hunks: Hunk[]; activeHunk: number }) {
+function SideBySideView({ hunks, activeHunk, width }: { hunks: Hunk[]; activeHunk: number; width: number }) {
   const theme = useTheme()
 
   return (
-    <VStack gap="none">
+    <VStack gap="none" width={width}>
       {hunks.map((hunk, hi) => (
-        <VStack key={hi} gap="none"
+        <VStack key={hi} gap="none" width={width}
           {...(activeHunk === hi ? { borderStyle: "single" as const, borderColor: theme.accent } : {})}
         >
           <Text color={theme.borderBright} dimColor>{hunk.header}</Text>
           {pairLines(hunk.lines).map((pair, pi) => (
-            <SideBySideLine key={pi} left={pair[0]} right={pair[1]} />
+            <SideBySideLine key={pi} left={pair[0]} right={pair[1]} width={width} />
           ))}
         </VStack>
       ))}
@@ -238,10 +248,9 @@ function pairLines(lines: DiffLine[]): Array<[DiffLine | null, DiffLine | null]>
   return pairs
 }
 
-function SideBySideLine({ left, right }: { left: DiffLine | null; right: DiffLine | null }) {
+function SideBySideLine({ left, right, width }: { left: DiffLine | null; right: DiffLine | null; width: number }) {
   const theme = useTheme()
-  const termCols = process.stdout.columns ?? 80
-  const halfW = Math.floor((termCols - 6) / 2)
+  const halfW = Math.max(18, Math.floor((width - 3) / 2))
 
   return (
     <Box flexDirection="row">
@@ -267,13 +276,14 @@ function SideLineContent({
   line, align, counterpart,
 }: { line: DiffLine | null; align: "left" | "right"; counterpart: DiffLine | null }) {
   const theme = useTheme()
+  const contentWidth = 28
 
   if (!line) {
-    return <Text color={theme.borderDim} dimColor>{" ".repeat(20)}</Text>
+    return <Text color={theme.borderDim} dimColor>{" ".repeat(contentWidth)}</Text>
   }
 
   if (line.type === "context") {
-    return <Text color={theme.textDim} dimColor>  {truncate(line.content, 30)}</Text>
+    return <Text color={theme.textDim} dimColor>  {truncate(line.content, contentWidth)}</Text>
   }
 
   // Add/Remove: word-level inline diff göster
@@ -290,14 +300,14 @@ function SideLineContent({
     return (
       <Text color={baseColor}>
         {line.type === "add" ? "+" : "-"}
-        {renderHighlighted(line.content, ranges, highlightColor)}
+        {renderHighlighted(truncate(line.content, contentWidth), ranges, highlightColor)}
       </Text>
     )
   }
 
   // Tek başına add/remove
   const baseColor = line.type === "add" ? theme.success : theme.error
-  return <Text color={baseColor}>{line.type === "add" ? "+" : "-"} {truncate(line.content, 30)}</Text>
+  return <Text color={baseColor}>{line.type === "add" ? "+" : "-"} {truncate(line.content, contentWidth)}</Text>
 }
 
 function renderHighlighted(text: string, ranges: Array<{ start: number; end: number }>, color: string) {
@@ -321,7 +331,7 @@ function truncate(s: string, n: number): string {
 
 // ── Raw view ─────────────────────────────────────────────────────────────────
 
-function RawView({ raw }: { raw: string }) {
+function RawView({ raw, width }: { raw: string; width: number }) {
   const theme = useTheme()
   if (!raw) return <Text color={theme.textDim} dimColor>(no raw diff)</Text>
   const lines = raw.split("\n")
@@ -329,18 +339,18 @@ function RawView({ raw }: { raw: string }) {
     <VStack gap="none" paddingX="xs">
       {lines.map((line, i) => {
         if (line.startsWith("+++") || line.startsWith("---")) {
-          return <Text key={i} color={theme.accent} bold>{line}</Text>
+          return <Text key={i} color={theme.accent} bold>{truncate(line, width - 2)}</Text>
         }
         if (line.startsWith("@@")) {
-          return <Text key={i} color={theme.warning}>{line}</Text>
+          return <Text key={i} color={theme.warning}>{truncate(line, width - 2)}</Text>
         }
         if (line.startsWith("+")) {
-          return <Text key={i} color={theme.success}>{line}</Text>
+          return <Text key={i} color={theme.success}>{truncate(line, width - 2)}</Text>
         }
         if (line.startsWith("-")) {
-          return <Text key={i} color={theme.error}>{line}</Text>
+          return <Text key={i} color={theme.error}>{truncate(line, width - 2)}</Text>
         }
-        return <Text key={i} color={theme.textDim}>{line}</Text>
+        return <Text key={i} color={theme.textDim}>{truncate(line, width - 2)}</Text>
       })}
     </VStack>
   )
@@ -348,36 +358,43 @@ function RawView({ raw }: { raw: string }) {
 
 // ── Tek satır görüntüleme (unified için) ────────────────────────────────────
 
-function DiffLineView({ line }: { line: DiffLine }) {
+function DiffLineView({ line, width }: { line: DiffLine; width: number }) {
   const theme = useTheme()
-  const width = (process.stdout.columns ?? 80) - 12
+  const contentWidth = Math.max(10, width - 16)
+  const oldNo = line.oldLineNum?.toString().padStart(4) ?? "    "
+  const newNo = line.newLineNum?.toString().padStart(4) ?? "    "
 
   if (line.type === "add") {
     return (
-      <Box>
-        <Text color={theme.textDim}>{line.newLineNum?.toString().padStart(4) ?? "    "}</Text>
+      <Box width={width}>
+        <Text color={theme.textDim}>{oldNo}</Text>
+        <Text color={theme.textDim}> </Text>
+        <Text color={theme.success}>{newNo}</Text>
         <Text> </Text>
         <Text color={theme.success} bold>+</Text>
-        <Text color={theme.success}> {truncate(line.content, width)}</Text>
+        <Text color={theme.success}> {truncate(line.content, contentWidth)}</Text>
       </Box>
     )
   }
   if (line.type === "remove") {
     return (
-      <Box>
-        <Text color={theme.textDim}>{line.oldLineNum?.toString().padStart(4) ?? "    "}</Text>
+      <Box width={width}>
+        <Text color={theme.error}>{oldNo}</Text>
+        <Text color={theme.textDim}> </Text>
+        <Text color={theme.textDim}>{newNo}</Text>
         <Text> </Text>
         <Text color={theme.error} bold>-</Text>
-        <Text color={theme.error}> {truncate(line.content, width)}</Text>
+        <Text color={theme.error}> {truncate(line.content, contentWidth)}</Text>
       </Box>
     )
   }
   return (
-    <Box>
-      <Text color={theme.textDim}>{line.oldLineNum?.toString().padStart(4) ?? "    "}</Text>
-      <Text> </Text>
-      <Text color={theme.textDim}>  </Text>
-      <Text color={theme.textDim}> {truncate(line.content, width)}</Text>
+    <Box width={width}>
+      <Text color={theme.textDim}>{oldNo}</Text>
+      <Text color={theme.textDim}> </Text>
+      <Text color={theme.textDim}>{newNo}</Text>
+      <Text color={theme.borderDim}> │</Text>
+      <Text color={theme.textDim}> {truncate(line.content, contentWidth)}</Text>
     </Box>
   )
 }

@@ -6,7 +6,8 @@ import { skillScoreStore } from "./score-store.js"
 import { loadSkillOverride, applyOverride } from "./override.js"
 import { hooks } from "../hook/emitter.js"
 import { countTokens } from "../provider/tokenizer.js"
-import { FULL_SYSTEM_PROMPT } from "../agent/system.js"
+import { FULL_SYSTEM_PROMPT, SUBAGENT_SYSTEM_PROMPT } from "../agent/system.js"
+import type { AgentType } from "../agent/protocol.js"
 import { memoryStore } from "../memory/store.js"
 import { pinStore } from "../pin/store.js"
 import { readArchitecture } from "../project-context/architecture.js"
@@ -35,9 +36,10 @@ interface CacheEntry { skills: LoadedSkill[]; expiresAt: number }
 const cache = new Map<string, CacheEntry>()
 const CACHE_TTL_MS = 60_000  // 1 dakika sonra yeniden detect
 
-export async function buildSystemPrompt(projectDir: string, base?: string, includeGit = false): Promise<string> {
+export async function buildSystemPrompt(projectDir: string, base?: string, includeGit = false, agentType?: AgentType): Promise<string> {
   const skills = await getSkillsForProject(projectDir)
-  const finalBase = [FULL_SYSTEM_PROMPT, base].filter(Boolean).join("\n\n---\n\n")
+  const basePrompt = agentType !== undefined ? SUBAGENT_SYSTEM_PROMPT : FULL_SYSTEM_PROMPT
+  const finalBase = [basePrompt, base].filter(Boolean).join("\n\n---\n\n")
 
   const skillSection        = skills.length > 0 ? buildSkillSection(skills) : ""
   const memorySection       = buildMemorySection(projectDir)

@@ -41,6 +41,7 @@ interface Props {
   draftSavedAt?:     number | undefined
   activeAgentCount?: number | undefined
   hasBtwNote?:       boolean | undefined
+  scrollLocked?:     boolean | undefined
 }
 
 function fmtK(n: number): string {
@@ -118,7 +119,7 @@ export function StatusBar({
   provider, model, tokens, contextTokens, workdir, skills = [], turnSkills = [],
   contextWindow, isUndercover, coordinatorMode, branch, wasCompacted,
   activeAgent, agentColor, bgTaskCount, taskCount, taskSummary, taskPanelOpen, localServer, sandboxBackend, effort, autopilotMode, cols,
-  draftSavedAt, activeAgentCount, hasBtwNote,
+  draftSavedAt, activeAgentCount, hasBtwNote, scrollLocked,
 }: Props) {
   const theme       = useTheme()
   const mode        = bp(cols)
@@ -139,7 +140,7 @@ export function StatusBar({
   // ── tiny: bare minimum ────────────────────────────────────────────────────
   if (mode === "tiny") {
     return (
-      <Surface variant="raised" tone="muted" paddingX="md" paddingY="none">
+      <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
         <HStack gap="none">
           <Text color={theme.textPrimary}>{provider.slice(0, 5)}</Text>
           <Text color={theme.borderBright}>/</Text>
@@ -163,7 +164,7 @@ export function StatusBar({
             {wasCompacted && <Text color={theme.warning} dimColor>cmpct</Text>}
           </HStack>
         )}
-        <Surface variant="raised" tone="muted" paddingX="md" paddingY="none">
+        <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
           <HStack justify="space-between">
             <Text color={theme.accent} bold>{shortDir}</Text>
             <HStack gap="xs">
@@ -193,18 +194,19 @@ export function StatusBar({
             {wasCompacted && <Badge tone="warning" variant="ghost">cmpct</Badge>}
           </HStack>
         )}
-        <Surface variant="raised" tone="muted" paddingX="md" paddingY="none">
+        <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
           <HStack justify="space-between">
             <HStack gap="xs">
               <Text color={theme.accent} bold>{normDir}</Text>
               {branch && <Text color={theme.borderBright}>[{branch}]</Text>}
             </HStack>
             <HStack gap="sm">
+              {scrollLocked    && <Badge tone="warning" variant="solid">⏸</Badge>}
               {isUndercover    && <Text color={theme.textDim} dimColor>uc</Text>}
               {coordinatorMode && <Badge tone="accent" variant="ghost">coord</Badge>}
-              {autopilotMode   && <Badge tone="warning" variant="solid">⚡ auto</Badge>}
-              {draftFresh      && <Text color={theme.success} dimColor>✓ saved</Text>}
-              {hasBtwNote      && <Badge tone="accent" variant="ghost">📌</Badge>}
+              {autopilotMode   && <Badge tone="warning" variant="ghost">auto</Badge>}
+              {draftFresh      && <Text color={theme.success} dimColor>saved</Text>}
+              {hasBtwNote      && <Badge tone="accent" variant="ghost">note</Badge>}
               {sandboxInfo      && <Text color={sandboxBackend === "none" ? theme.warning : theme.accent}>{sandboxInfo}</Text>}
               {serverInfo       && <Text color={localServer?.reused || localServer?.enabled === false ? theme.warning : theme.textDim}>{serverInfo}</Text>}
               {taskInfo && (
@@ -256,7 +258,7 @@ export function StatusBar({
         </HStack>
       )}
 
-      <Surface variant="raised" tone="muted" paddingX="md" paddingY="none">
+      <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
         <HStack justify="space-between">
           <HStack gap="xs">
             <Text color={theme.accent} bold>{truncDir(dir, 40)}</Text>
@@ -290,9 +292,7 @@ export function StatusBar({
             )}
             {activeAgentCount !== undefined && activeAgentCount > 0 && (
               <>
-                <Badge tone="warning" variant="ghost">
-                  {spinFrame} {activeAgentCount} agent{activeAgentCount > 1 ? "s" : ""}
-                </Badge>
+                <Text color={theme.warning}>{spinFrame} {activeAgentCount} agent{activeAgentCount > 1 ? "s" : ""}</Text>
                 <Text color={theme.borderBright} dimColor>ctrl+x</Text>
                 <Text color={theme.borderBright}>·</Text>
               </>
@@ -314,17 +314,23 @@ export function StatusBar({
             <Text color={theme.borderBright}>/</Text>
             <Text color={theme.warning}>{model}</Text>
             <Text color={theme.borderBright}>·</Text>
+            {scrollLocked && (
+              <>
+                <Badge tone="warning" variant="solid">⏸ scroll lock</Badge>
+                <Text color={theme.borderBright}>·</Text>
+              </>
+            )}
             {taskCount && taskCount > 0 ? (
               <HStack gap="xs">
                 <Text color={theme.textDim} dimColor>/ commands</Text>
-                <KeyHint keys="ctrl+t" action={`tasks (${taskCount})`} />
-                <KeyHint keys="esc" action="exit" />
+                <KeyHint keys="ctrl+t" action={`tasks (${taskCount})`} style="plain" />
+                <KeyHint keys="esc" action="exit" style="plain" />
               </HStack>
             ) : (
               <HStack gap="xs">
                 <Text color={theme.textDim} dimColor>/ commands</Text>
-                <KeyHint keys="esc" action="exit" />
-                <KeyHint keys="ctrl+c" action="abort" />
+                <KeyHint keys="esc" action="exit" style="plain" />
+                <KeyHint keys="ctrl+c" action="abort" style="plain" />
               </HStack>
             )}
           </HStack>
