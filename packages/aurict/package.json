@@ -1,6 +1,6 @@
 {
   "name": "aurict",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Open-source terminal AI coding assistant with multi-provider support, specialist agents, skills, and a low-overhead policy sandbox.",
   "keywords": [
     "ai",
@@ -36,11 +36,11 @@
     "README.md"
   ],
   "optionalDependencies": {
-    "@aurict/cli-linux-x64": "1.1.1",
-    "@aurict/cli-linux-arm64": "1.1.1",
-    "@aurict/cli-darwin-x64": "1.1.1",
-    "@aurict/cli-darwin-arm64": "1.1.1",
-    "@aurict/cli-win32-x64": "1.1.1"
+    "@aurict/cli-linux-x64": "1.1.2",
+    "@aurict/cli-linux-arm64": "1.1.2",
+    "@aurict/cli-darwin-x64": "1.1.2",
+    "@aurict/cli-darwin-arm64": "1.1.2",
+    "@aurict/cli-win32-x64": "1.1.2"
   },
   "engines": {
     "node": ">=20"
