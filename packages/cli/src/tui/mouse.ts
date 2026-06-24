@@ -26,38 +26,36 @@ type MouseHandler = (e: MouseEvent) => void
 const handlers = new Set<MouseHandler>()
 let enabled = false
 
+// Installed at module load — strips mouse escape sequences from stdin before
+// Ink's useInput sees them. Runs unconditionally so sequences are filtered
+// even when the terminal or tmux enables mouse mode independently of Aurict,
+// and even before the first React effect fires (which would otherwise leave a
+// window where sequences leak through as garbage text).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _origStdinEmit = process.stdin.emit.bind(process.stdin) as (...a: any[]) => boolean
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(process.stdin as any).emit = (event: string | symbol, ...args: unknown[]): boolean => {
+  if (event === "data") {
+    const raw = args[0] as Buffer | string
+    const str = typeof raw === "string" ? raw : raw.toString("binary")
+    if (enabled) parseMouseEvents(str)
+    const clean = str
+      .replace(/\x1b\[<\d+;\d+;\d+[Mm]/g, "")  // SGR mouse events
+      .replace(/\x1b\[M[\s\S]{3}/g, "")          // X10 mouse events (3 raw bytes)
+    if (!clean) return true
+    return _origStdinEmit("data", Buffer.from(clean, "binary"))
+  }
+  return _origStdinEmit(event, ...args)
+}
+
 function enableMouseTracking(): () => void {
   if (enabled) return () => {}
   enabled = true
   process.stdout.write("\x1b[?1000h")  // normal button events
   process.stdout.write("\x1b[?1006h")  // SGR mode
-
-  // Override process.stdin.emit so mouse escape sequences are stripped
-  // BEFORE Ink's useInput receives them. Without this, sequences like
-  // "\x1b[<64;5;10M" (scroll-up at col 5 row 10) leak into useInput and
-  // get inserted as garbage text into the chat input.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const origEmit = process.stdin.emit.bind(process.stdin) as (...a: any[]) => boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(process.stdin as any).emit = (event: string | symbol, ...args: unknown[]): boolean => {
-    if (event === "data") {
-      const raw = args[0] as Buffer | string
-      const str = typeof raw === "string" ? raw : raw.toString("binary")
-      parseMouseEvents(str)
-      const clean = str
-        .replace(/\x1b\[<\d+;\d+;\d+[Mm]/g, "")  // SGR mouse events
-        .replace(/\x1b\[M.{3}/g, "")               // X10 mouse events
-      if (!clean) return true
-      return origEmit("data", Buffer.from(clean, "binary"))
-    }
-    return origEmit(event, ...args)
-  }
-
   return () => {
     process.stdout.write("\x1b[?1006l")
     process.stdout.write("\x1b[?1000l")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(process.stdin as any).emit = origEmit
     enabled = false
   }
 }

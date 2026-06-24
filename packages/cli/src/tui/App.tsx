@@ -72,7 +72,7 @@ import { CURRENT_VERSION }  from "../util/update-check.js"
 import { readClipboard }     from "../util/clipboard.js"
 import { useMouseEvents }    from "./mouse.js"
 import { buildDesignPrompt, recordSystemUsed, recordSkillUsed, slugify } from "@aurict/core"
-import { saveDraft, loadDraft, clearDraft, hasPendingCrashReport, writeCrashReport } from "../util/draft.js"
+import { clearDraft, hasPendingCrashReport, writeCrashReport } from "../util/draft.js"
 import { getTerminalCaps }   from "../util/terminal-caps.js"
 import { useOverlayState }   from "./hooks/useOverlayState.js"
 import { HistorySearch }     from "./HistorySearch.js"
@@ -172,7 +172,6 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [updateInfo,        setUpdateInfo]        = useState<UpdateInfo | null>(null)
 
   // Draft save timestamp — triggers a brief "✓ saved" flash in StatusBar
-  const [draftSavedAt, setDraftSavedAt] = useState<number | undefined>(undefined)
 
   // Streaming inline error
   const [streamingError, setStreamingError] = useState<string | null>(null)
@@ -267,8 +266,6 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     return "modal"
   }, [focusLayer])
 
-  // Draft recovery
-  const [draftRecovered, setDraftRecovered] = useState(false)
   const draftTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Watch Mode
@@ -404,19 +401,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   useEffect(() => taskManager.onUpdate(() => setTasks([...taskManager.getTasks()])), [])
   useEffect(() => PlanGate.onRequest((req) => setPlanRequest(req)), [])
 
-  // Draft auto-save every 5s — interval reads latest input via closure ref
   const inputRef = useRef(input)
   useEffect(() => { inputRef.current = input }, [input])
-
-  useEffect(() => {
-    draftTimerRef.current = setInterval(() => {
-      if (inputRef.current.trim() && !loadingRef.current) {
-        saveDraft(inputRef.current)
-        setDraftSavedAt(Date.now())
-      }
-    }, 5_000)
-    return () => { if (draftTimerRef.current) clearInterval(draftTimerRef.current) }
-  }, [])
 
   // MCP log handler — MCP bağlantı mesajlarını TUI'ye system message olarak ekle
   useEffect(() => {
@@ -426,17 +412,6 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Draft recovery on mount
-  useEffect(() => {
-    const draft = loadDraft()
-    // Sadece input boşsa draft'i geri yükle — kullanıcı zaten yazmaya başlamışsa üzerine yazma
-    if (draft && !draftRecovered && !inputRef.current.trim()) {
-      setDraftRecovered(true)
-      setInput(draft)
-      addSystemMsg(`Draft recovered from last session. Press Enter to send or Esc to discard.`)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Crash recovery notice on mount
   useEffect(() => {
@@ -662,8 +637,10 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       return
     }
 
-    // Modal/prompt açıkken arkadaki global kısayollar çalışmaz.
-    if (focusLayer !== "ready") return
+    // Aktif modal/overlay varken arkadaki global kısayollar çalışmaz.
+    // "streaming" (loading) bunu bloklamaz — Ctrl+O, Ctrl+T gibi kısayollar
+    // işlem sırasında da erişilebilir olmalı.
+    if (focusLayer !== "ready" && focusLayer !== "streaming") return
 
     // ── Ctrl+G: harici editörde yaz ───────────────────────────────────────
     if (key.ctrl && input === "g") {
@@ -1841,7 +1818,6 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           activeAgentCount={activeAgentCount > 0 ? activeAgentCount : undefined}
           hasBtwNote={btwState !== null}
           scrollLocked={scrollLocked}
-          {...(draftSavedAt !== undefined ? { draftSavedAt } : {})}
           {...(branch !== undefined ? { branch } : {})}
           {...(() => {
             try {

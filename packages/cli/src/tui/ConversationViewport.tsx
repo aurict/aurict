@@ -191,35 +191,46 @@ export function ConversationViewport({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, width, streamingText, streamingReason, streamingError, loading, activeTool, measureRevision])
 
-  // ── Scroll math (marginTop tabanlı) ──────────────────────────────────────
-  const showUnseen      = (unseenCount ?? 0) > 0 && offsetRowsFromBottom > 0
-  const scrollAreaRows  = Math.max(4, height - (showUnseen ? 1 : 0))
-  const totalRows       = entries.reduce((s, e) => s + e.rows, 0)
-  const maxOffset       = Math.max(0, totalRows - scrollAreaRows)
-  const clampedOffset   = Math.min(offsetRowsFromBottom, maxOffset)
-  const scrollPosition  = maxOffset - clampedOffset
+  // ── Scroll math ──────────────────────────────────────────────────────────
+  const showUnseen     = (unseenCount ?? 0) > 0 && offsetRowsFromBottom > 0
+  const scrollAreaRows = Math.max(4, height - (showUnseen ? 1 : 0))
+  const totalRows      = entries.reduce((s, e) => s + e.rows, 0)
+  const maxOffset      = Math.max(0, totalRows - scrollAreaRows)
+  const clampedOffset  = Math.min(offsetRowsFromBottom, maxOffset)
+  const scrollPosition = maxOffset - clampedOffset  // rows from top to start of visible area
 
-  // ── Virtual window: yalnızca son MAX_RENDERED entry render edilir ──────────
-  const skipCount       = Math.max(0, entries.length - MAX_RENDERED)
-  const renderedEntries = skipCount > 0 ? entries.slice(skipCount) : entries
-  const skippedHeight   = skipCount > 0
-    ? entries.slice(0, skipCount).reduce((s, e) => s + e.rows, 0)
-    : 0
-  // scrollPosition skippedHeight'in altına inince (çok yukarı scroll):
-  // rendered content başını göster, negatifin altına düşme.
-  const adjustedMarginTop = Math.min(0, skippedHeight - scrollPosition)
+  // ── Slice-based rendering: büyük negatif marginTop yerine sadece görünen
+  // entry'ler render edilir. Bu Yoga'nın içeriği sıkıştırmasını engeller.
+  // intraPad: ilk görünen entry içindeki satır offseti (küçük sayı, max ~30).
+  let cum = 0
+  let firstVisIdx = 0
+  let intraPad = 0
+
+  for (let i = 0; i < entries.length; i++) {
+    const next = cum + entries[i]!.rows
+    if (next <= scrollPosition) {
+      cum = next
+      firstVisIdx = i + 1
+    } else {
+      intraPad = scrollPosition - cum
+      firstVisIdx = i
+      break
+    }
+  }
+
+  const visibleEntries = entries.slice(firstVisIdx, firstVisIdx + MAX_RENDERED)
 
   return (
     <Box height={height} flexShrink={1} flexDirection="column" overflow="hidden">
       {showUnseen && <UnseenDivider count={unseenCount!} width={width} />}
       <Box flexGrow={1} flexDirection="column" overflow="hidden">
-        <Box flexDirection="column" marginTop={adjustedMarginTop}>
-          {skipCount > 0 && scrollPosition <= skippedHeight && (
+        <Box flexDirection="column" marginTop={-intraPad}>
+          {firstVisIdx > 0 && intraPad === 0 && (
             <Box paddingX={2}>
-              <Text color={theme.textDim} dimColor>⋯ {skipCount} older messages</Text>
+              <Text color={theme.textDim} dimColor>⋯ {firstVisIdx} older messages</Text>
             </Box>
           )}
-          {renderedEntries.map((entry) => {
+          {visibleEntries.map((entry) => {
             if (entry.kind === "message") {
               const m  = entry.message
               const ck = contentKey(m)

@@ -127,6 +127,14 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
   useInput((input, key) => {
     if (disabled) return
 
+    // ── Mouse escape sequence filtresi ────────────────────────────────────
+    // Emit-level filtreden kaçan sequence'ları burada yakala.
+    // Ink \x1b'yi ESC keypress olarak tükettiğinde kalan "[<65;206;45M" kısmı
+    // ayrı bir useInput event'i olarak gelir ve metne yazılır.
+    if (/^\[<\d+;\d+;\d+[Mm]/.test(input)) return  // SGR remainder (ESC consumed)
+    if (/^\x1b\[<\d+;\d+;\d+[Mm]/.test(input)) return  // SGR full
+    if (/^\[M[\s\S]/.test(input)) return  // X10 remainder
+
     // ── SSH/tmux DEL karakteri (\x7f) ─────────────────────────────────────
     // Bazı terminal emülatörleri backspace yerine \x7f üretir
     if (!key.backspace && !key.delete && input.includes("\x7f")) {
@@ -323,7 +331,8 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
     // ── Ctrl+Backspace / Ctrl+W / Alt+Backspace: kelime sil ──────────────
     // \x17 = Ctrl+W (Unix), \x08 = Ctrl+Backspace (gnome-terminal/alacritty/VTE),
     // \x1b\x7f = Alt+Backspace veya Ctrl+Backspace (xterm/kitty)
-    if ((key.backspace && key.ctrl) || input === "\x17" || input === "\x1b\x7f" || input === "\x08") {
+    // \x1b[127;5u = Ctrl+Backspace (kitty CSI-u modu)
+    if ((key.backspace && key.ctrl) || input === "\x17" || input === "\x1b\x7f" || input === "\x08" || input === "\x1b[127;5u") {
       const row = cursor.row
       const col = cursor.col
       setLines(prev => {
