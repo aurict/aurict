@@ -29,21 +29,35 @@ let enabled = false
 function enableMouseTracking(): () => void {
   if (enabled) return () => {}
   enabled = true
-  // SGR extended mouse protocol (1006) — daha geniş terminal desteği
   process.stdout.write("\x1b[?1000h")  // normal button events
   process.stdout.write("\x1b[?1006h")  // SGR mode
 
-  const onData = (raw: Buffer | string) => {
-    const str = typeof raw === "string" ? raw : raw.toString("binary")
-    parseMouseEvents(str)
+  // Override process.stdin.emit so mouse escape sequences are stripped
+  // BEFORE Ink's useInput receives them. Without this, sequences like
+  // "\x1b[<64;5;10M" (scroll-up at col 5 row 10) leak into useInput and
+  // get inserted as garbage text into the chat input.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const origEmit = process.stdin.emit.bind(process.stdin) as (...a: any[]) => boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(process.stdin as any).emit = (event: string | symbol, ...args: unknown[]): boolean => {
+    if (event === "data") {
+      const raw = args[0] as Buffer | string
+      const str = typeof raw === "string" ? raw : raw.toString("binary")
+      parseMouseEvents(str)
+      const clean = str
+        .replace(/\x1b\[<\d+;\d+;\d+[Mm]/g, "")  // SGR mouse events
+        .replace(/\x1b\[M.{3}/g, "")               // X10 mouse events
+      if (!clean) return true
+      return origEmit("data", Buffer.from(clean, "binary"))
+    }
+    return origEmit(event, ...args)
   }
-
-  process.stdin.on("data", onData)
 
   return () => {
     process.stdout.write("\x1b[?1006l")
     process.stdout.write("\x1b[?1000l")
-    process.stdin.off("data", onData)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(process.stdin as any).emit = origEmit
     enabled = false
   }
 }

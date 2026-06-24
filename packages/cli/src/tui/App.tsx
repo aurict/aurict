@@ -1223,6 +1223,10 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       // Adaptive throttle flush — text + reasoning birlikte flush edilir
       const flushStream = () => {
         streamTimerRef.current = null
+        // Araç çağrısı sonrası streaming: StreamingView'de gösterme — cümle bölünmesini önle.
+        // Metin streamTextRef'te birikmeye devam eder; onFinish stableAssistantId ile
+        // pre-tool mesajını tam metinle (pre+post araç) güncelleyecek.
+        if (turnAssistantIdRef.current) return
         if (streamTextRef.current)   setStreamingText(streamTextRef.current)
         if (streamReasonRef.current) setStreamingReason(streamReasonRef.current)
       }
@@ -1287,7 +1291,10 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             if (lastPendingIdx === -1) return prev
             const next = [...prev]
             const msg  = next[lastPendingIdx]!
-            next[lastPendingIdx] = { ...msg, resultContent: (msg.resultContent ?? "") + chunk }
+            const combined = (msg.resultContent ?? "") + chunk
+            // Büyük bash çıktıları için display cap: en son 50KB göster (RAM koruması)
+            const capped = combined.length > 50_000 ? combined.slice(-50_000) : combined
+            next[lastPendingIdx] = { ...msg, resultContent: capped }
             return next
           })
         },
@@ -1336,9 +1343,17 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           setActiveTool(undefined)
           const mark  = snapshotManager.mark()
           const label = `step ${checkpoints.length + 1}`
+          // Checkpoint'te büyük tool resultları kırp (RAM koruması).
+          // Her adımda messages.slice() kopyalanır; büyük araç çıktıları 20 kopya × size = peak.
+          const MAX_CP_RESULT = 10_000
+          const cpMessages = messages.slice().map(m => (
+            m.resultContent && m.resultContent.length > MAX_CP_RESULT
+              ? { ...m, resultContent: m.resultContent.slice(0, MAX_CP_RESULT) + "\n[truncated in checkpoint]" }
+              : m
+          ))
           setCheckpoints((prev) => [
             ...prev.slice(-(MAX_CHECKPOINTS - 1)),
-            { mark, messages: messages.slice(), history: history.slice(), label },
+            { mark, messages: cpMessages, history: history.slice(), label },
           ])
         },
         onToolResult: (tr) => {
@@ -1347,15 +1362,20 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             const callIndex = next.findIndex((m) => m.role === "tool_call" && m.id === tr.id)
             let parsedResult = tr.result
             if (typeof parsedResult === "object") parsedResult = JSON.stringify(parsedResult, null, 2)
+            // Büyük sonuçları UI'da kırp — LLM context'e tam sonuç gider, sadece görüntü sınırlı
+            const MAX_DISPLAY = 50_000
+            const displayResult = parsedResult.length > MAX_DISPLAY
+              ? parsedResult.slice(0, MAX_DISPLAY) + `\n\n[... ${(parsedResult.length - MAX_DISPLAY).toLocaleString()} chars truncated]`
+              : parsedResult
             if (callIndex !== -1) {
               const old = next[callIndex]
               if (old) {
-                const updated = { ...old, pending: false, resultContent: parsedResult, durationMs: tr.durationMs }
+                const updated = { ...old, pending: false, resultContent: displayResult, durationMs: tr.durationMs }
                 next[callIndex] = updated
                 if (old.tool && parsedResult) latestToolCallRef.current = { id: tr.id, tool: old.tool ?? "tool", content: parsedResult }
               }
             } else {
-              next.push({ id: crypto.randomUUID(), role: "tool_result" as const, content: parsedResult, pending: false })
+              next.push({ id: crypto.randomUUID(), role: "tool_result" as const, content: displayResult, pending: false })
             }
             return next
           })

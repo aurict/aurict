@@ -1,23 +1,17 @@
-import React, { useState, useEffect, useRef, useMemo, memo } from "react"
+import React, { useState, useEffect, useRef, memo } from "react"
 import { Box, Text } from "ink"
 import { useTheme } from "../utils/theme.js"
+import { Markdown } from "./Markdown.js"
 
-// Memoized paragraph: content değişmeyenler re-render almaz
-const Paragraph = memo(function Paragraph({ text }: { text: string }) {
-  return <Text wrap="wrap">{text}</Text>
-})
-
-// Streaming text'i \n\n sınırlarında böl — tamamlanan paragraflar stabil kalır
-function StreamingTextBlock({ text, width }: { text: string; width: number }) {
-  const paragraphs = useMemo(() => text.split(/\n\n+/), [text])
+// Streaming text'i Markdown ile render et — ### başlık, **bold**, liste vb.
+// memo ile: content değişmeyenler re-render almaz.
+const StreamingTextBlock = memo(function StreamingTextBlock({ text, width }: { text: string; width: number }) {
   return (
     <Box flexDirection="column" width={width}>
-      {paragraphs.map((para, i) => (
-        <Paragraph key={i} text={para} />
-      ))}
+      <Markdown content={text} width={width} />
     </Box>
   )
-}
+})
 
 // Elapsed time formatter
 function formatElapsed(ms: number): string {
