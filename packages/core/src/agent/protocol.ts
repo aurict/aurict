@@ -7,7 +7,10 @@ export type AgentType =
   | "docs"        // read + write: dokümantasyon üretme
   | "performance" // read + bash: profiling, bundle analizi
   | "analytics"   // read-only: metrik, event, log analizi
-  | "security"    // read-only: güvenlik taraması, CVE araştırması
+  | "security"    // read + bash + web: güvenlik taraması, CVE araştırması, aktif scanning
+  | "pentest"     // full offensive: aktif sızma testi, exploit doğrulama
+  | "adviser"     // read + web: stratejik güvenlik danışmanlığı — aktif eylem yok
+  | "reporter"    // read + write: güvenlik bulgu raporu üretimi
   | "debug"       // read + bash + lsp: hata ayıklama
   | "refactor"    // read + write + edit + lsp: temiz kod dönüşümü (bash yok — güvenli)
   | "devops"      // full: CI/CD, Docker, infra-as-code
@@ -25,7 +28,10 @@ export const AGENT_MAX_STEPS: Record<AgentType, number> = {
   docs:        25,
   performance: 30,
   analytics:   25,
-  security:    30,
+  security:    35,
+  pentest:     50,   // aktif tarama + exploit doğrulama — uzun olabilir
+  adviser:     15,   // strateji planı — kısa ve odaklı
+  reporter:    20,   // bulguları okur ve rapor yazar
   debug:       40,
   refactor:    35,
   devops:      40,
@@ -46,7 +52,10 @@ export const AGENT_TYPE_TOOLS: Record<AgentType, string[]> = {
   docs:        ["read", "write", "edit", "glob", "grep", "symbols", "code_map", "send_message", "file_stat"],
   performance: ["read", "write", "glob", "grep", "bash", "symbols", "code_map", "send_message", "process_monitor", "file_stat"],
   analytics:   ["read", "write", "glob", "grep", "webfetch", "symbols", "send_message", "file_stat"],
-  security:    ["read", "write", "glob", "grep", "lsp", "websearch", "symbols", "code_map", "send_message", "file_stat"],
+  security:    ["read", "write", "glob", "grep", "bash", "lsp", "webfetch", "websearch", "symbols", "code_map", "scratchpad", "track_variable_taint", "send_message", "file_stat"],
+  pentest:     ["read", "write", "glob", "grep", "bash", "webfetch", "websearch", "scratchpad", "track_variable_taint", "atomic_patch_and_test", "inspect_live_process", "send_message", "file_stat"],
+  adviser:     ["read", "glob", "grep", "webfetch", "websearch", "track_variable_taint", "send_message", "file_stat"],
+  reporter:    ["read", "write", "glob", "grep", "send_message", "file_stat"],
   debug:       ["read", "write", "glob", "grep", "bash", "lsp", "symbols", "verify", "scratchpad", "send_message", "env_inspect", "checkpoint", "process_monitor", "file_stat"],
   refactor:    ["read", "write", "edit", "apply_patch", "glob", "grep", "lsp", "symbols", "code_map", "verify", "send_message", "checkpoint", "diff_view", "file_stat", "patch_test"],
   devops:      ["read", "write", "edit", "apply_patch", "bash", "glob", "grep", "webfetch", "send_message", "env_inspect", "checkpoint", "diff_view", "file_stat", "process_monitor", "patch_test"],

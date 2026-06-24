@@ -320,9 +320,10 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
       return
     }
 
-    // ── Ctrl+Backspace / Ctrl+W: kelime sil ──────────────────────────────
-    // \x17 = Ctrl+W (Unix), \x1b\x7f = Ctrl+Backspace (bazı terminaller)
-    if ((key.backspace && key.ctrl) || input === "\x17" || input === "\x1b\x7f") {
+    // ── Ctrl+Backspace / Ctrl+W / Alt+Backspace: kelime sil ──────────────
+    // \x17 = Ctrl+W (Unix), \x08 = Ctrl+Backspace (gnome-terminal/alacritty/VTE),
+    // \x1b\x7f = Alt+Backspace veya Ctrl+Backspace (xterm/kitty)
+    if ((key.backspace && key.ctrl) || input === "\x17" || input === "\x1b\x7f" || input === "\x08") {
       const row = cursor.row
       const col = cursor.col
       setLines(prev => {
@@ -416,6 +417,9 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
           )
         }
         // İmleç satırı
+        // Not: nested <Text> inside <Text wrap="wrap"> creates a separate Yoga node,
+        // breaking inline flow and causing stacked rendering after history navigation.
+        // Instead, use three sibling <Text> components in a flexDirection="row" Box.
         const safeCol = Math.min(cursor.col, line.length)
         const before  = line.slice(0, safeCol)
         const at      = line[safeCol] ?? " "
@@ -425,11 +429,9 @@ export function MultilineInput({ value, onChange, onSubmit, disabled, history, o
             {showLineNum && (
               <Text color={theme.accent} dimColor>{lineNum} │ </Text>
             )}
-            <Text wrap="wrap">
-              {before}
-              <Text backgroundColor={theme.accent} color="black">{at}</Text>
-              {after}
-            </Text>
+            <Text>{before}</Text>
+            <Text backgroundColor={theme.accent} color="black">{at}</Text>
+            <Text>{after}</Text>
           </Box>
         )
       })}

@@ -202,6 +202,10 @@ const TOOL_USAGE_MAIN_EXTRAS = `
 - **memory(action="forget")**: stored information is wrong, stale, or no longer
   relevant.
 - Don't store session-ephemeral details (current error message, temp branch).
+- **Security context**: before storing any security finding, anonymize sensitive
+  identifiers: target IPs → {target_ip}, domains → {target_domain},
+  credentials → {credential}, internal paths → {target_path}.
+  Preserve CVE IDs, tool names, and vulnerability class names verbatim.
 
 ## Project context files (.aurict/) — maintain autonomously
 These files are injected into your system prompt at session start. You are

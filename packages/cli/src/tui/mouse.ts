@@ -10,7 +10,7 @@
  *   - SGR (\x1b[<n;n;nM ve \x1b[<n;n;nm)
  */
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 
 export type MouseButton = "left" | "right" | "middle" | "scroll-up" | "scroll-down"
 
@@ -117,33 +117,36 @@ let cleanupFn: (() => void) | null = null
  *                 Defaults to true only when a Picker/overlay is open.
  */
 export function useMouseEvents(handler: MouseHandler, active = true): void {
+  // Always keep ref up to date — runs after every render, no dep array.
+  const handlerRef = useRef(handler)
+  useEffect(() => { handlerRef.current = handler })
+
+  // Stable forwarder: same reference for the lifetime of this hook instance.
+  // Prevents mouse tracking from being torn down and re-enabled on every
+  // App re-render (which happens on every streaming token), which was
+  // writing 4 ANSI escape sequences to stdout per render and corrupting
+  // the terminal output during streaming.
+  const stableRef = useRef<MouseHandler | null>(null)
+  if (stableRef.current === null) {
+    stableRef.current = (e: MouseEvent) => handlerRef.current(e)
+  }
+
   useEffect(() => {
+    const stable = stableRef.current!
     if (!active) {
-      // If this handler was previously registered, unregister it and
-      // tear down tracking when no other handlers remain.
-      if (handlers.has(handler)) {
-        handlers.delete(handler)
-        if (handlers.size === 0 && cleanupFn) {
-          cleanupFn()
-          cleanupFn = null
-        }
+      if (handlers.has(stable)) {
+        handlers.delete(stable)
+        if (handlers.size === 0 && cleanupFn) { cleanupFn(); cleanupFn = null }
       }
       return
     }
-
-    if (handlers.size === 0) {
-      cleanupFn = enableMouseTracking()
-    }
-    handlers.add(handler)
-
+    if (handlers.size === 0) cleanupFn = enableMouseTracking()
+    handlers.add(stable)
     return () => {
-      handlers.delete(handler)
-      if (handlers.size === 0 && cleanupFn) {
-        cleanupFn()
-        cleanupFn = null
-      }
+      handlers.delete(stable)
+      if (handlers.size === 0 && cleanupFn) { cleanupFn(); cleanupFn = null }
     }
-  }, [handler, active])
+  }, [active])
 }
 
 export function useMouseClick(

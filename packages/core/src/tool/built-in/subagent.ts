@@ -73,7 +73,10 @@ Agent types and their tools:
 - test:        read, glob, grep, bash  (run tests, check results)
 - docs:        read, write, edit, glob, grep  (documentation)
 - performance: read, glob, grep, bash  (profiling, bundle analysis)
-- security:    read, glob, grep, lsp  (security scanning)
+- security:    read, glob, grep, bash, webfetch, websearch, lsp  (security audit + active scanning)
+- pentest:     read, glob, grep, bash, webfetch, websearch, write  (active penetration testing, exploit validation)
+- adviser:     read, glob, grep, webfetch, websearch  (security strategy — no execution, planning only)
+- reporter:    read, write  (security report generation from findings)
 - debug:       read, glob, grep, bash, lsp  (debugging)
 
 The subagent receives recent parent conversation context automatically.
