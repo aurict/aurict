@@ -43,7 +43,7 @@ export interface DisplayMessage {
 
 // ── Yardımcı ──────────────────────────────────────────────────────────────────
 
-const MAX_TOOL_LINES   = 3   // OpenClaude: MAX_LINES_TO_SHOW = 3
+const MAX_TOOL_LINES   = 7   // 6 head + 1 tail = 7 shown, rest hidden
 const MAX_STREAM_LINES = 8
 
 function useTerminalCols(): number {
@@ -83,7 +83,7 @@ function lineCount(text: string): number {
 }
 
 function previewToolLines(lines: string[]): string[] {
-  return lines.slice(0, MAX_TOOL_LINES)
+  return lines.slice(0, MAX_TOOL_LINES - 1)  // head: first 6
 }
 
 function maybeFormatJson(text: string): string {
@@ -277,7 +277,8 @@ function InlineCompletedTool({
   const hasOutput  = rawOutput.trim().length > 0
   const hasMore    = lines.length > MAX_TOOL_LINES
   const visible    = hasOutput ? previewToolLines(lines) : []
-  const hiddenLines = Math.max(0, lines.length - visible.length)
+  const tailLine   = hasMore ? lines[lines.length - 1] : undefined
+  const hiddenLines = Math.max(0, lines.length - visible.length - (tailLine ? 1 : 0))
   const outputStats = `${totalLines} ${totalLines === 1 ? "line" : "lines"} · ${formatBytes(rawOutput)}`
   const diffWidth  = Math.max(40, termCols - 12)
   const canExpand  = hasMore && !!onExpandTool
@@ -339,6 +340,9 @@ function InlineCompletedTool({
                     <Text color={theme.textDim} dimColor>
                       ⋯ {hiddenLines} hidden lines{canExpand ? " · Ctrl+O expand latest" : ""}
                     </Text>
+                  )}
+                  {tailLine !== undefined && (
+                    <Text color={isError ? theme.error : theme.textSecondary}>{tailLine || " "}</Text>
                   )}
                 </>)
             }
@@ -491,7 +495,8 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
     const hasOutput    = rawOutput.trim().length > 0
     const hasMore      = lines.length > MAX_TOOL_LINES
     const visible      = hasOutput ? previewToolLines(lines) : []
-    const hiddenLines  = Math.max(0, lines.length - visible.length)
+    const tailLine     = hasMore ? lines[lines.length - 1] : undefined
+    const hiddenLines  = Math.max(0, lines.length - visible.length - (tailLine ? 1 : 0))
     const outputStats  = `${totalLines} ${totalLines === 1 ? "line" : "lines"} · ${formatBytes(rawOutput)}`
     const diffWidth   = Math.max(40, termCols - 12)
 
@@ -580,6 +585,9 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
                       <Text color={theme.textDim} dimColor>
                         ⋯ {hiddenLines} hidden lines{onExpand ? " · Ctrl+O expand latest" : ""}
                       </Text>
+                    )}
+                    {tailLine !== undefined && (
+                      <Text color={isError ? theme.error : theme.textSecondary}>{tailLine || " "}</Text>
                     )}
                   </>)
               }

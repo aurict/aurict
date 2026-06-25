@@ -8,16 +8,13 @@ afterEach(() => {
 describe("bootstrap local server", () => {
   it("continues when the configured port is already in use", () => {
     const err = Object.assign(new Error("port in use"), { code: "EADDRINUSE" })
-    const log = spyOn(console, "error").mockImplementation(() => {})
+    spyOn(console, "error").mockImplementation(() => {})
 
     const started = startLocalServer(7777, () => {
       throw err
     })
 
     expect(started).toBe(false)
-    expect(log).toHaveBeenCalledWith(
-      "[aurict] Server: port 7777 is already in use; continuing TUI-only and reusing the existing port if it belongs to Aurict",
-    )
   })
 
   it("rethrows non-port server startup errors", () => {

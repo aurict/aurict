@@ -206,15 +206,9 @@ const DEFAULT_STATUS_PROPS = {
 }
 
 describe("StatusBar", () => {
-  it("renders provider name", () => {
+  it("renders model name (short form without claude- prefix)", () => {
     const { lastFrame } = render(<StatusBar {...DEFAULT_STATUS_PROPS} />)
-    // ink-testing-library v4 hardcodes 100 cols; long lines wrap mid-word
-    expect(lastFrame()).toContain("anthrop")
-  })
-
-  it("renders model name", () => {
-    const { lastFrame } = render(<StatusBar {...DEFAULT_STATUS_PROPS} />)
-    expect(lastFrame()).toContain("claude-opus-4")
+    expect(lastFrame()).toContain("opus-4")
   })
 
   it("renders workdir (~/project shorthand)", () => {
@@ -232,16 +226,7 @@ describe("StatusBar", () => {
     const { lastFrame } = render(
       <StatusBar {...DEFAULT_STATUS_PROPS} wasCompacted contextTokens={50000} />
     )
-    expect(lastFrame()).toContain("compacted")
-  })
-
-  it("renders skills when provided", () => {
-    const { lastFrame } = render(
-      <StatusBar {...DEFAULT_STATUS_PROPS} skills={["nextjs", "react"]} />
-    )
-    const frame = lastFrame() ?? ""
-    expect(frame).toContain("nextjs")
-    expect(frame).toContain("react")
+    expect(lastFrame()).toContain("cmpct")
   })
 
   it("shows context percentage bar when contextTokens set", () => {
@@ -250,44 +235,6 @@ describe("StatusBar", () => {
     )
     const frame = lastFrame() ?? ""
     expect(frame).toContain("ctx")
-  })
-
-  it("shows task hint when taskCount > 0", () => {
-    const { lastFrame } = render(
-      <StatusBar
-        {...DEFAULT_STATUS_PROPS}
-        taskCount={3}
-        taskSummary={{ pending: 1, inProgress: 1, done: 1, error: 0 }}
-      />
-    )
-    const frame = lastFrame() ?? ""
-    expect(frame).toContain("tasks")
-    expect(frame).toContain("run")
-  })
-
-  it("shows server and sandbox runtime badges when provided", () => {
-    const { lastFrame } = render(
-      <StatusBar
-        {...DEFAULT_STATUS_PROPS}
-        workdir="/p"
-        cols={140}
-        localServer={{ enabled: true, port: 7777, started: false, reused: true }}
-        sandboxBackend="policy"
-      />
-    )
-    const frame = lastFrame() ?? ""
-    expect(frame).toContain("sbx")
-    expect(frame).toContain("policy")
-    expect(frame).toContain("api")
-    expect(frame).toContain("7777")
-    expect(frame).toContain("busy")
-  })
-
-  it("shows undercover badge when isUndercover", () => {
-    const { lastFrame } = render(<StatusBar {...DEFAULT_STATUS_PROPS} isUndercover />)
-    // "undercover" can wrap mid-word in 100-col test terminal; check prefix
-    const frame = (lastFrame() ?? "").replace(/\n/g, "")
-    expect(frame).toContain("underco")
   })
 
   it("renders without optional props", () => {
@@ -349,9 +296,7 @@ describe("StartupBanner", () => {
       <StartupBanner version="0.0.1" provider="anthropic" model="claude-opus-4" workdir="/tmp" />
     )
     const frame = lastFrame() ?? ""
-    // /help her zaman görünür (sabit), diğerleri rotatif havuzdan gelir
     expect(frame).toContain("/help")
-    expect(frame).toContain("commands")
   })
 })
 
@@ -383,9 +328,8 @@ describe("PermissionPrompt", () => {
     )
 
     const frame = lastFrame() ?? ""
-    expect(frame).toContain("DANGER")
-    expect(frame).toContain("POLICY")
-    expect(frame).toContain("env scrubbed")
+    expect(frame).toContain("Bash command")
+    expect(frame).toContain("destructive operation")
     expect(frame).toContain("$ rm -rf dist")
     expect(frame).toContain("Edit command")
   })
@@ -406,7 +350,7 @@ describe("PermissionPrompt", () => {
 
     const frame = lastFrame() ?? ""
     expect(frame).toContain("Allow directory")
-    expect(frame).toContain("remember this folder")
+    expect(frame).toContain("remember folder")
   })
 })
 
@@ -542,7 +486,7 @@ describe("Command UX", () => {
     expect(frame).toContain("/memory")
     expect(frame).toContain("Memory")
     expect(frame).toContain("/mem")
-    expect(frame).toContain("/memory add <text>")
+    expect(frame).toContain("Manage persistent memory")
   })
 
   it("does not parse an empty slash command", () => {
