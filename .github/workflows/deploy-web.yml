@@ -29,6 +29,6 @@ jobs:
             cd ${{ secrets.WEB_DEPLOY_PATH }}
             git pull origin main
             cd apps/web
-            npm run build
+            bun run build
             pm2 restart aurict-web
             pm2 save

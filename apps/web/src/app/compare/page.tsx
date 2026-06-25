@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { Nav } from "@/components/Nav"
 import { Footer } from "@/components/sections/Footer"
 import { Breadcrumb } from "@/components/ui/Breadcrumb"
+import { CompareCard } from "@/components/ui/CompareCard"
 
 export const metadata: Metadata = {
   title: "Aurict vs. Alternatives — Terminal AI Coding Assistant Comparisons",
@@ -86,72 +86,7 @@ export default function ComparePage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {COMPARISONS.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/compare/${c.slug}`}
-              style={{ textDecoration: "none" }}
-            >
-              <div
-                style={{
-                  padding: "28px 32px",
-                  borderRadius: 14,
-                  border: "1px solid var(--border)",
-                  background: "var(--bg-card)",
-                  transition: "border-color 0.2s, transform 0.15s",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLDivElement
-                  el.style.borderColor = "var(--accent)"
-                  el.style.transform = "translateY(-2px)"
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLDivElement
-                  el.style.borderColor = "var(--border)"
-                  el.style.transform = "translateY(0)"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                      <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                        Aurict vs {c.competitor}
-                      </h2>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontFamily: "var(--font-geist-mono)",
-                          color: "var(--accent)",
-                          background: "var(--accent-glow)",
-                          border: "1px solid rgba(129,140,248,0.2)",
-                          borderRadius: 6,
-                          padding: "3px 9px",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {c.differentiator}
-                      </span>
-                    </div>
-                    <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, fontStyle: "italic", marginBottom: 8 }}>
-                      {c.tagline}
-                    </p>
-                    <p style={{ fontSize: 14, color: "var(--text-dim)", lineHeight: 1.6, margin: 0 }}>
-                      {c.description}
-                    </p>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 20,
-                      color: "var(--accent)",
-                      alignSelf: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    →
-                  </span>
-                </div>
-              </div>
-            </Link>
+            <CompareCard key={c.slug} {...c} />
           ))}
         </div>
       </main>
