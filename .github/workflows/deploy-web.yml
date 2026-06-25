@@ -28,7 +28,6 @@ jobs:
             cd ${{ secrets.WEB_DEPLOY_PATH }}
             git pull origin main
             cd apps/web
-            bun install --frozen-lockfile
-            bun run build
+            npm run build
             pm2 restart aurict-web
             pm2 save
