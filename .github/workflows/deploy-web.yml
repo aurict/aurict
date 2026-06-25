@@ -26,7 +26,7 @@ jobs:
           port: ${{ secrets.WEB_SSH_PORT || 22 }}
           script: |
             set -e
-            export PATH="/home/admin/.bun/bin:$PATH"
+            export PATH="/home/admin/.bun/bin:/home/admin/.nvm/versions/node/v24.16.0/bin:$PATH"
             cd ${{ secrets.WEB_DEPLOY_PATH }}
             git pull origin main
             cd apps/web
