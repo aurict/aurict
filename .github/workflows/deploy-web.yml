@@ -26,6 +26,7 @@ jobs:
           port: ${{ secrets.WEB_SSH_PORT || 22 }}
           script: |
             set -e
+            export PATH="/home/admin/.bun/bin:$PATH"
             cd ${{ secrets.WEB_DEPLOY_PATH }}
             git pull origin main
             cd apps/web
