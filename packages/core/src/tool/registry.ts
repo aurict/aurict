@@ -45,6 +45,9 @@ import { patchTestTool }   from "./built-in/patch-test.js"
 import { trackVariableTaintTool } from "./built-in/track-variable-taint.js"
 import { atomicPatchAndTestTool } from "./built-in/atomic-patch-test.js"
 import { inspectLiveProcessTool } from "./built-in/inspect-live-process.js"
+import { blastRadiusTool }        from "./built-in/blast-radius.js"
+import { gitContextTool }         from "./built-in/git-context.js"
+import { uiInspectTool }          from "./built-in/ui-inspect.js"
 
 const tools = new Map<string, ToolDef>()
 
@@ -64,6 +67,9 @@ for (const t of [
   verifyTool, scratchpadTool, critiqueTool,
   envInspectTool, checkpointTool, diffViewTool, fileStatTool, processMonitorTool, patchTestTool,
   trackVariableTaintTool, atomicPatchAndTestTool, inspectLiveProcessTool,
+  blastRadiusTool,
+  gitContextTool,
+  uiInspectTool,
 ]) {
   tools.set(t.id, t)
 

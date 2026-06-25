@@ -15,6 +15,7 @@ import { Box, Text, useInput } from "ink"
 import { agentPool } from "@aurict/core"
 import type { AgentInfo } from "@aurict/core"
 import { useTheme } from "../utils/theme.js"
+import { useTerminalSize } from "./TerminalSizeContext.js"
 
 const EVICT_AFTER_MS = 6_000
 
@@ -115,7 +116,7 @@ export function AgentStatus({ viewingSessionId, onViewAgent, selectedAgentIdx, o
 
   if (!visible.length) return null
 
-  const cols = process.stdout.columns ?? 120
+  const cols = useTerminalSize().columns
 
   return (
     <Box flexDirection="column" marginTop={1} paddingLeft={1}>

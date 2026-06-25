@@ -46,15 +46,7 @@ export interface DisplayMessage {
 const MAX_TOOL_LINES   = 7   // 6 head + 1 tail = 7 shown, rest hidden
 const MAX_STREAM_LINES = 8
 
-function useTerminalCols(): number {
-  const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
-  useEffect(() => {
-    const handler = () => setCols(process.stdout.columns ?? 80)
-    process.stdout.on("resize", handler)
-    return () => { process.stdout.off("resize", handler) }
-  }, [])
-  return cols
-}
+import { useTerminalSize } from "./TerminalSizeContext.js"
 
 function stripAnsi(s: string): string {
   return s
@@ -366,7 +358,7 @@ interface Props {
 
 export const Message = memo(function Message({ message, onExpand, onExpandThinking, onExpandTool }: Props) {
   const theme    = useTheme()
-  const termCols = useTerminalCols()
+  const termCols = useTerminalSize().columns
   const bodyWidth = Math.max(20, termCols - 9)
   const userWidth = Math.max(20, termCols - 18)
 

@@ -42,15 +42,7 @@ function useElapsedTime(paused?: boolean): number {
   return elapsed
 }
 
-function useTerminalCols(): number {
-  const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
-  useEffect(() => {
-    const handler = () => setCols(process.stdout.columns ?? 80)
-    process.stdout.on("resize", handler)
-    return () => { process.stdout.off("resize", handler) }
-  }, [])
-  return cols
-}
+import { useTerminalSize } from "./TerminalSizeContext.js"
 
 interface Props {
   text:      string | null
@@ -67,7 +59,7 @@ function lineCount(text: string): number {
 export const StreamingView = memo(function StreamingView({ text, reasoning, skeleton, error, paused }: Props) {
   const theme = useTheme()
   const elapsed = useElapsedTime(paused)
-  const termCols = useTerminalCols()
+  const termCols = useTerminalSize().columns
   const bodyWidth = Math.max(20, termCols - 9)
   const railTextWidth = Math.max(10, bodyWidth - 2)
 

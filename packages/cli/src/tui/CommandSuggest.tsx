@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { useTerminalSize } from "./TerminalSizeContext.js"
 import { Box, Text, useInput } from "ink"
 import type { CommandDef } from "../commands/types.js"
 import { useTheme } from "../utils/theme.js"
@@ -46,7 +47,7 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
   }).sort((a, b) => commandSortKey(a).localeCompare(commandSortKey(b)))
   const filtered  = allMatches.slice(0, MAX_SHOW)
   const hiddenCount = allMatches.length - filtered.length
-  const termCols = process.stdout.columns ?? 80
+  const termCols = useTerminalSize().columns
   const descWidth = Math.max(16, Math.min(72, termCols - NAME_WIDTH - CATEGORY_WIDTH - ALIAS_WIDTH - 14))
 
   useInput((_char, key) => {

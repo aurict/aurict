@@ -15,6 +15,7 @@ import { Box, Text } from "ink"
 import { MultilineInput } from "./MultilineInput.js"
 import { useTheme } from "../utils/theme.js"
 import { HStack, VStack, Surface, Typo } from "./design-system/index.js"
+import { useTerminalSize } from "./TerminalSizeContext.js"
 
 interface Props {
   value:              string
@@ -40,7 +41,8 @@ export function ChatInput({ value, onChange, onSubmit, disabled, history = [], q
   const showGhostHint = !disabled && !isPasting && value === "" && !queued
 
   // Terminal genişliğine göre hint seç
-  const termCols  = process.stdout.columns ?? 80
+  const termCols  = useTerminalSize().columns
+  const isNarrow  = termCols < 80
   const ghostHint = termCols >= 100 ? GHOST_HINT_WIDE : GHOST_HINT_SHORT
 
   return (
@@ -81,12 +83,12 @@ export function ChatInput({ value, onChange, onSubmit, disabled, history = [], q
               onPasteEnd={() => setIsPasting(false)}
             />
           </Box>
-          {disabled && <Typo variant="body" tone="muted" dimColor>working</Typo>}
+          {disabled && !isNarrow && <Typo variant="body" tone="muted" dimColor>working</Typo>}
         </HStack>
       </Surface>
 
-      {/* Ghost hint — input boşken gösterilir */}
-      {showGhostHint && (
+      {/* Ghost hint — input boşken gösterilir; dar terminalde gizle */}
+      {showGhostHint && !isNarrow && (
         <Box paddingLeft={2}>
           <Text color={theme.borderBright} dimColor>
             {ghostHint}

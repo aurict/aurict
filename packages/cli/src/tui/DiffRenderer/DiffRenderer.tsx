@@ -19,6 +19,7 @@ import { Box, Text } from "ink"
 import { useTheme } from "../../utils/theme.js"
 import { HStack, VStack, Badge, KeyHint, Typo, Spacer } from "../design-system/index.js"
 import { useBinding, useBindingHints } from "../../keybindings/index.js"
+import { useTerminalSize } from "../TerminalSizeContext.js"
 import { parseRawDiff, diffTexts, suggestDiffMode, wordDiff,
          type ParsedDiff, type DiffLine, type Hunk, type DiffMode } from "./logic.js"
 
@@ -64,7 +65,7 @@ export function DiffRenderer({
   const theme = useTheme()
   const [mode, setMode]           = useState<DiffMode>(initialMode ?? "unified")
   const [activeHunk, setActiveHunk] = useState(0)
-  const terminalWidth = process.stdout.columns ?? 80
+  const terminalWidth = useTerminalSize().columns
   const renderWidth = Math.max(40, Math.min(width ?? terminalWidth - 8, terminalWidth - 4))
 
   // Parse: raw diff varsa onu kullan, yoksa old/new'den hesapla

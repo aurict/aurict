@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { Box, Text, useInput } from "ink"
 import { useTheme } from "../utils/theme.js"
+import { useTerminalSize } from "./TerminalSizeContext.js"
 
 interface Props {
   content:  string
@@ -24,8 +25,9 @@ function formatBytes(text: string): string {
 
 export function ExpandableOutput({ content, toolName, onClose }: Props) {
   const theme    = useTheme()
-  const pageSize = Math.max(5, (process.stdout.rows ?? 36) - 8)
-  const cols     = Math.max(40, process.stdout.columns ?? 80)
+  const { columns: termCols, rows: termRows } = useTerminalSize()
+  const pageSize = Math.max(5, termRows - 8)
+  const cols     = Math.max(40, termCols)
   const lines    = stripAnsi(content)
     .split("\n")
     .map((line) => line.replace(/\t/g, "    "))

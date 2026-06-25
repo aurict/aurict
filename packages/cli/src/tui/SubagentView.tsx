@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink"
 import { SessionManager, agentPool } from "@aurict/core"
 import type { Part } from "@aurict/core"
 import { useTheme } from "../utils/theme.js"
+import { useTerminalSize } from "./TerminalSizeContext.js"
 
 // Max parts loaded into memory for display — bounds RAM regardless of agent activity
 const MAX_PARTS = 300
@@ -68,7 +69,7 @@ export function SubagentView({ sessionId, parentSessionId, onClose, onPrev, onNe
   const [totalCount, setTotalCount] = useState(() => SessionManager.getPartsCount(sessionId))
   // Canlı streaming metni — DB'ye henüz yazılmamış, tool call'lar arası LLM çıktısı
   const [liveText, setLiveText] = useState(() => agentPool.getLiveText(sessionId))
-  const PAGE = Math.max(10, (process.stdout.rows ?? 24) - 8)
+  const PAGE = Math.max(10, useTerminalSize().rows - 8)
   const [offset, setOffset] = useState<number>(-1)   // -1 = "tail" modu: en sona kilitli
 
   // agentPool.onChange → push-based: her text delta'sında anında güncelle

@@ -1,16 +1,7 @@
-import React, { useState, useEffect } from "react"
+import React from "react"
 import { Box, Text } from "ink"
 import { tokenizeLine, detectLang, C, type Lang } from "../utils/highlight.js"
-
-function useTerminalCols(): number {
-  const [cols, setCols] = useState(() => process.stdout.columns ?? 80)
-  useEffect(() => {
-    const handler = () => setCols(process.stdout.columns ?? 80)
-    process.stdout.on("resize", handler)
-    return () => { process.stdout.off("resize", handler) }
-  }, [])
-  return cols
-}
+import { useTerminalSize } from "./TerminalSizeContext.js"
 
 interface Props {
   content: string
@@ -289,7 +280,7 @@ function TableView({
 
 export function Markdown({ content, width }: Props) {
   const blocks    = parseBlocks(content)
-  const terminalCols = useTerminalCols()
+  const terminalCols = useTerminalSize().columns
   const termWidth = Math.max(20, width ?? terminalCols)
 
   return (

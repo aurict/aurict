@@ -39,6 +39,7 @@ import type { PermissionRequest, PermissionResponse, QuestionRequest, QuestionAn
 import { parseSlashCommand, getCommand, allCommands } from "../commands/registry.js"
 import type { CommandResult, PickerItem } from "../commands/types.js"
 import { ThemeContext, THEMES, DEFAULT_THEME } from "../utils/theme.js"
+import { TerminalSizeContext } from "./TerminalSizeContext.js"
 import { KeybindingsProvider } from "../keybindings/index.js"
 import type { Context as KeybindingContext } from "../keybindings/index.js"
 
@@ -1597,6 +1598,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   // kalmalı; aksi halde tuşlar (özellikle Enter ve yazılan metin) hem modal'a
   return (
     <AlternateScreen>
+    <TerminalSizeContext.Provider value={{ columns: termCols, rows: termRows }}>
     <ThemeContext.Provider value={activeTheme}>
     <KeybindingsProvider initialContext={keybindingContext}>
     <Box flexDirection="row" width="100%" height={termRows}>
@@ -1928,6 +1930,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     </Box>
     </KeybindingsProvider>
     </ThemeContext.Provider>
+    </TerminalSizeContext.Provider>
     </AlternateScreen>
   )
 }

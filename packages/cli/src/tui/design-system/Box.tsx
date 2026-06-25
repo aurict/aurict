@@ -16,6 +16,7 @@
 import React from "react"
 import { Box, Text } from "ink"
 import { useTheme } from "../../utils/theme.js"
+import { useTerminalSize } from "../TerminalSizeContext.js"
 import type { DesignBoxProps } from "./types.js"
 
 // ── Spacing scale ──────────────────────────────────────────────────────────────
@@ -236,7 +237,7 @@ export function Divider({
   }
 
   // Yatay: terminal genişliğini alıp çizgi çiz
-  const width = process.stdout.columns ?? 80
+  const width = useTerminalSize().columns
   const fillWidth = Math.max(0, width - indent)
   const line = "─".repeat(fillWidth)
 
