@@ -1,8 +1,24 @@
 import { z } from "zod"
 import { readFile, stat, writeFile } from "fs/promises"
-import { resolve } from "path"
+import { resolve, relative } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { snapshotManager } from "../../snapshot/snapshot.js"
+import { computeDiff } from "../../util/diff.js"
+import type { DiffHunk } from "../../util/diff.js"
+
+function hunksToUnifiedDiff(hunks: DiffHunk[], relPath: string): string {
+  const out: string[] = [`--- a/${relPath}`, `+++ b/${relPath}`]
+  for (const hunk of hunks) {
+    const oldCount = hunk.lines.filter(l => l.type !== "add").length
+    const newCount = hunk.lines.filter(l => l.type !== "remove").length
+    out.push(`@@ -${hunk.oldStart},${oldCount} +${hunk.newStart},${newCount} @@`)
+    for (const line of hunk.lines) {
+      const s = line.type === "add" ? "+" : line.type === "remove" ? "-" : " "
+      out.push(`${s}${line.content}`)
+    }
+  }
+  return out.join("\n")
+}
 
 const MAX_EDIT_FILE_BYTES = 5_000_000
 const EDIT_IO_TIMEOUT_MS = 10_000
@@ -72,8 +88,10 @@ export const editTool: ToolDef = {
     const updated = content.replace(oldString, newString)
     try {
       await withTimeout(writeFile(filePath, updated, "utf8"), EDIT_IO_TIMEOUT_MS)
-      // Diff bilgisini output'a göm — UI bunu parse edip DiffView ile gösterir
-      return { output: `Replaced 1 occurrence in ${filePath}\n__DIFF__\n${oldString}\n__NEW__\n${newString}` }
+      const hunks   = computeDiff(content, updated)
+      const relPath = relative(ctx.workdir, filePath)
+      const unified = hunksToUnifiedDiff(hunks, relPath)
+      return { output: `Updated ${relPath}\n__UNIFIED_DIFF__\n${unified}` }
     } catch (err) {
       return { output: "", error: `Cannot write file: ${err}` }
     }

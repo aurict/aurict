@@ -6,6 +6,42 @@ import { semanticCache } from "../semantic-cache.js"
 
 const MAX_CHARS = 100_000
 
+// Workdir dışında asla okunmaması gereken hassas dosya/dizin kalıpları
+const SENSITIVE_OUTSIDE_WORKDIR: RegExp[] = [
+  /\/\.ssh\//,
+  /\/\.ssh$/,
+  /\/\.gnupg\//,
+  /\/\.gnupg$/,
+  /\/\.aws\//,
+  /\/\.aws$/,
+  /\/\.config\/gcloud/,
+  /\/\.azure\//,
+  /\/\.azure$/,
+  /\/\.kube\//,
+  /\/\.kube$/,
+  /\/\.netrc$/,
+  /\/\.bash_history$/,
+  /\/\.zsh_history$/,
+  /\/\.fish\/fish_history/,
+  /\/\.psql_history$/,
+  /\/\.mysql_history$/,
+  /\/etc\/shadow$/,
+  /\/etc\/gshadow$/,
+  /\/proc\/\d+\/mem/,
+]
+
+function checkSensitivePath(filePath: string, workdir: string): string | null {
+  const norm = workdir.endsWith("/") ? workdir : workdir + "/"
+  // Proje içindeyse her zaman serbest
+  if (filePath.startsWith(norm) || filePath === workdir) return null
+  for (const re of SENSITIVE_OUTSIDE_WORKDIR) {
+    if (re.test(filePath)) {
+      return `Security: '${filePath}' okuma engellendi — proje dizini dışında hassas dosya`
+    }
+  }
+  return null
+}
+
 export const readTool: ToolDef = {
   id:   "read",
   spec: { category: "read", riskLevel: "low" },
@@ -17,6 +53,8 @@ export const readTool: ToolDef = {
   }),
   async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
     const filePath = resolve(ctx.workdir, String(args["path"] ?? ""))
+    const sensitiveErr = checkSensitivePath(filePath, ctx.workdir)
+    if (sensitiveErr) return { output: "", error: sensitiveErr }
     let content: string | null = await semanticCache.get<string>(filePath)
     
     if (content === null) {

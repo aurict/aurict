@@ -1,10 +1,7 @@
 import { z } from "zod"
-import { join } from "path"
-import { writeFile } from "node:fs/promises"
 import { agentPool, PoolFullError } from "../../agent/pool.js"
 import { AGENT_TYPE_TOOLS, AGENT_MAX_STEPS } from "../../agent/protocol.js"
 import { getAgentPrompt } from "../../agent/agent-prompts.js"
-import { ensureWorkspace } from "../../agent/workspace.js"
 import { SessionManager } from "../../session/manager.js"
 import type { AgentType } from "../../agent/protocol.js"
 import type { Part } from "../../session/types.js"
@@ -12,16 +9,6 @@ import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
 const AGENT_TYPES = Object.keys(AGENT_TYPE_TOOLS) as [AgentType, ...AgentType[]]
 
-/** "Global Gaming VC Researcher" → "global-gaming-vc-researcher" */
-function roleSlug(role: string): string {
-  return role.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 60)
-}
-
-/**
- * Son N parent part'ından subagent için okunabilir bağlam üretir.
- * Sadece user/assistant text part'ları dahil edilir; tool noise atlanır.
- * Her part 400 karakter ile kısıtlanır — bağlam şişmesi önlenir.
- */
 function buildParentContext(parts: Part[]): string {
   const relevant = parts.filter(
     (p) => (p.role === "user" || p.role === "assistant") && p.type === "text" && p.content.trim(),
@@ -36,17 +23,9 @@ function buildParentContext(parts: Part[]): string {
     .join("\n\n")
 }
 
-async function persistToWorkspace(
-  workdir:   string,
-  sessionId: string,
-  role:      string,
-  result:    string,
-): Promise<string> {
-  const wsDir   = ensureWorkspace(workdir, sessionId)
-  const slug    = roleSlug(role)
-  const outPath = join(wsDir, `${slug}.md`)
-  await writeFile(outPath, `# ${role}\n\n${result}\n`, "utf8")
-  return outPath
+function formatResult(role: string, type: string, result: string, durationMs: number): string {
+  const secs = (durationMs / 1000).toFixed(1)
+  return `<subagent-result role="${role}" type="${type}" duration="${secs}s">\n${result}\n</subagent-result>`
 }
 
 export const subagentTool: ToolDef = {
@@ -99,11 +78,11 @@ Focus your prompt on the specific task — no need to repeat what was already di
     const model     = ctx.model ?? undefined
     const sessionId = ctx.sessionId ?? "main"
 
-    // Parent konuşmasının son 12 part'ından bağlam üret
     const recentParts   = SessionManager.getPartsTail(sessionId, 12)
     const parentContext = buildParentContext(recentParts)
 
     const id = `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const startMs = Date.now()
 
     try {
       const result = await agentPool.spawn({
@@ -120,9 +99,7 @@ Focus your prompt on the specific task — no need to repeat what was already di
         ...(parentContext ? { parentContext } : {}),
       })
 
-      persistToWorkspace(ctx.workdir, sessionId, role, result).catch(() => {})
-
-      return { output: `Subagent [${role}] completed:\n\n${result}` }
+      return { output: formatResult(role, agentType, result, Date.now() - startMs) }
     } catch (err) {
       if (err instanceof PoolFullError) {
         const { runAgent } = await import("../../agent/loop.js")
@@ -133,8 +110,7 @@ Focus your prompt on the specific task — no need to repeat what was already di
           system:   getAgentPrompt(agentType, AGENT_MAX_STEPS[agentType]),
           messages: [{ role: "user", content: prompt }],
         })
-        try { await persistToWorkspace(ctx.workdir, sessionId, role, r.text) } catch { /* ignore */ }
-        return { output: `Subagent [${role}] (direct):\n\n${r.text}` }
+        return { output: formatResult(role, agentType, r.text, Date.now() - startMs) }
       }
       const msg = err instanceof Error ? err.message : String(err)
       return { output: "", error: `Subagent [${role}] failed: ${msg}` }

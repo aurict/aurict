@@ -19,8 +19,17 @@ function estimateMessageRows(message: DisplayMessage, width: number): number {
   const contentWidth = Math.max(20, width - 16)
   if (message.role === "user")
     return estimateWrappedLines(message.content, contentWidth) + 1
-  if (message.role === "assistant")
+  if (message.role === "assistant") {
+    if (message.blocks && message.blocks.length > 0) {
+      let rows = 0
+      for (const b of message.blocks) {
+        if (b.type === "text") rows += estimateWrappedLines(b.content || "…", contentWidth) + 1
+        else rows += Math.min(3, estimateWrappedLines(b.resultContent || "", contentWidth)) + 3
+      }
+      return Math.max(3, rows)
+    }
     return estimateWrappedLines(message.content || message.reasoningContent || "…", contentWidth) + 3
+  }
   if (message.role === "tool_call") {
     const output = message.resultContent || message.content || ""
     // 1 header + up to 3 visible lines + 1 "N hidden" indicator
@@ -33,7 +42,13 @@ function estimateMessageRows(message: DisplayMessage, width: number): number {
 
 function contentKey(message: DisplayMessage): string {
   const base = message.id ?? message.content.slice(0, 16)
-  const len  = (message.content?.length ?? 0) + (message.resultContent?.length ?? 0) + (message.reasoningContent?.length ?? 0)
+  let len = (message.content?.length ?? 0) + (message.resultContent?.length ?? 0) + (message.reasoningContent?.length ?? 0)
+  if (message.blocks) {
+    for (const b of message.blocks) {
+      if (b.type === "text") len += b.content.length + (b.reasoningContent?.length ?? 0)
+      else len += b.args.length + (b.resultContent?.length ?? 0)
+    }
+  }
   return `${base}:${len}`
 }
 
@@ -243,6 +258,7 @@ export function ConversationViewport({
                         ? () => onExpandTool(m.resultContent!, m.tool ?? "tool")
                         : undefined
                     }
+                    onExpandTool={onExpandTool}
                     onExpandThinking={
                       m.role === "assistant" && m.reasoningContent
                         ? () => onExpandThinking(m.reasoningContent!)

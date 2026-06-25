@@ -1,7 +1,6 @@
 import { sseManager }     from "../server/sse.js"
 import { hooks }          from "../hook/emitter.js"
 import { SessionManager } from "../session/manager.js"
-import { ensureWorkspace } from "./workspace.js"
 import { loadConfig }     from "../config/config.js"
 import type { Session }   from "../session/types.js"
 import type { WorkerRequest, WorkerMessage, WorkerControl, AgentType } from "./protocol.js"
@@ -16,7 +15,7 @@ export class PoolFullError extends Error {
 
 const DEFAULT_WORKER_TIMEOUT  = 300_000   // 5 dakika — heartbeat'le reset edilir
 const HEARTBEAT_GRACE         = 45_000    // heartbeat gelmezse bu kadar sonra timeout
-const DEFAULT_MAX_WORKERS     = 4
+const DEFAULT_MAX_WORKERS     = 8
 
 const ENV_VAR_KEYS = [
   "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY",
@@ -252,8 +251,6 @@ class AgentPool {
         reject(new Error(String(err.message)))
       }
 
-      const workspacePath = ensureWorkspace(opts.workdir, opts.sessionId)
-
       const req: WorkerRequest = {
         id:            opts.id,
         agentName:     opts.desc,
@@ -264,7 +261,6 @@ class AgentPool {
         workdir:       opts.workdir,
         allowedTools:  opts.allowedTools ?? AGENT_TYPE_TOOLS[opts.agentType],
         sessionId:     subSessionId,
-        workspacePath,
         envVars:       collectEnvVars(),
         ...(opts.parentContext ? { parentContext: opts.parentContext } : {}),
       }

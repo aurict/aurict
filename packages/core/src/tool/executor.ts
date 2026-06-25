@@ -376,24 +376,25 @@ export async function executeTool(
   }
 
   // --- Permission kontrolü ---
-  const pattern = patchSummary ? patchPattern(patchSummary) : extractPattern(def.id, args)
-  let decision = PermissionEvaluator.evaluate(def.id, pattern)
+  const pattern = patchSummary ? patchPattern(patchSummary) : extractPattern(def.id, args, ctx.workdir)
+  const evalDecision = PermissionEvaluator.evaluate(def.id, pattern)
+  let decision = evalDecision
   let level: "safe" | "warning" | "danger" = "warning"
   let reason = ""
   let permissionMetadata: Partial<PermissionRequest> = patchSummary
     ? patchPermissionMetadata(patchSummary, String(args["patchText"] ?? ""), true)
     : {}
 
-  // Spec tabanlı risk override
+  // Spec tabanlı risk override — deny asla geçersiz kılınmaz
   if (def.spec) {
     const specConfirm = typeof def.spec.requiresConfirmation === "function"
       ? def.spec.requiresConfirmation(args)
       : def.spec.requiresConfirmation === true
 
-    if (def.spec.riskLevel === "critical") {
+    if (def.spec.riskLevel === "critical" && evalDecision !== "deny") {
       decision = "ask"
       level    = "danger"
-    } else if (def.spec.riskLevel === "high" && decision !== "allow") {
+    } else if (def.spec.riskLevel === "high" && decision !== "allow" && evalDecision !== "deny") {
       decision = "ask"
       level    = "warning"
     } else if (specConfirm && decision === "allow") {
@@ -404,8 +405,9 @@ export async function executeTool(
   }
 
   if (def.id === "bash") {
-    const analysis = classifyCommand(pattern)
-    const sandbox = chooseSandboxBackend(pattern, analysis)
+    const command = String(args["command"] ?? "")
+    const analysis = classifyCommand(command)
+    const sandbox = chooseSandboxBackend(command, analysis)
     level = analysis.level
     reason = analysis.reason
     permissionMetadata = {
@@ -420,9 +422,17 @@ export async function executeTool(
       },
     }
     if (analysis.isReadOnly) {
-      decision = "allow" // Auto-approve zararsız komutlar
-    } else if (analysis.level === "danger") {
-      decision = "ask"   // Yıkıcı komutlarda mutlaka sor (eğer global izin yoksa)
+      // Read-only komutlar: evaluator deny yoksa auto-approve
+      if (evalDecision !== "deny") decision = "allow"
+    } else if (analysis.level === "danger" && evalDecision !== "deny") {
+      // Danger komutlar: evaluator deny varsa onu koru, yoksa ask
+      decision = "ask"
+    }
+    // Workdir fence — destructive komutlar proje dışı path'e dokunuyorsa uyar
+    if (!analysis.isReadOnly && decision !== "deny" && isDestructiveOutsideWorkdir(command, ctx.workdir)) {
+      level  = "danger"
+      reason = (reason ? reason + " — " : "") + "hedef yol proje dizini dışında"
+      if (decision === "allow") decision = "ask"
     }
   }
 
@@ -725,9 +735,28 @@ export async function executeTool(
   return after.result as ExecuteResult
 }
 
-function extractPattern(tool: string, args: Record<string, unknown>): string {
+// Workdir dışındaki destructive bash komutlarını tespit et (rm/mv/dd/shred + dış path)
+function isDestructiveOutsideWorkdir(command: string, workdir: string): boolean {
+  if (!/\b(rm|mv|dd|shred|wipe)\b/.test(command)) return false
+  const home = process.env["HOME"] ?? ""
+  const norm = workdir.endsWith("/") ? workdir : workdir + "/"
+  const SAFE_ROOTS = ["/usr/", "/bin/", "/lib/", "/sbin/", "/opt/", "/tmp/", "/var/tmp/", "/proc/", "/sys/", "/dev/"]
+  const paths = [...(command.match(/(?:~[/\w.-]*|\/[^\s"';|&<>(){}$\\*?[\]]+)/g) ?? [])]
+    .map(p => p.startsWith("~") ? (p === "~" ? home : home + p.slice(1)) : p)
+  return paths.some(p => {
+    if (!p.startsWith("/")) return false
+    if (p.startsWith(norm) || p === workdir) return false
+    return !SAFE_ROOTS.some(r => p.startsWith(r))
+  })
+}
+
+function extractPattern(tool: string, args: Record<string, unknown>, workdir: string): string {
   if (tool === "bash")         return String(args["command"] ?? "*")
-  if (tool === "write" || tool === "read" || tool === "edit") return String(args["path"] ?? "")
+  if (tool === "write" || tool === "read" || tool === "edit") {
+    const raw = String(args["path"] ?? "")
+    // Resolve to absolute so evaluator deny rules can match /etc/*, /root/*, etc.
+    return raw ? resolve(workdir, raw) : ""
+  }
   if (tool === "apply_patch")  return "*"
   return "*"
 }

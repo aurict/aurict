@@ -1,18 +1,8 @@
-/**
- * StatusBar — Alt durum çubuğu
- *
- * Dört kırılım noktası (cols prop):
- *  tiny   < 60  — sadece provider/model
- *  compact 60–89 — kısa dir + kısa model, token/hint yok
- *  normal 90–119 — dir truncated, token var, hint yok
- *  wide  ≥ 120  — tam görünüm
- */
-
 import React from "react"
 import { Text } from "ink"
 import type { TokenBreakdown } from "@aurict/core"
 import { useTheme } from "../utils/theme.js"
-import { HStack, VStack, Surface, ContextBar, KeyHint, Badge, useSpinnerFrame } from "./design-system/index.js"
+import { HStack, Surface } from "./design-system/index.js"
 
 interface Props {
   provider:          string
@@ -50,60 +40,17 @@ function fmtK(n: number): string {
   return String(n)
 }
 
-function effortLabel(effort: number | undefined): string | null {
-  if (effort === undefined) return null
-  if (effort <= 4000)  return "lo"
-  if (effort <= 10000) return "med"
-  if (effort <= 20000) return "hi"
-  return "max"
-}
-
 function shortModel(model: string): string {
-  // claude-sonnet-4-6 → sonnet-4-6   claude-opus-4-5-20251001 → opus-4-5
-  const m = model.replace(/^claude-/, "").replace(/-\d{8}$/, "")
-  return m.length <= 14 ? m : m.slice(0, 14)
+  return model.replace(/^claude-/, "").replace(/-\d{8}$/, "").slice(0, 16)
 }
 
 function truncDir(dir: string, maxLen: number): string {
   if (dir.length <= maxLen) return dir
   const parts = dir.split("/").filter(Boolean)
-  const last  = parts[parts.length - 1] ?? ""
+  const last   = parts[parts.length - 1] ?? ""
   const second = parts[parts.length - 2]
   if (second) return `…/${second}/${last}`
   return `…/${last}`
-}
-
-function taskLabel(summary: Props["taskSummary"], fallbackCount: number | undefined): string | null {
-  const total = fallbackCount ?? (
-    summary ? summary.pending + summary.inProgress + summary.done + summary.error : 0
-  )
-  if (!total) return null
-  if (!summary) return `${total}`
-  const parts: string[] = []
-  if (summary.inProgress > 0) parts.push(`${summary.inProgress} run`)
-  if (summary.pending > 0) parts.push(`${summary.pending} wait`)
-  if (summary.error > 0) parts.push(`${summary.error} err`)
-  if (parts.length === 0) parts.push(`${summary.done}/${total} done`)
-  return parts.join(" ")
-}
-
-function serverLabel(server: Props["localServer"], compact = false): string | null {
-  if (!server) return null
-  if (!server.enabled) return compact ? "api:off" : "api off"
-  if (server.started) return server.port ? (compact ? `api:${server.port}` : `api ${server.port}`) : (compact ? "api:on" : "api on")
-  if (server.reused) return compact ? "api:busy" : server.port ? `api ${server.port} busy` : "api busy"
-  return null
-}
-
-function sandboxLabel(backend: Props["sandboxBackend"], compact = false): string | null {
-  if (!backend) return null
-  if (compact) {
-    if (backend === "policy") return "sbx:pol"
-    if (backend === "docker") return "sbx:doc"
-    return "sbx:off"
-  }
-  if (backend === "none") return "sbx none"
-  return `sbx ${backend}`
 }
 
 type BP = "tiny" | "compact" | "normal" | "wide"
@@ -116,226 +63,87 @@ function bp(cols: number | undefined): BP {
 }
 
 export function StatusBar({
-  provider, model, tokens, contextTokens, workdir, skills = [], turnSkills = [],
-  contextWindow, isUndercover, coordinatorMode, branch, wasCompacted,
-  activeAgent, agentColor, bgTaskCount, taskCount, taskSummary, taskPanelOpen, localServer, sandboxBackend, effort, autopilotMode, cols,
-  draftSavedAt, activeAgentCount, hasBtwNote, scrollLocked,
+  model, tokens, contextTokens, workdir, contextWindow,
+  coordinatorMode, branch, wasCompacted, cols, scrollLocked,
 }: Props) {
-  const theme       = useTheme()
-  const mode        = bp(cols)
-  const spinFrame   = useSpinnerFrame("dots")  // animasyonlu spinner frame
-  const dir      = workdir.replace(process.env["HOME"] ?? "", "~")
-  const cw           = contextWindow ?? 200_000
-  const ctxUsed      = contextTokens ?? 0
-  const pct          = ctxUsed > 0 ? Math.min(1, ctxUsed / cw) : 0
-  const cumTotal     = tokens.input + tokens.output
-  const thinkTag     = effortLabel(effort)
-  const draftFresh   = draftSavedAt !== undefined && Date.now() - draftSavedAt < 3_000
-  const taskInfo     = taskLabel(taskSummary, taskCount)
-  const compactRuntime = mode !== "wide"
-  const serverInfo   = serverLabel(localServer, compactRuntime)
-  const sandboxInfo  = sandboxLabel(sandboxBackend, compactRuntime)
-  const allSkills = [...new Set([...skills, ...turnSkills.map((skill) => `turn:${skill}`)])]
+  const theme   = useTheme()
+  const mode    = bp(cols)
+  const dir     = workdir.replace(process.env["HOME"] ?? "", "~")
+  const cw      = contextWindow ?? 200_000
+  const ctxUsed = contextTokens ?? 0
+  const pct     = ctxUsed > 0 ? Math.min(1, ctxUsed / cw) : 0
+  const pctStr  = ctxUsed > 0 ? `${Math.round(pct * 100)}%` : null
+  const ctxColor = pct >= 0.85 ? theme.error : pct >= 0.6 ? theme.warning : theme.success
+  const cumTotal = tokens.input + tokens.output
+  const sm       = shortModel(model)
 
-  // ── tiny: bare minimum ────────────────────────────────────────────────────
   if (mode === "tiny") {
     return (
       <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
-        <HStack gap="none">
-          <Text color={theme.textPrimary}>{provider.slice(0, 5)}</Text>
-          <Text color={theme.borderBright}>/</Text>
-          <Text color={theme.warning}>{shortModel(model)}</Text>
-        </HStack>
+        <Text color={theme.warning}>{sm}</Text>
       </Surface>
     )
   }
 
-  // ── compact: short dir, short model, no tokens, no hints ─────────────────
   if (mode === "compact") {
-    const shortDir = truncDir(dir, 20)
     return (
-      <VStack gap="none">
-        {ctxUsed > 0 && (
-          <HStack paddingX="md" gap="sm">
-            <Text color={theme.borderBright}>ctx</Text>
-            <Text color={pct >= 0.85 ? theme.error : pct >= 0.6 ? theme.warning : theme.success}>
-              {Math.round(pct * 100)}%
-            </Text>
-            {wasCompacted && <Text color={theme.warning} dimColor>cmpct</Text>}
-          </HStack>
-        )}
-        <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
-          <HStack justify="space-between">
-            <Text color={theme.accent} bold>{shortDir}</Text>
-            <HStack gap="xs">
-              {coordinatorMode && <Text color={theme.accent} dimColor>coord</Text>}
-              {autopilotMode   && <Text color={theme.warning}>⚡</Text>}
-              {sandboxInfo     && <Text color={sandboxBackend === "none" ? theme.warning : theme.accent}>{sandboxInfo}</Text>}
-              <Text color={theme.textPrimary}>{provider.slice(0, 6)}</Text>
-              <Text color={theme.borderBright}>/</Text>
-              <Text color={theme.warning}>{shortModel(model)}</Text>
-            </HStack>
-          </HStack>
-        </Surface>
-      </VStack>
-    )
-  }
-
-  // ── normal: truncated dir, tokens shown, hints hidden ────────────────────
-  if (mode === "normal") {
-    const normDir = truncDir(dir, 28)
-    return (
-      <VStack gap="none">
-        {ctxUsed > 0 && (
-          <HStack paddingX="md" gap="md">
-            <Text color={theme.borderBright}>ctx</Text>
-            <ContextBar used={ctxUsed} total={cw} />
-            <Text color={theme.borderBright}>{fmtK(ctxUsed)}/{fmtK(cw)}</Text>
-            {wasCompacted && <Badge tone="warning" variant="ghost">cmpct</Badge>}
-          </HStack>
-        )}
-        <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
-          <HStack justify="space-between">
-            <HStack gap="xs">
-              <Text color={theme.accent} bold>{normDir}</Text>
-              {branch && <Text color={theme.borderBright}>[{branch}]</Text>}
-            </HStack>
-            <HStack gap="sm">
-              {scrollLocked    && <Badge tone="warning" variant="solid">⏸</Badge>}
-              {isUndercover    && <Text color={theme.textDim} dimColor>uc</Text>}
-              {coordinatorMode && <Badge tone="accent" variant="ghost">coord</Badge>}
-              {autopilotMode   && <Badge tone="warning" variant="ghost">auto</Badge>}
-              {draftFresh      && <Text color={theme.success} dimColor>saved</Text>}
-              {hasBtwNote      && <Badge tone="accent" variant="ghost">note</Badge>}
-              {sandboxInfo      && <Text color={sandboxBackend === "none" ? theme.warning : theme.accent}>{sandboxInfo}</Text>}
-              {serverInfo       && <Text color={localServer?.reused || localServer?.enabled === false ? theme.warning : theme.textDim}>{serverInfo}</Text>}
-              {taskInfo && (
-                <Text color={taskPanelOpen ? theme.accent : theme.textDim}>{taskPanelOpen ? "tasks open" : `tasks ${taskInfo}`}</Text>
-              )}
-              {activeAgentCount !== undefined && activeAgentCount > 0 && (
-                <Text color={theme.warning}>{spinFrame} {activeAgentCount}</Text>
-              )}
-              {cumTotal > 0    && <Text color={theme.textDim}>{fmtK(cumTotal)}tok</Text>}
-              {thinkTag        && <Text color={theme.accent} dimColor>{thinkTag}</Text>}
-              <Text color={theme.textPrimary}>{provider}</Text>
-              <Text color={theme.borderBright}>/</Text>
-              <Text color={theme.warning}>{shortModel(model)}</Text>
-              <Text color={theme.textDim} dimColor>  /cmd</Text>
-            </HStack>
-          </HStack>
-        </Surface>
-      </VStack>
-    )
-  }
-
-  // ── wide: full display ────────────────────────────────────────────────────
-  return (
-    <VStack gap="none">
-      {ctxUsed > 0 && (
-        <HStack paddingX="md" gap="md">
-          <Text color={theme.borderBright}>ctx</Text>
-          <ContextBar used={ctxUsed} total={cw} />
-          <Text color={theme.borderBright}>{fmtK(ctxUsed)} / {fmtK(cw)}</Text>
-          {wasCompacted && (
-            <Badge tone="warning" variant="ghost">compacted</Badge>
-          )}
-          {activeAgent && activeAgent !== "omni" && (
-            <Badge tone="accent" variant="solid">◈ {activeAgent}</Badge>
-          )}
-          {bgTaskCount !== undefined && bgTaskCount > 0 && (
-            <Text color={theme.warning} dimColor>⟳ {bgTaskCount} bg</Text>
-          )}
-        </HStack>
-      )}
-
-      {allSkills.length > 0 && (
-        <HStack paddingX="md" gap="xs">
-          <Text color={theme.borderBright}>skills</Text>
-          <Text color={theme.accent}>
-            {allSkills.slice(0, 3).join(" · ")}
-            {allSkills.length > 3 ? <Text color={theme.borderBright}> +{allSkills.length - 3} more</Text> : null}
-          </Text>
-        </HStack>
-      )}
-
       <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
         <HStack justify="space-between">
-          <HStack gap="xs">
-            <Text color={theme.accent} bold>{truncDir(dir, 40)}</Text>
-            {branch && <Text color={theme.borderBright}>[{branch}]</Text>}
-          </HStack>
-          <HStack gap="md">
-            {isUndercover    && <Badge tone="muted"    variant="ghost">undercover</Badge>}
-            {coordinatorMode && <Badge tone="accent"   variant="ghost">coordinator</Badge>}
-            {autopilotMode   && <Badge tone="warning"  variant="solid">⚡ auto</Badge>}
-            {draftFresh      && <Text color={theme.success} dimColor>✓ saved</Text>}
-            {hasBtwNote      && <Badge tone="accent" variant="ghost">📌 note</Badge>}
-            {sandboxInfo && (
+          <Text color={theme.accent} bold>{truncDir(dir, 20)}</Text>
+          <HStack gap="sm">
+            {scrollLocked && <Text color={theme.warning}>⏸</Text>}
+            <Text color={theme.warning}>{sm}</Text>
+            {pctStr && (
               <>
-                <Badge tone={sandboxBackend === "none" ? "warning" : "accent"} variant="ghost">{sandboxInfo}</Badge>
                 <Text color={theme.borderBright}>·</Text>
+                <Text color={ctxColor}>{pctStr}</Text>
               </>
-            )}
-            {serverInfo && (
-              <>
-                <Badge tone={localServer?.reused || localServer?.enabled === false ? "warning" : "muted"} variant="ghost">{serverInfo}</Badge>
-                <Text color={theme.borderBright}>·</Text>
-              </>
-            )}
-            {taskInfo && (
-              <>
-                <Badge tone={taskPanelOpen ? "accent" : "muted"} variant="ghost">
-                  {`tasks ${taskInfo}`}
-                </Badge>
-                <Text color={theme.borderBright}>·</Text>
-              </>
-            )}
-            {activeAgentCount !== undefined && activeAgentCount > 0 && (
-              <>
-                <Text color={theme.warning}>{spinFrame} {activeAgentCount} agent{activeAgentCount > 1 ? "s" : ""}</Text>
-                <Text color={theme.borderBright} dimColor>ctrl+x</Text>
-                <Text color={theme.borderBright}>·</Text>
-              </>
-            )}
-            {cumTotal > 0 && (
-              <>
-                <Text color={theme.textDim}>{fmtK(cumTotal)}</Text>
-                <Text color={theme.borderBright} dimColor>tok</Text>
-                <Text color={theme.borderBright}>·</Text>
-              </>
-            )}
-            {thinkTag && (
-              <>
-                <Text color={theme.accent} dimColor>think:{thinkTag}</Text>
-                <Text color={theme.borderBright}>·</Text>
-              </>
-            )}
-            <Text color={theme.textPrimary}>{provider}</Text>
-            <Text color={theme.borderBright}>/</Text>
-            <Text color={theme.warning}>{model}</Text>
-            <Text color={theme.borderBright}>·</Text>
-            {scrollLocked && (
-              <>
-                <Badge tone="warning" variant="solid">⏸ scroll lock</Badge>
-                <Text color={theme.borderBright}>·</Text>
-              </>
-            )}
-            {taskCount && taskCount > 0 ? (
-              <HStack gap="xs">
-                <Text color={theme.textDim} dimColor>/ commands</Text>
-                <KeyHint keys="ctrl+t" action={`tasks (${taskCount})`} style="plain" />
-                <KeyHint keys="esc" action="exit" style="plain" />
-              </HStack>
-            ) : (
-              <HStack gap="xs">
-                <Text color={theme.textDim} dimColor>/ commands</Text>
-                <KeyHint keys="esc" action="exit" style="plain" />
-                <KeyHint keys="ctrl+c" action="abort" style="plain" />
-              </HStack>
             )}
           </HStack>
         </HStack>
       </Surface>
-    </VStack>
+    )
+  }
+
+  const dirStr = mode === "normal" ? truncDir(dir, 28) : truncDir(dir, 40)
+
+  return (
+    <Surface variant="flat" tone="muted" paddingX="md" paddingY="none">
+      <HStack justify="space-between">
+        <HStack gap="xs">
+          <Text color={theme.accent} bold>{dirStr}</Text>
+          {branch && <Text color={theme.borderBright}>[{branch}]</Text>}
+          {coordinatorMode && <Text color={theme.accent} dimColor> coord</Text>}
+        </HStack>
+        <HStack gap="sm">
+          {scrollLocked  && <Text color={theme.warning}>⏸</Text>}
+          {wasCompacted  && <Text color={theme.warning} dimColor>cmpct</Text>}
+          <Text color={theme.warning}>{sm}</Text>
+          {pctStr && (
+            <>
+              <Text color={theme.borderBright}>·</Text>
+              <Text color={ctxColor}>ctx {pctStr}</Text>
+            </>
+          )}
+          {cumTotal > 0 && (
+            <>
+              <Text color={theme.borderBright}>·</Text>
+              <Text color={theme.textDim}>{fmtK(cumTotal)}tok</Text>
+            </>
+          )}
+          {mode === "wide"
+            ? (
+              <>
+                <Text color={theme.borderBright}>·</Text>
+                <Text color={theme.textDim} dimColor>/cmd</Text>
+                <Text color={theme.textDim} dimColor>Esc</Text>
+                <Text color={theme.textDim} dimColor>Ctrl+C</Text>
+              </>
+            )
+            : <Text color={theme.textDim} dimColor>  /cmd Esc</Text>
+          }
+        </HStack>
+      </HStack>
+    </Surface>
   )
 }

@@ -16,8 +16,8 @@ const READ_ONLY_COMMANDS = new Set([
 
 const DESTRUCTIVE_COMMANDS = new Set([
   "rm", "mkfs", "dd", "fdisk", "mkswap", "format", "shutdown", "reboot", "halt",
-  "poweroff", "init", "kill", "killall", "pkill", "su", "sudo", "chown", "chmod",
-  "iptables", "ufw", "mv", "cp",
+  "poweroff", "init", "kill", "killall", "pkill", "su", "sudo", "pkexec", "chown", "chmod",
+  "iptables", "ufw", "mv", "cp", "shred", "wipe",
 ])
 
 const SHELL_RISK_PATTERNS: Array<{ re: RegExp; reason: string }> = [

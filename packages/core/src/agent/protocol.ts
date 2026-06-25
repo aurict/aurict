@@ -41,7 +41,6 @@ export const AGENT_MAX_STEPS: Record<AgentType, number> = {
 }
 
 // Her agent tipinin erişebileceği tool'lar (ToolRegistry ID'leriyle eşleşmeli)
-// "write" tüm tiplerde var — findings dosyasını workspace'e yazabilmeli
 // "send_message" tüm tiplerde var — sibling agent'lara mesaj yollamak için
 export const AGENT_TYPE_TOOLS: Record<AgentType, string[]> = {
   coordinator: ["subagent", "send_message", "scratchpad", "critique"],
@@ -75,7 +74,6 @@ export interface WorkerRequest {
   workdir:       string
   allowedTools:  string[]    // AGENT_TYPE_TOOLS[type] veya config'den
   sessionId:     string      // worker'ın kendi session ID'si
-  workspacePath: string      // shared workspace dizini (multi-agent iletişim)
   envVars?:      Record<string, string>  // API keys from parent process
   parentContext?: string     // son N parent mesajının özeti — subagent'a bağlam sağlar
 }

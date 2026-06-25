@@ -42,7 +42,7 @@ import { ThemeContext, THEMES, DEFAULT_THEME } from "../utils/theme.js"
 import { KeybindingsProvider } from "../keybindings/index.js"
 import type { Context as KeybindingContext } from "../keybindings/index.js"
 
-import { Message, type DisplayMessage } from "./Message.js"
+import { Message, type DisplayMessage, type AssistantContentBlock } from "./Message.js"
 import { TaskFloatingPanel } from "./TaskFloatingPanel.js"
 import { ChatInput }         from "./ChatInput.js"
 import { AlternateScreen }   from "./AlternateScreen.js"
@@ -1260,7 +1260,28 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         },
         onChunk: (chunk: string) => {
           setMessages((prev) => {
-            // Son pending tool_call'u bul — bash streaming çıktısını buraya ekle
+            const stableId = turnAssistantIdRef.current
+            if (stableId) {
+              const idx = prev.findIndex(m => m.id === stableId)
+              if (idx !== -1) {
+                const msg = prev[idx]!
+                if (msg.blocks) {
+                  for (let i = msg.blocks.length - 1; i >= 0; i--) {
+                    const b = msg.blocks[i]!
+                    if (b.type === "tool" && b.pending) {
+                      const combined = (b.resultContent ?? "") + chunk
+                      const capped = combined.length > 50_000 ? combined.slice(-50_000) : combined
+                      const next = [...prev]
+                      const newBlocks = [...msg.blocks]
+                      newBlocks[i] = { ...b, resultContent: capped }
+                      next[idx] = { ...msg, blocks: newBlocks }
+                      return next
+                    }
+                  }
+                }
+              }
+            }
+            // Fallback: eski tool_call mesaj yaklaşımı
             const lastPendingIdx = prev.reduceRight<number>(
               (found, m, i) => found !== -1 ? found : (m.role === "tool_call" && m.pending) ? i : -1,
               -1,
@@ -1269,7 +1290,6 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             const next = [...prev]
             const msg  = next[lastPendingIdx]!
             const combined = (msg.resultContent ?? "") + chunk
-            // Büyük bash çıktıları için display cap: en son 50KB göster (RAM koruması)
             const capped = combined.length > 50_000 ? combined.slice(-50_000) : combined
             next[lastPendingIdx] = { ...msg, resultContent: capped }
             return next
@@ -1284,50 +1304,82 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           streamReasonRef.current = ""
           setStreamingText(null)
           setStreamingReason(null)
-          // İlk araç çağrısında pre-tool metni stabil ID'li pending mesaj olarak commit et.
-          // onFinish bu mesajı loop.ts'teki tam finalText ile güncelleyecek — cümleler birleşir.
-          if ((textBefore || reasonBefore) && !turnAssistantIdRef.current) {
-            const assistantId = crypto.randomUUID()
-            turnAssistantIdRef.current = assistantId
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: assistantId,
-                role: "assistant" as const,
-                content: textBefore,
-                pending: true,
-                timestamp: Date.now(),
-                ...(reasonBefore ? { reasoningContent: reasonBefore } : {}),
-              },
-            ])
-          }
           setActiveTool(tc.tool)
           latestToolCallRef.current = { id: tc.id, tool: tc.tool, content: JSON.stringify(tc.args, null, 2) }
-          setMessages((prev) => {
-            const next = [...prev]
-            const last = next[next.length - 1]
-            if (last?.role === "assistant" && last.pending && !last.content && !last.reasoningContent) {
-              next.pop()
-            }
-            next.push({ id: tc.id ?? crypto.randomUUID(), role: "tool_call" as const, content: JSON.stringify(tc.args, null, 2), tool: tc.tool, pending: true })
-            return next
-          })
+
+          const toolBlock: AssistantContentBlock = { type: "tool", id: tc.id ?? crypto.randomUUID(), tool: tc.tool, args: JSON.stringify(tc.args, null, 2), pending: true }
+
+          if (!turnAssistantIdRef.current) {
+            // İlk tool: tek bir blocks assistant mesajı oluştur
+            const assistantId = crypto.randomUUID()
+            turnAssistantIdRef.current = assistantId
+            setMessages((prev) => {
+              const next = [...prev]
+              // Boş pending placeholder'ı kaldır
+              const last = next[next.length - 1]
+              if (last?.role === "assistant" && last.pending && !last.content && !last.reasoningContent && !last.blocks) {
+                next.pop()
+              }
+              const blocks: AssistantContentBlock[] = []
+              if (textBefore || reasonBefore) {
+                blocks.push({ type: "text", content: textBefore, ...(reasonBefore ? { reasoningContent: reasonBefore } : {}) })
+              }
+              blocks.push(toolBlock)
+              next.push({ id: assistantId, role: "assistant" as const, content: "", blocks, pending: true, timestamp: Date.now() })
+              return next
+            })
+          } else {
+            // Sonraki tool: mevcut blocks mesajına metin + tool bloğu ekle
+            const stableId = turnAssistantIdRef.current
+            setMessages((prev) => {
+              const idx = prev.findIndex(m => m.id === stableId)
+              if (idx === -1) return prev
+              const existing = prev[idx]!
+              const currentBlocks = existing.blocks ?? []
+              const newBlocks: AssistantContentBlock[] = [...currentBlocks]
+              if (textBefore || reasonBefore) {
+                newBlocks.push({ type: "text", content: textBefore, ...(reasonBefore ? { reasoningContent: reasonBefore } : {}) })
+              }
+              newBlocks.push(toolBlock)
+              const next = [...prev]
+              next[idx] = { ...existing, blocks: newBlocks }
+              return next
+            })
+          }
         },
         onStepFinish: () => {
-          setMessages((prev) => prev.map((m) =>
-            m.role === "tool_call" && m.pending ? { ...m, pending: false } : m
-          ))
+          const stableId = turnAssistantIdRef.current
+          setMessages((prev) => {
+            if (stableId) {
+              const idx = prev.findIndex(m => m.id === stableId)
+              if (idx !== -1 && prev[idx]?.blocks) {
+                const msg = prev[idx]!
+                const newBlocks = msg.blocks!.map(b => b.type === "tool" && b.pending ? { ...b, pending: false } : b)
+                const next = [...prev]
+                next[idx] = { ...msg, blocks: newBlocks }
+                return next
+              }
+            }
+            return prev.map((m) => m.role === "tool_call" && m.pending ? { ...m, pending: false } : m)
+          })
           setActiveTool(undefined)
           const mark  = snapshotManager.mark()
           const label = `step ${checkpoints.length + 1}`
           // Checkpoint'te büyük tool resultları kırp (RAM koruması).
-          // Her adımda messages.slice() kopyalanır; büyük araç çıktıları 20 kopya × size = peak.
           const MAX_CP_RESULT = 10_000
-          const cpMessages = messages.slice().map(m => (
-            m.resultContent && m.resultContent.length > MAX_CP_RESULT
-              ? { ...m, resultContent: m.resultContent.slice(0, MAX_CP_RESULT) + "\n[truncated in checkpoint]" }
-              : m
-          ))
+          const cpMessages = messages.slice().map(m => {
+            if (m.blocks) {
+              const trimmedBlocks = m.blocks.map(b => {
+                if (b.type === "tool" && b.resultContent && b.resultContent.length > MAX_CP_RESULT)
+                  return { ...b, resultContent: b.resultContent.slice(0, MAX_CP_RESULT) + "\n[truncated in checkpoint]" }
+                return b
+              })
+              return { ...m, blocks: trimmedBlocks }
+            }
+            if (m.resultContent && m.resultContent.length > MAX_CP_RESULT)
+              return { ...m, resultContent: m.resultContent.slice(0, MAX_CP_RESULT) + "\n[truncated in checkpoint]" }
+            return m
+          })
           setCheckpoints((prev) => [
             ...prev.slice(-(MAX_CHECKPOINTS - 1)),
             { mark, messages: cpMessages, history: history.slice(), label },
@@ -1335,20 +1387,43 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
         },
         onToolResult: (tr) => {
           setMessages((prev) => {
-            const next = [...prev]
-            const callIndex = next.findIndex((m) => m.role === "tool_call" && m.id === tr.id)
             let parsedResult = tr.result
             if (typeof parsedResult === "object") parsedResult = JSON.stringify(parsedResult, null, 2)
-            // Büyük sonuçları UI'da kırp — LLM context'e tam sonuç gider, sadece görüntü sınırlı
             const MAX_DISPLAY = 50_000
             const displayResult = parsedResult.length > MAX_DISPLAY
               ? parsedResult.slice(0, MAX_DISPLAY) + `\n\n[... ${(parsedResult.length - MAX_DISPLAY).toLocaleString()} chars truncated]`
               : parsedResult
+
+            // Blocks yaklaşımı: blocks içindeki tool bloğunu güncelle
+            const stableId = turnAssistantIdRef.current
+            if (stableId) {
+              const idx = prev.findIndex(m => m.id === stableId)
+              if (idx !== -1) {
+                const msg = prev[idx]!
+                if (msg.blocks) {
+                  const blockIdx = msg.blocks.findIndex(b => b.type === "tool" && b.id === tr.id)
+                  if (blockIdx !== -1) {
+                    const b = msg.blocks[blockIdx]!
+                    if (b.type === "tool") {
+                      if (b.tool && parsedResult) latestToolCallRef.current = { id: tr.id, tool: b.tool, content: parsedResult }
+                      const next = [...prev]
+                      const newBlocks = [...msg.blocks]
+                      newBlocks[blockIdx] = { ...b, pending: false, resultContent: displayResult, durationMs: tr.durationMs }
+                      next[idx] = { ...msg, blocks: newBlocks }
+                      return next
+                    }
+                  }
+                }
+              }
+            }
+
+            // Fallback: eski tool_call mesaj yaklaşımı
+            const next = [...prev]
+            const callIndex = next.findIndex((m) => m.role === "tool_call" && m.id === tr.id)
             if (callIndex !== -1) {
               const old = next[callIndex]
               if (old) {
-                const updated = { ...old, pending: false, resultContent: displayResult, durationMs: tr.durationMs }
-                next[callIndex] = updated
+                next[callIndex] = { ...old, pending: false, resultContent: displayResult, durationMs: tr.durationMs }
                 if (old.tool && parsedResult) latestToolCallRef.current = { id: tr.id, tool: old.tool ?? "tool", content: parsedResult }
               }
             } else {
@@ -1399,17 +1474,30 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           setMessages((prev) => {
             const next = prev.map(m => m.pending ? { ...m, pending: false } : m)
             const reasonSpread = finalReason ? { reasoningContent: finalReason } : {}
-            // Araç çağrısı olan turn: pre-tool pending mesajı tam metinle güncelle.
-            // stableAssistantId mesajı zaten tool_call'ların üstünde — doğru okuma sırası korunur.
+
             if (stableAssistantId) {
               const idx = next.findIndex(m => m.id === stableAssistantId)
               if (idx !== -1) {
                 const existing = next[idx]!
-                next[idx] = { ...existing, role: "assistant" as const, content: finalText || finalSegmentText, pending: false, ...reasonSpread }
+                if (existing.blocks) {
+                  // Blocks yaklaşımı: post-tool metni aynı mesaja yeni text bloğu olarak ekle
+                  const newBlocks = [...existing.blocks]
+                  if (finalSegmentText) {
+                    newBlocks.push({ type: "text", content: finalSegmentText, ...reasonSpread })
+                  }
+                  next[idx] = { ...existing, pending: false, blocks: newBlocks }
+                  return next
+                }
+                // Fallback: eski yaklaşım (blocks yoksa)
+                next[idx] = { ...existing, role: "assistant" as const, pending: false, ...reasonSpread }
+                if (finalSegmentText) {
+                  next.push({ id: crypto.randomUUID(), role: "assistant" as const, content: finalSegmentText, pending: false, timestamp: Date.now(), ...reasonSpread })
+                }
                 return next
               }
             }
-            // Araç çağrısı olmayan turn veya stabil mesaj bulunamadı: mevcut davranış.
+
+            // Araç çağrısı olmayan turn: mevcut davranış
             const last = next[next.length - 1]
             if ((finalSegmentText || finalReason) && last?.role !== "assistant") {
               next.push({ id: crypto.randomUUID(), role: "assistant", content: finalSegmentText, pending: false, ...reasonSpread })
@@ -1761,7 +1849,10 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
         bottom={<>
         {/* Aktif subagent satırları — bottom'da olursa FullscreenLayout scrollable'ı doğru ölçer */}
-        <AgentStatus />
+        <AgentStatus
+          viewingSessionId={viewingSubagentId}
+          onViewAgent={setViewingSubagentId}
+        />
         {/* Input alanı */}
         <Box flexDirection="row" alignItems="flex-end">
           {permission

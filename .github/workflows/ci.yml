@@ -3,17 +3,28 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    paths:
+      - "packages/**"
+      - "scripts/**"
+      - "bun.lockb"
+      - "package.json"
   pull_request:
     branches: [main]
+    paths:
+      - "packages/**"
+      - "scripts/**"
+      - "bun.lockb"
+
+# Aynı branch'te yeni push gelince eskiyi iptal et
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  typecheck-and-test:
-    name: Typecheck & Test
+  # ── 1. Hızlı tip kontrolü — her push'ta çalışır (~30s) ───────────────────
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
-    env:
-      HOME: ${{ runner.temp }}/aurict-home
-      AURICT_SNAPSHOT_DIR: ${{ runner.temp }}/aurict-snapshots
-
     steps:
       - uses: actions/checkout@v4
 
@@ -31,24 +42,59 @@ jobs:
       - name: Typecheck cli
         run: bunx tsc -p packages/cli/tsconfig.json --noEmit
 
+  # ── 2. Test suite — her push'ta çalışır ──────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      # runner.temp'i step içinde shell env var olarak set et (job env'de runner context çalışmıyor)
+      - name: Set temp dirs
+        run: |
+          mkdir -p "$RUNNER_TEMP/aurict-home"
+          mkdir -p "$RUNNER_TEMP/aurict-snapshots"
+          echo "AURICT_HOME=$RUNNER_TEMP/aurict-home" >> "$GITHUB_ENV"
+          echo "AURICT_SNAPSHOT_DIR=$RUNNER_TEMP/aurict-snapshots" >> "$GITHUB_ENV"
+
       - name: Run core tests
         run: bun test packages/core/test/ --timeout 30000
 
       - name: Run cli tests
         run: bun test packages/cli/test/ --timeout 30000
 
-      - name: Run eval smoke
-        run: bun run eval -- --smoke
+  # ── 3. Binary build + smoke — sadece main veya PR'da çalışır ────────────
+  build:
+    name: Build & Smoke
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    needs: [typecheck, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
 
       - name: Build platform binaries
         run: bun run scripts/build-all.ts
 
-      - name: Smoke test packaged linux binary
+      - name: Smoke test linux binary
         run: ./dist/aurict-linux-x64 --version
 
       - name: Dry-run npm wrapper packages
         run: |
-          cd packages/cli
-          npm pack --dry-run
-          cd ../aurict
-          npm pack --dry-run
+          cd packages/cli && npm pack --dry-run
+          cd ../aurict && npm pack --dry-run

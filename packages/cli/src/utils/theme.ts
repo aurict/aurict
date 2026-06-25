@@ -263,6 +263,17 @@ export const THEMES: Record<string, Theme> = {
     borderDim: "#001100", borderBright: "#003300", borderActive: "#00ff41",
     bgHighlight: "#001100", buddyMain: "#00ff41", buddyEar: "#00aa22",
   },
+  // 21. Cozy
+  cozy: {
+    name: "Cozy",
+    accent: "#f97316", accentAlt: "#fbbf24",
+    success: "#86a832", error: "#e05c4b", warning: "#f59e0b",
+    userColor: "#fde8c8", assistantDot: "#f97316",
+    toolColor: "#7a6a55", systemColor: "#7a6a55",
+    textPrimary: "#ede0c8", textSecondary: "#d4c4a8", textDim: "#7a6a55",
+    borderDim: "#221a10", borderBright: "#4a3520", borderActive: "#f97316",
+    bgHighlight: "#1e1408", buddyMain: "#f97316", buddyEar: "#c2580a",
+  },
 }
 
 export const DEFAULT_THEME = "dark"

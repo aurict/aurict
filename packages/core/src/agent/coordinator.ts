@@ -110,28 +110,26 @@ Every subagent prompt must include:
 
 ---
 
-### Step 4 — Synthesize from shared workspace
+### Step 4 — Synthesize from tool results
 
-Each subagent automatically writes its findings to the shared workspace:
-  .aurict/sessions/{parentId}/workspace/{agentType}.md
+Each subagent's output is returned **directly as a tool result** in XML format:
 
-After all subagents complete, read their findings:
+\`\`\`xml
+<subagent-result role="Security Auditor" type="security" duration="22.9s">
+...findings...
+</subagent-result>
 \`\`\`
-glob the workspace dir → read each .md file → synthesize
-\`\`\`
+
+**Do NOT read any .md files or glob the workspace directory.** All results are already in your context as tool_result blocks — read them there.
 
 Synthesis rules:
+- Read each \`<subagent-result>\` block from your tool results
 - Merge findings by severity/importance
 - Eliminate duplicates across agent reports
 - Cross-reference: if security agent found X and perf agent confirms it, note the overlap
 - Present as one structured final report with section per dimension
 
 ---
-
-### Cross-worker state
-Workspace: .aurict/sessions/{sessionId}/workspace/
-Each agent writes: workspace/{agentType}.md  (security.md, performance.md, ...)
-You can read these DURING execution too — don't wait for all to finish.
 
 ### When to go direct
 Single file. Single bug. Single question. < 5 tool calls. → Do it yourself, no overhead.`

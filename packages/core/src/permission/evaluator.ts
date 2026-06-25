@@ -9,10 +9,29 @@ const DEFAULT_RULES: PermissionRule[] = [
   { tool: "bash", pattern: "curl *",      action: "ask",    scope: "global" },
   { tool: "bash", pattern: "wget *",      action: "ask",    scope: "global" },
 
-  // ── Sensitive write paths ─────────────────────────────────────────────────
+  // ── Sensitive write/edit paths ────────────────────────────────────────────
   { tool: "write", pattern: "/etc/*",     action: "deny",   scope: "global" },
   { tool: "write", pattern: "/usr/*",     action: "deny",   scope: "global" },
   { tool: "write", pattern: "/sys/*",     action: "deny",   scope: "global" },
+  { tool: "write", pattern: "/boot/*",    action: "deny",   scope: "global" },
+  { tool: "write", pattern: "/dev/*",     action: "deny",   scope: "global" },
+  { tool: "write", pattern: "/proc/*",    action: "deny",   scope: "global" },
+  { tool: "write", pattern: "/root/*",    action: "deny",   scope: "global" },
+  { tool: "edit",  pattern: "/etc/*",     action: "deny",   scope: "global" },
+  { tool: "edit",  pattern: "/usr/*",     action: "deny",   scope: "global" },
+  { tool: "edit",  pattern: "/sys/*",     action: "deny",   scope: "global" },
+  { tool: "edit",  pattern: "/boot/*",    action: "deny",   scope: "global" },
+  { tool: "edit",  pattern: "/dev/*",     action: "deny",   scope: "global" },
+  { tool: "edit",  pattern: "/proc/*",    action: "deny",   scope: "global" },
+  { tool: "edit",  pattern: "/root/*",    action: "deny",   scope: "global" },
+
+  // ── Bash: privilege escalation ve disk yıkımı ────────────────────────────
+  { tool: "bash", pattern: "pkexec *",    action: "deny",   scope: "global" },
+  { tool: "bash", pattern: "pkexec",      action: "deny",   scope: "global" },
+  { tool: "bash", pattern: "mkfs*",       action: "deny",   scope: "global" },
+  { tool: "bash", pattern: "fdisk *",     action: "deny",   scope: "global" },
+  { tool: "bash", pattern: "shred *",     action: "ask",    scope: "global" },
+  { tool: "bash", pattern: "wipe *",      action: "ask",    scope: "global" },
 
   // ── Always-safe read-only / utility tools ────────────────────────────────
   { tool: "read",        pattern: "*", action: "allow", scope: "global" },

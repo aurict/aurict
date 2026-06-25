@@ -9,7 +9,6 @@ import { ToolRegistry }      from "../tool/registry.js"
 import { executeTool }       from "../tool/executor.js"
 import { buildSystemPrompt } from "../skill/injector.js"
 import { getAgentPrompt }    from "./agent-prompts.js"
-import { workspacePrompt }   from "./workspace.js"
 import type { WorkerRequest, WorkerControl, WorkerMessage } from "./protocol.js"
 import { AGENT_MAX_STEPS }   from "./protocol.js"
 
@@ -66,9 +65,8 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
     const baseSystem  = await buildSystemPrompt(req.workdir, undefined, false, req.agentType)
     const typePrompt  = getAgentPrompt(req.agentType, totalMaxSteps)
     const toolsPrompt = `## Available Tools\nYou have access to ONLY these tools: ${req.allowedTools.join(", ")}\nCalling any other tool will cause an error.`
-    const wsPrompt    = workspacePrompt(req.workspacePath, req.agentType)
     const msgPrompt   = `## Agent Communication\nUse send_message to contact sibling agents by role name.\nIncoming messages from other agents appear as <agent-message> in the conversation.`
-    const system      = [typePrompt, baseSystem, toolsPrompt, wsPrompt, msgPrompt].filter(Boolean).join("\n\n---\n\n")
+    const system      = [typePrompt, baseSystem, toolsPrompt, msgPrompt].filter(Boolean).join("\n\n---\n\n")
 
     const allowedSet = new Set(req.allowedTools)
 

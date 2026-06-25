@@ -12,6 +12,7 @@ import React, { useState, useEffect, memo } from "react"
 import { Box, Text } from "ink"
 import { Markdown } from "./Markdown.js"
 import { DiffRenderer } from "./DiffRenderer/index.js"
+import { FileDiffView, FileWriteView } from "./FileDiffView.js"
 import { ToolUseLoader } from "./ToolUseLoader.js"
 
 function looksLikeDiff(text: string): boolean {
@@ -23,10 +24,15 @@ import { HStack, VStack, Typo } from "./design-system/index.js"
 
 // ── Tipler ────────────────────────────────────────────────────────────────────
 
+export type AssistantContentBlock =
+  | { type: "text"; content: string; reasoningContent?: string }
+  | { type: "tool"; id: string; tool: string; args: string; pending: boolean; resultContent?: string; durationMs?: number }
+
 export interface DisplayMessage {
   id?:               string
   role:              "user" | "assistant" | "tool_call" | "tool_result" | "system" | "error"
   content:           string
+  blocks?:           AssistantContentBlock[]
   tool?:             string
   pending?:          boolean
   resultContent?:    string
@@ -254,17 +260,107 @@ function PendingToolCall({
   )
 }
 
+// ── Completed tool block (inline, inside blocks-based assistant message) ──────
+
+function InlineCompletedTool({
+  block, termCols, onExpandTool,
+}: { block: Extract<AssistantContentBlock, { type: "tool" }>; termCols: number; onExpandTool?: (content: string, tool: string) => void }) {
+  const theme      = useTheme()
+  const rawOutput  = block.resultContent ?? ""
+  const isError    = rawOutput.startsWith("ERROR:")
+  const color      = toolColor(block.tool, isError, false, theme)
+  const summary    = summarizeArgs(block.tool, block.args)
+  const safeW      = Math.max(20, termCols - 12)
+  const displayOutput = maybeFormatJson(rawOutput)
+  const lines      = prepareLines(displayOutput, safeW)
+  const totalLines = lineCount(displayOutput)
+  const hasOutput  = rawOutput.trim().length > 0
+  const hasMore    = lines.length > MAX_TOOL_LINES
+  const visible    = hasOutput ? previewToolLines(lines) : []
+  const hiddenLines = Math.max(0, lines.length - visible.length)
+  const outputStats = `${totalLines} ${totalLines === 1 ? "line" : "lines"} · ${formatBytes(rawOutput)}`
+  const diffWidth  = Math.max(40, termCols - 12)
+  const canExpand  = hasMore && !!onExpandTool
+
+  return (
+    <VStack marginBottom="md">
+      <HStack gap="sm">
+        <ToolUseLoader shouldAnimate={false} isUnresolved={false} isError={isError} />
+        <Typo variant="bodyEmphasis" tone="primary">{block.tool}</Typo>
+        <Typo variant="body" tone="muted">{summary}</Typo>
+        {block.durationMs !== undefined && block.durationMs > 0 && (
+          <Typo variant="caption" tone="muted" dimColor>
+            {block.durationMs < 1000 ? `${block.durationMs}ms` : `${(block.durationMs / 1000).toFixed(1)}s`}
+          </Typo>
+        )}
+        <Typo variant="caption" tone="muted" dimColor>{outputStats}</Typo>
+      </HStack>
+      {block.resultContent !== undefined && (() => {
+        // Yeni format: "__UNIFIED_DIFF__" — edit + write (overwrite)
+        const unifiedMatch = rawOutput.match(/^(?:Updated|Created) [^\n]+\n__UNIFIED_DIFF__\n([\s\S]*)$/)
+        if (unifiedMatch && (block.tool === "edit" || block.tool === "write")) {
+          return (
+            <Box marginLeft={3} marginRight={2}>
+              <FileDiffView unifiedDiff={unifiedMatch[1]!} width={diffWidth} />
+            </Box>
+          )
+        }
+        // Yeni format: "__WRITE_CREATE__" — write (yeni dosya)
+        const writeMatch = rawOutput.match(/^Created ([^\n]+)\n__WRITE_CREATE__\n(\d+)\n([\s\S]*)$/)
+        if (writeMatch && block.tool === "write") {
+          return (
+            <Box marginLeft={3} marginRight={2}>
+              <FileWriteView filePath={writeMatch[1]!} totalLines={parseInt(writeMatch[2]!)} content={writeMatch[3]!} width={diffWidth} />
+            </Box>
+          )
+        }
+        // Eski format (geriye dönük uyumluluk): "__DIFF__" + "__NEW__"
+        const legacyMatch = rawOutput.match(/^.*\n__DIFF__\n([\s\S]*?)\n__NEW__\n([\s\S]*)$/)
+        if (legacyMatch && block.tool === "edit") {
+          const editPath = extractEditPath(rawOutput)
+          return (
+            <Box marginLeft={3} marginRight={2}>
+              <DiffRenderer oldText={legacyMatch[1]!} newText={legacyMatch[2]!} {...(editPath ? { fileName: editPath } : {})} initialMode="unified" width={diffWidth} enableModeToggle enableHunkNav />
+            </Box>
+          )
+        }
+        if (block.tool === "apply_patch") {
+          const patchSummary = <PatchSummaryView output={rawOutput} width={diffWidth} />
+          if (parsePatchSummary(rawOutput)) return <Box marginLeft={3} marginRight={2}>{patchSummary}</Box>
+        }
+        return (
+          <Box marginLeft={3} width={Math.max(20, termCols - 8)} flexDirection="column" borderStyle="single" borderTop={false} borderBottom={false} borderRight={false} borderColor={color} paddingLeft={1}>
+            {looksLikeDiff(rawOutput)
+              ? <DiffRenderer rawDiff={rawOutput} width={diffWidth} initialMode="unified" enableModeToggle enableHunkNav />
+              : (<>
+                  {!hasOutput && <Text color={theme.textDim} dimColor>(No output)</Text>}
+                  {visible.map((line, i) => <Text key={i} color={isError ? theme.error : theme.textSecondary}>{line || " "}</Text>)}
+                  {hasMore && (
+                    <Text color={theme.textDim} dimColor>
+                      ⋯ {hiddenLines} hidden lines{canExpand ? " · Ctrl+O expand latest" : ""}
+                    </Text>
+                  )}
+                </>)
+            }
+          </Box>
+        )
+      })()}
+    </VStack>
+  )
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   message:           DisplayMessage
   onExpand?:         (() => void) | undefined
   onExpandThinking?: (() => void) | undefined
+  onExpandTool?:     ((content: string, tool: string) => void) | undefined
 }
 
 // ── Ana bileşen ───────────────────────────────────────────────────────────────
 
-export const Message = memo(function Message({ message, onExpand, onExpandThinking }: Props) {
+export const Message = memo(function Message({ message, onExpand, onExpandThinking, onExpandTool }: Props) {
   const theme    = useTheme()
   const termCols = useTerminalCols()
   const bodyWidth = Math.max(20, termCols - 9)
@@ -285,7 +381,53 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
     )
   }
 
-  // ── Assistant ─────────────────────────────────────────────────────────────────
+  // ── Assistant (blocks variant — text + tools in one visual unit) ─────────────
+  if (message.role === "assistant" && message.blocks && message.blocks.length > 0) {
+    const pending = !!message.pending
+    const hasActiveTool = message.blocks.some(b => b.type === "tool" && b.pending)
+
+    return (
+      <VStack marginBottom="sm" paddingX="sm">
+        <Box flexDirection="row">
+          <Box width={2} flexShrink={0}>
+            <Text color={pending && !hasActiveTool ? theme.accent : theme.assistantDot}>●</Text>
+          </Box>
+          <Box flexDirection="column" flexShrink={1} width={bodyWidth}>
+            {message.blocks.map((block, i) => {
+              if (block.type === "text") {
+                return (
+                  <Box key={i} flexDirection="column">
+                    {block.reasoningContent && (
+                      <ThinkingMessage content={block.reasoningContent} {...(i === 0 && onExpandThinking ? { onExpand: onExpandThinking } : {})} />
+                    )}
+                    {block.content ? <Markdown content={block.content} width={Math.max(10, bodyWidth - 2)} /> : null}
+                  </Box>
+                )
+              }
+              if (block.type === "tool") {
+                if (block.pending) {
+                  return (
+                    <PendingToolCall
+                      key={i}
+                      tool={block.tool}
+                      command={summarizeArgs(block.tool, block.args)}
+                      {...(block.resultContent !== undefined ? { streamingOutput: block.resultContent } : {})}
+                    />
+                  )
+                }
+                return <InlineCompletedTool key={i} block={block} termCols={termCols} {...(onExpandTool ? { onExpandTool } : {})} />
+              }
+              return null
+            })}
+            {pending && !hasActiveTool && <Text color={theme.accent}>▋</Text>}
+          </Box>
+        </Box>
+        {message.timestamp && !pending && <Timestamp ts={message.timestamp} />}
+      </VStack>
+    )
+  }
+
+  // ── Assistant (text-only variant) ────────────────────────────────────────────
   if (message.role === "assistant") {
     const hasThinking = !!message.reasoningContent
     const hasText     = !!message.content
@@ -373,14 +515,33 @@ export const Message = memo(function Message({ message, onExpand, onExpandThinki
 
         {/* Output — sol kenar bar */}
         {message.resultContent !== undefined && (() => {
-          const diffMatch = rawOutput.match(/^.*\n__DIFF__\n([\s\S]*?)\n__NEW__\n([\s\S]*)$/)
-          if (diffMatch && message.tool === "edit") {
+          // Yeni format: "__UNIFIED_DIFF__"
+          const unifiedMatch = rawOutput.match(/^(?:Updated|Created) [^\n]+\n__UNIFIED_DIFF__\n([\s\S]*)$/)
+          if (unifiedMatch && (message.tool === "edit" || message.tool === "write")) {
+            return (
+              <Box marginLeft={3} marginRight={2}>
+                <FileDiffView unifiedDiff={unifiedMatch[1]!} width={diffWidth} />
+              </Box>
+            )
+          }
+          // Yeni format: "__WRITE_CREATE__"
+          const writeMatch = rawOutput.match(/^Created ([^\n]+)\n__WRITE_CREATE__\n(\d+)\n([\s\S]*)$/)
+          if (writeMatch && message.tool === "write") {
+            return (
+              <Box marginLeft={3} marginRight={2}>
+                <FileWriteView filePath={writeMatch[1]!} totalLines={parseInt(writeMatch[2]!)} content={writeMatch[3]!} width={diffWidth} />
+              </Box>
+            )
+          }
+          // Eski format (geriye dönük uyumluluk)
+          const legacyMatch = rawOutput.match(/^.*\n__DIFF__\n([\s\S]*?)\n__NEW__\n([\s\S]*)$/)
+          if (legacyMatch && message.tool === "edit") {
             const editPath = extractEditPath(rawOutput)
             return (
               <Box marginLeft={3} marginRight={2}>
                 <DiffRenderer
-                  oldText={diffMatch[1]!}
-                  newText={diffMatch[2]!}
+                  oldText={legacyMatch[1]!}
+                  newText={legacyMatch[2]!}
                   {...(editPath ? { fileName: editPath } : {})}
                   initialMode="unified"
                   width={diffWidth}
