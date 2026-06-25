@@ -1,0 +1,34 @@
+name: Deploy Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.WEB_SSH_HOST }}
+          username: ${{ secrets.WEB_SSH_USER }}
+          key: ${{ secrets.WEB_SSH_KEY }}
+          port: ${{ secrets.WEB_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.WEB_DEPLOY_PATH }}
+            git pull origin main
+            cd apps/web
+            bun install --frozen-lockfile
+            bun run build
+            pm2 restart aurict-web
+            pm2 save

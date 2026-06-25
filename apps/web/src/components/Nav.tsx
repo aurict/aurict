@@ -69,7 +69,7 @@ export function Nav() {
                 letterSpacing: "0.05em",
               }}
             >
-              v1.0.7
+              v1.1.3
             </span>
           </Link>
 
@@ -77,6 +77,7 @@ export function Nav() {
           <div className="nav-links">
             <NavLink href="/docs">Docs</NavLink>
             <NavLink href="/blog">Blog</NavLink>
+            <NavLink href="/compare">Compare</NavLink>
             <NavLink href="/changelog">Changelog</NavLink>
             <a
               href="https://github.com/aurict/aurict"
@@ -89,7 +90,7 @@ export function Nav() {
               GitHub
             </a>
             <a
-              href="#waitlist"
+              href="#install"
               style={{
                 background: "var(--accent)",
                 color: "#fff",
@@ -104,7 +105,7 @@ export function Nav() {
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              Join waitlist
+              Get started
             </a>
           </div>
 
@@ -135,10 +136,11 @@ export function Nav() {
         <div className="nav-drawer" onClick={() => setMenuOpen(false)}>
           <Link href="/docs"      onClick={() => setMenuOpen(false)}>Docs</Link>
           <Link href="/blog"      onClick={() => setMenuOpen(false)}>Blog</Link>
+          <Link href="/compare"   onClick={() => setMenuOpen(false)}>Compare</Link>
           <Link href="/changelog" onClick={() => setMenuOpen(false)}>Changelog</Link>
           <a href="https://github.com/aurict/aurict" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="#waitlist" onClick={() => setMenuOpen(false)} style={{ color: "var(--accent)", fontWeight: 600 }}>
-            Join waitlist →
+          <a href="#install" onClick={() => setMenuOpen(false)} style={{ color: "var(--accent)", fontWeight: 600 }}>
+            Get started →
           </a>
         </div>
       )}

@@ -64,7 +64,7 @@ export function Hero() {
                 boxShadow: "0 0 8px var(--accent)",
               }}
             />
-            v1.0.7 — Open Source
+            v1.1.3 — Open Source · MIT
           </span>
         </m.div>
 
@@ -81,9 +81,9 @@ export function Hero() {
             marginBottom: 24,
           }}
         >
-          <span style={{ color: "var(--text)" }}>The terminal AI</span>
+          <span style={{ color: "var(--text)" }}>9 agents. Any provider.</span>
           <br />
-          <span className="gradient-text">that actually thinks.</span>
+          <span className="gradient-text">No IDE required.</span>
         </m.h1>
 
         {/* subheadline */}
@@ -99,8 +99,7 @@ export function Hero() {
             margin: "0 auto 40px",
           }}
         >
-          9 specialist agents. 218+ contextual skills. Bash classifier. MCP client.
-          One command to rule your entire codebase.
+          9 specialist agents run in parallel across your codebase. 218+ skills activate automatically based on your stack. Any provider — switch without changing anything else.
         </m.p>
 
         {/* CTA row */}
@@ -111,7 +110,7 @@ export function Hero() {
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, flexWrap: "wrap", marginBottom: 72 }}
         >
           <a
-            href="#waitlist"
+            href="#install"
             style={{
               background: "var(--accent)",
               color: "#fff",
@@ -131,7 +130,7 @@ export function Hero() {
               e.currentTarget.style.boxShadow = "none"
             }}
           >
-            Join the waitlist
+            Get started free →
           </a>
           <div
             style={{

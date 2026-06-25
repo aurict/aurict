@@ -21,9 +21,10 @@ const COMMANDS: CommandItem[] = [
   { label: "Features", href: "/#features", category: "Sections", icon: "⚡" },
   { label: "Install", href: "/#install", category: "Sections", icon: "📦" },
   { label: "FAQ", href: "/#faq", category: "Sections", icon: "❓" },
-  { label: "Waitlist", href: "/#waitlist", category: "Sections", icon: "🎫" },
+  { label: "Install", href: "/#install", category: "Sections", icon: "📦" },
 
   // Compare
+  { label: "All Comparisons", href: "/compare", category: "Compare", icon: "⚖️" },
   { label: "vs Claude Code", href: "/compare/claude-code", category: "Compare", icon: "⚔️" },
   { label: "vs Cursor", href: "/compare/cursor", category: "Compare", icon: "⚔️" },
   { label: "vs Aider", href: "/compare/aider", category: "Compare", icon: "⚔️" },

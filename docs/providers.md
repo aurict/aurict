@@ -24,7 +24,7 @@ Or switch mid-session with `/model`.
 
 **Prompt caching:** Git context and proactive file injections are placed in separate uncached system message blocks so they stay fresh every turn.
 
-**Extended thinking:** Enable with `/effort low|med|high|max` or `aurict --effort high`.
+**Extended thinking:** Select effort level through the `/models` picker after choosing a model.
 
 ---
 
@@ -141,13 +141,6 @@ The model picker shows all configured providers and lists available models with 
 
 ## Effort / extended thinking
 
-Extended thinking is supported on Anthropic models that have reasoning capability.
-
-```
-/effort low    # ~4 000 thinking tokens
-/effort med    # ~10 000 thinking tokens
-/effort high   # ~20 000 thinking tokens
-/effort max    # maximum thinking budget
-```
+Extended thinking is supported on Anthropic models with reasoning capability. Set the effort level through the `/models` interactive picker — after selecting a model, a second picker appears for effort level (low / med / high / max).
 
 The current effort level is shown in the status bar.

@@ -15,7 +15,7 @@ User request
     ┌────┴────┐
     ▼         ▼
 ┌──────┐  ┌──────────┐
-│ code │  │  review  │  ... up to 10 concurrent workers
+│ code │  │  review  │  ... up to 8 concurrent workers
 └──────┘  └──────────┘
 ```
 
@@ -74,14 +74,11 @@ The subagent runs with restricted tools (based on type), executes in its own thr
 
 ## Agent pool
 
-The pool manages up to 10 concurrent workers. Workers are reused across tasks within a session.
+The pool manages up to 8 concurrent workers. Workers are reused across tasks within a session.
 
 ```bash
 # View pool status
-aurict /agents
-
-# Kill a stuck worker
-aurict /agents kill <worker-id>
+/agents
 ```
 
 Worker timeout: **5 minutes** per task. Long-running tasks should be broken into smaller subtasks by the coordinator.
@@ -137,10 +134,10 @@ Autopilot respects the permission system — dangerous operations (destructive b
 
 ## Background tasks
 
-Long tasks can be dispatched to the background:
+Long tasks can be moved to the background:
 
 ```
-/run-background Audit all 47 API endpoints for missing authentication
+/background
 ```
 
-Background tasks run in the agent pool. Check status with `/agents` and pick up results when they complete.
+Running this while a task is in progress detaches it. Check status with `/background` when idle, and pick up results when they complete.

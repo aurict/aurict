@@ -2,7 +2,16 @@
 
 **A terminal-native AI coding assistant built for the way developers actually work.**
 
+[![CI](https://github.com/aurict/aurict/actions/workflows/ci.yml/badge.svg)](https://github.com/aurict/aurict/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/aurict)](https://www.npmjs.com/package/aurict)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 **[aurict.com](https://aurict.com)** · [npm](https://www.npmjs.com/package/aurict) · [Docs](https://aurict.com/docs) · [Changelog](https://aurict.com/changelog)
+
+![Aurict screenshot](docs/screenshot.jpg)
+
+<!-- Demo GIF — generate with: vhs docs/demo.tape -->
+![Aurict demo](docs/demo.gif)
 
 ```
 ❯ aurict
@@ -147,14 +156,20 @@ aurict
 # Set your API key
 aurict /config set anthropic sk-ant-...
 
-# Start the TUI
+# Start the TUI (always runs in the current directory)
 aurict
 
 # Pipe mode — non-interactive single query
 echo "What does this function do?" | aurict
 
 # Open a specific directory
-aurict --workdir ~/projects/myapp
+cd ~/projects/myapp && aurict
+
+# Run diagnostics without launching the TUI
+aurict doctor
+
+# Run an automated recipe
+aurict run recipe.yaml
 ```
 
 ### CLI Flags
@@ -165,7 +180,6 @@ aurict [options]
   -p, --provider <id>    Provider to use (anthropic, openai, openrouter, google, ollama)
   -m, --model <id>       Model to use
   -s, --system <text>    System prompt override
-  -w, --workdir <path>   Working directory (default: current directory)
       --undercover        Hide AI identity in responses
   -v, --version          Print version
   -h, --help             Show help
@@ -179,7 +193,7 @@ aurict [options]
 |---|---|---|
 | **Anthropic** | `ANTHROPIC_API_KEY` | Claude 3.5, Claude 4 (Sonnet, Opus, Haiku) |
 | **OpenAI** | `OPENAI_API_KEY` | GPT-4o, o3, o4-mini |
-| **Google** | `GOOGLE_GENERATIVE_AI_KEY` | Gemini 2.0, 2.5 Flash/Pro |
+| **Google** | `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini 2.0, 2.5 Flash/Pro |
 | **OpenRouter** | `OPENROUTER_API_KEY` | 200+ models via single endpoint |
 | **Ollama** | `OLLAMA_BASE_URL` | Local models, default: `localhost:11434` |
 
@@ -187,30 +201,96 @@ aurict [options]
 
 ## Slash Commands
 
+Full reference: [docs/slash-commands.md](docs/slash-commands.md)
+
+### Session & Navigation
+
 | Command | Description |
 |---|---|
 | `/help` | List all available commands |
-| `/init` | Create project-local Aurict starter files without overwriting existing files |
-| `/models` | Open interactive model picker |
-| `/providers` | Show configured providers |
-| `/design` | Open the design agent wizard |
 | `/status` | Show runtime, context, permission, server, and task status |
-| `/history` | Show recent session messages and persisted DB tail |
-| `/diffs` | Show recent edit/patch activity from the session |
-| `/doctor` | Run install/provider/server/sandbox health checks |
 | `/session` | Show current session info (ID, tokens, message count) |
 | `/sessions` | Browse and restore previous sessions |
 | `/clear` | Clear the current conversation |
-| `/memory` | Manage persistent memory entries |
-| `/ctx` | Analyze current context token usage |
+| `/history` | Show recent session messages and persisted DB tail |
+| `/cost` | Show session token usage and estimated cost |
+| `/exit` | Exit Aurict |
+
+### Agent & Model
+
+| Command | Description |
+|---|---|
+| `/models` | Open interactive model picker |
+| `/providers` | Show configured providers |
+| `/agent` | Switch active session agent (Omni, Plan, Review, or custom) |
+| `/coordinator` | Toggle multi-agent coordinator mode |
+| `/autopilot` | Toggle auto-approve all permission prompts |
+| `/agents` | List custom agents in `.aurict/agents/` |
+| `/background` | Move current task to background or list background tasks |
+
+### Code & Git
+
+| Command | Description |
+|---|---|
+| `/commit` | AI-assisted git commit — stages all changes and generates a message |
+| `/diffs` | Show recent edit/patch activity from the session |
+| `/worktree` | Manage git worktrees for parallel development |
+| `/undo` | Roll back the last N agent steps (files + conversation) |
+| `/checkpoints` | List saved checkpoints |
+| `/replay` | Jump to any checkpoint (random access) |
+| `/rewind` | Rewind conversation to Nth checkpoint |
+| `/fork` | Fork current session — create an independent copy |
+| `/branch` | Fork conversation or switch between branches |
+
+### Memory & Context
+
+| Command | Description |
+|---|---|
+| `/memory` | Manage persistent memory across sessions |
+| `/pin` | Manage pinned context — always injected into system prompt |
+| `/ctx` | Show context token breakdown and memory pressure |
 | `/compact` | Configure or trigger context compaction |
-| `/undo` | Roll back the last N agent steps |
-| `/export` | Export session as Markdown or HTML |
+| `/btw` | Add a side note without affecting the conversation |
+| `/stash` | Save/restore draft input |
+
+### Config & Setup
+
+| Command | Description |
+|---|---|
+| `/init` | Initialize Aurict project files without overwriting existing |
 | `/config` | Get or set API keys and defaults |
-| `/keys` | Show all keyboard shortcuts |
-| `/btw` | Add a background note to the current session |
-| `/skills` | List detected skills for the current project |
-| `/agents` | Show active and recent subagents |
+| `/theme` | Change the color theme |
+| `/settings` | Open settings panel |
+| `/keys` | Show all keybindings |
+| `/doctor` | Run install/provider/server/sandbox health checks |
+| `/version` | Show Aurict version |
+
+### Tools & Skills
+
+| Command | Description |
+|---|---|
+| `/skills` | List active skills for this project |
+| `/skill` | Install/remove skills by URL or path |
+| `/plugin` | Plugin marketplace: search, install, remove |
+| `/skill-scores` | Show per-project skill effectiveness scores |
+| `/mcp` | List connected MCP servers |
+| `/design` | Open the design agent wizard |
+
+### Utilities
+
+| Command | Description |
+|---|---|
+| `/export` | Export session to Markdown or HTML |
+| `/share` | Export session as HTML and optionally upload to transfer.sh |
+| `/watch` | Watch a file/dir and auto-run a prompt on change |
+| `/unwatch` | Stop watching a path |
+| `/protect` | Add a file pattern to GateGuard protection |
+| `/unprotect` | Remove a GateGuard protection pattern |
+| `/adr` | Manage architecture decision records in `.aurict/decisions/` |
+| `/diag` | View and resolve project diagnostics |
+| `/crashes` | View crash reports |
+| `/editor` | Open `$EDITOR` to compose a message |
+| `/template` | Save/use named message templates |
 
 ---
 
@@ -221,7 +301,9 @@ aurict [options]
 | `Enter` | Send message |
 | `Shift+Enter` | Insert newline |
 | `Ctrl+←` / `Ctrl+→` | Move cursor word by word |
-| `Ctrl+A` / `Ctrl+E` | Jump to start / end of line |
+| `Ctrl+A` | Attach file (`@file.ts` or `@file.ts:symbol`) |
+| `Ctrl+E` | Edit last user message |
+| `Ctrl+V` | Paste from system clipboard |
 | `Ctrl+C` | Cancel current operation or exit |
 | `Ctrl+T` | Toggle floating task panel |
 | `Ctrl+S` | Open settings panel |
@@ -293,13 +375,20 @@ The token is stored at `~/.aurict/server-token` (mode 600) and regenerated if de
 
 ## Configuration
 
-Aurict stores all configuration in `~/.aurict/`:
+Aurict stores global configuration in `~/.aurict/` and project configuration in `<workdir>/.aurict/`:
 
 ```
 ~/.aurict/
-├── aurict.db          # SQLite database (sessions, config, MCP servers)
+├── aurict.db           # SQLite database (sessions, config, MCP servers, memory)
 ├── server-token        # HTTP API bearer token (chmod 600)
-└── todos.json          # Project-local task list (per working directory)
+├── config.json         # Provider defaults and global settings
+└── plugins/            # Installed plugins
+
+<workdir>/.aurict/
+├── config.json         # Project-level overrides
+├── todos.json          # Task list (per working directory)
+├── decisions/          # Architecture decision records (/adr)
+└── diagnostics/        # Tool failure records (/diag)
 ```
 
 To set a default provider and model:
@@ -390,6 +479,18 @@ documentation honesty, and string utility changes.
 | Token counting | js-tiktoken (model-specific BPE encodings) |
 | MCP | @modelcontextprotocol/sdk |
 | Testing | Bun test runner + ink-testing-library |
+
+---
+
+## Acknowledgements
+
+Aurict is built on the shoulders of these projects:
+
+- **[Ink](https://github.com/vadimdemedes/ink)** by Vadim Demedes — React for interactive command-line apps. The entire TUI rendering layer runs on Ink.
+- **[Vercel AI SDK](https://github.com/vercel/ai)** — Unified multi-provider AI streaming layer (`@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, and more). Without it, wiring each provider would be months of work.
+- **[Bun](https://github.com/oven-sh/bun)** — Runtime, bundler, test runner, and the engine behind the self-contained binary output. `bun build --compile` is what makes a zero-dependency install possible.
+- **[Hono](https://github.com/honojs/hono)** — The lightweight web framework powering the local HTTP/SSE API.
+- **[CodeGraph](https://github.com/colbymchenry/codegraph)** by Colby McHenry — Local-first semantic code intelligence for AI agents via MCP. Used in development to give the AI assistant deep structural understanding of the codebase without grep loops.
 
 ---
 

@@ -4,13 +4,15 @@
 
 - [Getting Started](getting-started.md) — installation, first run, basic usage
 - [Configuration](configuration.md) — config file, environment variables, project instructions
+- [Slash Commands](slash-commands.md) — full reference for all ~55 slash commands
 
 ## Core features
 
 - [Tools Reference](tools.md) — all built-in tools, parameters, permissions, robustness features
-- [Providers](providers.md) — Anthropic, OpenAI, OpenRouter, Google, Ollama, Azure, Bedrock, xAI
+- [Providers](providers.md) — Anthropic, OpenAI, OpenRouter, Google, Ollama, Azure, Bedrock, xAI, OpenCode
 - [Skills & Project Detection](skills.md) — automatic context injection, custom skills
 - [Multi-Agent Mode](multi-agent.md) — coordinator, worker types, agent pool, custom agents
+- [Recipes](recipes.md) — automated multi-step workflows via YAML/JSON recipe files
 
 ## Advanced
 

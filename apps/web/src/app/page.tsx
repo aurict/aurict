@@ -7,7 +7,7 @@ import { Features } from "@/components/sections/Features"
 import { ProviderGrid } from "@/components/ui/ProviderGrid"
 import { IntegrationGrid } from "@/components/ui/IntegrationGrid"
 import { Install } from "@/components/sections/Install"
-import { Waitlist } from "@/components/sections/Waitlist"
+import { SocialProof } from "@/components/sections/SocialProof"
 import { FAQ } from "@/components/sections/FAQ"
 import { Footer } from "@/components/sections/Footer"
 
@@ -95,7 +95,7 @@ const jsonLd = {
       "url":                 "https://aurict.com",
       "downloadUrl":         "https://www.npmjs.com/package/aurict",
       "installUrl":          "https://www.npmjs.com/package/aurict",
-      "softwareVersion":     "1.0.7",
+      "softwareVersion":     "1.1.3",
       "releaseNotes":        "https://aurict.com/changelog",
       "license":             "https://opensource.org/licenses/MIT",
       "author": {
@@ -153,8 +153,8 @@ export default function Home() {
           <Features />
           <ProviderGrid />
           <IntegrationGrid />
+          <SocialProof />
           <Install />
-          <Waitlist />
           <FAQ />
         </main>
       </MotionProvider>
