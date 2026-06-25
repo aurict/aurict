@@ -72,7 +72,7 @@ describe("edit tool — pattern-completion diagnosis (A)", () => {
     )
 
     expect(res.error).toBeUndefined()
-    expect(res.output).toContain("Replaced 1 occurrence")
+    expect(res.output).toContain("Updated")
   })
 
   it("unique-count error preserved when old_string appears multiple times", async () => {

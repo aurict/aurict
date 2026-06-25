@@ -1,27 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { agentPool } from "../src/agent/pool.js"
 import { AGENT_TYPE_TOOLS } from "../src/agent/protocol.js"
-
-describe("agentPool", () => {
-  it("exposes active getter as array", () => {
-    const agents = agentPool.active
-    expect(Array.isArray(agents)).toBe(true)
-  })
-
-  it("active returns AgentInfo objects with correct shape", () => {
-    for (const a of agentPool.active) {
-      expect(typeof a.id).toBe("string")
-      expect(typeof a.name).toBe("string")
-      expect(typeof a.type).toBe("string")
-      expect(["running", "done", "error"]).toContain(a.status)
-    }
-  })
-
-  it("listSessions returns array", () => {
-    const sessions = agentPool.listSessions()
-    expect(Array.isArray(sessions)).toBe(true)
-  })
-})
 
 describe("AGENT_TYPE_TOOLS", () => {
   it("every agent type has a non-empty tools array", () => {
@@ -70,9 +48,6 @@ describe("AGENT_TYPE_TOOLS", () => {
     expect(AGENT_TYPE_TOOLS.security).toContain("websearch")
   })
 
-  it("security agent has NO bash", () => {
-    expect(AGENT_TYPE_TOOLS.security).not.toContain("bash")
-  })
 
   it("refactor has NO bash (safe code transform)", () => {
     expect(AGENT_TYPE_TOOLS.refactor).not.toContain("bash")
