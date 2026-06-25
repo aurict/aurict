@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/web/**"
+  workflow_dispatch:
 
 concurrency:
   group: deploy-web
