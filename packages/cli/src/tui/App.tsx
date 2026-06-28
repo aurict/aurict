@@ -78,7 +78,7 @@ import { getTerminalCaps }   from "../util/terminal-caps.js"
 import { useOverlayState }   from "./hooks/useOverlayState.js"
 import { HistorySearch }     from "./HistorySearch.js"
 import { KeyboardShortcuts } from "./KeyboardShortcuts.js"
-import { AUTO_CONTINUE_PROMPT, shouldAutoContinue, hasOpenTasks } from "./auto-continue.js"
+import { AUTO_CONTINUE_PROMPT } from "./auto-continue.js"
 import type { LocalServerStatus } from "../bootstrap.js"
 
 interface Props {
@@ -1448,8 +1448,14 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           setTurnSkillNames(skills.map((skill) => skill.id))
         },
         onPromptDiagnostics: setPromptDiagnostics,
+        continuation: {
+          getTasks: () => taskManager.getTasks(),
+          previousContinuations: autoContinueRef.current.count,
+          maxContinuations: 5,
+          maxTaskContinuations: 15,
+        },
         onPromptCacheHealth: setPromptCacheHealth,
-        onFinish: ({ tokens: t, text: finalText, newMessages, finishReason }) => {
+        onFinish: ({ tokens: t, text: finalText, newMessages, continuation, completionGate }) => {
           if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
           const finalSegmentText = turnHadToolRef.current ? streamTextRef.current : finalText
           const finalReason = streamReasonRef.current
@@ -1514,25 +1520,11 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
             return next
           })
 
-          // Stall tespiti: model görev ortasında metin bırakıp durduysa otomatik devam et.
-          // Task-driven strateji: açık task'lar varken devam et (güvenlik tavanı: 15),
-          // task yoksa stall pattern tespitine göre en fazla 5 devam.
-          const currentTasks = taskManager.getTasks()
-          const likelyNeedsContinuation = shouldAutoContinue({
-            text: finalText,
-            finishReason,
-            newMessageCount: newMessages.length,
-            tasks: currentTasks,
-          })
-          if (likelyNeedsContinuation) {
-            const count = autoContinueRef.current.count
-            const tasksDriving = hasOpenTasks(currentTasks)
-            const limit = tasksDriving ? 15 : 5
-            if (count < limit) {
-              autoContinueRef.current = { needed: true, count: count + 1 }
-            } else {
-              autoContinueRef.current.needed = false
-            }
+          // Core continuation decision is the single source of truth.
+          if (continuation?.shouldContinue) {
+            autoContinueRef.current = { needed: true, count: continuation.nextContinuationCount }
+          } else if (completionGate?.shouldAutoContinue && !completionGate.shadowOnly) {
+            autoContinueRef.current = { needed: true, count: autoContinueRef.current.count + 1 }
           } else {
             autoContinueRef.current.needed = false
           }

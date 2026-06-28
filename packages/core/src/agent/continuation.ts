@@ -2,11 +2,38 @@ export interface ContinuationTaskState {
   status: string
 }
 
+export type ContinuationReason =
+  | "finish_reason"
+  | "empty_response"
+  | "stalled_text"
+  | "open_tasks"
+
+export type ContinuationStopReason =
+  | "complete"
+  | "blocked"
+  | "budget_exhausted"
+
 export interface ContinuationSignal {
   text: string
   finishReason?: string | undefined
   newMessageCount: number
   tasks?: ContinuationTaskState[]
+}
+
+export interface ContinuationBudget {
+  previousContinuations?: number | undefined
+  maxContinuations?: number | undefined
+  maxTaskContinuations?: number | undefined
+}
+
+export interface ContinuationDecision {
+  shouldContinue: boolean
+  reason?: ContinuationReason | undefined
+  stopReason?: ContinuationStopReason | undefined
+  previousContinuations: number
+  maxContinuations: number
+  nextContinuationCount: number
+  tasksOpen: boolean
 }
 
 export function stalledMidTask(text: string): boolean {
@@ -31,11 +58,56 @@ export function hasOpenContinuationTasks(tasks: ContinuationTaskState[] = []): b
 }
 
 export function shouldContinueAgentRun(signal: ContinuationSignal): boolean {
-  if (finishReasonNeedsContinuation(signal.finishReason)) return true
-  if (!signal.text.trim() && signal.newMessageCount > 0) return true
-  if (stalledMidTask(signal.text)) return true
-  if (hasOpenContinuationTasks(signal.tasks) && !reportsBlocker(signal.text)) return true
-  return false
+  return evaluateContinuation(signal).shouldContinue
+}
+
+export function evaluateContinuation(signal: ContinuationSignal, budget: ContinuationBudget = {}): ContinuationDecision {
+  const tasksOpen = hasOpenContinuationTasks(signal.tasks)
+  const previousContinuations = Math.max(0, budget.previousContinuations ?? 0)
+  const maxContinuations = Math.max(0, tasksOpen
+    ? budget.maxTaskContinuations ?? budget.maxContinuations ?? 15
+    : budget.maxContinuations ?? 5)
+  const reason = continuationReason(signal, tasksOpen)
+
+  if (!reason) {
+    return {
+      shouldContinue: false,
+      stopReason: reportsBlocker(signal.text) ? "blocked" : "complete",
+      previousContinuations,
+      maxContinuations,
+      nextContinuationCount: previousContinuations,
+      tasksOpen,
+    }
+  }
+
+  if (previousContinuations >= maxContinuations) {
+    return {
+      shouldContinue: false,
+      reason,
+      stopReason: "budget_exhausted",
+      previousContinuations,
+      maxContinuations,
+      nextContinuationCount: previousContinuations,
+      tasksOpen,
+    }
+  }
+
+  return {
+    shouldContinue: true,
+    reason,
+    previousContinuations,
+    maxContinuations,
+    nextContinuationCount: previousContinuations + 1,
+    tasksOpen,
+  }
+}
+
+function continuationReason(signal: ContinuationSignal, tasksOpen: boolean): ContinuationReason | undefined {
+  if (finishReasonNeedsContinuation(signal.finishReason)) return "finish_reason"
+  if (!signal.text.trim() && signal.newMessageCount > 0) return "empty_response"
+  if (stalledMidTask(signal.text)) return "stalled_text"
+  if (tasksOpen && !reportsBlocker(signal.text)) return "open_tasks"
+  return undefined
 }
 
 function finishReasonNeedsContinuation(reason?: string): boolean {
@@ -46,4 +118,3 @@ function finishReasonNeedsContinuation(reason?: string): boolean {
 function reportsBlocker(text: string): boolean {
   return /\b(blocked|waiting for|need (?:your|user)|requires? (?:your|user)|cannot proceed|can't proceed|permission denied|manual approval|engel|bekliyor|kullanıcı(?:dan)? gerekli|devam edemem|izin gerekli)\b/i.test(text)
 }
-

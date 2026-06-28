@@ -16,8 +16,42 @@ describe("prompt diagnostics", () => {
     expect(report.sections.map(section => section.name)).toEqual(["core", "git"])
     expect(report.totalChars).toBeGreaterThan(0)
     expect(report.totalTokens).toBeGreaterThan(0)
+    expect(report.totalBudgetTokens).toBeGreaterThan(0)
+    expect(report.overBudgetTokens).toBe(0)
     expect(report.byCache.static.sections).toBe(1)
     expect(report.byCache.dynamic.sections).toBe(1)
+  })
+
+  it("reports section budget warnings", () => {
+    const previous = process.env["AURICT_PROMPT_SECTION_BUDGET_SKILLS"]
+    process.env["AURICT_PROMPT_SECTION_BUDGET_SKILLS"] = "1"
+    try {
+      const report = analyzePromptSections([
+        { name: "skills", cache: "dynamic", content: "one two three four five" },
+      ])
+
+      expect(report.warnings.some((warning) => warning.scope === "section" && warning.name === "skills")).toBe(true)
+      expect(report.sections[0]?.overBudgetTokens).toBeGreaterThan(0)
+    } finally {
+      if (previous === undefined) delete process.env["AURICT_PROMPT_SECTION_BUDGET_SKILLS"]
+      else process.env["AURICT_PROMPT_SECTION_BUDGET_SKILLS"] = previous
+    }
+  })
+
+  it("reports total prompt budget warnings", () => {
+    const previous = process.env["AURICT_PROMPT_TOTAL_BUDGET_TOKENS"]
+    process.env["AURICT_PROMPT_TOTAL_BUDGET_TOKENS"] = "1"
+    try {
+      const report = analyzePromptSections([
+        { name: "core", cache: "static", content: "one two three four five" },
+      ])
+
+      expect(report.overBudgetTokens).toBeGreaterThan(0)
+      expect(report.warnings[0]?.scope).toBe("total")
+    } finally {
+      if (previous === undefined) delete process.env["AURICT_PROMPT_TOTAL_BUDGET_TOKENS"]
+      else process.env["AURICT_PROMPT_TOTAL_BUDGET_TOKENS"] = previous
+    }
   })
 })
 
@@ -37,4 +71,3 @@ describe("prompt cache health", () => {
     expect(promptCacheHealthStats().entries).toBe(1)
   })
 })
-

@@ -5,7 +5,7 @@ import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { normalizeToolName, setActiveSkillPolicy } from "../../skill/runtime-policy.js"
+import { getSkillLifecycleSnapshot, normalizeToolName, popActiveSkillPolicy, pushActiveSkillPolicy } from "../../skill/runtime-policy.js"
 
 export const loadSkillTool: ToolDef = {
   id: "load_skill",
@@ -20,6 +20,7 @@ HOW TO USE:
 1. Call load_skill with the skill ID (e.g. "professional-report-design", "resume-builder")
 2. Read the returned instructions carefully
 3. Follow them precisely for the task at hand
+4. When the specialized work is complete, call load_skill with skill_id "exit"
 
 AVAILABLE SKILL CATEGORIES (use /skills to see all loaded skills):
 - Documents/PDF: professional-report-design, html-to-pdf, pptx-generation
@@ -43,6 +44,18 @@ If you don't know the exact skill ID, use a close match — the tool will find i
     const id = String(args["skill_id"] ?? "").trim().toLowerCase()
     const task = String(args["task"] ?? "").trim()
     if (!id) return { output: "", error: "skill_id is required" }
+    if (id === "exit" || id === "skill_exit") {
+      const popped = popActiveSkillPolicy(ctx.sessionId)
+      const snapshot = getSkillLifecycleSnapshot(ctx.sessionId)
+      return {
+        output: popped
+          ? [
+              `# Skill Exited: ${popped.skillName}`,
+              snapshot.active ? `Active skill restored: ${snapshot.active.skillName}` : "No active skill remains.",
+            ].join("\n\n")
+          : "No active skill to exit.",
+      }
+    }
 
     // Exact match first
     let def = SkillRegistry.get(id)
@@ -83,7 +96,8 @@ If you don't know the exact skill ID, use a close match — the tool will find i
 
       const allowedTools = asStringArray(meta["allowed-tools"] ?? meta.tools ?? registryPolicy?.allowedTools)
       const context = meta.context === "fork" || registryPolicy?.executionContext === "fork" ? "fork" : "inline"
-      setActiveSkillPolicy(ctx.sessionId, {
+      const before = getSkillLifecycleSnapshot(ctx.sessionId)
+      const lifecycle = pushActiveSkillPolicy(ctx.sessionId, {
         skillId: registryPolicy?.id ?? id,
         skillName: displayName,
         allowedTools,
@@ -130,8 +144,10 @@ If you don't know the exact skill ID, use a close match — the tool will find i
       return {
         output: [
           `# Skill Loaded: ${displayName}`,
+          before.active ? `## Nested Skill\nPrevious active skill: ${before.active.skillName}. Call load_skill("exit") to return to it.` : "",
+          lifecycle.stack.length > 1 ? `Skill stack depth: ${lifecycle.stack.length}` : "",
           context === "fork"
-            ? "## Fork Required\nThis skill is marked `context: fork`. Delegate the specialized work to the subagent tool before continuing in the main conversation."
+            ? "## Fork Required\nThis skill is marked `context: fork`. Provide a concrete `task` to load_skill so Aurict can execute it in an isolated fork, or delegate with the subagent tool. Avoid copying the full skill instructions into the main conversation."
             : "",
           policy,
           body.trim(),

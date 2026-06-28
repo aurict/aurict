@@ -138,6 +138,25 @@ describe("symbol pre-verification (C)", () => {
   })
 })
 
+describe("post-edit verification metadata", () => {
+  it("records skipped TSC verification for comment-only TypeScript edits", async () => {
+    const { executeTool } = await import("../src/tool/executor.js")
+    const { editTool }    = await import("../src/tool/built-in/edit.js")
+    const f = join(dir, "comment-only.ts")
+    writeFileSync(f, "// old comment\nconst value: number = 1\n")
+
+    const res = await executeTool(
+      editTool,
+      { path: f, old_string: "// old comment", new_string: "// new comment" },
+      ctx(),
+    )
+
+    expect(res.error).toBeUndefined()
+    expect(res.metadata?.verification?.tsc?.status).toBe("skipped")
+    expect(res.metadata?.verification?.tsc?.reason).toBe("non-type change")
+  })
+})
+
 // ── analyzeToolError — hint injection ────────────────────────────────────────
 
 describe("analyzeToolError", () => {

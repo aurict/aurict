@@ -13,11 +13,16 @@ import { toolResultCache } from "./cache.js"
 import { metrics } from "../util/metrics.js"
 import { shouldRunTsc, runIncrementalTsc, filterTscForFile } from "../verification/tsc.js"
 import { detectHallucinations, formatHallucinationWarnings } from "../verification/hallucination.js"
+import { withTscVerification } from "../verification/pipeline.js"
 import { progressTracker, getToolProgressMessage } from "../util/progress.js"
 import { prefetchManager, extractPrefetchHints } from "../util/prefetch.js"
 import { changedFileAffectsSkillCache, invalidatePromptSectionsForChangedFile } from "../agent/prompt-invalidation.js"
 import { clearSkillCache } from "../skill/injector.js"
 import { isToolAllowedByActiveSkillPolicy } from "../skill/runtime-policy.js"
+import { distillToolResult } from "./result-distiller.js"
+import { updateWorkingSetFromTool } from "../agent/working-set.js"
+import { recordFailureCooldown } from "../agent/failure-cooldown.js"
+import { recordRunTrace } from "../agent/run-trace.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "./types.js"
 import type { PermissionRequest, PermissionResponse } from "../permission/types.js"
 import { filterPatchTextByFiles, summarizePatchText, type PatchSummary } from "./built-in/apply-patch.js"
@@ -642,14 +647,20 @@ export async function executeTool(
           const fileErr = filterTscForFile(tscOut, filePath)
 
           if (fileErr && fileErr !== "✓") {
+            result = withTscVerification(result, { status: "failed", output: fileErr })
             result = { ...result, output: result.output + `\n\n[TypeScript] Errors in this file after edit:\n${fileErr}` }
           } else if (tscOut === "✓") {
+            result = withTscVerification(result, { status: "passed" })
             result = { ...result, output: result.output + "\n[TypeScript] ✓ No errors" }
+          } else {
+            result = withTscVerification(result, { status: "passed", reason: "no errors for changed file" })
           }
         } catch {
+          result = withTscVerification(result, { status: "timeout", reason: "post-edit check timed out" })
           result = { ...result, output: result.output + "\n[TypeScript] Skipped (post-edit check timed out)" }
         }
       } else {
+        result = withTscVerification(result, { status: "skipped", reason: "non-type change" })
         result = { ...result, output: result.output + "\n[TypeScript] Skipped (non-type change)" }
       }
 
@@ -700,6 +711,32 @@ export async function executeTool(
       }
     } catch { /* detector failure never blocks tool result */ }
   }
+
+  const distilled = distillToolResult(def.id, args, result)
+  const cooldown = recordFailureCooldown(ctx.sessionId, def.id, args, distilled)
+  result = {
+    ...result,
+    metadata: {
+      ...result.metadata,
+      distilled,
+      ...(cooldown ? { failureCooldown: cooldown } : {}),
+    },
+  }
+  updateWorkingSetFromTool(ctx.sessionId, ctx.workdir, distilled)
+  if (cooldown?.strategyShiftRequired) {
+    result = {
+      ...result,
+      output: result.output + `\n\n[Strategy] This failure pattern repeated ${cooldown.count} times. Do not retry the same command or edit pattern; inspect context and use a different strategy.`,
+    }
+  }
+  recordRunTrace(ctx.workdir, ctx.sessionId, "tool_result_distilled", {
+    tool: def.id,
+    status: distilled.status,
+    changedFiles: distilled.changedFiles,
+    errors: distilled.errors,
+    verification: distilled.verification,
+    cooldown,
+  }).catch(() => {})
 
   // durationMs zaten yukarıda (post-execute) hesaplandı
 

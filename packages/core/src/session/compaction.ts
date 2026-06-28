@@ -87,6 +87,7 @@ export const PRUNE_MINIMUM         = 20_000
 export const PRUNE_PROTECT         = 40_000
 export const DEFAULT_MSG_THRESHOLD =    100
 export const TOOL_RESULT_CLEARED_MESSAGE = "[Old tool result content cleared]"
+export const PROTECTED_FACTS_MARKER = "[Protected context facts]"
 
 export type CompactionStrategy = "aggressive" | "balanced" | "conservative"
 
@@ -154,6 +155,14 @@ export interface ContextBreakdown {
   percentUsed: number
 }
 
+export interface ProtectedContextFacts {
+  files: string[]
+  errors: string[]
+  verification: string[]
+  decisions: string[]
+  nextSteps: string[]
+}
+
 export function getContextBreakdown(messages: CoreMessage[], contextWindow: number): ContextBreakdown {
   const byRole: Record<string, number> = {}
   const withTokens: Array<{ preview: string; tokens: number; role: string }> = []
@@ -197,7 +206,69 @@ export function microCompactOldToolResults(
     return { ...message, content: TOOL_RESULT_CLEARED_MESSAGE as never } as CoreMessage
   })
 
-  return changed ? compacted : messages
+  if (!changed) return messages
+
+  const protectedFacts = formatProtectedContextFacts(extractProtectedContextFacts(messages))
+  return protectedFacts ? injectProtectedFacts(compacted, protectedFacts) : compacted
+}
+
+export function extractProtectedContextFacts(messages: CoreMessage[]): ProtectedContextFacts {
+  const files = new Set<string>()
+  const errors: string[] = []
+  const verification: string[] = []
+  const decisions: string[] = []
+  const nextSteps: string[] = []
+
+  for (const message of messages) {
+    const text = extractText(message)
+    for (const file of extractFilePaths(text)) files.add(file)
+    collectMatchingLines(text, /\b(error|failed|exception|cannot find|typeerror|syntaxerror|enoent)\b/i, errors, 6)
+    collectMatchingLines(text, /\b(tsc|typecheck|test|lint|playwright|vitest|bun test|passed|failed|✓|0 fail)\b/i, verification, 8)
+    collectMatchingLines(text, /\b(decided|decision|chose|selected|we will|we'll|karar|seçtik|uygulayacağız)\b/i, decisions, 6)
+    collectMatchingLines(text, /\b(next step|remaining|todo|still need|not verified|kalan|sıradaki|henüz|devam)\b/i, nextSteps, 6)
+  }
+
+  return {
+    files: [...files].slice(0, 12),
+    errors,
+    verification,
+    decisions,
+    nextSteps,
+  }
+}
+
+export function formatProtectedContextFacts(facts: ProtectedContextFacts): string {
+  const sections = [
+    facts.files.length ? `FILES:\n${facts.files.map((item) => `- ${item}`).join("\n")}` : "",
+    facts.verification.length ? `VERIFICATION:\n${facts.verification.map((item) => `- ${item}`).join("\n")}` : "",
+    facts.errors.length ? `ERRORS:\n${facts.errors.map((item) => `- ${item}`).join("\n")}` : "",
+    facts.decisions.length ? `DECISIONS:\n${facts.decisions.map((item) => `- ${item}`).join("\n")}` : "",
+    facts.nextSteps.length ? `NEXT_STEPS:\n${facts.nextSteps.map((item) => `- ${item}`).join("\n")}` : "",
+  ].filter(Boolean)
+
+  return sections.length ? `${PROTECTED_FACTS_MARKER}\n${sections.join("\n\n")}` : ""
+}
+
+function injectProtectedFacts(messages: CoreMessage[], protectedFacts: string): CoreMessage[] {
+  if (messages.some((message) => extractText(message).includes(PROTECTED_FACTS_MARKER))) return messages
+  const firstNonSystem = messages.findIndex((message) => message.role !== "system")
+  const insertAt = firstNonSystem === -1 ? messages.length : firstNonSystem
+  const factMessages: CoreMessage[] = [
+    { role: "user", content: PROTECTED_FACTS_MARKER },
+    { role: "assistant", content: protectedFacts },
+  ]
+  return [...messages.slice(0, insertAt), ...factMessages, ...messages.slice(insertAt)]
+}
+
+function collectMatchingLines(text: string, pattern: RegExp, target: string[], limit: number): void {
+  if (target.length >= limit) return
+  for (const rawLine of text.split(/\r?\n/)) {
+    if (target.length >= limit) return
+    const line = rawLine.trim()
+    if (line.length < 8 || !pattern.test(line)) continue
+    const compact = line.replace(/\s+/g, " ").slice(0, 220)
+    if (!target.includes(compact)) target.push(compact)
+  }
 }
 
 // ─── Strategy 1: microCompact ─────────────────────────────────────────────────
@@ -364,11 +435,12 @@ async function sessionCompact(
   // ─── Faz 3: Error chain preservation ────────────────────────────────────────
   const errorChains = extractErrorChains(messages)
   const errorSection = addProtectedErrors("", errorChains)
+  const protectedFacts = formatProtectedContextFacts(extractProtectedContextFacts(messages))
 
   // Boundary marker: compaction noktasını izlenebilir kıl
   const boundaryId = crypto.randomUUID().slice(0, 8)
   const fullSummary = (scratchpadSection ? scratchpadSection + "\n\n" : "")
-    + summary + fileBlocks.join("") + errorSection + `\n\n[COMPACT:${boundaryId}]`
+    + summary + (protectedFacts ? `\n\n${protectedFacts}` : "") + fileBlocks.join("") + errorSection + `\n\n[COMPACT:${boundaryId}]`
 
   const compacted: CoreMessage[] = [
     { role: "user",      content: "[Summary of previous conversation]" },

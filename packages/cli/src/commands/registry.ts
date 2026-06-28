@@ -1,4 +1,4 @@
-import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore, installRemotePlugin, listInstalledPlugins, uninstallPlugin, fetchRegistry, searchRegistry, findInRegistry } from "@aurict/core"
+import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore, installRemotePlugin, listInstalledPlugins, uninstallPlugin, fetchRegistry, searchRegistry, findInRegistry, readLatestTraceEvents } from "@aurict/core"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
 import { resolve, join } from "path"
 import { THEMES, THEME_NAMES } from "../utils/theme.js"
@@ -22,6 +22,25 @@ function oneLine(value: unknown, max = 110): string {
   return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean
 }
 
+function traceSummary(data: Record<string, unknown>): unknown {
+  if ("status" in data || "reason" in data) return data
+  if ("tool" in data) {
+    return {
+      tool: data["tool"],
+      status: data["status"],
+      errors: Array.isArray(data["errors"]) ? data["errors"].length : undefined,
+      verification: Array.isArray(data["verification"]) ? data["verification"].length : undefined,
+    }
+  }
+  if ("sections" in data) {
+    return {
+      sections: Array.isArray(data["sections"]) ? data["sections"].length : undefined,
+      cacheHealth: (data["cacheHealth"] as Record<string, unknown> | undefined)?.["kind"],
+    }
+  }
+  return data
+}
+
 function ensureLine(path: string, line: string): boolean {
   const existing = existsSync(path) ? readFileSync(path, "utf8") : ""
   if (existing.split(/\r?\n/).includes(line)) return false
@@ -41,7 +60,7 @@ const commands: CommandDef[] = [
         "Setup & Config":      ["init", "doctor", "providers", "models", "config", "theme", "keys", "settings", "version"],
         "Session & History":   ["status", "history", "diffs", "session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints"],
         "Agents & AI":         ["agent", "agents", "coordinator", "autopilot", "undercover", "background", "btw"],
-        "Context & Memory":    ["pin", "memory", "ctx", "compact", "worktree"],
+        "Context & Memory":    ["pin", "memory", "ctx", "trace", "compact", "worktree"],
         "Tools & Integration": ["commit", "watch", "unwatch", "mcp", "skill", "plugin", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores"],
         "Info & Misc":         ["help", "cost", "export", "share", "stash", "crashes", "exit", "pet", "name", "companion"],
       }
@@ -1498,9 +1517,19 @@ const commands: CommandDef[] = [
           .slice()
           .sort((a, b) => b.tokens - a.tokens)
           .slice(0, 8)
-          .map((section) => `  ${section.name.padEnd(24)} ${section.cache.padEnd(7)} ${fmtK(section.tokens)} tokens`)
+          .map((section) => {
+            const budget = section.budgetTokens ? ` / ${fmtK(section.budgetTokens)}` : ""
+            const warn = section.overBudgetTokens && section.overBudgetTokens > 0 ? `  OVER +${fmtK(section.overBudgetTokens)}` : ""
+            return `  ${section.name.padEnd(24)} ${section.cache.padEnd(7)} ${fmtK(section.tokens)}${budget} tokens${warn}`
+          })
           .join("\n")
         : "  (no prompt diagnostics yet)"
+      const promptBudgetLines = ctx.promptDiagnostics?.warnings?.length
+        ? ctx.promptDiagnostics.warnings
+          .slice(0, 5)
+          .map((warning) => `  ${warning.scope}:${warning.name} +${fmtK(warning.overBudgetTokens)} over ${fmtK(warning.budgetTokens)}`)
+          .join("\n")
+        : "  (within configured budgets)"
       const cacheHealth = ctx.promptCacheHealth
         ? [
             `  Status:       ${ctx.promptCacheHealth.kind}`,
@@ -1534,12 +1563,41 @@ const commands: CommandDef[] = [
           ``,
           `── Prompt Sections ────────────────────────`,
           ctx.promptDiagnostics
-            ? `  Total: ${fmtK(ctx.promptDiagnostics.totalTokens)} tokens across ${ctx.promptDiagnostics.sections.length} sections`
+            ? `  Total: ${fmtK(ctx.promptDiagnostics.totalTokens)} / ${fmtK(ctx.promptDiagnostics.totalBudgetTokens ?? 0)} tokens across ${ctx.promptDiagnostics.sections.length} sections`
             : `  Total: n/a`,
           promptSectionLines,
           ``,
+          `  Budget Warnings:`,
+          promptBudgetLines,
+          ``,
           `── Prompt Cache Health ────────────────────`,
           cacheHealth,
+        ].join("\n"),
+      }
+    },
+  },
+
+  // ── /trace ────────────────────────────────────────────────────────────────
+  {
+    name:        "trace",
+    aliases:     [],
+    description: "Show recent agent run trace decisions",
+    usage:       "[N]",
+    handler: async (args, ctx): Promise<CommandResult> => {
+      const limit = Math.max(1, Math.min(80, Number(args[0] ?? 20) || 20))
+      const events = await readLatestTraceEvents(ctx.workdir, ctx.sessionId, limit)
+      if (events.length === 0) {
+        return { type: "text", content: "No trace events recorded for this session yet." }
+      }
+      const lines = events.map((event) => {
+        const time = new Date(event.ts).toLocaleTimeString()
+        return `  ${time}  ${event.type.padEnd(24)} ${oneLine(traceSummary(event.data), 130)}`
+      })
+      return {
+        type: "text",
+        content: [
+          `── Run Trace (${events.length}) ─────────────────────────`,
+          ...lines,
         ].join("\n"),
       }
     },

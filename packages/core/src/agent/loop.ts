@@ -26,7 +26,14 @@ import { analyzePromptSections } from "./prompt-diagnostics.js"
 import { recordPromptCacheHealth } from "./prompt-cache-health.js"
 import { getCachedToolSchema } from "../tool/schema-cache.js"
 import { getPromptCacheControl, isPromptCachingEnabled } from "./prompt-cache-control.js"
-import { clearActiveSkillPolicy } from "../skill/runtime-policy.js"
+import { clearActiveSkillPolicy, getSkillLifecycleSnapshot, restoreSkillLifecycle } from "../skill/runtime-policy.js"
+import { evaluateContinuation } from "./continuation.js"
+import { extractVerificationSnapshot, readSessionResumeState, writeSessionResumeState } from "../session/resume-state.js"
+import { restoreWorkingSet, getWorkingSetSnapshot } from "./working-set.js"
+import { restoreFailureCooldown, getFailureCooldownSnapshot } from "./failure-cooldown.js"
+import { buildAttentionAnchor } from "./attention-anchor.js"
+import { evaluateCompletionGate } from "./completion-gate.js"
+import { recordRunTrace } from "./run-trace.js"
 
 const DEFAULT_MAX_STEPS = 80
 
@@ -159,7 +166,16 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
   const model        = plugin.getModel(modelId)
   const workdir      = opts.workdir ?? process.cwd()
   const sessionId    = opts.sessionId
-  clearActiveSkillPolicy(sessionId ?? "")
+  const resumedState = sessionId ? await readSessionResumeState(workdir, sessionId) : null
+  if (sessionId && resumedState) {
+    restoreSkillLifecycle(sessionId, resumedState.activeSkills ?? [])
+    restoreWorkingSet(sessionId, resumedState.workingSet)
+    restoreFailureCooldown(sessionId, resumedState.failureCooldown)
+  } else {
+    clearActiveSkillPolicy(sessionId ?? "")
+    restoreWorkingSet(sessionId ?? "", null)
+    restoreFailureCooldown(sessionId ?? "", null)
+  }
 
   let messages: CoreMessage[] = [...opts.messages]
 
@@ -279,14 +295,41 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     runtimeSystemSections.push({ name: "undercover", cache: "dynamic", content: `---\n\n${getUndercoverInstructions()}` })
   }
 
+  const workingSet = getWorkingSetSnapshot(sessionId ?? "")
+  const failureCooldown = getFailureCooldownSnapshot(sessionId ?? "")
+  const attentionAnchor = buildAttentionAnchor({
+    objective: lastUserText,
+    activeSkill: getSkillLifecycleSnapshot(sessionId ?? "").active,
+    workingSet,
+    verification: resumedState?.lastVerification,
+    cooldown: failureCooldown,
+  })
+  if (attentionAnchor) {
+    runtimeSystemSections.push({ name: "attention_anchor", cache: "dynamic", content: attentionAnchor })
+  }
+
   const system = joinPromptSections(runtimeSystemSections)
   opts.onPromptDiagnostics?.(analyzePromptSections(runtimeSystemSections))
-  opts.onPromptCacheHealth?.(recordPromptCacheHealth({
+  const cacheHealth = recordPromptCacheHealth({
     key: `${workdir}:${providerName}`,
     model: modelId,
     sections: runtimeSystemSections,
     toolIds: Object.keys(aiTools),
-  }))
+  })
+  opts.onPromptCacheHealth?.(cacheHealth)
+  if (sessionId) {
+    recordRunTrace(workdir, sessionId, "prompt_sections", {
+      sections: runtimeSystemSections.map(section => ({ name: section.name, cache: section.cache, chars: section.content.length })),
+      cacheHealth,
+    }).catch(() => {})
+    if (attentionAnchor) {
+      recordRunTrace(workdir, sessionId, "attention_anchor", {
+        chars: attentionAnchor.length,
+        workingSetItems: workingSet.items.length,
+        activeSkill: getSkillLifecycleSnapshot(sessionId).active?.skillId ?? null,
+      }).catch(() => {})
+    }
+  }
 
   // Git context her turn'de fresh — Anthropic cache'e girmemeli
   const gitSection = buildGitSection(workdir)
@@ -449,15 +492,60 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     })
   }
 
+  const continuation = evaluateContinuation({
+    text: fullText,
+    finishReason,
+    newMessageCount: newMessages.length,
+    tasks: opts.continuation?.getTasks?.() ?? [],
+  }, {
+    previousContinuations: opts.continuation?.previousContinuations ?? resumedState?.continuation?.nextContinuationCount,
+    maxContinuations: opts.continuation?.maxContinuations,
+    maxTaskContinuations: opts.continuation?.maxTaskContinuations,
+  })
+  const lastVerification = extractVerificationSnapshot(fullText) ?? resumedState?.lastVerification
+  const finalWorkingSet = getWorkingSetSnapshot(sessionId ?? "")
+  const completionGate = evaluateCompletionGate({
+    text: fullText,
+    continuation,
+    workingSet: finalWorkingSet,
+    verification: lastVerification,
+  })
+
   const finish: AgentFinishResult = {
     text:      fullText,
     tokens:    breakdown,
     newMessages,
+    continuation,
+    completionGate,
     ...(finishReason ? { finishReason } : {}),
     ...(sessionId !== undefined ? { sessionId } : {}),
   }
 
   opts.onFinish?.(finish)
+
+  if (sessionId !== undefined) {
+    writeSessionResumeState({
+      sessionId,
+      workdir,
+      provider: providerName,
+      model: modelId,
+      updatedAt: Date.now(),
+      activeSkills: getSkillLifecycleSnapshot(sessionId).stack,
+      workingSet: finalWorkingSet,
+      failureCooldown: getFailureCooldownSnapshot(sessionId),
+      completionGate,
+      continuation,
+      ...(finishReason ? { finishReason } : {}),
+      tokens: breakdown,
+      ...(lastVerification ? { lastVerification } : {}),
+      ...(fullText ? { lastTextPreview: fullText.slice(-1_500) } : {}),
+    }).catch(() => {})
+    recordRunTrace(workdir, sessionId, "completion_gate", completionGate as unknown as Record<string, unknown>).catch(() => {})
+    recordRunTrace(workdir, sessionId, "working_set", {
+      items: finalWorkingSet.items.slice(0, 12),
+      updatedAt: finalWorkingSet.updatedAt,
+    }).catch(() => {})
+  }
 
   // Agent başarıyla tamamlandı — aktif skill'lerin success skorunu artır (fire-and-forget)
   if (fullText && projectSkills.length > 0) {

@@ -1,4 +1,6 @@
 import type { z } from "zod"
+import type { DistilledToolResult } from "./result-distiller.js"
+import type { FailureCooldownEntry } from "../agent/failure-cooldown.js"
 
 export type ToolCategory = "read" | "write" | "execute" | "network" | "system"
 export type RiskLevel    = "low" | "medium" | "high" | "critical"
@@ -34,6 +36,15 @@ export interface ExecuteResult {
   error?: string
   metadata?: {
     changedFiles?: string[]
+    distilled?: DistilledToolResult
+    failureCooldown?: FailureCooldownEntry
+    verification?: {
+      tsc?: {
+        status: "passed" | "failed" | "skipped" | "timeout"
+        reason?: string
+        output?: string
+      }
+    }
     patch?: {
       files: Array<{
         path: string

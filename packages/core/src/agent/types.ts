@@ -3,6 +3,15 @@ import type { Attachment } from "../util/attachments.js"
 import type { ActivatedSkillInfo } from "../skill/injector.js"
 import type { PromptDiagnostics } from "./prompt-diagnostics.js"
 import type { PromptCacheHealthResult } from "./prompt-cache-health.js"
+import type { ContinuationDecision, ContinuationTaskState } from "./continuation.js"
+import type { CompletionGateDecision } from "./completion-gate.js"
+
+export interface AgentContinuationOptions {
+  getTasks?: (() => ContinuationTaskState[]) | undefined
+  previousContinuations?: number | undefined
+  maxContinuations?: number | undefined
+  maxTaskContinuations?: number | undefined
+}
 
 export interface AgentRunOptions {
   sessionId?:   string
@@ -17,6 +26,7 @@ export interface AgentRunOptions {
   stream?:      boolean
   attachments?:    Attachment[]   // multimodal dosya ekleri
   toolsOverride?:  string[]       // set ise sadece bu tool'lar etkin (session agent kısıtlaması)
+  continuation?:   AgentContinuationOptions
   onText?:        (delta: string, isReasoning?: boolean) => void
   onToolCall?:    (call: { id: string; tool: string; args: unknown }) => void
   onToolResult?:  (res:  { id: string; result: string; durationMs: number }) => void
@@ -44,6 +54,8 @@ export interface AgentFinishResult {
   sessionId?:   string
   newMessages:  CoreMessage[]
   finishReason?: string
+  continuation?: ContinuationDecision
+  completionGate?: CompletionGateDecision
 }
 
 export type AgentStatus = "idle" | "running" | "done" | "error" | "aborted"

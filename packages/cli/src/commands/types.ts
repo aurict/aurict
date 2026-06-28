@@ -65,7 +65,10 @@ export interface CommandContext {
   promptDiagnostics?: {
     totalChars: number
     totalTokens: number
-    sections: Array<{ name: string; cache: string; chars: number; tokens: number }>
+    totalBudgetTokens?: number | undefined
+    overBudgetTokens?: number | undefined
+    warnings?: Array<{ scope: string; name: string; tokens: number; budgetTokens: number; overBudgetTokens: number }> | undefined
+    sections: Array<{ name: string; cache: string; chars: number; tokens: number; budgetTokens?: number | undefined; overBudgetTokens?: number | undefined }>
     byCache: Record<string, { chars: number; tokens: number; sections: number }>
   } | undefined
   promptCacheHealth?: {
