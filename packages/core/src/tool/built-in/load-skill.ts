@@ -1,7 +1,11 @@
 import { z } from "zod"
 import { SkillRegistry } from "../../skill/registry.js"
+import { parseFrontmatter } from "../../skill/frontmatter.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { readFile } from "node:fs/promises"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
+import { normalizeToolName, setActiveSkillPolicy } from "../../skill/runtime-policy.js"
 
 export const loadSkillTool: ToolDef = {
   id: "load_skill",
@@ -32,39 +36,154 @@ If you don't know the exact skill ID, use a close match — the tool will find i
 
   parameters: z.object({
     skill_id: z.string().describe("Skill ID to load, e.g. 'professional-report-design'"),
+    task: z.string().optional().describe("Optional concrete task. If the skill is marked context: fork, Aurict can execute it in an isolated worker run."),
   }),
 
-  async execute(args, _ctx: ToolContext): Promise<ExecuteResult> {
+  async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
     const id = String(args["skill_id"] ?? "").trim().toLowerCase()
+    const task = String(args["task"] ?? "").trim()
     if (!id) return { output: "", error: "skill_id is required" }
 
     // Exact match first
     let def = SkillRegistry.get(id)
+    let contentPath = def?.contentPath
+    let displayName = def?.name ?? id
+    let registryPolicy = def
 
     // Fuzzy fallback: find skill whose ID contains the query or vice versa
     if (!def) {
       const all = SkillRegistry.all()
       def = all.find(s => s.id.includes(id) || id.includes(s.id))
+      contentPath = def?.contentPath
+      displayName = def?.name ?? id
+      registryPolicy = def
     }
 
-    if (!def) {
+    if (!contentPath) {
+      const projectCustom = resolveProjectCustomSkill(ctx.workdir, id)
+      if (projectCustom) {
+        contentPath = projectCustom.contentPath
+        displayName = projectCustom.name
+      }
+    }
+
+    if (!contentPath) {
       const all = SkillRegistry.all()
       const ids = all.map(s => s.id).slice(0, 30).join(", ")
       return { output: "", error: `Skill '${id}' not found. Sample IDs: ${ids}` }
     }
 
     try {
-      const content = await readFile(def.contentPath, "utf8")
-      // Strip YAML frontmatter — agent needs the instructions, not the metadata
-      const body = content.startsWith("---")
-        ? content.replace(/^---[\s\S]*?---\n?/, "").trim()
-        : content.trim()
+      const content = await readFile(contentPath, "utf8")
+      const { meta, body } = parseFrontmatter(content)
+      const disableModelInvocation = parseBoolean(meta["disable-model-invocation"]) || registryPolicy?.disableModelInvocation === true
+      if (disableModelInvocation) {
+        return { output: "", error: `Skill '${id}' cannot be loaded by the model because disable-model-invocation is enabled.` }
+      }
+
+      const allowedTools = asStringArray(meta["allowed-tools"] ?? meta.tools ?? registryPolicy?.allowedTools)
+      const context = meta.context === "fork" || registryPolicy?.executionContext === "fork" ? "fork" : "inline"
+      setActiveSkillPolicy(ctx.sessionId, {
+        skillId: registryPolicy?.id ?? id,
+        skillName: displayName,
+        allowedTools,
+        executionContext: context,
+        ...(meta.model ?? registryPolicy?.model ? { model: meta.model ?? registryPolicy?.model } : {}),
+        ...(meta.effort ?? registryPolicy?.effort ? { effort: meta.effort ?? registryPolicy?.effort } : {}),
+      })
+
+      const policy = formatPolicy({
+        allowedTools,
+        context,
+        model: meta.model ?? registryPolicy?.model,
+        effort: meta.effort ?? registryPolicy?.effort,
+        userInvocable: parseBoolean(meta["user-invocable"], registryPolicy?.userInvocable ?? true),
+      })
+
+      if (context === "fork" && task) {
+        const { runAgent } = await import("../../agent/loop.js")
+        const allowed = allowedTools.map(normalizeToolName).filter(Boolean)
+        const forkModel = meta.model ?? registryPolicy?.model ?? ctx.model
+        const result = await runAgent({
+          ...(ctx.provider ? { provider: ctx.provider } : {}),
+          ...(forkModel ? { model: forkModel } : {}),
+          workdir: ctx.workdir,
+          sessionId: `${ctx.sessionId}:skill:${registryPolicy?.id ?? id}`,
+          system: [
+            `You are executing the Aurict skill "${displayName}" in an isolated forked context.`,
+            policy,
+            body.trim(),
+          ].filter(Boolean).join("\n\n"),
+          messages: [{ role: "user", content: task }],
+          stream: false,
+          ...(allowed.length > 0 ? { toolsOverride: allowed } : {}),
+        })
+
+        return {
+          output: [
+            `# Forked Skill Result: ${displayName}`,
+            result.text,
+          ].join("\n\n"),
+        }
+      }
 
       return {
-        output: `# Skill Loaded: ${def.name}\n\n${body}`,
+        output: [
+          `# Skill Loaded: ${displayName}`,
+          context === "fork"
+            ? "## Fork Required\nThis skill is marked `context: fork`. Delegate the specialized work to the subagent tool before continuing in the main conversation."
+            : "",
+          policy,
+          body.trim(),
+        ].filter(Boolean).join("\n\n"),
       }
     } catch {
-      return { output: "", error: `Could not read skill file for '${def.id}'` }
+      return { output: "", error: `Could not read skill file for '${id}'` }
     }
   },
+}
+
+function resolveProjectCustomSkill(workdir: string, id: string): { name: string; contentPath: string } | null {
+  const normalized = id.startsWith("custom:") ? id.slice("custom:".length) : id
+  const candidates = [
+    join(workdir, ".aurict", "skills", `${normalized}.md`),
+    join(workdir, ".aurict", "skills", `${id}.md`),
+  ]
+  for (const contentPath of candidates) {
+    if (existsSync(contentPath)) return { name: normalized, contentPath }
+  }
+  return null
+}
+
+function asStringArray(value: string[] | string | undefined): string[] {
+  if (Array.isArray(value)) return value
+  if (!value) return []
+  return value.split(",").map((item) => item.trim()).filter(Boolean)
+}
+
+function parseBoolean(value: boolean | string | undefined, fallback = false): boolean {
+  if (typeof value === "boolean") return value
+  if (typeof value !== "string") return fallback
+  const normalized = value.trim().toLowerCase()
+  if (["true", "yes", "1", "on"].includes(normalized)) return true
+  if (["false", "no", "0", "off"].includes(normalized)) return false
+  return fallback
+}
+
+function formatPolicy(policy: {
+  allowedTools: string[]
+  context: string
+  model?: string | undefined
+  effort?: string | undefined
+  userInvocable: boolean
+}): string {
+  const lines = [
+    `Execution context: ${policy.context === "fork" ? "forked sub-agent preferred" : "inline main conversation"}`,
+    policy.allowedTools.length ? "Runtime enforcement: only listed tools are allowed after loading this skill" : "",
+    policy.allowedTools.length ? `Allowed tools: ${policy.allowedTools.join(", ")}` : "",
+    policy.model ? `Model override: ${policy.model}` : "",
+    policy.effort ? `Effort: ${policy.effort}` : "",
+    policy.userInvocable === false ? "Visibility: hidden from direct user invocation" : "",
+  ].filter(Boolean)
+  return lines.length ? `## Skill Policy\n${lines.map(line => `- ${line}`).join("\n")}` : ""
 }

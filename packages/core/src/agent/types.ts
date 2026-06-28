@@ -1,6 +1,8 @@
 import type { CoreMessage } from "ai"
 import type { Attachment } from "../util/attachments.js"
 import type { ActivatedSkillInfo } from "../skill/injector.js"
+import type { PromptDiagnostics } from "./prompt-diagnostics.js"
+import type { PromptCacheHealthResult } from "./prompt-cache-health.js"
 
 export interface AgentRunOptions {
   sessionId?:   string
@@ -23,6 +25,8 @@ export interface AgentRunOptions {
   onStepFinish?:  () => void
   onCompaction?:  () => void
   onSkillsActivated?: (skills: ActivatedSkillInfo[]) => void
+  onPromptDiagnostics?: (diagnostics: PromptDiagnostics) => void
+  onPromptCacheHealth?: (result: PromptCacheHealthResult) => void
   onFinish?:      (result: AgentFinishResult) => void
 }
 

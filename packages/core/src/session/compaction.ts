@@ -86,6 +86,7 @@ export const DEFAULT_TAIL_TURNS    =      2
 export const PRUNE_MINIMUM         = 20_000
 export const PRUNE_PROTECT         = 40_000
 export const DEFAULT_MSG_THRESHOLD =    100
+export const TOOL_RESULT_CLEARED_MESSAGE = "[Old tool result content cleared]"
 
 export type CompactionStrategy = "aggressive" | "balanced" | "conservative"
 
@@ -171,6 +172,32 @@ export function getContextBreakdown(messages: CoreMessage[], contextWindow: numb
     .map(({ preview, tokens }) => ({ preview, tokens }))
 
   return { total, byRole, topMessages, percentUsed: contextWindow > 0 ? total / contextWindow : 0 }
+}
+
+export function microCompactOldToolResults(
+  messages: CoreMessage[],
+  cfg: Pick<CompactionConfig, "contextLimit">,
+  options: { keepRecent?: number; triggerRatio?: number } = {},
+): CoreMessage[] {
+  const keepRecent = Math.max(1, options.keepRecent ?? 8)
+  const triggerRatio = options.triggerRatio ?? 0.65
+  if (estimateTokens(messages) < cfg.contextLimit * triggerRatio) return messages
+
+  const toolIndexes = messages
+    .map((message, index) => ({ message, index }))
+    .filter(({ message }) => message.role === "tool" && extractText(message) !== TOOL_RESULT_CLEARED_MESSAGE)
+    .map(({ index }) => index)
+  if (toolIndexes.length <= keepRecent) return messages
+
+  const keep = new Set(toolIndexes.slice(-keepRecent))
+  let changed = false
+  const compacted = messages.map((message, index) => {
+    if (message.role !== "tool" || keep.has(index)) return message
+    changed = true
+    return { ...message, content: TOOL_RESULT_CLEARED_MESSAGE as never } as CoreMessage
+  })
+
+  return changed ? compacted : messages
 }
 
 // ─── Strategy 1: microCompact ─────────────────────────────────────────────────

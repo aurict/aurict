@@ -15,6 +15,9 @@ import { shouldRunTsc, runIncrementalTsc, filterTscForFile } from "../verificati
 import { detectHallucinations, formatHallucinationWarnings } from "../verification/hallucination.js"
 import { progressTracker, getToolProgressMessage } from "../util/progress.js"
 import { prefetchManager, extractPrefetchHints } from "../util/prefetch.js"
+import { changedFileAffectsSkillCache, invalidatePromptSectionsForChangedFile } from "../agent/prompt-invalidation.js"
+import { clearSkillCache } from "../skill/injector.js"
+import { isToolAllowedByActiveSkillPolicy } from "../skill/runtime-policy.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "./types.js"
 import type { PermissionRequest, PermissionResponse } from "../permission/types.js"
 import { filterPatchTextByFiles, summarizePatchText, type PatchSummary } from "./built-in/apply-patch.js"
@@ -262,7 +265,13 @@ export async function executeTool(
     return { output: "", error: `[${def.id}] invalid args: ${issues}` }
   }
   const args: Record<string, unknown> = parseResult.data
+  const skillPolicyDecision = isToolAllowedByActiveSkillPolicy(ctx.sessionId, def.id)
+  if (!skillPolicyDecision.allowed) {
+    metrics.recordError(def.id)
+    return { output: "", error: skillPolicyDecision.reason }
+  }
   let patchSummary: PatchSummary | undefined
+  let preWriteContent: string | undefined
   if (def.id === "apply_patch") {
     try {
       patchSummary = summarizePatchText(String(args["patchText"] ?? ""))
@@ -514,6 +523,14 @@ export async function executeTool(
     return { output: cachedResult.result, ...(cachedResult.error !== undefined ? { error: cachedResult.error } : {}) }
   }
 
+  if ((def.id === "edit" || def.id === "write") && TYPED_FILE_RE.test(String(args["path"] ?? ""))) {
+    try {
+      preWriteContent = await readFile(resolve(ctx.workdir, String(args["path"] ?? "")), "utf-8")
+    } catch {
+      preWriteContent = ""
+    }
+  }
+
   // --- Faz 6: Progress tracking başlat ---
   const progressMessage = getToolProgressMessage(def.id, args)
   progressTracker.start(def.id, progressMessage)
@@ -584,6 +601,10 @@ export async function executeTool(
     const paths = changedFiles.length > 0 ? changedFiles : [String(args["path"] ?? "")].filter(Boolean)
     for (const filePath of paths) {
       toolResultCache.invalidateByPath(resolve(ctx.workdir, filePath))
+      if (!result.error) {
+        invalidatePromptSectionsForChangedFile(ctx.workdir, filePath)
+        if (changedFileAffectsSkillCache(ctx.workdir, filePath)) clearSkillCache()
+      }
     }
   }
 
@@ -601,21 +622,18 @@ export async function executeTool(
   if (!result.error && (def.id === "edit" || def.id === "write")) {
     const filePath = String(args["path"] ?? "")
     if (TYPED_FILE_RE.test(filePath)) {
-      // Faz 4: Smart TSC — comment-only change'lerde skip et
       const absPath = resolve(ctx.workdir, filePath)
-      let oldContent = ""
+      let postWriteContent: string
       try {
-        oldContent = await readFile(absPath, "utf-8")
+        postWriteContent = await readFile(absPath, "utf-8")
       } catch {
-        // Dosya okunamadıysa TSC çalıştır
+        postWriteContent = def.id === "write"
+          ? String(args["content"] ?? "")
+          : String(args["new_string"] ?? "")
       }
 
-      const newContent = def.id === "edit" 
-        ? String(args["new_string"] ?? "")
-        : String(args["content"] ?? "")
-
       // shouldRunTsc: comment-only veya string-only change'lerde false döner
-      if (shouldRunTsc(filePath, oldContent, newContent)) {
+      if (shouldRunTsc(filePath, preWriteContent ?? "", postWriteContent)) {
         try {
           const tscOut = await withTimeout(
             runIncrementalTsc(ctx.workdir, [filePath]),
@@ -638,7 +656,7 @@ export async function executeTool(
       // Faz 4: Hallucination detection
       try {
         const hallucinations = await withTimeout(
-          detectHallucinations(newContent, filePath, ctx.workdir),
+          detectHallucinations(postWriteContent, filePath, ctx.workdir),
           POST_EDIT_ANALYSIS_TIMEOUT_MS,
         )
         if (hallucinations.length > 0) {

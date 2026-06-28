@@ -16,13 +16,11 @@ const LINE_COLORS: Record<LineType, string> = {
   output: "#a3c4a8",
 }
 
-const SCENARIO_DURATION = 7000
 const PAUSE_BETWEEN = 1200
 
 export function TerminalWindow() {
   const [scenarioIdx, setScenarioIdx] = useState(0)
   const [visibleLines, setVisibleLines] = useState<Line[]>([])
-  const [activeLine, setActiveLine] = useState<string>("")
   const [cursor, setCursor] = useState(true)
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
@@ -35,10 +33,10 @@ export function TerminalWindow() {
   useEffect(() => {
     timeoutsRef.current.forEach(clearTimeout)
     timeoutsRef.current = []
-    setVisibleLines([])
-    setActiveLine("")
 
     const scenario = TERMINAL_SCENARIOS[scenarioIdx]
+    const reset = setTimeout(() => setVisibleLines([]), 0)
+    timeoutsRef.current.push(reset)
 
     scenario.lines.forEach((line) => {
       const t = setTimeout(() => {
@@ -58,8 +56,6 @@ export function TerminalWindow() {
 
     return () => timeoutsRef.current.forEach(clearTimeout)
   }, [scenarioIdx])
-
-  const scenario = TERMINAL_SCENARIOS[scenarioIdx]
 
   return (
     <div

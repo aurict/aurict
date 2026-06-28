@@ -62,5 +62,15 @@ export interface CommandContext {
   contextWindow:     number
   replayTo:          (idx: number) => void
   tokens?:           { input: number; output: number; cacheRead?: number; cacheWrite?: number; reasoning?: number }
+  promptDiagnostics?: {
+    totalChars: number
+    totalTokens: number
+    sections: Array<{ name: string; cache: string; chars: number; tokens: number }>
+    byCache: Record<string, { chars: number; tokens: number; sections: number }>
+  } | undefined
+  promptCacheHealth?: {
+    kind: string
+    snapshot: { sectionCount: number; toolCount: number; cacheableHash: string; dynamicHash: string; toolHash: string }
+  } | undefined
   openDesign:        (brief?: string) => void
 }

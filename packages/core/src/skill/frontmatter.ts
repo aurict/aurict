@@ -11,6 +11,13 @@ export interface SkillFrontmatter {
   auto_load_when?: string
   agent?:          string
   tools?:          string[]
+  "allowed-tools"?: string[] | string
+  when_to_use?:    string
+  context?:        "inline" | "fork" | string
+  model?:          string
+  effort?:         string
+  "disable-model-invocation"?: boolean | string
+  "user-invocable"?: boolean | string
   priority?:       number
   tags?:           string[]
 }

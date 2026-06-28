@@ -90,7 +90,7 @@ export default function UseCasesPage() {
             What Can Aurict Do?
           </h1>
           <p style={{ fontSize: 16, color: "var(--text-dim)", lineHeight: 1.7, maxWidth: 580 }}>
-            See how Aurict's specialist agents handle real-world development tasks.
+            See how Aurict&apos;s specialist agents handle real-world development tasks.
           </p>
         </div>
 

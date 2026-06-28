@@ -5,8 +5,8 @@ import { ProviderRegistry } from "../provider/registry.js"
 import { ToolRegistry } from "../tool/registry.js"
 import { executeTool } from "../tool/executor.js"
 import { SessionManager } from "../session/manager.js"
-import { isOverflow, isOverflowByMessages, compact, DEFAULT_TAIL_TURNS } from "../session/compaction.js"
-import { buildSystemPrompt } from "../skill/injector.js"
+import { isOverflow, isOverflowByMessages, compact, DEFAULT_TAIL_TURNS, microCompactOldToolResults } from "../session/compaction.js"
+import { buildSystemPromptSections } from "../skill/injector.js"
 import { attachmentToAIContent } from "../util/attachments.js"
 import { createThinkTagFilter } from "../util/think-tag-filter.js"
 import { getUndercoverInstructions } from "./undercover.js"
@@ -15,12 +15,18 @@ import { setTruncationConfig } from "../tool/truncation.js"
 import { calculateCostUsd } from "../provider/costs.js"
 import { extractAndStoreMemories, extractPerTurnMemories } from "../memory/extractor.js"
 import { buildGitSection, buildProactiveFileSection, buildIntentSkillSection, getSkillsForProject, matchIntentSkills } from "../skill/injector.js"
+import { joinPromptSections, splitPromptSectionsByCache, type ResolvedPromptSection } from "./prompt-sections.js"
 import { skillScoreStore } from "../skill/score-store.js"
 import { ProviderFallback, loadFallbackFromConfig } from "../provider/fallback.js"
 import { ModelRouter, loadRouterFromConfig } from "../provider/router.js"
 import { metrics } from "../util/metrics.js"
 import { extractText } from "../session/context-compactor.js"
 import type { AgentRunOptions, AgentFinishResult, TokenBreakdown } from "./types.js"
+import { analyzePromptSections } from "./prompt-diagnostics.js"
+import { recordPromptCacheHealth } from "./prompt-cache-health.js"
+import { getCachedToolSchema } from "../tool/schema-cache.js"
+import { getPromptCacheControl, isPromptCachingEnabled } from "./prompt-cache-control.js"
+import { clearActiveSkillPolicy } from "../skill/runtime-policy.js"
 
 const DEFAULT_MAX_STEPS = 80
 
@@ -76,12 +82,11 @@ function buildAITools(
   const result: Record<string, any> = {}
   for (const def of ToolRegistry.list()) {
     const captured = def
-    // Sanitize tool ID for API compatibility: replace ':' with '_'
-    // Some providers (DeepSeek, etc.) only allow ^[a-zA-Z0-9_-]+$ pattern
-    const sanitizedId = def.id.replace(/:/g, "_")
+    const schema = getCachedToolSchema(def)
+    const sanitizedId = schema.sanitizedId
     result[sanitizedId] = tool({
-      description: def.description,
-      parameters:  def.parameters as never,
+      description: schema.description,
+      parameters:  schema.parameters as never,
       execute: async (args: Record<string, unknown>) => {
         if (toolCallIndexRef) toolCallIndexRef.current++
         const currentIdx = toolCallIndexRef?.current ?? 0
@@ -154,6 +159,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
   const model        = plugin.getModel(modelId)
   const workdir      = opts.workdir ?? process.cwd()
   const sessionId    = opts.sessionId
+  clearActiveSkillPolicy(sessionId ?? "")
 
   let messages: CoreMessage[] = [...opts.messages]
 
@@ -215,6 +221,10 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     ...(sessionId !== undefined ? { sessionId } : {}),
     ...(msgThreshold !== undefined ? { messageCountThreshold: msgThreshold } : {}),
   }
+  if (modelInfo) {
+    messages = microCompactOldToolResults(messages, compCfgFull)
+  }
+
   if (modelInfo && (isOverflow(messages, compCfgFull) || isOverflowByMessages(messages, compCfgFull))) {
     // Extract memories from messages about to be lost to compaction (fire-and-forget)
     extractAndStoreMemories(providerName, modelId, messages, workdir).catch(() => {})
@@ -248,7 +258,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
 
   // --- Skill injection (otomatik proje tespiti) ---
   // Git context buildSystemPrompt dışında tutulur — Anthropic'te ayrı uncached blok olarak inject edilir
-  const baseSystem      = await buildSystemPrompt(workdir, opts.system, false)
+  const baseSystemSections = await buildSystemPromptSections(workdir, opts.system, false, undefined, lastUserText)
   const projectSkills   = await getSkillsForProject(workdir).catch(() => [])
   const projectSkillIds = new Set(projectSkills.map((s) => s.id))
   const activatedSkills = matchIntentSkills(lastUserText, projectSkillIds)
@@ -259,26 +269,45 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     buildIntentSkillSection(lastUserText, workdir, projectSkillIds).catch(() => ""),
   ])
 
+  const runtimeSystemSections: ResolvedPromptSection[] = [...baseSystemSections]
   const extraSystem = [proactiveSection, intentSection].filter(Boolean).join("\n\n")
-  let system = extraSystem ? `${baseSystem}\n\n${extraSystem}` : baseSystem
+  if (extraSystem) {
+    runtimeSystemSections.push({ name: "runtime_extra", cache: "dynamic", content: extraSystem })
+  }
 
   if (opts.undercover) {
-    system = [system, getUndercoverInstructions()].filter(Boolean).join("\n\n---\n\n")
+    runtimeSystemSections.push({ name: "undercover", cache: "dynamic", content: `---\n\n${getUndercoverInstructions()}` })
   }
+
+  const system = joinPromptSections(runtimeSystemSections)
+  opts.onPromptDiagnostics?.(analyzePromptSections(runtimeSystemSections))
+  opts.onPromptCacheHealth?.(recordPromptCacheHealth({
+    key: `${workdir}:${providerName}`,
+    model: modelId,
+    sections: runtimeSystemSections,
+    toolIds: Object.keys(aiTools),
+  }))
 
   // Git context her turn'de fresh — Anthropic cache'e girmemeli
   const gitSection = buildGitSection(workdir)
 
-  // Anthropic prompt caching: statik kısım cache'lenir, git context cache'lenmez
+  // Anthropic prompt caching: static/session sections cache'lenir, dynamic/git cache dışı kalır
   let systemParam: string | undefined = system || undefined
   if (plugin.sdkType === "anthropic") {
     const contentBlocks: Array<{ type: "text"; text: string; experimental_providerMetadata?: unknown }> = []
-    if (system) {
+    const splitSystem = splitPromptSectionsByCache(runtimeSystemSections)
+    const promptCachingEnabled = isPromptCachingEnabled(providerName, modelId)
+    if (splitSystem.cacheable) {
       contentBlocks.push({
         type: "text",
-        text: system,
-        experimental_providerMetadata: { anthropic: { cacheControl: { type: "ephemeral" } } },
+        text: splitSystem.cacheable,
+        ...(promptCachingEnabled
+          ? { experimental_providerMetadata: { anthropic: { cacheControl: getPromptCacheControl() } } }
+          : {}),
       })
+    }
+    if (splitSystem.dynamic) {
+      contentBlocks.push({ type: "text", text: splitSystem.dynamic })
     }
     if (gitSection) {
       contentBlocks.push({ type: "text", text: gitSection })

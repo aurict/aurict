@@ -1,13 +1,22 @@
 import { detectSkills } from "./detector.js"
-import { loadSkills, loadSkill, loadSkillAdaptive, detectTaskType } from "./loader.js"
+import { loadSkills, loadSkill, detectTaskType } from "./loader.js"
 import { SkillRegistry } from "./registry.js"
 import { autoInvoker, retrieveSkillIds } from "./auto-invoke.js"
 import { skillScoreStore } from "./score-store.js"
 import { loadSkillOverride, applyOverride } from "./override.js"
 import { hooks } from "../hook/emitter.js"
 import { countTokens } from "../provider/tokenizer.js"
-import { FULL_SYSTEM_PROMPT, SUBAGENT_SYSTEM_PROMPT } from "../agent/system.js"
+import { MAIN_SYSTEM_PROMPT, PROMPT_MODULES, SUBAGENT_SYSTEM_PROMPT } from "../agent/system.js"
 import type { AgentType } from "../agent/protocol.js"
+import type { PromptModuleId } from "../agent/system.js"
+import {
+  dynamicPromptSection,
+  joinPromptSections,
+  resolvePromptSections,
+  sessionPromptSection,
+  staticPromptSection,
+  type ResolvedPromptSection,
+} from "../agent/prompt-sections.js"
 import { memoryStore } from "../memory/store.js"
 import { pinStore } from "../pin/store.js"
 import { readArchitecture } from "../project-context/architecture.js"
@@ -28,31 +37,91 @@ export interface ActivatedSkillInfo {
 }
 
 const MAX_SKILL_TOKENS        = 8_000   // total token budget for all skills
-const MAX_INTENT_SKILL_TOKENS = 6_000   // per-message intent skill budget
 const MAX_PROJECT_INSTRUCTIONS = 8_000  // character cap for CLAUDE.md / AGENTS.md content
+const MAX_SKILL_LISTING_CHARS = 8_000   // discovery-only listing; full content is loaded via load_skill
+const MAX_SKILL_DESCRIPTION_CHARS = 260
 
 // ─── Multi-dir cache ──────────────────────────────────────────────────────────
 interface CacheEntry { skills: LoadedSkill[]; expiresAt: number }
 const cache = new Map<string, CacheEntry>()
+interface DefCacheEntry { skills: SkillDef[]; expiresAt: number }
+const defCache = new Map<string, DefCacheEntry>()
 const CACHE_TTL_MS = 60_000  // 1 dakika sonra yeniden detect
 
-export async function buildSystemPrompt(projectDir: string, base?: string, includeGit = false, agentType?: AgentType): Promise<string> {
-  const skills = await getSkillsForProject(projectDir)
-  const basePrompt = agentType !== undefined ? SUBAGENT_SYSTEM_PROMPT : FULL_SYSTEM_PROMPT
+export async function buildSystemPrompt(
+  projectDir: string,
+  base?: string,
+  includeGit = false,
+  agentType?: AgentType,
+  userText = "",
+): Promise<string> {
+  return joinPromptSections(await buildSystemPromptSections(projectDir, base, includeGit, agentType, userText))
+}
+
+export async function buildSystemPromptSections(
+  projectDir: string,
+  base?: string,
+  includeGit = false,
+  agentType?: AgentType,
+  userText = "",
+): Promise<ResolvedPromptSection[]> {
+  const basePrompt = agentType !== undefined ? SUBAGENT_SYSTEM_PROMPT : MAIN_SYSTEM_PROMPT
   const finalBase = [basePrompt, base].filter(Boolean).join("\n\n---\n\n")
+  const systemSection = base
+    ? dynamicPromptSection(`core_system:${agentType ?? "main"}:custom`, () => finalBase)
+    : staticPromptSection(`core_system:${agentType ?? "main"}`, () => finalBase)
 
-  const skillSection        = skills.length > 0 ? buildSkillSection(skills) : ""
-  const memorySection       = buildMemorySection(projectDir)
-  const pinSection          = pinStore.toPromptSection(projectDir)
-  const gitSection          = includeGit ? buildGitSection(projectDir) : ""
-  const instructionsSection = readProjectInstructions(projectDir)
-  const projectContextSection = buildProjectContextSection(projectDir)
+  // Order: project instructions → project context → core system → intent modules → pins → git → skills → memory
+  return resolvePromptSections([
+    sessionPromptSection("project_instructions", () => readProjectInstructions(projectDir)),
+    sessionPromptSection("project_context", () => buildProjectContextSection(projectDir)),
+    systemSection,
+    dynamicPromptSection("intent_modules", () => buildPromptModuleSection(selectPromptModules(userText, agentType))),
+    dynamicPromptSection("pins", () => pinStore.toPromptSection(projectDir)),
+    dynamicPromptSection("git", () => includeGit ? buildGitSection(projectDir) : ""),
+    dynamicPromptSection("skills", async () => {
+      const skills = await getSkillDefsForProject(projectDir)
+      return skills.length > 0 ? buildSkillDefSection(skills) : ""
+    }),
+    dynamicPromptSection("memory", () => buildMemorySection(projectDir)),
+  ], projectDir)
+}
 
-  // Order: project instructions → project context → base system → pins → git → skills → memory
-  return [instructionsSection, projectContextSection, finalBase, pinSection, gitSection, skillSection, memorySection]
-    .filter(Boolean)
-    .join("\n\n")
-    .trim()
+const DOCUMENT_INTENT_RE = /\b(pdf|report|document|proposal|presentation|deck|slide|invoice|contract|whitepaper|brief|rapor|belge|dok[üu]man|sunum|teklif|fatura|s[öo]zle[sş]me)\b/i
+const SPECIALIZED_SKILL_INTENT_RE = /\b(skill|template|legal|law|contract|agreement|proposal|pitch deck|financial model|marketing copy|business plan|hr|policy|resume|cover letter|domain-specific|uzman|hukuk|ik|pazarlama|i[sş] plan[ıi]|cv|[öo]zge[cç]mi[sş])\b/i
+const MEMORY_INTENT_RE = /\b(remember|forget|memory|preference|prefer|always|never|akl[ıi]nda tut|haf[ıi]za|unut|tercih|her zaman|asla|bundan sonra)\b/i
+const PROJECT_CONTEXT_INTENT_RE = /(?:\.aurict\b|\b(architecture|architectural|adr|decision record|system design|project context|tech stack|migration|migrate|refactor|restructure|redesign|stabilize|mimari|mimariye|karar|sistem tasar[ıi]m[ıi]|refakt[öo]r|yeniden yap[ıi]land[ıi]r|ge[cç]elim|ta[sş][ıi]|stabilize etmek)\b)/i
+const PLANNING_INTENT_RE = /\b(plan|roadmap|multi-stage|large refactor|migration|architecture|redesign|stabilize|whole system|entire system|end-to-end|ba[sş]tan sona|t[üu]m sistem|b[üu]t[üu]n sistem|mimari|ge[cç]elim|kapsaml[ıi]|[cç]ok dosya|[cç]ok a[sş]ama)\b/i
+
+export function selectPromptModules(userText: string, agentType?: AgentType): PromptModuleId[] {
+  if (agentType !== undefined) return []
+
+  const text = userText.trim()
+  if (!text) return []
+
+  const modules: PromptModuleId[] = []
+  const add = (id: PromptModuleId) => {
+    if (!modules.includes(id)) modules.push(id)
+  }
+
+  const wantsDocument = DOCUMENT_INTENT_RE.test(text)
+  if (wantsDocument || SPECIALIZED_SKILL_INTENT_RE.test(text)) add("skillSelfLoading")
+  if (wantsDocument) add("documentGeneration")
+  if (MEMORY_INTENT_RE.test(text)) add("memoryInstructions")
+  if (PROJECT_CONTEXT_INTENT_RE.test(text)) add("projectContextMaintenance")
+  if (PLANNING_INTENT_RE.test(text)) add("planningTasks")
+
+  return modules
+}
+
+function buildPromptModuleSection(moduleIds: PromptModuleId[]): string {
+  if (moduleIds.length === 0) return ""
+
+  const blocks = moduleIds.map((id) => PROMPT_MODULES[id].trim())
+  return [
+    `# Context-Specific Operating Modules (${moduleIds.join(", ")})`,
+    blocks.join("\n\n"),
+  ].join("\n\n")
 }
 
 function buildProjectContextSection(workdir: string): string {
@@ -133,6 +202,39 @@ function buildMemorySection(workdir: string): string {
   } catch { return "" }
 }
 
+function loadCustomSkillDefs(projectDir: string): SkillDef[] {
+  const dirs = [
+    join(homedir(), ".aurict", "skills"),
+    join(projectDir, ".aurict", "skills"),
+  ]
+  const results: SkillDef[] = []
+
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue
+    let files: string[]
+    try { files = readdirSync(dir).filter(f => f.endsWith(".md")) } catch { continue }
+
+    for (const file of files) {
+      const id = `custom:${file.replace(/\.md$/, "")}`
+      const def: SkillDef = {
+        id,
+        name: file.replace(/\.md$/, ""),
+        description: `Custom skill: ${file.replace(/\.md$/, "")}`,
+        detector: {},
+        contentPath: join(dir, file),
+        priority: 50,
+        tags: ["custom"],
+        requires: [],
+      }
+      const existing = results.findIndex(s => s.id === id)
+      if (existing >= 0) results[existing] = def
+      else results.push(def)
+    }
+  }
+
+  return results
+}
+
 async function loadCustomSkills(projectDir: string): Promise<LoadedSkill[]> {
   const dirs = [
     join(homedir(), ".aurict", "skills"),   // global
@@ -207,6 +309,25 @@ export async function getSkillsForProject(projectDir: string): Promise<LoadedSki
   return selected
 }
 
+export async function getSkillDefsForProject(projectDir: string): Promise<SkillDef[]> {
+  const now = Date.now()
+  const cached = defCache.get(projectDir)
+  if (cached && cached.expiresAt > now) return cached.skills
+
+  const detected = await detectSkills(projectDir)
+  const withDeps = resolveSkillDeps(detected)
+  const boosted = withDeps.map((def) => {
+    const boost = skillScoreStore.getBoost(projectDir, def.id)
+    return boost !== 0 ? { ...def, priority: def.priority + boost } : def
+  })
+  const injected  = await hooks.emit("v1.context.inject", { skillIds: boosted.map((s) => s.id) })
+  const finalIds  = new Set(injected.skillIds)
+  const finalDefs = boosted.filter((s) => finalIds.has(s.id))
+  const selected = selectSkillDefsWithinListingBudget([...finalDefs, ...loadCustomSkillDefs(projectDir)])
+  defCache.set(projectDir, { skills: selected, expiresAt: now + CACHE_TTL_MS })
+  return selected
+}
+
 export async function getContextualSkills(filePath: string): Promise<LoadedSkill[]> {
   const skillIds = autoInvoker.check("file-edit", filePath)
   if (skillIds.length === 0) return []
@@ -238,6 +359,7 @@ function resolveSkillDeps(skills: SkillDef[], depth = 0): SkillDef[] {
 
 export function clearSkillCache(): void {
   cache.clear()
+  defCache.clear()
 }
 
 // ─── Proactive file injection ─────────────────────────────────────────────────
@@ -340,34 +462,16 @@ export async function buildIntentSkillSection(
   if (defs.length === 0) return ""
 
   const taskType = detectTaskType(userText)
-  const loaded   = await Promise.all(defs.map((def) => loadSkillAdaptive(def, taskType)))
-
-  // Token budget'a göre seç: önce priority (yüksek→düşük), eşitte küçük skill önce
-  const selected: LoadedSkill[] = []
-  let total = 0
-  const prioritized = loaded
-    .filter(s => s.systemPrompt)
-    .sort((a, b) => {
-      const pa = SkillRegistry.get(a.id)?.priority ?? 5
-      const pb = SkillRegistry.get(b.id)?.priority ?? 5
-      if (pb !== pa) return pb - pa          // yüksek öncelik önce
-      return a.tokenCount - b.tokenCount     // eşit önceliklide küçük önce (daha fazlası sığsın)
-    })
-  for (const skill of prioritized) {
-    if (total + skill.tokenCount > MAX_INTENT_SKILL_TOKENS) continue
-    selected.push(skill)
-    total += skill.tokenCount
-  }
+  const selected = selectSkillDefsWithinListingBudget(defs)
   if (selected.length === 0) return ""
 
   const labels = selected.map((s) => s.id).join(", ")
-  const blocks  = selected
-    .filter((s) => s.systemPrompt.length > 0)
-    .map((s) => `## [${s.name.toUpperCase()}]\n${s.systemPrompt}`)
 
   return [
-    `# Intent-Activated Skills [task:${taskType}] (${labels})`,
-    blocks.join("\n\n---\n\n"),
+    `# Intent-Matched Skills [task:${taskType}] (${labels})`,
+    "These are metadata matches only. If one applies, call load_skill before performing the specialized work.",
+    "",
+    selected.map(formatSkillListingLine).join("\n"),
   ].join("\n\n")
 }
 
@@ -431,6 +535,23 @@ function buildSkillSearchDocs() {
 
 // ─── Token bütçesi ile skill seçimi ──────────────────────────────────────────
 
+function selectSkillDefsWithinListingBudget(skills: SkillDef[]): SkillDef[] {
+  const selected: SkillDef[] = []
+  let chars = 0
+  const sorted = [...skills].sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority
+    return a.id.localeCompare(b.id)
+  })
+
+  for (const skill of sorted) {
+    const line = formatSkillListingLine(skill)
+    if (chars + line.length > MAX_SKILL_LISTING_CHARS) continue
+    selected.push(skill)
+    chars += line.length + 1
+  }
+  return selected
+}
+
 function selectWithinBudget(skills: LoadedSkill[]): LoadedSkill[] {
   const selected: LoadedSkill[] = []
   let   total = 0
@@ -448,17 +569,33 @@ function selectWithinBudget(skills: LoadedSkill[]): LoadedSkill[] {
 
 // ─── System prompt inşası ────────────────────────────────────────────────────
 
-function buildSkillSection(skills: LoadedSkill[]): string {
+function buildSkillDefSection(skills: SkillDef[]): string {
   if (skills.length === 0) return ""
-
-  const blocks = skills
-    .filter((s) => s.systemPrompt.length > 0)
-    .map((s) => `## [${s.name.toUpperCase()}]\n${s.systemPrompt}`)
-
-  if (blocks.length === 0) return ""
-
   return [
-    `# Active Skills (${skills.length}: ${skills.map((s) => s.id).join(", ")})`,
-    blocks.join("\n\n---\n\n"),
-  ].join("\n\n")
+    `# Available Skills (${skills.length})`,
+    "These are discovery entries only. Full instructions are intentionally not preloaded.",
+    "If a skill matches the user's task, call load_skill with the skill ID before doing specialized work.",
+    "",
+    skills.map(formatSkillListingLine).join("\n"),
+  ].join("\n")
+}
+
+function formatSkillListingLine(skill: Pick<SkillDef, "id" | "name" | "description" | "tags" | "whenToUse" | "allowedTools" | "executionContext" | "model" | "effort" | "disableModelInvocation" | "userInvocable">): string {
+  const desc = truncateSkillDescription(skill.whenToUse || skill.description || skill.name)
+  const policy = [
+    skill.executionContext ? `context=${skill.executionContext}` : "",
+    skill.model ? `model=${skill.model}` : "",
+    skill.effort ? `effort=${skill.effort}` : "",
+    skill.allowedTools?.length ? `tools=${skill.allowedTools.join(",")}` : "",
+    skill.disableModelInvocation ? "model-invocation=disabled" : "",
+    skill.userInvocable === false ? "hidden" : "",
+  ].filter(Boolean).join("; ")
+  const tags = skill.tags.length ? ` tags=${skill.tags.join(",")}` : ""
+  return `- ${skill.id}: ${desc}${tags}${policy ? ` (${policy})` : ""}`
+}
+
+function truncateSkillDescription(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (normalized.length <= MAX_SKILL_DESCRIPTION_CHARS) return normalized
+  return `${normalized.slice(0, MAX_SKILL_DESCRIPTION_CHARS - 1)}…`
 }

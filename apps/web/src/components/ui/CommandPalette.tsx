@@ -48,6 +48,12 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
+  function closePalette() {
+    setQuery("")
+    setSelectedIndex(0)
+    setOpen(false)
+  }
+
   // Filter commands based on query
   const filtered = COMMANDS.filter((cmd) =>
     cmd.label.toLowerCase().includes(query.toLowerCase())
@@ -65,10 +71,11 @@ export function CommandPalette() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault()
-        setOpen((o) => !o)
+        if (open) closePalette()
+        else setOpen(true)
       }
       if (e.key === "Escape" && open) {
-        setOpen(false)
+        closePalette()
       }
     }
 
@@ -80,10 +87,6 @@ export function CommandPalette() {
   useEffect(() => {
     if (open && inputRef.current) {
       inputRef.current.focus()
-    }
-    if (!open) {
-      setQuery("")
-      setSelectedIndex(0)
     }
   }, [open])
 
@@ -98,7 +101,7 @@ export function CommandPalette() {
     } else if (e.key === "Enter" && filtered[selectedIndex]) {
       e.preventDefault()
       const cmd = filtered[selectedIndex]
-      setOpen(false)
+      closePalette()
       if (cmd.href.startsWith("http")) {
         window.open(cmd.href, "_blank")
       } else {

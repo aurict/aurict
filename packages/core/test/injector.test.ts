@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs"
 import { execSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { buildGitSection, buildIntentSkillSection, buildProactiveFileSection, matchIntentSkills } from "../src/skill/injector.js"
+import { buildGitSection, buildIntentSkillSection, buildProactiveFileSection, buildSystemPrompt, buildSystemPromptSections, matchIntentSkills, selectPromptModules } from "../src/skill/injector.js"
+import { clearPromptSectionCache } from "../src/agent/prompt-sections.js"
 
 let tmpDir: string
 let gitDir: string
@@ -29,6 +30,7 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true })
+  clearPromptSectionCache()
 })
 
 // ─── buildGitSection ─────────────────────────────────────────────────────────
@@ -61,6 +63,75 @@ describe("buildGitSection", () => {
   it("does not throw for non-existent path", () => {
     expect(() => buildGitSection("/path/that/does/not/exist")).not.toThrow()
     expect(buildGitSection("/path/that/does/not/exist")).toBe("")
+  })
+})
+
+// ─── System prompt module router ─────────────────────────────────────────────
+
+describe("selectPromptModules", () => {
+  it("selects no main-only modules for ordinary prompts", () => {
+    expect(selectPromptModules("fix the TypeScript error in executor.ts")).toEqual([])
+  })
+
+  it("selects document modules for PDF/report intents", () => {
+    expect(selectPromptModules("Create a professional PDF report")).toEqual([
+      "skillSelfLoading",
+      "documentGeneration",
+    ])
+  })
+
+  it("selects memory instructions only for explicit memory intents", () => {
+    expect(selectPromptModules("aklında tut: bundan sonra pnpm kullanıyoruz")).toEqual([
+      "memoryInstructions",
+    ])
+  })
+
+  it("selects project context and planning modules for architecture migration intents", () => {
+    expect(selectPromptModules("bu mimariye geçelim ve tüm sistemi stabilize edelim")).toEqual([
+      "projectContextMaintenance",
+      "planningTasks",
+    ])
+  })
+
+  it("does not select main-only modules for subagents", () => {
+    expect(selectPromptModules("Create a professional PDF report", "code")).toEqual([])
+  })
+})
+
+describe("buildSystemPrompt module injection", () => {
+  it("returns named prompt sections in injection order", async () => {
+    const sections = await buildSystemPromptSections(tmpDir, undefined, false, undefined, "create a PDF report")
+    const coreIndex = sections.findIndex(section => section.name === "core_system:main")
+    const intentIndex = sections.findIndex(section => section.name === "intent_modules")
+
+    expect(coreIndex).toBeGreaterThanOrEqual(0)
+    expect(intentIndex).toBeGreaterThan(coreIndex)
+    expect(sections[coreIndex]?.cache).toBe("static")
+    expect(sections[intentIndex]?.cache).toBe("dynamic")
+  })
+
+  it("does not include heavy main-only modules by default", async () => {
+    const prompt = await buildSystemPrompt(tmpDir, undefined, false, undefined, "fix executor.ts")
+
+    expect(prompt).not.toContain("## PDF & Document Generation")
+    expect(prompt).not.toContain("memory(action=\"remember\")")
+    expect(prompt).not.toContain("## Project context files (.aurict/) — maintain autonomously")
+    expect(prompt).not.toContain("## Planning & tasks")
+  })
+
+  it("includes selected modules for matching main-agent intent", async () => {
+    const prompt = await buildSystemPrompt(tmpDir, undefined, false, undefined, "create a PDF report")
+
+    expect(prompt).toContain("# Context-Specific Operating Modules")
+    expect(prompt).toContain("## Skill Self-Loading")
+    expect(prompt).toContain("## PDF & Document Generation")
+  })
+
+  it("keeps subagent prompts free of main-only modules even with matching intent", async () => {
+    const prompt = await buildSystemPrompt(tmpDir, undefined, false, "code", "create a PDF report")
+
+    expect(prompt).not.toContain("## Skill Self-Loading")
+    expect(prompt).not.toContain("## PDF & Document Generation")
   })
 })
 
@@ -200,9 +271,10 @@ describe("intent skill retrieval", () => {
     expect(ids.some((id) => ["animations-patterns", "data-visualization", "web-performance"].includes(id))).toBe(true)
   })
 
-  it("injects retrieved skill instructions into the intent skill section", async () => {
+  it("lists retrieved skill metadata and directs the model to load full instructions on demand", async () => {
     const section = await buildIntentSkillSection(solarPrompt, tmpDir)
 
-    expect(section).toContain("Intent-Activated Skills")
+    expect(section).toContain("Intent-Matched Skills")
+    expect(section).toContain("call load_skill")
   })
 })

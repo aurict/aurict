@@ -1493,6 +1493,24 @@ const commands: CommandDef[] = [
       const cbStatus = cb.status === "open"
         ? `🔴 OPEN (${cb.failures} failures, resets in ${Math.max(0, Math.round((60_000 - (Date.now() - cb.lastFailAt)) / 1000))}s)`
         : cb.status === "half-open" ? "🟡 half-open" : "🟢 closed"
+      const promptSectionLines = ctx.promptDiagnostics
+        ? ctx.promptDiagnostics.sections
+          .slice()
+          .sort((a, b) => b.tokens - a.tokens)
+          .slice(0, 8)
+          .map((section) => `  ${section.name.padEnd(24)} ${section.cache.padEnd(7)} ${fmtK(section.tokens)} tokens`)
+          .join("\n")
+        : "  (no prompt diagnostics yet)"
+      const cacheHealth = ctx.promptCacheHealth
+        ? [
+            `  Status:       ${ctx.promptCacheHealth.kind}`,
+            `  Sections:     ${ctx.promptCacheHealth.snapshot.sectionCount}`,
+            `  Tools:        ${ctx.promptCacheHealth.snapshot.toolCount}`,
+            `  Cacheable:    ${ctx.promptCacheHealth.snapshot.cacheableHash}`,
+            `  Dynamic:      ${ctx.promptCacheHealth.snapshot.dynamicHash}`,
+            `  Tool schema:  ${ctx.promptCacheHealth.snapshot.toolHash}`,
+          ].join("\n")
+        : "  (no cache health sample yet)"
 
       function fmtK(n: number) {
         if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
@@ -1513,6 +1531,15 @@ const commands: CommandDef[] = [
           topLines,
           ``,
           `  Circuit Breaker: ${cbStatus}`,
+          ``,
+          `── Prompt Sections ────────────────────────`,
+          ctx.promptDiagnostics
+            ? `  Total: ${fmtK(ctx.promptDiagnostics.totalTokens)} tokens across ${ctx.promptDiagnostics.sections.length} sections`
+            : `  Total: n/a`,
+          promptSectionLines,
+          ``,
+          `── Prompt Cache Health ────────────────────`,
+          cacheHealth,
         ].join("\n"),
       }
     },

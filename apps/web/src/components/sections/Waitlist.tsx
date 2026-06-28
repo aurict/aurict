@@ -13,8 +13,11 @@ export function Waitlist() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    const stored = localStorage.getItem("wl_count")
-    if (stored) setCount(parseInt(stored, 10))
+    const timer = window.setTimeout(() => {
+      const stored = localStorage.getItem("wl_count")
+      if (stored) setCount(parseInt(stored, 10))
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {

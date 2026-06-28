@@ -8,7 +8,7 @@ export function useTypewriter(text: string, speed = 28, active = true) {
   useEffect(() => {
     if (!active) return
     indexRef.current = 0
-    setDisplayed("")
+    const reset = window.setTimeout(() => setDisplayed(""), 0)
 
     const interval = setInterval(() => {
       indexRef.current++
@@ -16,7 +16,10 @@ export function useTypewriter(text: string, speed = 28, active = true) {
       if (indexRef.current >= text.length) clearInterval(interval)
     }, speed)
 
-    return () => clearInterval(interval)
+    return () => {
+      window.clearTimeout(reset)
+      clearInterval(interval)
+    }
   }, [text, speed, active])
 
   return { displayed, done: displayed.length === text.length }

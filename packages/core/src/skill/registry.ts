@@ -112,6 +112,39 @@ function buildDetector(triggers: SkillFrontmatter["triggers"] | undefined): Skil
   return d
 }
 
+function asStringArray(value: string[] | string | undefined): string[] {
+  if (Array.isArray(value)) return value
+  if (!value) return []
+  return value.split(",").map((item) => item.trim()).filter(Boolean)
+}
+
+function asBool(value: boolean | string | undefined, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value
+  if (typeof value !== "string") return fallback
+  const normalized = value.trim().toLowerCase()
+  if (["true", "yes", "1", "on"].includes(normalized)) return true
+  if (["false", "no", "0", "off"].includes(normalized)) return false
+  return fallback
+}
+
+function skillPolicyFromFrontmatter(meta: SkillFrontmatter): Pick<
+  SkillDef,
+  "allowedTools" | "whenToUse" | "executionContext" | "model" | "effort" | "disableModelInvocation" | "userInvocable"
+> {
+  const allowedTools = asStringArray(meta["allowed-tools"] ?? meta.tools)
+  const executionContext = meta.context === "fork" ? "fork" : meta.context === "inline" ? "inline" : undefined
+  const userInvocable = asBool(meta["user-invocable"], true)
+  return {
+    ...(allowedTools.length > 0 ? { allowedTools } : {}),
+    ...(meta.when_to_use ? { whenToUse: meta.when_to_use } : {}),
+    ...(executionContext ? { executionContext } : {}),
+    ...(meta.model ? { model: meta.model } : {}),
+    ...(meta.effort ? { effort: meta.effort } : {}),
+    ...(meta["disable-model-invocation"] !== undefined ? { disableModelInvocation: asBool(meta["disable-model-invocation"], false) } : {}),
+    ...(userInvocable !== true ? { userInvocable } : {}),
+  }
+}
+
 // ─── Sync init: modül yüklenirken library/ taranır ──────────────────────────
 
 function scanLibrary(): Map<string, SkillDef> {
@@ -153,6 +186,7 @@ function scanLibrary(): Map<string, SkillDef> {
       priority:    PRIORITY_OVERRIDES[id] ?? meta.priority ?? 5,
       tags:        meta.tags ?? [],
       ...(meta.agent !== undefined ? { agent: meta.agent } : {}),
+      ...skillPolicyFromFrontmatter(meta),
     }
 
     map.set(id, def)
@@ -186,6 +220,7 @@ function scanUserSkills(): void {
       priority:    meta.priority ?? 5,
       tags:        meta.tags ?? [],
       ...(meta.agent !== undefined ? { agent: meta.agent } : {}),
+      ...skillPolicyFromFrontmatter(meta),
     }
     SKILLS.set(id, def)
   }

@@ -34,7 +34,7 @@ import {
   setDefault,
   setMCPLogHandler,
 } from "@aurict/core"
-import type { PermissionRequest, PermissionResponse, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown } from "@aurict/core"
+import type { PermissionRequest, PermissionResponse, QuestionRequest, QuestionAnswer, Attachment, Task, CoreMessage, DependencyChange, PlanRequest, TokenBreakdown, PromptDiagnostics, PromptCacheHealthResult } from "@aurict/core"
 
 import { parseSlashCommand, getCommand, allCommands } from "../commands/registry.js"
 import type { CommandResult, PickerItem } from "../commands/types.js"
@@ -162,6 +162,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const [branch,           setBranch]           = useState<string | undefined>(undefined)
   const [wasCompacted,     setWasCompacted]     = useState(false)
   const [contextTokens,    setContextTokens]    = useState(0)
+  const [promptDiagnostics, setPromptDiagnostics] = useState<PromptDiagnostics | undefined>(undefined)
+  const [promptCacheHealth, setPromptCacheHealth] = useState<PromptCacheHealthResult | undefined>(undefined)
   const [memoryCount,      setMemoryCount]      = useState(0)
   const [bgTasks,           setBgTasks]          = useState<Array<{ id: string; prompt: string; startedAt: number; status: "running"|"done"|"error"; output?: string }>>([])
   const bgControllersRef = useRef<Map<string, AbortController>>(new Map())
@@ -1019,6 +1021,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
     },
     contextWindow: ProviderRegistry.get(provider).listModels().find((m) => m.id === model)?.contextWindow ?? 200_000,
     tokens,
+    promptDiagnostics,
+    promptCacheHealth,
     replayTo: async (idx: number) => {
       const cp = checkpoints[idx]
       if (!cp) return
@@ -1031,7 +1035,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       setDesignInitialBrief(brief?.trim() || undefined)
       setDesignWizardOpen(true)
     },
-  }), [provider, model, workdir, skillNames, setProvider, setModel, messages, history, tokens, checkpoints, branches, activeBranchIdx, watchedPaths])
+  }), [provider, model, workdir, skillNames, setProvider, setModel, messages, history, tokens, promptDiagnostics, promptCacheHealth, checkpoints, branches, activeBranchIdx, watchedPaths])
 
   // ── Command executor ──────────────────────────────────────────────────────
   const executeCommand = useCallback((raw: string): boolean => {
@@ -1443,6 +1447,8 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           if (skills.length === 0) return
           setTurnSkillNames(skills.map((skill) => skill.id))
         },
+        onPromptDiagnostics: setPromptDiagnostics,
+        onPromptCacheHealth: setPromptCacheHealth,
         onFinish: ({ tokens: t, text: finalText, newMessages, finishReason }) => {
           if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
           const finalSegmentText = turnHadToolRef.current ? streamTextRef.current : finalText

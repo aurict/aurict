@@ -33,9 +33,29 @@ describe("auto-continue detection", () => {
     })).toBe(true)
   })
 
+  it("continues when the response admits verification or remaining work is pending", () => {
+    expect(stalledMidTask("The implementation is in place, but I still need to run the tests.")).toBe(true)
+    expect(stalledMidTask("Kod değişti; henüz doğrulamadım.")).toBe(true)
+    expect(shouldAutoContinue({
+      text: "The refactor is mostly complete. Remaining: run lint and fix any failures.",
+      finishReason: "stop",
+      newMessageCount: 1,
+      tasks: [],
+    })).toBe(true)
+  })
+
   it("does not continue when the model clearly reports a blocker", () => {
     expect(shouldAutoContinue({
       text: "Blocked: I need your API key before I can continue.",
+      finishReason: "stop",
+      newMessageCount: 1,
+      tasks: [openTask],
+    })).toBe(false)
+  })
+
+  it("does not continue open tasks when explicit manual approval is required", () => {
+    expect(shouldAutoContinue({
+      text: "Cannot proceed: manual approval is required before touching production credentials.",
       finishReason: "stop",
       newMessageCount: 1,
       tasks: [openTask],

@@ -16,6 +16,13 @@ export interface SkillDef {
   tags:         string[]
   agent?:       string
   requires?:    string[] // otomatik yüklenecek bağımlı skill ID'leri
+  whenToUse?:   string
+  allowedTools?: string[]
+  executionContext?: "inline" | "fork"
+  model?:       string
+  effort?:      string
+  disableModelInvocation?: boolean
+  userInvocable?: boolean
 }
 
 export interface LoadedSkill extends SkillDef {
