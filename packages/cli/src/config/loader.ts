@@ -1,7 +1,9 @@
 import { join } from "path"
 import { homedir } from "os"
 import { readFileSync } from "fs"
+import { loadConfig as loadOmniConfig } from "@aurict/core"
 import type { AurictConfig } from "./types.js"
+import type { OmniConfig } from "@aurict/core"
 
 function readJSON(path: string): Partial<AurictConfig> {
   try {
@@ -13,11 +15,13 @@ function readJSON(path: string): Partial<AurictConfig> {
 export function loadConfig(workdir: string): AurictConfig {
   const global  = readJSON(join(homedir(), ".aurict", "config.json"))
   const project = readJSON(join(workdir, ".aurict", "config.json"))
-
-  return deepMerge(
+  const raw = deepMerge(
     deepMerge({}, global as Record<string, unknown>) as Record<string, unknown>,
     project as Record<string, unknown>,
   )
+  const omni = loadOmniConfig(workdir)
+
+  return normalizeCliConfig(omni, raw)
 }
 
 function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): AurictConfig { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -30,6 +34,22 @@ function deepMerge(target: Record<string, unknown>, source: Record<string, unkno
     }
   }
   return result as AurictConfig
+}
+
+function normalizeCliConfig(omni: OmniConfig, raw: AurictConfig): AurictConfig {
+  const cfg: AurictConfig = { ...omni }
+  if (raw.provider !== undefined) cfg.provider = raw.provider
+  else if (omni.defaults?.provider !== undefined) cfg.provider = omni.defaults.provider
+  if (raw.model !== undefined) cfg.model = raw.model
+  else if (omni.defaults?.model !== undefined) cfg.model = omni.defaults.model
+  if (raw.system !== undefined) cfg.system = raw.system
+  if (raw.undercover !== undefined) cfg.undercover = raw.undercover
+  if (raw.stream !== undefined) cfg.stream = raw.stream
+  if (raw.server !== undefined) cfg.server = raw.server
+  if (raw.skills !== undefined) cfg.skills = raw.skills
+  if (raw.multiAgent !== undefined) cfg.multiAgent = raw.multiAgent
+  if (raw.agents !== undefined) cfg.agents = { ...(omni.agents ?? {}), ...(raw.agents ?? {}) }
+  return cfg
 }
 
 // ─── CLI flag parser ──────────────────────────────────────────────────────────

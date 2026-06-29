@@ -3,6 +3,8 @@ import { agentPool, PoolFullError } from "../../agent/pool.js"
 import { AGENT_TYPE_TOOLS, AGENT_MAX_STEPS } from "../../agent/protocol.js"
 import { getAgentPrompt } from "../../agent/agent-prompts.js"
 import { SessionManager } from "../../session/manager.js"
+import { loadConfig } from "../../config/config.js"
+import { filterToolIdsForSecurityCapability, isAgentTypeVisibleForSecurityCapability } from "../../security/capability.js"
 import type { AgentType } from "../../agent/protocol.js"
 import type { Part } from "../../session/types.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
@@ -72,7 +74,11 @@ Focus your prompt on the specific task — no need to repeat what was already di
   async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
     const { role, prompt } = args as { role: string; prompt: string }
     const agentType = ((args as Record<string, unknown>)["type"] as AgentType | undefined) ?? "explore"
-    const allowedTools = AGENT_TYPE_TOOLS[agentType]
+    const cfg = loadConfig(ctx.workdir)
+    if (!isAgentTypeVisibleForSecurityCapability(agentType, cfg)) {
+      return { output: "", error: `Agent type '${agentType}' is unavailable because the security capability profile is disabled.` }
+    }
+    const allowedTools = filterToolIdsForSecurityCapability(AGENT_TYPE_TOOLS[agentType], cfg)
 
     const provider  = ctx.provider ?? (process.env["ANTHROPIC_API_KEY"] ? "anthropic" : "opencode")
     const model     = ctx.model ?? undefined
@@ -109,6 +115,7 @@ Focus your prompt on the specific task — no need to repeat what was already di
           workdir:  ctx.workdir,
           system:   getAgentPrompt(agentType, AGENT_MAX_STEPS[agentType]),
           messages: [{ role: "user", content: prompt }],
+          toolsOverride: allowedTools,
         })
         return { output: formatResult(role, agentType, r.text, Date.now() - startMs) }
       }

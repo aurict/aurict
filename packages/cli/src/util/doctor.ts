@@ -3,6 +3,8 @@ import { constants } from "node:fs"
 import { homedir, platform, arch } from "node:os"
 import { join } from "node:path"
 import { createRequire } from "node:module"
+import { spawnSync } from "node:child_process"
+import { loadConfig, resolveSecuritySandboxConfig } from "@aurict/core"
 
 type Status = "ok" | "warn" | "fail"
 
@@ -146,7 +148,70 @@ function sandboxMode(): Check {
   }
 }
 
+function securitySandbox(workdir: string): Check {
+  const cfg = loadConfig(workdir)
+  const security = resolveSecuritySandboxConfig(cfg)
+  if (security.enabled !== true || security.profile === "off") {
+    return {
+      status: "ok",
+      label: "security",
+      detail: "security capability disabled; active security tools are hidden from model context",
+    }
+  }
+
+  const allowlist = security.targetAllowlist
+  if ((security.profile === "active-lite" || security.profile === "kali-full") && allowlist.length === 0) {
+    return {
+      status: "warn",
+      label: "security",
+      detail: `${security.profile} enabled but targetAllowlist is empty; security_recon/security_scan will refuse external targets`,
+    }
+  }
+
+  return {
+    status: "ok",
+    label: "security",
+    detail: `${security.profile} enabled with ${allowlist.length} allowlisted target(s), image=${security.image || "(none)"}, network=${security.network}, limits=${security.maxConcurrent} concurrent/${security.requestsPerMinute}rpm`,
+  }
+}
+
+function dockerSecurityImage(workdir: string): Check | null {
+  const cfg = loadConfig(workdir)
+  const security = resolveSecuritySandboxConfig(cfg)
+  if (security.enabled !== true || security.profile === "off" || security.profile === "passive") return null
+
+  const image = security.image
+  const version = spawnSync("docker", ["--version"], { encoding: "utf8" })
+  if (version.error || version.status !== 0) {
+    return {
+      status: "warn",
+      label: "security-image",
+      detail: `Docker CLI not available; container-backed security scan types will fail until Docker is installed`,
+    }
+  }
+
+  const inspect = spawnSync("docker", ["image", "inspect", image], { encoding: "utf8" })
+  if (inspect.status !== 0) {
+    const dockerfile = security.profile === "kali-full" ? "docker/security-kali-full" : "docker/security-lite"
+    const installHint = image.startsWith("ghcr.io/")
+      ? `pull with: docker pull ${image}`
+      : `build with: docker build -t ${image} ${dockerfile}`
+    return {
+      status: "warn",
+      label: "security-image",
+      detail: `${image} not found locally; ${installHint}. Local build alternative: docker build -t ${image} ${dockerfile}`,
+    }
+  }
+
+  return {
+    status: "ok",
+    label: "security-image",
+    detail: `${image} is available locally`,
+  }
+}
+
 export async function getDoctorReport(workdir: string): Promise<{ text: string; exitCode: number }> {
+  const securityImageCheck = dockerSecurityImage(workdir)
   const checks: Check[] = [
     bunRuntime(),
     platformPackage(),
@@ -155,6 +220,8 @@ export async function getDoctorReport(workdir: string): Promise<{ text: string; 
     providerEnv(),
     serverPort(),
     sandboxMode(),
+    securitySandbox(workdir),
+    ...(securityImageCheck ? [securityImageCheck] : []),
   ]
 
   const failures = checks.filter((check) => check.status === "fail")

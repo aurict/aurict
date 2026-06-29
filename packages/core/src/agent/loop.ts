@@ -10,7 +10,7 @@ import { buildSystemPromptSections } from "../skill/injector.js"
 import { attachmentToAIContent } from "../util/attachments.js"
 import { createThinkTagFilter } from "../util/think-tag-filter.js"
 import { getUndercoverInstructions } from "./undercover.js"
-import { loadConfig } from "../config/config.js"
+import { loadConfig, resolveLongTaskRuntimeConfig } from "../config/config.js"
 import { setTruncationConfig } from "../tool/truncation.js"
 import { calculateCostUsd } from "../provider/costs.js"
 import { extractAndStoreMemories, extractPerTurnMemories } from "../memory/extractor.js"
@@ -34,6 +34,11 @@ import { restoreFailureCooldown, getFailureCooldownSnapshot } from "./failure-co
 import { buildAttentionAnchor } from "./attention-anchor.js"
 import { evaluateCompletionGate } from "./completion-gate.js"
 import { recordRunTrace } from "./run-trace.js"
+import { filterToolIdsForSecurityCapability, prepareToolForSecurityCapability } from "../security/capability.js"
+import type { OmniConfig } from "../config/config.js"
+import { evaluateLongTaskContinuation } from "./continuation-controller.js"
+import { buildTaskLedger, formatTaskLedgerAnchor } from "./task-ledger.js"
+import { isTaskContinuationTurn } from "./turn-intent.js"
 
 const DEFAULT_MAX_STEPS = 80
 
@@ -79,6 +84,7 @@ function buildAITools(
   sessionId: string,
   provider: string,
   model: string,
+  cfg: OmniConfig,
   signal?: AbortSignal,
   onChunk?: (chunk: string) => void,
   failureTracker?: Map<string, number>,
@@ -88,8 +94,10 @@ function buildAITools(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result: Record<string, any> = {}
   for (const def of ToolRegistry.list()) {
-    const captured = def
-    const schema = getCachedToolSchema(def)
+    const filteredDef = prepareToolForSecurityCapability(def, cfg)
+    if (!filteredDef) continue
+    const captured = filteredDef
+    const schema = getCachedToolSchema(filteredDef)
     const sanitizedId = schema.sanitizedId
     result[sanitizedId] = tool({
       description: schema.description,
@@ -196,6 +204,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
 
   // --- Config yükle + truncation init ---
   const cfg              = loadConfig(workdir)
+  const longTaskConfig   = resolveLongTaskRuntimeConfig(cfg)
   setTruncationConfig(cfg.truncation ?? {})
 
   // --- Provider fallback init ---
@@ -256,13 +265,16 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
   const recentReads      = new Map<string, number>()
   const toolCallIndexRef = { current: 0 }
   const rawTools = hasToolSupport
-    ? buildAITools(workdir, sessionId ?? "", providerName, modelId, opts.signal, opts.onChunk, failureTracker, recentReads, toolCallIndexRef)
+    ? buildAITools(workdir, sessionId ?? "", providerName, modelId, cfg, opts.signal, opts.onChunk, failureTracker, recentReads, toolCallIndexRef)
     : ({} as ToolSet)
 
   // toolsOverride: session agent kısıtlaması — sadece izin verilen tool'lar
+  const toolsOverride = opts.toolsOverride
+    ? filterToolIdsForSecurityCapability(opts.toolsOverride, cfg)
+    : undefined
   const aiTools: ToolSet = opts.toolsOverride
     ? Object.fromEntries(
-        Object.entries(rawTools).filter(([id]) => opts.toolsOverride!.includes(id))
+        Object.entries(rawTools).filter(([id]) => toolsOverride!.includes(id))
       ) as ToolSet
     : rawTools
 
@@ -271,13 +283,14 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
   const lastUserText = lastUserMsg
     ? (typeof lastUserMsg.content === "string" ? lastUserMsg.content : "")
     : ""
+  const taskContinuationTurn = isTaskContinuationTurn(lastUserText)
 
   // --- Skill injection (otomatik proje tespiti) ---
   // Git context buildSystemPrompt dışında tutulur — Anthropic'te ayrı uncached blok olarak inject edilir
   const baseSystemSections = await buildSystemPromptSections(workdir, opts.system, false, undefined, lastUserText)
   const projectSkills   = await getSkillsForProject(workdir).catch(() => [])
   const projectSkillIds = new Set(projectSkills.map((s) => s.id))
-  const activatedSkills = matchIntentSkills(lastUserText, projectSkillIds)
+  const activatedSkills = matchIntentSkills(lastUserText, workdir, projectSkillIds)
   if (activatedSkills.length > 0) opts.onSkillsActivated?.(activatedSkills)
 
   const [proactiveSection, intentSection] = await Promise.all([
@@ -306,6 +319,13 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
   })
   if (attentionAnchor) {
     runtimeSystemSections.push({ name: "attention_anchor", cache: "dynamic", content: attentionAnchor })
+  }
+  if (longTaskConfig.enabled && resumedState?.taskLedger && taskContinuationTurn) {
+    runtimeSystemSections.push({
+      name: "task_ledger",
+      cache: "dynamic",
+      content: formatTaskLedgerAnchor(resumedState.taskLedger),
+    })
   }
 
   const system = joinPromptSections(runtimeSystemSections)
@@ -492,11 +512,12 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     })
   }
 
+  const continuationTasks = taskContinuationTurn ? opts.continuation?.getTasks?.() ?? [] : []
   const continuation = evaluateContinuation({
     text: fullText,
     finishReason,
     newMessageCount: newMessages.length,
-    tasks: opts.continuation?.getTasks?.() ?? [],
+    tasks: continuationTasks,
   }, {
     previousContinuations: opts.continuation?.previousContinuations ?? resumedState?.continuation?.nextContinuationCount,
     maxContinuations: opts.continuation?.maxContinuations,
@@ -509,7 +530,33 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     continuation,
     workingSet: finalWorkingSet,
     verification: lastVerification,
+    allowTaskAutoContinue: taskContinuationTurn,
   })
+  const taskLedger = buildTaskLedger({
+    objective: lastUserText,
+    workingSet: finalWorkingSet,
+    verification: lastVerification,
+    continuation,
+    tasks: continuationTasks,
+    previous: resumedState?.taskLedger,
+  })
+  const longTask = evaluateLongTaskContinuation({
+    text: fullText,
+    ledger: taskLedger,
+    completionGate,
+    continuation,
+    config: longTaskConfig,
+    budget: {
+      previousContinuations: continuation.previousContinuations,
+    },
+    taskIntent: taskContinuationTurn,
+  })
+  if (longTask.shouldContinue && !completionGate.shouldAutoContinue && !completionGate.shadowOnly) {
+    completionGate.status = longTask.reason === "budget_exhausted" ? "budget_exhausted" : "continue_required"
+    completionGate.shouldAutoContinue = true
+    completionGate.reason = `long_task:${longTask.reason}`
+    completionGate.shadowOnly = longTask.shadowOnly
+  }
 
   const finish: AgentFinishResult = {
     text:      fullText,
@@ -517,6 +564,8 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
     newMessages,
     continuation,
     completionGate,
+    longTask,
+    taskLedger,
     ...(finishReason ? { finishReason } : {}),
     ...(sessionId !== undefined ? { sessionId } : {}),
   }
@@ -535,12 +584,18 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult
       failureCooldown: getFailureCooldownSnapshot(sessionId),
       completionGate,
       continuation,
+      longTask,
+      taskLedger,
       ...(finishReason ? { finishReason } : {}),
       tokens: breakdown,
       ...(lastVerification ? { lastVerification } : {}),
       ...(fullText ? { lastTextPreview: fullText.slice(-1_500) } : {}),
     }).catch(() => {})
     recordRunTrace(workdir, sessionId, "completion_gate", completionGate as unknown as Record<string, unknown>).catch(() => {})
+    recordRunTrace(workdir, sessionId, "long_task", {
+      decision: longTask,
+      ledger: taskLedger,
+    }).catch(() => {})
     recordRunTrace(workdir, sessionId, "working_set", {
       items: finalWorkingSet.items.slice(0, 12),
       updatedAt: finalWorkingSet.updatedAt,

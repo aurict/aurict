@@ -55,14 +55,14 @@ const workdir = process.cwd()
 
 // --version
 if (flags.version) {
-  console.log("Aurict v1.1.4")
+  console.log("Aurict v1.1.5")
   process.exit(0)
 }
 
 // --help
 if (flags.help) {
   console.log(`
-Aurict v1.1.4 — Terminal AI assistant
+Aurict v1.1.5 — Terminal AI assistant
 
 Usage:
   aurict [options]
@@ -195,18 +195,20 @@ await loadPlugins()
 const cfg      = applyFlags(loadConfig(workdir), flags)
 const { defaultProvider, localServer } = await bootstrap(cfg)
 
-const provider   = cfg.provider ?? loadOmniConfig(workdir).defaults?.provider ?? defaultProvider
+const provider   = cfg.provider ?? defaultProvider
 const plugin     = ProviderRegistry.get(provider)
-const savedModel = loadOmniConfig(workdir).defaults?.model
-const model      = cfg.model ?? savedModel ?? plugin.defaultModel()
+const model      = cfg.model ?? plugin.defaultModel()
 
 if (process.stdin.isTTY) {
   // İnteraktif mod — Ink TUI
   const updatePromise = checkForUpdate()  // fire-and-forget, non-blocking
 
   // Hiçbir provider'ın key'i yoksa onboarding wizard göster
-  const noKeyConfigured = ProviderRegistry.available().every(p => !p.hasKey)
-  const needsSetup      = noKeyConfigured && !cfg.provider
+  const availableProviders = ProviderRegistry.available()
+  const noKeyConfigured = availableProviders.every(p => !p.hasKey)
+  const selectedProviderInfo = availableProviders.find(p => p.id === provider)
+  const selectedNeedsKey = provider !== "ollama" && selectedProviderInfo?.hasKey !== true
+  const needsSetup      = noKeyConfigured && selectedNeedsKey && flags.provider === undefined
 
   if (needsSetup) {
     // Wizard tamamlanınca App'i render et

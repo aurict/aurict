@@ -161,6 +161,12 @@ auditing specific data flow paths.`,
     sink:      z.string().optional().describe("Taint sink pattern, e.g. 'db.query(...)', 'exec(...)', 'eval(...)'"),
     language:  z.string().optional().describe("Language hint: javascript, python, java, go, ruby, php. Auto-detected from extension if omitted."),
   }),
+  spec: {
+    category: "read",
+    riskLevel: "high",
+    securityCapability: "active",
+    permissionSummary: "Analyze source-to-sink taint flow for injection vulnerabilities",
+  },
 
   async execute(args, _ctx: ToolContext): Promise<ExecuteResult> {
     const filePath = String(args["file_path"] ?? "")

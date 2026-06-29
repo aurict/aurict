@@ -40,12 +40,24 @@ describe("session resume state", () => {
         nextContinuationCount: 2,
         tasksOpen: true,
       },
+      taskLedger: {
+        objective: "finish implementation",
+        phase: "verifying",
+        openSteps: [],
+        changedFiles: ["src/a.ts"],
+        verification: { status: "none" },
+        recoveryAttempts: [],
+        blockers: [],
+        lastProgressAt: 123,
+      },
     })
 
     const state = await readSessionResumeState(workdir, "s1")
 
     expect(state?.activeSkills[0]?.skillId).toBe("report")
     expect(state?.continuation?.nextContinuationCount).toBe(2)
+    expect(state?.taskLedger?.phase).toBe("verifying")
+    expect(state?.taskLedger?.changedFiles).toEqual(["src/a.ts"])
   })
 
   it("extracts verification status from final text", () => {

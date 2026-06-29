@@ -5,6 +5,8 @@ import type { PromptDiagnostics } from "./prompt-diagnostics.js"
 import type { PromptCacheHealthResult } from "./prompt-cache-health.js"
 import type { ContinuationDecision, ContinuationTaskState } from "./continuation.js"
 import type { CompletionGateDecision } from "./completion-gate.js"
+import type { LongTaskContinuationDecision } from "./continuation-controller.js"
+import type { TaskLedger } from "./task-ledger.js"
 
 export interface AgentContinuationOptions {
   getTasks?: (() => ContinuationTaskState[]) | undefined
@@ -56,6 +58,8 @@ export interface AgentFinishResult {
   finishReason?: string
   continuation?: ContinuationDecision
   completionGate?: CompletionGateDecision
+  longTask?: LongTaskContinuationDecision
+  taskLedger?: TaskLedger
 }
 
 export type AgentStatus = "idle" | "running" | "done" | "error" | "aborted"

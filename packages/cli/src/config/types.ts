@@ -1,4 +1,6 @@
-export interface AurictConfig {
+import type { OmniConfig } from "@aurict/core"
+
+export interface AurictConfig extends Omit<OmniConfig, "agents"> {
   provider?: string
   model?:    string
   system?:   string
@@ -12,11 +14,7 @@ export interface AurictConfig {
     autoDetect?: boolean
     disabled?:   string[]
   }
-  agents?: Record<string, {
-    provider?: string
-    model?:    string
-    tools?:    string[]
-  }>
+  agents?: OmniConfig["agents"] & Record<string, unknown>
   multiAgent?: {
     maxWorkers?: number
   }

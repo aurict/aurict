@@ -6,6 +6,8 @@ import { readFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { getSkillLifecycleSnapshot, normalizeToolName, popActiveSkillPolicy, pushActiveSkillPolicy } from "../../skill/runtime-policy.js"
+import { loadConfig } from "../../config/config.js"
+import { filterSkillDefsForSecurityCapability, isSkillVisibleForSecurityCapability } from "../../security/capability.js"
 
 export const loadSkillTool: ToolDef = {
   id: "load_skill",
@@ -43,6 +45,7 @@ If you don't know the exact skill ID, use a close match — the tool will find i
   async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
     const id = String(args["skill_id"] ?? "").trim().toLowerCase()
     const task = String(args["task"] ?? "").trim()
+    const cfg = loadConfig(ctx.workdir)
     if (!id) return { output: "", error: "skill_id is required" }
     if (id === "exit" || id === "skill_exit") {
       const popped = popActiveSkillPolicy(ctx.sessionId)
@@ -65,7 +68,7 @@ If you don't know the exact skill ID, use a close match — the tool will find i
 
     // Fuzzy fallback: find skill whose ID contains the query or vice versa
     if (!def) {
-      const all = SkillRegistry.all()
+      const all = filterSkillDefsForSecurityCapability(SkillRegistry.all(), cfg)
       def = all.find(s => s.id.includes(id) || id.includes(s.id))
       contentPath = def?.contentPath
       displayName = def?.name ?? id
@@ -81,9 +84,13 @@ If you don't know the exact skill ID, use a close match — the tool will find i
     }
 
     if (!contentPath) {
-      const all = SkillRegistry.all()
+      const all = filterSkillDefsForSecurityCapability(SkillRegistry.all(), cfg)
       const ids = all.map(s => s.id).slice(0, 30).join(", ")
       return { output: "", error: `Skill '${id}' not found. Sample IDs: ${ids}` }
+    }
+
+    if (registryPolicy && !isSkillVisibleForSecurityCapability(registryPolicy, cfg)) {
+      return { output: "", error: `Skill '${registryPolicy.id}' is unavailable because the security capability profile is disabled.` }
     }
 
     try {

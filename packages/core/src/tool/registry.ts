@@ -48,6 +48,9 @@ import { inspectLiveProcessTool } from "./built-in/inspect-live-process.js"
 import { blastRadiusTool }        from "./built-in/blast-radius.js"
 import { gitContextTool }         from "./built-in/git-context.js"
 import { uiInspectTool }          from "./built-in/ui-inspect.js"
+import { securityReconTool }      from "./built-in/security-recon.js"
+import { securityScanTool }       from "./built-in/security-scan.js"
+import { securityReportTool }     from "./built-in/security-report.js"
 
 const tools = new Map<string, ToolDef>()
 
@@ -70,6 +73,7 @@ for (const t of [
   blastRadiusTool,
   gitContextTool,
   uiInspectTool,
+  securityReconTool, securityScanTool, securityReportTool,
 ]) {
   tools.set(t.id, t)
 

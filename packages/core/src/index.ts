@@ -52,6 +52,12 @@ export type { AutoInvokeRule, AutoTrigger, SkillRetrievalCandidate, SkillSearchD
 export { skillScoreStore }                               from "./skill/score-store.js"
 export { setActiveSkillPolicy, pushActiveSkillPolicy, popActiveSkillPolicy, getActiveSkillPolicy, getSkillLifecycleSnapshot, restoreSkillLifecycle, clearActiveSkillPolicy, isToolAllowedByActiveSkillPolicy, normalizeToolName } from "./skill/runtime-policy.js"
 export type { ActiveSkillPolicy, SkillLifecycleSnapshot } from "./skill/runtime-policy.js"
+export { normalizeSecuritySandboxConfig, isPassiveSecurityEnabled, isActiveSecurityEnabled, classifySkillSecurityCapability, isSkillVisibleForSecurityCapability, filterSkillDefsForSecurityCapability, isToolVisibleForSecurityCapability, filterToolIdsForSecurityCapability, isAgentTypeVisibleForSecurityCapability, visibleAgentTypesForSecurityCapability, prepareToolForSecurityCapability } from "./security/capability.js"
+export type { SecurityCapabilityClass }                  from "./security/capability.js"
+export { parseSecurityTarget, assertSecurityCapabilityEnabled, assertTargetAllowed, runSecurityRecon, runWebBaselineScan, buildSecurityReport, summarizeFindings } from "./security/runner.js"
+export type { SecurityTarget, SecurityFinding, SecurityRunResult, SecurityCheckStatus, SecuritySeverity } from "./security/runner.js"
+export { buildSecurityDockerArgs, buildSecurityDockerCommand, runSecurityDockerTool } from "./security/docker-runner.js"
+export type { SecurityDockerAction, SecurityDockerRunRequest, SecurityDockerRunResult } from "./security/docker-runner.js"
 export { loadSkillOverride, applyOverride }              from "./skill/override.js"
 export type { SkillOverride }                            from "./skill/override.js"
 export { installRemoteSkill, listInstalledSkills, uninstallSkill } from "./skill/remote.js"
@@ -83,6 +89,7 @@ export { getPromptCacheControl, isPromptCachingEnabled } from "./agent/prompt-ca
 export type { PromptCacheControl }                       from "./agent/prompt-cache-control.js"
 export { shouldContinueAgentRun, stalledMidTask, hasOpenContinuationTasks, evaluateContinuation } from "./agent/continuation.js"
 export type { ContinuationSignal, ContinuationTaskState, ContinuationDecision, ContinuationReason, ContinuationStopReason, ContinuationBudget } from "./agent/continuation.js"
+export { isTaskContinuationTurn }                     from "./agent/turn-intent.js"
 export { agentPool }                                     from "./agent/pool.js"
 export { loadCustomAgents, getCustomAgent }              from "./agent/custom.js"
 export type { CustomAgentDef }                           from "./agent/custom.js"
@@ -138,8 +145,12 @@ export { setCompaction } from "./config/config.js"
 export type { CompactionStrategy } from "./config/config.js"
 export { pinStore } from "./pin/store.js"
 export type { Pin } from "./pin/store.js"
-export { loadConfig, setApiKey, setDefault, getConfigPath } from "./config/config.js"
-export type { OmniConfig } from "./config/config.js"
+export { loadConfig, setApiKey, setDefault, setSecuritySandbox, setLongTaskRuntime, resolveSecuritySandboxConfig, resolveLongTaskRuntimeConfig, SECURITY_SANDBOX_PROFILE_DEFAULTS, SECURITY_SANDBOX_IMAGE_DEFAULTS, SECURITY_IMAGE_REGISTRY, SECURITY_IMAGE_TAG, SECURITY_IMAGE_REPOSITORIES, LONG_TASK_RUNTIME_DEFAULTS, getConfigPath } from "./config/config.js"
+export type { OmniConfig, SecuritySandboxConfig, ResolvedSecuritySandboxConfig, SecuritySandboxProfile, SecurityNetworkMode, LongTaskRuntimeConfig, ResolvedLongTaskRuntimeConfig } from "./config/config.js"
+export { buildTaskLedger, formatTaskLedgerAnchor } from "./agent/task-ledger.js"
+export type { TaskLedger, TaskPhase, LedgerStep, ToolErrorState, RecoveryAttempt } from "./agent/task-ledger.js"
+export { evaluateLongTaskContinuation } from "./agent/continuation-controller.js"
+export type { LongTaskContinuationDecision, LongTaskContinuationReason, LongTaskBudgetState } from "./agent/continuation-controller.js"
 
 // Session agents
 export { BUILT_IN_SESSION_AGENTS, getAllSessionAgents, getSessionAgent } from "./agent/session-agents.js"
@@ -269,6 +280,8 @@ export {
   filterAuditLogs,
 } from "./security/audit.js"
 export type { AuditEvent, AuditEventType, AuditLogConfig } from "./security/audit.js"
+export { SECURITY_ACTION_POLICIES, securityPolicyManager } from "./security/policy.js"
+export type { SecurityAction, SecurityActionPolicy, SecurityRisk } from "./security/policy.js"
 
 export {
   scanDependencies,

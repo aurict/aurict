@@ -21,6 +21,7 @@ export interface CompletionGateInput {
   continuation: ContinuationDecision
   workingSet: WorkingSetSnapshot
   verification?: SessionVerificationSnapshot | undefined
+  allowTaskAutoContinue?: boolean | undefined
 }
 
 export function evaluateCompletionGate(input: CompletionGateInput): CompletionGateDecision {
@@ -37,6 +38,8 @@ export function evaluateCompletionGate(input: CompletionGateInput): CompletionGa
     return { status: "continue_required", shouldAutoContinue: true, reason: `continuation:${input.continuation.reason ?? "unknown"}`, shadowOnly: false }
   }
 
+  const allowTaskAutoContinue = input.allowTaskAutoContinue ?? true
+
   const changedFiles = input.workingSet.items.filter(item => item.kind === "file" && item.reason === "changed file")
   const failedVerification = input.workingSet.items.find(item => item.kind === "verification" && item.status === "failed")
   const skippedRisky = input.verification?.status === "timeout"
@@ -44,16 +47,21 @@ export function evaluateCompletionGate(input: CompletionGateInput): CompletionGa
     input.workingSet.items.some(item => item.kind === "verification" && item.status === "passed")
 
   if (failedVerification) {
-    return { status: "verification_required", shouldAutoContinue: true, reason: "verification failed", shadowOnly: false }
+    return {
+      status: "verification_required",
+      shouldAutoContinue: allowTaskAutoContinue,
+      reason: allowTaskAutoContinue ? "verification failed" : "verification failed outside task turn",
+      shadowOnly: !allowTaskAutoContinue,
+    }
   }
   if (changedFiles.length > 0 && !hasPassedVerification) {
     const safeSkip = input.verification?.status === "skipped" && /non-type change|comment/i.test(input.verification.summary)
     if (!safeSkip) {
       return {
         status: "verification_required",
-        shouldAutoContinue: !skippedRisky,
-        reason: skippedRisky ? "verification timed out" : "changed files lack passing verification",
-        shadowOnly: process.env["AURICT_COMPLETION_GATE_SHADOW"] === "1",
+        shouldAutoContinue: allowTaskAutoContinue && !skippedRisky,
+        reason: !allowTaskAutoContinue ? "changed files outside task turn" : skippedRisky ? "verification timed out" : "changed files lack passing verification",
+        shadowOnly: !allowTaskAutoContinue || process.env["AURICT_COMPLETION_GATE_SHADOW"] === "1",
       }
     }
   }

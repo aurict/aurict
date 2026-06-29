@@ -1,5 +1,6 @@
-import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore, installRemotePlugin, listInstalledPlugins, uninstallPlugin, fetchRegistry, searchRegistry, findInRegistry, readLatestTraceEvents } from "@aurict/core"
+import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, setSecuritySandbox, setLongTaskRuntime, resolveSecuritySandboxConfig, resolveLongTaskRuntimeConfig, SECURITY_SANDBOX_PROFILE_DEFAULTS, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore, installRemotePlugin, listInstalledPlugins, uninstallPlugin, fetchRegistry, searchRegistry, findInRegistry, readLatestTraceEvents } from "@aurict/core"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
+import { spawnSync } from "child_process"
 import { resolve, join } from "path"
 import { THEMES, THEME_NAMES } from "../utils/theme.js"
 import type { CommandDef, CommandResult, PickerItem } from "./types.js"
@@ -47,6 +48,46 @@ function ensureLine(path: string, line: string): boolean {
   const prefix = existing.length > 0 && !existing.endsWith("\n") ? "\n" : ""
   writeFileSync(path, `${existing}${prefix}${line}\n`, "utf8")
   return true
+}
+
+function securityConfigLines(cfg: ReturnType<typeof loadConfig>): string[] {
+  const security = resolveSecuritySandboxConfig(cfg)
+  const enabled = security.enabled === true && security.profile !== "off"
+  const allowlist = security.targetAllowlist
+  return [
+    "Security Sandbox:",
+    `  enabled: ${enabled ? "yes" : "no"}`,
+    `  profile: ${security.profile}`,
+    `  image:   ${security.image || "(none)"}`,
+    `  network: ${security.network}`,
+    `  limits:  ${security.maxConcurrent} concurrent, ${security.requestsPerMinute}/min`,
+    `  targets: ${allowlist.length > 0 ? allowlist.join(", ") : "(none)"}`,
+  ]
+}
+
+function pullSecurityImage(image: string): CommandResult {
+  if (!image) return { type: "error", message: "No security image is configured for the current profile." }
+  const version = spawnSync("docker", ["--version"], { encoding: "utf8" })
+  if (version.error || version.status !== 0) {
+    return { type: "error", message: "Docker CLI is not available. Install Docker before pulling security images." }
+  }
+  const result = spawnSync("docker", ["pull", image], { encoding: "utf8", timeout: 600_000 })
+  if (result.status !== 0) {
+    const detail = result.stderr?.trim() || result.stdout?.trim() || "docker pull failed"
+    return { type: "error", message: `Failed to pull ${image}:\n${detail}` }
+  }
+  return { type: "text", content: `Security image ready: ${image}` }
+}
+
+function longTaskConfigLines(cfg: ReturnType<typeof loadConfig>): string[] {
+  const runtime = resolveLongTaskRuntimeConfig(cfg)
+  return [
+    "Long Task Runtime:",
+    `  enabled: ${runtime.enabled ? "yes" : "no"}`,
+    `  mode:    ${runtime.mode}`,
+    `  verify:  ${runtime.strictVerification ? "strict" : "relaxed"}`,
+    `  budget:  ${runtime.maxContinuationSteps} continuations, ${runtime.maxRecoveryAttempts} recovery attempts`,
+  ]
 }
 
 const commands: CommandDef[] = [
@@ -442,6 +483,21 @@ const commands: CommandDef[] = [
           agents: {
             maxWorkers: 4,
           },
+          securitySandbox: {
+            enabled: false,
+            profile: "off",
+            network: "restricted",
+            targetAllowlist: [],
+          },
+          longTaskRuntime: {
+            enabled: true,
+            mode: "soft",
+            strictVerification: true,
+            maxContinuationSteps: 12,
+            maxRecoveryAttempts: 3,
+            maxVerificationRuns: 4,
+            maxNoProgressTurns: 3,
+          },
         }
         writeFileSync(configPath, JSON.stringify(cfg, null, 2) + "\n", "utf8")
         created.push(".aurict/config.json")
@@ -732,7 +788,7 @@ const commands: CommandDef[] = [
     name:        "config",
     aliases:     ["cfg"],
     description: "Manage API keys and defaults (~/.aurict/config.json)",
-    usage:       "/config  |  /config set <provider> <apikey>  |  /config default provider <name>",
+    usage:       "/config  |  /config set <provider> <apikey>  |  /config default provider <name>  |  /config security status|off|passive|active-lite|allow <target>|rate <rpm>|concurrency <n>",
     handler: (args, ctx): CommandResult => {
       const sub = args[0]
 
@@ -754,6 +810,122 @@ const commands: CommandDef[] = [
         return { type: "text", content: `Default ${field} set to: ${value}` }
       }
 
+      // /config security ...
+      if (sub === "security") {
+        const action = args[1] ?? "status"
+        const cfg = loadConfig(ctx.workdir)
+        const current = resolveSecuritySandboxConfig(cfg)
+        const allowlist = current.targetAllowlist
+
+        if (action === "status") {
+          return { type: "text", content: securityConfigLines(cfg).join("\n") }
+        }
+
+        if (action === "off" || action === "disable") {
+          setSecuritySandbox({ enabled: false, profile: "off" })
+          return { type: "text", content: "Security sandbox disabled. Active security tools and skills are hidden from model context." }
+        }
+
+        if (action === "passive") {
+          setSecuritySandbox(SECURITY_SANDBOX_PROFILE_DEFAULTS.passive)
+          return { type: "text", content: "Security sandbox set to passive. Active scan tools remain hidden." }
+        }
+
+        if (action === "active-lite") {
+          setSecuritySandbox({
+            ...SECURITY_SANDBOX_PROFILE_DEFAULTS["active-lite"],
+            image: current.profile === "active-lite" ? current.image : SECURITY_SANDBOX_PROFILE_DEFAULTS["active-lite"].image,
+            network: current.profile === "active-lite" ? current.network : SECURITY_SANDBOX_PROFILE_DEFAULTS["active-lite"].network,
+            targetAllowlist: allowlist,
+          })
+          return { type: "text", content: "Security sandbox set to active-lite. Add targets with /config security allow <target> before running scans." }
+        }
+
+        if (action === "kali-full") {
+          setSecuritySandbox({
+            ...SECURITY_SANDBOX_PROFILE_DEFAULTS["kali-full"],
+            image: current.profile === "kali-full" ? current.image : SECURITY_SANDBOX_PROFILE_DEFAULTS["kali-full"].image,
+            network: current.profile === "kali-full" ? current.network : SECURITY_SANDBOX_PROFILE_DEFAULTS["kali-full"].network,
+            targetAllowlist: allowlist,
+          })
+          return { type: "text", content: "Security sandbox set to kali-full. Build/provide the image and allowlist targets before running scans." }
+        }
+
+        if (action === "allow") {
+          const target = args[2]?.trim()
+          if (!target) return { type: "error", message: "Usage: /config security allow <host-or-pattern>" }
+          const next = Array.from(new Set([...allowlist, target])).sort()
+          setSecuritySandbox({ targetAllowlist: next })
+          return { type: "text", content: `Security target allowlist updated: ${next.join(", ")}` }
+        }
+
+        if (action === "deny" || action === "remove") {
+          const target = args[2]?.trim()
+          if (!target) return { type: "error", message: "Usage: /config security remove <host-or-pattern>" }
+          const next = allowlist.filter(item => item !== target)
+          setSecuritySandbox({ targetAllowlist: next })
+          return { type: "text", content: next.length > 0 ? `Security target allowlist updated: ${next.join(", ")}` : "Security target allowlist is now empty." }
+        }
+
+        if (action === "image") {
+          const image = args[2]?.trim()
+          if (!image) return { type: "error", message: "Usage: /config security image <docker-image>" }
+          setSecuritySandbox({ image })
+          return { type: "text", content: `Security sandbox image set to: ${image}` }
+        }
+
+        if (action === "pull" || action === "install-image") {
+          if (current.profile === "off" || current.profile === "passive") {
+            return { type: "error", message: "Enable active-lite or kali-full before pulling a security image." }
+          }
+          return pullSecurityImage(current.image)
+        }
+
+        if (action === "network") {
+          const network = args[2]
+          if (network !== "none" && network !== "restricted" && network !== "host") {
+            return { type: "error", message: "Usage: /config security network none|restricted|host" }
+          }
+          setSecuritySandbox({
+            network,
+            ...(network === "host" ? { requireApprovalFor: Array.from(new Set([...current.requireApprovalFor, "host-network"])) } : {}),
+          })
+          return { type: "text", content: `Security sandbox network set to: ${network}` }
+        }
+
+        if (action === "rate") {
+          const rpm = Number(args[2])
+          if (!Number.isFinite(rpm) || rpm < 1) return { type: "error", message: "Usage: /config security rate <requests-per-minute>" }
+          setSecuritySandbox({ requestsPerMinute: Math.floor(rpm) })
+          return { type: "text", content: `Security sandbox rate limit set to: ${Math.floor(rpm)}/min` }
+        }
+
+        if (action === "concurrency") {
+          const maxConcurrent = Number(args[2])
+          if (!Number.isFinite(maxConcurrent) || maxConcurrent < 1) return { type: "error", message: "Usage: /config security concurrency <max-concurrent-scans>" }
+          setSecuritySandbox({ maxConcurrent: Math.floor(maxConcurrent) })
+          return { type: "text", content: `Security sandbox concurrency set to: ${Math.floor(maxConcurrent)}` }
+        }
+
+        return {
+          type: "error",
+          message: "Usage: /config security status|off|passive|active-lite|kali-full|allow <target>|remove <target>|image <image>|pull|network none|restricted|host|rate <rpm>|concurrency <n>",
+        }
+      }
+
+      // /config longtask off|shadow|soft|strict
+      if (sub === "longtask" || sub === "long-task") {
+        const mode = args[1] ?? "status"
+        if (mode === "status") {
+          return { type: "text", content: longTaskConfigLines(loadConfig(ctx.workdir)).join("\n") }
+        }
+        if (mode !== "off" && mode !== "shadow" && mode !== "soft" && mode !== "strict") {
+          return { type: "error", message: "Usage: /config longtask status|off|shadow|soft|strict" }
+        }
+        setLongTaskRuntime({ enabled: mode !== "off", mode })
+        return { type: "text", content: `Long task runtime set to ${mode}.` }
+      }
+
       // /config (argümansız) → mevcut durumu göster
       const cfg = loadConfig(ctx.workdir)
       const lines: string[] = [`Config: ${getConfigPath()}`, ""]
@@ -772,6 +944,10 @@ const commands: CommandDef[] = [
       const d = cfg.defaults ?? {}
       lines.push(`  provider: ${d.provider ?? "(not set)"}`)
       lines.push(`  model:    ${d.model    ?? "(not set)"}`)
+      lines.push("")
+      lines.push(...securityConfigLines(cfg))
+      lines.push("")
+      lines.push(...longTaskConfigLines(cfg))
       return { type: "text", content: lines.join("\n") }
     },
   },

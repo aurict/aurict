@@ -1,0 +1,47 @@
+{
+  "image": "aurict-kali-full",
+  "profile": "kali-full",
+  "included": [
+    { "name": "curl", "purpose": "HTTP/TLS endpoint checks and header collection" },
+    { "name": "wget", "purpose": "HTTP fetch fallback and health checks" },
+    { "name": "jq", "purpose": "JSON parsing for API and scanner output" },
+    { "name": "openssl", "purpose": "TLS certificate, cipher, expiry, and chain inspection" },
+    { "name": "dnsutils", "purpose": "dig/nslookup DNS, MX, TXT, SPF, and DMARC checks" },
+    { "name": "whois", "purpose": "Domain registrar and ownership context" },
+    { "name": "iputils-ping", "purpose": "Basic reachability diagnostics" },
+    { "name": "traceroute", "purpose": "Basic path diagnostics" },
+    { "name": "netcat-openbsd", "purpose": "Controlled TCP connectivity checks" },
+    { "name": "nmap", "purpose": "Allowlisted service discovery with explicit approval" },
+    { "name": "python3", "purpose": "Small parsers and analysis scripts" },
+    { "name": "python3-pip", "purpose": "Python package support for controlled scripts" },
+    { "name": "ca-certificates", "purpose": "HTTPS certificate verification" },
+    { "name": "git", "purpose": "Public advisory/repository reference retrieval" },
+    { "name": "nikto", "purpose": "Web server misconfiguration checks" },
+    { "name": "testssl.sh", "purpose": "Focused TLS/SSL configuration analysis" },
+    { "name": "sqlmap", "purpose": "Low-risk SQL injection validation through Aurict fixed command builders" },
+    { "name": "nuclei", "purpose": "Template-based vulnerability checks; use curated templates only" },
+    { "name": "ffuf", "purpose": "Bounded web fuzzing with rate limits and target allowlist" },
+    { "name": "gobuster", "purpose": "Bounded directory enumeration with rate limits and target allowlist" },
+    { "name": "whatweb", "purpose": "Passive web technology fingerprinting" },
+    { "name": "wafw00f", "purpose": "WAF detection against authorized targets" },
+    { "name": "sslscan", "purpose": "TLS service configuration inspection" },
+    { "name": "amass", "purpose": "Authorized external asset enumeration" }
+  ],
+  "excluded": [
+    "metasploit",
+    "aircrack-ng",
+    "bettercap",
+    "responder",
+    "hydra",
+    "medusa",
+    "john",
+    "hashcat"
+  ],
+  "runtime_requirements": [
+    "securitySandbox.enabled must be true",
+    "securitySandbox.profile must be kali-full",
+    "securitySandbox.targetAllowlist must include the target",
+    "Aurict must request permission for active recon/scan tools",
+    "securitySandbox.maxConcurrent defaults to 1 and requestsPerMinute defaults to 30"
+  ]
+}

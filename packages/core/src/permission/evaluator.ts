@@ -67,6 +67,9 @@ const DEFAULT_RULES: PermissionRule[] = [
   { tool: "scratchpad", pattern: "*", action: "allow", scope: "global" },
   { tool: "verify",     pattern: "*", action: "allow", scope: "global" },
   { tool: "critique",   pattern: "*", action: "allow", scope: "global" },
+  { tool: "security_report", pattern: "*", action: "allow", scope: "global" },
+  { tool: "security_recon",  pattern: "*", action: "ask",   scope: "global" },
+  { tool: "security_scan",   pattern: "*", action: "ask",   scope: "global" },
 ]
 
 const rules: PermissionRule[] = [...DEFAULT_RULES]

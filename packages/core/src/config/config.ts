@@ -5,11 +5,120 @@ import type { FallbackTrigger } from "../provider/fallback.js"
 
 export type CompactionStrategy  = "aggressive" | "balanced" | "conservative"
 export type TruncationStrategy = "head" | "tail" | "head_tail" | "smart"
+export type SecuritySandboxProfile = "off" | "passive" | "active-lite" | "kali-full"
+export type SecurityNetworkMode = "none" | "restricted" | "host"
+
+export const SECURITY_IMAGE_REGISTRY = "ghcr.io/aurict"
+export const SECURITY_IMAGE_TAG = "latest"
+export const SECURITY_IMAGE_REPOSITORIES = {
+  "active-lite": "aurict-security-lite",
+  "kali-full": "aurict-kali-full",
+} as const
+
+export const SECURITY_SANDBOX_IMAGE_DEFAULTS = {
+  "active-lite": `${SECURITY_IMAGE_REGISTRY}/${SECURITY_IMAGE_REPOSITORIES["active-lite"]}:${SECURITY_IMAGE_TAG}`,
+  "kali-full": `${SECURITY_IMAGE_REGISTRY}/${SECURITY_IMAGE_REPOSITORIES["kali-full"]}:${SECURITY_IMAGE_TAG}`,
+} as const
 
 export interface McpServerConfig {
   command: string
   args?: string[]
   env?: Record<string, string>
+}
+
+export interface SecuritySandboxConfig {
+  enabled?: boolean
+  profile?: SecuritySandboxProfile
+  image?: string
+  network?: SecurityNetworkMode
+  targetAllowlist?: string[]
+  requireApprovalFor?: string[]
+  maxConcurrent?: number
+  requestsPerMinute?: number
+}
+
+export interface ResolvedSecuritySandboxConfig {
+  enabled: boolean
+  profile: SecuritySandboxProfile
+  image: string
+  network: SecurityNetworkMode
+  targetAllowlist: string[]
+  requireApprovalFor: string[]
+  maxConcurrent: number
+  requestsPerMinute: number
+}
+
+export interface LongTaskRuntimeConfig {
+  enabled?: boolean
+  mode?: "off" | "shadow" | "soft" | "strict"
+  strictVerification?: boolean
+  maxContinuationSteps?: number
+  maxRecoveryAttempts?: number
+  maxVerificationRuns?: number
+  maxNoProgressTurns?: number
+}
+
+export interface ResolvedLongTaskRuntimeConfig {
+  enabled: boolean
+  mode: "off" | "shadow" | "soft" | "strict"
+  strictVerification: boolean
+  maxContinuationSteps: number
+  maxRecoveryAttempts: number
+  maxVerificationRuns: number
+  maxNoProgressTurns: number
+}
+
+export const LONG_TASK_RUNTIME_DEFAULTS: ResolvedLongTaskRuntimeConfig = {
+  enabled: true,
+  mode: "soft",
+  strictVerification: true,
+  maxContinuationSteps: 12,
+  maxRecoveryAttempts: 3,
+  maxVerificationRuns: 4,
+  maxNoProgressTurns: 3,
+}
+
+export const SECURITY_SANDBOX_PROFILE_DEFAULTS: Record<SecuritySandboxProfile, ResolvedSecuritySandboxConfig> = {
+  off: {
+    enabled: false,
+    profile: "off",
+    image: "",
+    network: "none",
+    targetAllowlist: [],
+    requireApprovalFor: [],
+    maxConcurrent: 0,
+    requestsPerMinute: 0,
+  },
+  passive: {
+    enabled: true,
+    profile: "passive",
+    image: "",
+    network: "none",
+    targetAllowlist: [],
+    requireApprovalFor: [],
+    maxConcurrent: 0,
+    requestsPerMinute: 0,
+  },
+  "active-lite": {
+    enabled: true,
+    profile: "active-lite",
+    image: SECURITY_SANDBOX_IMAGE_DEFAULTS["active-lite"],
+    network: "restricted",
+    targetAllowlist: [],
+    requireApprovalFor: ["network-scan", "external-target"],
+    maxConcurrent: 1,
+    requestsPerMinute: 60,
+  },
+  "kali-full": {
+    enabled: true,
+    profile: "kali-full",
+    image: SECURITY_SANDBOX_IMAGE_DEFAULTS["kali-full"],
+    network: "restricted",
+    targetAllowlist: [],
+    requireApprovalFor: ["network-scan", "external-target", "kali-full-profile"],
+    maxConcurrent: 1,
+    requestsPerMinute: 30,
+  },
 }
 
 export interface OmniConfig {
@@ -45,6 +154,10 @@ export interface OmniConfig {
   }
   /** MCP (Model Context Protocol) server yapılandırmaları */
   mcpServers?: Record<string, McpServerConfig>
+  /** Optional security capability pack. Disabled by default; hidden from model/tool/skill surfaces when off. */
+  securitySandbox?: SecuritySandboxConfig
+  /** Core long-task guardrails. Soft mode reports/continues through existing completion gate; strict can block finalization. */
+  longTaskRuntime?: LongTaskRuntimeConfig
 }
 
 const GLOBAL_PATH = join(homedir(), ".aurict", "config.json")
@@ -76,6 +189,8 @@ function merge(a: OmniConfig, b: OmniConfig): OmniConfig {
     fallback: { ...(a.fallback ?? {}), ...(b.fallback ?? {}) },
     routing: { ...(a.routing ?? {}), ...(b.routing ?? {}) },
     mcpServers: { ...(a.mcpServers ?? {}), ...(b.mcpServers ?? {}) },
+    securitySandbox: { ...(a.securitySandbox ?? {}), ...(b.securitySandbox ?? {}) },
+    longTaskRuntime: { ...(a.longTaskRuntime ?? {}), ...(b.longTaskRuntime ?? {}) },
   }
 }
 
@@ -102,6 +217,65 @@ export function loadConfig(projectDir?: string): OmniConfig {
   }
 
   return { ...merged, providers }
+}
+
+export function resolveSecuritySandboxConfig(config?: OmniConfig | SecuritySandboxConfig): ResolvedSecuritySandboxConfig {
+  const security = isOmniConfig(config) ? config.securitySandbox : config
+  const inferredProfile = security?.profile ?? (security?.enabled === true ? "active-lite" : "off")
+  const profile = inferredProfile in SECURITY_SANDBOX_PROFILE_DEFAULTS ? inferredProfile : "off"
+  const base = SECURITY_SANDBOX_PROFILE_DEFAULTS[profile]
+
+  if (security?.enabled === false || profile === "off") {
+    return {
+      ...SECURITY_SANDBOX_PROFILE_DEFAULTS.off,
+      targetAllowlist: dedupeStrings(security?.targetAllowlist),
+      requireApprovalFor: dedupeStrings(security?.requireApprovalFor),
+    }
+  }
+
+  return {
+    ...base,
+    ...security,
+    enabled: true,
+    profile,
+    image: security?.image ?? base.image,
+    network: security?.network ?? base.network,
+    targetAllowlist: dedupeStrings(security?.targetAllowlist ?? base.targetAllowlist),
+    requireApprovalFor: dedupeStrings(security?.requireApprovalFor ?? base.requireApprovalFor),
+    maxConcurrent: positiveInt(security?.maxConcurrent, base.maxConcurrent),
+    requestsPerMinute: positiveInt(security?.requestsPerMinute, base.requestsPerMinute),
+  }
+}
+
+export function resolveLongTaskRuntimeConfig(config?: OmniConfig | LongTaskRuntimeConfig): ResolvedLongTaskRuntimeConfig {
+  const raw = isOmniConfig(config) ? config.longTaskRuntime : config
+  const mode = raw?.mode ?? LONG_TASK_RUNTIME_DEFAULTS.mode
+  const enabled = raw?.enabled ?? mode !== "off"
+  const resolvedMode = enabled ? mode : "off"
+  return {
+    ...LONG_TASK_RUNTIME_DEFAULTS,
+    ...raw,
+    enabled: resolvedMode !== "off",
+    mode: resolvedMode,
+    strictVerification: raw?.strictVerification ?? LONG_TASK_RUNTIME_DEFAULTS.strictVerification,
+    maxContinuationSteps: positiveInt(raw?.maxContinuationSteps, LONG_TASK_RUNTIME_DEFAULTS.maxContinuationSteps),
+    maxRecoveryAttempts: positiveInt(raw?.maxRecoveryAttempts, LONG_TASK_RUNTIME_DEFAULTS.maxRecoveryAttempts),
+    maxVerificationRuns: positiveInt(raw?.maxVerificationRuns, LONG_TASK_RUNTIME_DEFAULTS.maxVerificationRuns),
+    maxNoProgressTurns: positiveInt(raw?.maxNoProgressTurns, LONG_TASK_RUNTIME_DEFAULTS.maxNoProgressTurns),
+  }
+}
+
+function isOmniConfig(config: unknown): config is OmniConfig {
+  return Boolean(config && typeof config === "object" && ("securitySandbox" in config || "longTaskRuntime" in config || "providers" in config || "defaults" in config))
+}
+
+function dedupeStrings(values?: string[]): string[] {
+  return Array.from(new Set((values ?? []).map(value => value.trim()).filter(Boolean)))
+}
+
+function positiveInt(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback
+  return Math.max(0, Math.floor(value))
 }
 
 export function setApiKey(provider: string, apiKey: string): void {
@@ -139,6 +313,18 @@ export function setDefault(key: "provider" | "model" | "effort", value: string |
 export function setCompaction(opts: { tailTurns?: number; strategy?: CompactionStrategy }): void {
   const cfg = load(GLOBAL_PATH)
   cfg.compaction = { ...(cfg.compaction ?? {}), ...opts }
+  save(GLOBAL_PATH, cfg)
+}
+
+export function setSecuritySandbox(opts: SecuritySandboxConfig): void {
+  const cfg = load(GLOBAL_PATH)
+  cfg.securitySandbox = { ...(cfg.securitySandbox ?? {}), ...opts }
+  save(GLOBAL_PATH, cfg)
+}
+
+export function setLongTaskRuntime(opts: LongTaskRuntimeConfig): void {
+  const cfg = load(GLOBAL_PATH)
+  cfg.longTaskRuntime = { ...(cfg.longTaskRuntime ?? {}), ...opts }
   save(GLOBAL_PATH, cfg)
 }
 

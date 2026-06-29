@@ -4,6 +4,8 @@ import { AGENT_TYPE_TOOLS } from "../../agent/protocol.js"
 import { getCustomAgent } from "../../agent/custom.js"
 import { ProviderRegistry } from "../../provider/registry.js"
 import { SessionManager } from "../../session/manager.js"
+import { loadConfig } from "../../config/config.js"
+import { filterToolIdsForSecurityCapability, isAgentTypeVisibleForSecurityCapability } from "../../security/capability.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
 const BUILT_IN_TYPES = ["explore", "code", "review", "test", "docs", "performance", "analytics", "security", "debug"] as const
@@ -35,9 +37,13 @@ export const taskTool: ToolDef = {
       return { output: "", error: `Bilinmeyen agent tipi: '${typeArg}'. Built-in: ${BUILT_IN_TYPES.join(", ")}` }
     }
 
+    const cfg = loadConfig(ctx.workdir)
     const agentType = isBuiltIn
       ? typeArg as keyof typeof AGENT_TYPE_TOOLS
       : "explore" as keyof typeof AGENT_TYPE_TOOLS  // custom için fallback type
+    if (!isAgentTypeVisibleForSecurityCapability(agentType, cfg)) {
+      return { output: "", error: `Agent type '${agentType}' is unavailable because the security capability profile is disabled.` }
+    }
 
     // Config veya custom agent'dan ayarları al
     const agentConfig  = customAgent
@@ -47,7 +53,7 @@ export const taskTool: ToolDef = {
     const provider    = agentConfig?.provider ?? ProviderRegistry.detectDefault()
     const plugin      = ProviderRegistry.get(provider)
     const model       = modelOverride ?? agentConfig?.model ?? plugin.defaultModel()
-    const allowedTools = agentConfig?.tools ?? AGENT_TYPE_TOOLS[agentType]
+    const allowedTools = filterToolIdsForSecurityCapability(agentConfig?.tools ?? AGENT_TYPE_TOOLS[agentType], cfg)
 
     // Custom agent'ın system prompt'unu prompt'a ekle
     const finalPrompt = customAgent?.system

@@ -6,6 +6,8 @@ import type { TokenBreakdown } from "../agent/types.js"
 import type { WorkingSetSnapshot } from "../agent/working-set.js"
 import type { FailureCooldownSnapshot } from "../agent/failure-cooldown.js"
 import type { CompletionGateDecision } from "../agent/completion-gate.js"
+import type { LongTaskContinuationDecision } from "../agent/continuation-controller.js"
+import type { TaskLedger } from "../agent/task-ledger.js"
 
 export interface SessionResumeState {
   sessionId: string
@@ -18,6 +20,8 @@ export interface SessionResumeState {
   failureCooldown?: FailureCooldownSnapshot | undefined
   completionGate?: CompletionGateDecision | undefined
   continuation?: ContinuationDecision | undefined
+  longTask?: LongTaskContinuationDecision | undefined
+  taskLedger?: TaskLedger | undefined
   finishReason?: string | undefined
   tokens?: TokenBreakdown | undefined
   lastVerification?: SessionVerificationSnapshot | undefined

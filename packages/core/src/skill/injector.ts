@@ -22,6 +22,8 @@ import { pinStore } from "../pin/store.js"
 import { readArchitecture } from "../project-context/architecture.js"
 import { readDecisions } from "../project-context/decisions.js"
 import { diagnosticsStore } from "../diagnostics/store.js"
+import { loadConfig } from "../config/config.js"
+import { filterSkillDefsForSecurityCapability } from "../security/capability.js"
 import { execSync } from "child_process"
 import { join } from "node:path"
 import { homedir } from "node:os"
@@ -269,10 +271,12 @@ async function loadCustomSkills(projectDir: string): Promise<LoadedSkill[]> {
 
 export async function getSkillsForProject(projectDir: string): Promise<LoadedSkill[]> {
   const now    = Date.now()
-  const cached = cache.get(projectDir)
+  const cfg = loadConfig(projectDir)
+  const cacheKey = `${projectDir}:${cfg.securitySandbox?.enabled === true ? cfg.securitySandbox.profile ?? "active-lite" : "off"}`
+  const cached = cache.get(cacheKey)
   if (cached && cached.expiresAt > now) return cached.skills
 
-  const detected = await detectSkills(projectDir)
+  const detected = filterSkillDefsForSecurityCapability(await detectSkills(projectDir), cfg)
 
   // Skill dependency graph: her skill'in requires listesini çöz
   const withDeps = resolveSkillDeps(detected)
@@ -291,7 +295,7 @@ export async function getSkillsForProject(projectDir: string): Promise<LoadedSki
   const loaded = await loadSkills(finalDefs)
 
   // Custom skills: ~/.aurict/skills/ + <workdir>/.aurict/skills/
-  const custom = await loadCustomSkills(projectDir)
+  const custom = filterSkillDefsForSecurityCapability(await loadCustomSkills(projectDir), cfg)
 
   // Token bütçesine sığacak şekilde filtrele (önce yüksek öncelikli)
   const preSelected = selectWithinBudget([...loaded, ...custom])
@@ -305,16 +309,18 @@ export async function getSkillsForProject(projectDir: string): Promise<LoadedSki
   // Usage kaydet (1dk cache'i nedeniyle session'da bir kez çalışır)
   skillScoreStore.recordInject(projectDir, selected.map((s) => s.id))
 
-  cache.set(projectDir, { skills: selected, expiresAt: now + CACHE_TTL_MS })
+  cache.set(cacheKey, { skills: selected, expiresAt: now + CACHE_TTL_MS })
   return selected
 }
 
 export async function getSkillDefsForProject(projectDir: string): Promise<SkillDef[]> {
   const now = Date.now()
-  const cached = defCache.get(projectDir)
+  const cfg = loadConfig(projectDir)
+  const cacheKey = `${projectDir}:${cfg.securitySandbox?.enabled === true ? cfg.securitySandbox.profile ?? "active-lite" : "off"}`
+  const cached = defCache.get(cacheKey)
   if (cached && cached.expiresAt > now) return cached.skills
 
-  const detected = await detectSkills(projectDir)
+  const detected = filterSkillDefsForSecurityCapability(await detectSkills(projectDir), cfg)
   const withDeps = resolveSkillDeps(detected)
   const boosted = withDeps.map((def) => {
     const boost = skillScoreStore.getBoost(projectDir, def.id)
@@ -323,8 +329,10 @@ export async function getSkillDefsForProject(projectDir: string): Promise<SkillD
   const injected  = await hooks.emit("v1.context.inject", { skillIds: boosted.map((s) => s.id) })
   const finalIds  = new Set(injected.skillIds)
   const finalDefs = boosted.filter((s) => finalIds.has(s.id))
-  const selected = selectSkillDefsWithinListingBudget([...finalDefs, ...loadCustomSkillDefs(projectDir)])
-  defCache.set(projectDir, { skills: selected, expiresAt: now + CACHE_TTL_MS })
+  const selected = selectSkillDefsWithinListingBudget(
+    filterSkillDefsForSecurityCapability([...finalDefs, ...loadCustomSkillDefs(projectDir)], cfg)
+  )
+  defCache.set(cacheKey, { skills: selected, expiresAt: now + CACHE_TTL_MS })
   return selected
 }
 
@@ -444,6 +452,7 @@ export async function buildIntentSkillSection(
   existingSkillIds: Set<string> = new Set(),
 ): Promise<string> {
   if (!userText.trim()) return ""
+  const cfg = loadConfig(projectDir)
 
   // Intent + error detection + metadata retrieval
   const intentIds = autoInvoker.checkMessage(userText)
@@ -459,6 +468,7 @@ export async function buildIntentSkillSection(
   const defs = newIds
     .map((id) => SkillRegistry.get(id))
     .filter((d): d is SkillDef => d !== undefined)
+    .filter((d) => filterSkillDefsForSecurityCapability([d], cfg).length > 0)
   if (defs.length === 0) return ""
 
   const taskType = detectTaskType(userText)
@@ -477,21 +487,26 @@ export async function buildIntentSkillSection(
 
 export function matchIntentSkills(
   userText: string,
+  projectDirOrExistingSkillIds: string | Set<string> = new Set(),
   existingSkillIds: Set<string> = new Set(),
 ): ActivatedSkillInfo[] {
   if (!userText.trim()) return []
+  const projectDir = typeof projectDirOrExistingSkillIds === "string" ? projectDirOrExistingSkillIds : undefined
+  const existingIds = typeof projectDirOrExistingSkillIds === "string" ? existingSkillIds : projectDirOrExistingSkillIds
+  const cfg = projectDir ? loadConfig(projectDir) : {}
 
   const retrieval = retrieveSkillIds(userText, buildSkillSearchDocs())
   const retrievalById = new Map(retrieval.map((match) => [match.id, match]))
   const intentIds = autoInvoker.checkMessage(userText)
   const errorIds = autoInvoker.checkError(userText)
   const ids = [...new Set([...intentIds, ...errorIds, ...retrieval.map((match) => match.id)])]
-    .filter((id) => !existingSkillIds.has(id))
+    .filter((id) => !existingIds.has(id))
 
   return ids
     .map((id) => {
       const def = SkillRegistry.get(id)
       if (!def) return null
+      if (!filterSkillDefsForSecurityCapability([def], cfg).length) return null
       const retrieved = retrievalById.get(id)
       const source: ActivatedSkillInfo["source"] = errorIds.includes(id)
         ? "error"

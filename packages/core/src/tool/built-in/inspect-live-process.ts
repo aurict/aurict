@@ -219,6 +219,12 @@ verifying PoC payloads, binary CTF challenge analysis.`,
     input_payload:   z.string().optional().describe("Stdin payload to send to the process, e.g. 'AAAA....' for buffer overflow testing"),
     timeout_seconds: z.number().optional().default(10).describe("Max seconds to wait for the process (default 10)"),
   }),
+  spec: {
+    category: "execute",
+    riskLevel: "high",
+    securityCapability: "active",
+    permissionSummary: "Run a local binary under a debugger with controlled input",
+  },
 
   async execute(args, _ctx: ToolContext): Promise<ExecuteResult> {
     const binaryPath   = String(args["binary_path"] ?? "")

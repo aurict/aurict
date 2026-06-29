@@ -18,8 +18,14 @@ const INSTALL_STEPS = [
   {
     step: "03",
     title: "Configure",
-    code: "# First-run wizard sets up provider & key",
-    note: "Interactive setup — pick provider, enter API key, choose model.",
+    code: "# Pick provider, API key, model, and security mode",
+    note: "Interactive setup keeps security tools off unless you opt in.",
+  },
+  {
+    step: "04",
+    title: "Security",
+    code: "aurict /config security active-lite",
+    note: "Optional. Targets still need /config security allow <target>.",
   },
 ]
 
@@ -168,6 +174,38 @@ export function Install() {
           </m.div>
         ))}
       </div>
+
+      <m.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.35 }}
+        style={{
+          marginTop: 28,
+          padding: 24,
+          border: "1px solid var(--border)",
+          borderRadius: 16,
+          background: "linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-geist-mono)",
+            fontSize: 12,
+            color: "var(--accent)",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            marginBottom: 12,
+          }}
+        >
+          Optional security capability
+        </div>
+        <p style={{ color: "var(--text-dim)", lineHeight: 1.7, margin: 0 }}>
+          Aurict starts with security tools hidden from the model. Choose <strong style={{ color: "var(--text)" }}>Passive</strong> for defensive review and reporting,
+          <strong style={{ color: "var(--text)" }}> Active Lite</strong> for controlled Docker-backed scans, or
+          <strong style={{ color: "var(--text)" }}> Kali Full</strong> only when you want the larger experimental image. Active profiles still require Docker, an allowlisted target, permission approval, rate limits, and concurrency limits.
+        </p>
+      </m.div>
     </section>
   )
 }

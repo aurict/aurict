@@ -296,7 +296,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
   const loadingRef         = useRef(false)
 
   // Auto-continue: model görev ortasında durduğunda otomatik devam
-  const autoContinueRef  = useRef<{ needed: boolean; count: number }>({ needed: false, count: 0 })
+  const autoContinueRef  = useRef<{ needed: boolean; count: number; prompt?: string }>({ needed: false, count: 0 })
   const autoContinueSubmittingRef = useRef(false)
 
   // Scroll lock: Ctrl+L ile aktif edilir, animation timer'ları ve stream flush'ı dondurur
@@ -1455,7 +1455,7 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
           maxTaskContinuations: 15,
         },
         onPromptCacheHealth: setPromptCacheHealth,
-        onFinish: ({ tokens: t, text: finalText, newMessages, continuation, completionGate }) => {
+        onFinish: ({ tokens: t, text: finalText, newMessages, continuation, completionGate, longTask }) => {
           if (streamTimerRef.current) { clearTimeout(streamTimerRef.current); streamTimerRef.current = null }
           const finalSegmentText = turnHadToolRef.current ? streamTextRef.current : finalText
           const finalReason = streamReasonRef.current
@@ -1522,11 +1522,12 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
 
           // Core continuation decision is the single source of truth.
           if (continuation?.shouldContinue) {
-            autoContinueRef.current = { needed: true, count: continuation.nextContinuationCount }
+            autoContinueRef.current = { needed: true, count: continuation.nextContinuationCount, ...(longTask?.nudge ? { prompt: longTask.nudge } : {}) }
           } else if (completionGate?.shouldAutoContinue && !completionGate.shadowOnly) {
-            autoContinueRef.current = { needed: true, count: autoContinueRef.current.count + 1 }
+            autoContinueRef.current = { needed: true, count: autoContinueRef.current.count + 1, ...(longTask?.nudge ? { prompt: longTask.nudge } : {}) }
           } else {
             autoContinueRef.current.needed = false
+            delete autoContinueRef.current.prompt
           }
         },
       })
@@ -1572,8 +1573,11 @@ export function App({ initialProvider, initialModel, workdir, system, undercover
       abortControllerRef.current = null
       setAttachments([])
       setQueuedInput((q) => {
-        const autoMsg = q === undefined && autoContinueRef.current.needed ? AUTO_CONTINUE_PROMPT : undefined
+        const autoMsg = q === undefined && autoContinueRef.current.needed
+          ? autoContinueRef.current.prompt ?? AUTO_CONTINUE_PROMPT
+          : undefined
         autoContinueRef.current.needed = false
+        delete autoContinueRef.current.prompt
         const toSend = q ?? autoMsg
         if (toSend) {
           if (autoMsg) autoContinueSubmittingRef.current = true

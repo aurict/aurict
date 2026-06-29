@@ -8,6 +8,7 @@ export type RiskLevel    = "low" | "medium" | "high" | "critical"
 export interface ToolSpec {
   category:              ToolCategory
   riskLevel:             RiskLevel
+  securityCapability?:   "none" | "passive" | "active"
   requiresConfirmation?: boolean | ((args: Record<string, unknown>) => boolean)
   permissionSummary?:    string
 }

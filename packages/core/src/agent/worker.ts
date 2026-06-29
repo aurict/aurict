@@ -11,6 +11,8 @@ import { buildSystemPrompt } from "../skill/injector.js"
 import { getAgentPrompt }    from "./agent-prompts.js"
 import type { WorkerRequest, WorkerControl, WorkerMessage } from "./protocol.js"
 import { AGENT_MAX_STEPS }   from "./protocol.js"
+import { loadConfig }        from "../config/config.js"
+import { filterToolIdsForSecurityCapability, prepareToolForSecurityCapability } from "../security/capability.js"
 
 // Pool'un graceful abort sinyal edebilmesi için tek AbortController
 const abort = new AbortController()
@@ -58,17 +60,19 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
   try {
     const plugin      = ProviderRegistry.get(req.provider)
     const model       = plugin.getModel(req.model)
+    const cfg         = loadConfig(req.workdir)
     const INBOX_CHECK_INTERVAL = 8
     const totalMaxSteps = AGENT_MAX_STEPS[req.agentType] ?? 30
     let stepsUsed = 0
 
+    const visibleAllowedTools = filterToolIdsForSecurityCapability(req.allowedTools, cfg)
     const baseSystem  = await buildSystemPrompt(req.workdir, undefined, false, req.agentType)
     const typePrompt  = getAgentPrompt(req.agentType, totalMaxSteps)
-    const toolsPrompt = `## Available Tools\nYou have access to ONLY these tools: ${req.allowedTools.join(", ")}\nCalling any other tool will cause an error.`
+    const toolsPrompt = `## Available Tools\nYou have access to ONLY these tools: ${visibleAllowedTools.join(", ")}\nCalling any other tool will cause an error.`
     const msgPrompt   = `## Agent Communication\nUse send_message to contact sibling agents by role name.\nIncoming messages from other agents appear as <agent-message> in the conversation.`
     const system      = [typePrompt, baseSystem, toolsPrompt, msgPrompt].filter(Boolean).join("\n\n---\n\n")
 
-    const allowedSet = new Set(req.allowedTools)
+    const allowedSet = new Set(visibleAllowedTools)
 
     // send_message için pool callback'i ctx üzerinden ilet
     const ctxSendMessage = (to: string, message: string) => {
@@ -78,15 +82,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest | WorkerControl>) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tools: Record<string, any> = {}
     for (const def of ToolRegistry.list()) {
-      const captured = def
-      const allowed  = allowedSet.has(def.id)
-      tools[def.id] = tool({
-        description: def.description,
-        parameters:  def.parameters as never,
+      const filteredDef = prepareToolForSecurityCapability(def, cfg)
+      if (!filteredDef || !allowedSet.has(filteredDef.id)) continue
+      const captured = filteredDef
+      tools[filteredDef.id] = tool({
+        description: filteredDef.description,
+        parameters:  filteredDef.parameters as never,
         execute: async (args: Record<string, unknown>) => {
-          if (!allowed) {
-            return `Tool '${def.id}' is not available. Available: ${req.allowedTools.join(", ")}`
-          }
           const ctx = {
             sessionId:   req.sessionId,
             workdir:     req.workdir,

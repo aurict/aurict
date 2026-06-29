@@ -6,7 +6,7 @@ import {
 import { tmpdir, homedir } from "node:os"
 import { join } from "node:path"
 import {
-  loadConfig, setApiKey, setDefault, setCompaction, getConfigPath,
+  loadConfig, resolveLongTaskRuntimeConfig, resolveSecuritySandboxConfig, SECURITY_SANDBOX_IMAGE_DEFAULTS, setApiKey, setDefault, setCompaction, setLongTaskRuntime, setSecuritySandbox, getConfigPath,
 } from "../src/config/config.js"
 
 const GLOBAL_PATH = join(homedir(), ".aurict", "config.json")
@@ -209,6 +209,87 @@ describe("setCompaction", () => {
     const raw = JSON.parse(readFileSync(GLOBAL_PATH, "utf8"))
     expect(raw.compaction?.strategy).toBe("conservative")
     expect(raw.compaction?.tailTurns).toBe(3)
+  })
+})
+
+// ─── setSecuritySandbox ──────────────────────────────────────────────────────
+
+describe("setSecuritySandbox", () => {
+  it("persists disabled security sandbox state", () => {
+    setSecuritySandbox({ enabled: false, profile: "off" })
+    const cfg = loadConfig()
+    expect(cfg.securitySandbox?.enabled).toBe(false)
+    expect(cfg.securitySandbox?.profile).toBe("off")
+  })
+
+  it("merges security sandbox settings without dropping existing allowlist", () => {
+    setSecuritySandbox({ targetAllowlist: ["example.com"] })
+    setSecuritySandbox({ enabled: true, profile: "active-lite", image: "aurict-security-lite:local" })
+    const cfg = loadConfig()
+    expect(cfg.securitySandbox?.enabled).toBe(true)
+    expect(cfg.securitySandbox?.profile).toBe("active-lite")
+    expect(cfg.securitySandbox?.image).toBe("aurict-security-lite:local")
+    expect(cfg.securitySandbox?.targetAllowlist).toEqual(["example.com"])
+  })
+})
+
+describe("resolveSecuritySandboxConfig", () => {
+  it("defaults to off when security sandbox is absent", () => {
+    const security = resolveSecuritySandboxConfig({})
+    expect(security.enabled).toBe(false)
+    expect(security.profile).toBe("off")
+    expect(security.network).toBe("none")
+  })
+
+  it("fills active-lite defaults deterministically", () => {
+    const security = resolveSecuritySandboxConfig({ securitySandbox: { enabled: true, profile: "active-lite" } })
+    expect(security.image).toBe(SECURITY_SANDBOX_IMAGE_DEFAULTS["active-lite"])
+    expect(security.network).toBe("restricted")
+    expect(security.maxConcurrent).toBe(1)
+    expect(security.requestsPerMinute).toBe(60)
+  })
+
+  it("fills stricter kali-full defaults", () => {
+    const security = resolveSecuritySandboxConfig({ securitySandbox: { enabled: true, profile: "kali-full" } })
+    expect(security.image).toBe(SECURITY_SANDBOX_IMAGE_DEFAULTS["kali-full"])
+    expect(security.maxConcurrent).toBe(1)
+    expect(security.requestsPerMinute).toBe(30)
+    expect(security.requireApprovalFor).toContain("kali-full-profile")
+  })
+})
+
+describe("resolveLongTaskRuntimeConfig", () => {
+  it("defaults to enabled soft mode", () => {
+    const runtime = resolveLongTaskRuntimeConfig({})
+    expect(runtime.enabled).toBe(true)
+    expect(runtime.mode).toBe("soft")
+    expect(runtime.strictVerification).toBe(true)
+  })
+
+  it("turns off when mode is off", () => {
+    const runtime = resolveLongTaskRuntimeConfig({ longTaskRuntime: { mode: "off" } })
+    expect(runtime.enabled).toBe(false)
+    expect(runtime.mode).toBe("off")
+  })
+
+  it("normalizes numeric budgets", () => {
+    const runtime = resolveLongTaskRuntimeConfig({
+      longTaskRuntime: {
+        maxContinuationSteps: 4.8,
+        maxRecoveryAttempts: -1,
+      },
+    })
+    expect(runtime.maxContinuationSteps).toBe(4)
+    expect(runtime.maxRecoveryAttempts).toBe(0)
+  })
+})
+
+describe("setLongTaskRuntime", () => {
+  it("persists long-task runtime mode", () => {
+    setLongTaskRuntime({ mode: "shadow", enabled: true })
+    const runtime = resolveLongTaskRuntimeConfig(loadConfig())
+    expect(runtime.mode).toBe("shadow")
+    expect(runtime.enabled).toBe(true)
   })
 })
 

@@ -96,6 +96,38 @@ describe("agent intelligence primitives", () => {
     expect(decision.shouldAutoContinue).toBe(true)
   })
 
+  it("completion gate does not auto-continue stale verification on casual turns", () => {
+    const decision = evaluateCompletionGate({
+      text: "İyiyim, sen nasılsın?",
+      continuation: {
+        shouldContinue: false,
+        stopReason: "complete",
+        previousContinuations: 0,
+        maxContinuations: 5,
+        nextContinuationCount: 0,
+        tasksOpen: false,
+      },
+      workingSet: {
+        updatedAt: Date.now(),
+        items: [{
+          id: "file:src/a.ts",
+          kind: "file",
+          label: "src/a.ts",
+          score: 95,
+          lastSeenAt: Date.now(),
+          source: "write",
+          reason: "changed file",
+          status: "active",
+        }],
+      },
+      allowTaskAutoContinue: false,
+    })
+
+    expect(decision.status).toBe("verification_required")
+    expect(decision.shouldAutoContinue).toBe(false)
+    expect(decision.shadowOnly).toBe(true)
+  })
+
   it("marks repeated failures as strategy shift required", () => {
     const distilled = distillToolResult("bash", { command: "bun test" }, {
       output: "",
