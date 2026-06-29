@@ -51,6 +51,10 @@ import { uiInspectTool }          from "./built-in/ui-inspect.js"
 import { securityReconTool }      from "./built-in/security-recon.js"
 import { securityScanTool }       from "./built-in/security-scan.js"
 import { securityReportTool }     from "./built-in/security-report.js"
+import { securityVerifyTool }     from "./built-in/security-verify.js"
+import { securityAttackGraphTool } from "./built-in/security-attack-graph.js"
+import { securityLogAnalyzeTool }  from "./built-in/security-log-analyze.js"
+import { securityThreatModelTool } from "./built-in/security-threat-model.js"
 
 const tools = new Map<string, ToolDef>()
 
@@ -73,7 +77,8 @@ for (const t of [
   blastRadiusTool,
   gitContextTool,
   uiInspectTool,
-  securityReconTool, securityScanTool, securityReportTool,
+  securityReconTool, securityScanTool, securityReportTool, securityVerifyTool,
+  securityAttackGraphTool, securityLogAnalyzeTool, securityThreatModelTool,
 ]) {
   tools.set(t.id, t)
 

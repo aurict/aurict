@@ -14,6 +14,10 @@ case "${1:-tool-list}" in
           dig) dig -v 2>&1 | head -n 1 ;;
           nc) nc -h 2>&1 | head -n 1 ;;
           ping) ping -V 2>&1 | head -n 1 ;;
+          openssl) openssl version 2>&1 | head -n 1 ;;
+          nikto) nikto -Version 2>&1 | head -n 1 ;;
+          ffuf) ffuf -V 2>&1 | head -n 1 ;;
+          gobuster) gobuster version 2>&1 | head -n 1 ;;
           *) "$tool" --version 2>&1 | head -n 1 || true ;;
         esac
       fi

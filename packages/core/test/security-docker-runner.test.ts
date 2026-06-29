@@ -60,9 +60,10 @@ describe("security docker runner", () => {
 
   it("keeps ffuf target bounded to FUZZ path", () => {
     const target = parseSecurityTarget("https://example.com/app")
-    const ffuf = buildSecurityDockerCommand("ffuf", target)
+    const ffuf = buildSecurityDockerCommand("ffuf", target, { extra: { rateLimit: 6 } })
     expect(ffuf).toContain("-u")
     expect(ffuf).toContain("https://example.com/app/FUZZ")
     expect(ffuf).toContain("-rate")
+    expect(ffuf).toContain("6")
   })
 })

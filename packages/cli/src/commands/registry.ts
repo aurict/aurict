@@ -1,4 +1,5 @@
-import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, setSecuritySandbox, setLongTaskRuntime, resolveSecuritySandboxConfig, resolveLongTaskRuntimeConfig, SECURITY_SANDBOX_PROFILE_DEFAULTS, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore, installRemotePlugin, listInstalledPlugins, uninstallPlugin, fetchRegistry, searchRegistry, findInRegistry, readLatestTraceEvents } from "@aurict/core"
+import { ProviderRegistry, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, setSecuritySandbox, setLongTaskRuntime, resolveSecuritySandboxConfig, resolveLongTaskRuntimeConfig, SECURITY_SANDBOX_PROFILE_DEFAULTS, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore, installRemotePlugin, listInstalledPlugins, uninstallPlugin, fetchRegistry, searchRegistry, findInRegistry, readLatestTraceEvents, buildSecurityAssessmentLedger, formatSecurityLedgerAnchor, evaluateSecurityOperatorStep, formatSecurityOperatorDecision, readSecurityAssessmentLedger, updateSecurityAssessmentLedger, writeSecurityAssessmentLedger, resetSecurityAssessmentLedger, verifySecurityFinding, applySecurityVerification, buildAttackGraphFromFindings, formatAttackGraph } from "@aurict/core"
+import type { SecurityAssessmentLedger, SecurityDistilledFinding } from "@aurict/core"
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
 import { spawnSync } from "child_process"
 import { resolve, join } from "path"
@@ -65,6 +66,103 @@ function securityConfigLines(cfg: ReturnType<typeof loadConfig>): string[] {
   ]
 }
 
+function getOrCreateSecurityLedger(workdir: string, objective = "Current security assessment"): SecurityAssessmentLedger {
+  const existing = readSecurityAssessmentLedger(workdir)
+  if (existing) return existing
+  const cfg = loadConfig(workdir)
+  const security = resolveSecuritySandboxConfig(cfg)
+  return updateSecurityAssessmentLedger(workdir, {
+    objective,
+    scope: security.targetAllowlist,
+    authorizedTargets: security.targetAllowlist,
+  })
+}
+
+function rewriteSecurityLedger(workdir: string, ledger: SecurityAssessmentLedger, patch: Partial<Pick<SecurityAssessmentLedger, "scope" | "authorizedTargets" | "excludedTargets" | "findings" | "falsePositives">>): SecurityAssessmentLedger {
+  return writeSecurityAssessmentLedger(workdir, buildSecurityAssessmentLedger({
+    objective: ledger.objective,
+    scope: patch.scope ?? ledger.scope,
+    authorizedTargets: patch.authorizedTargets ?? ledger.authorizedTargets,
+    excludedTargets: patch.excludedTargets ?? ledger.excludedTargets,
+    findings: patch.findings ?? ledger.findings,
+    falsePositives: patch.falsePositives ?? ledger.falsePositives,
+  }))
+}
+
+function formatSecurityStatus(workdir: string): string {
+  const cfg = loadConfig(workdir)
+  const security = resolveSecuritySandboxConfig(cfg)
+  const ledger = getOrCreateSecurityLedger(workdir)
+  const decision = evaluateSecurityOperatorStep(ledger, security)
+  return [
+    ...securityConfigLines(cfg),
+    "",
+    "Security agents:",
+    `  active operator: ${security.enabled && (security.profile === "active-lite" || security.profile === "kali-full") ? "available" : "hidden"}`,
+    `  verifier/reporter: ${security.enabled && security.profile !== "off" ? "available" : "hidden"}`,
+    "",
+    `Ledger phase: ${ledger.phase}`,
+    `Findings:     ${ledger.findings.length} active, ${ledger.falsePositives.length} false positive`,
+    "",
+    formatSecurityOperatorDecision(decision),
+    "",
+    "Use /agent security to switch the main session into security-focused mode.",
+  ].join("\n")
+}
+
+function formatSecurityReportFromLedger(ledger: SecurityAssessmentLedger): string {
+  const confirmed = ledger.findings.filter((finding) => finding.status === "confirmed")
+  const unverified = ledger.findings.filter((finding) => finding.status !== "confirmed")
+  const lines = [
+    "# Security Assessment Report",
+    "",
+    `Generated: ${new Date().toISOString()}`,
+    "",
+    "## Scope",
+    ledger.scope.length ? ledger.scope.map((item) => `- ${item}`).join("\n") : "(none)",
+    "",
+    "## Operator State",
+    `Phase: ${ledger.phase}`,
+    `Risk: high=${ledger.riskSummary.high}, medium=${ledger.riskSummary.medium}, low=${ledger.riskSummary.low}, info=${ledger.riskSummary.info}`,
+    "",
+    "## Confirmed Findings",
+    "",
+  ]
+  if (confirmed.length === 0) lines.push("No confirmed findings.")
+  for (const finding of confirmed) pushSecurityFinding(lines, finding)
+  lines.push("", "## Unverified Findings", "")
+  if (unverified.length === 0) lines.push("No unverified findings.")
+  for (const finding of unverified) {
+    pushSecurityFinding(lines, finding)
+    lines.push("Verification requirement: run /security verify <id|number> or provide independent evidence before confirming this finding.", "")
+  }
+  lines.push("", "## False Positives", "")
+  if (ledger.falsePositives.length === 0) lines.push("No false positives recorded.")
+  for (const finding of ledger.falsePositives) lines.push(`- ${finding.title} (${finding.affectedAsset})`)
+  return lines.join("\n").trim() + "\n"
+}
+
+function pushSecurityFinding(lines: string[], finding: SecurityDistilledFinding): void {
+  lines.push(`### [${finding.severity.toUpperCase()}] ${finding.title}`)
+  lines.push("")
+  lines.push(`ID: ${finding.id}`)
+  lines.push(`Target: ${finding.affectedAsset}`)
+  lines.push(`Status: ${finding.status}`)
+  lines.push(`Confidence: ${finding.confidence}`)
+  lines.push(`False-positive risk: ${finding.falsePositiveRisk}`)
+  if (finding.evidence.length > 0) {
+    lines.push("", "Evidence:")
+    for (const evidence of finding.evidence.slice(0, 6)) lines.push(`- ${evidence}`)
+  }
+  lines.push("", `Next verification: ${finding.nextVerification}`, "")
+}
+
+function findLedgerFinding(ledger: SecurityAssessmentLedger, selector: string): SecurityDistilledFinding | undefined {
+  const index = Number(selector)
+  if (Number.isInteger(index) && index > 0) return ledger.findings[index - 1]
+  return ledger.findings.find((finding) => finding.id === selector || `${finding.sourceTool}:${finding.id}` === selector)
+}
+
 function pullSecurityImage(image: string): CommandResult {
   if (!image) return { type: "error", message: "No security image is configured for the current profile." }
   const version = spawnSync("docker", ["--version"], { encoding: "utf8" })
@@ -102,7 +200,7 @@ const commands: CommandDef[] = [
         "Session & History":   ["status", "history", "diffs", "session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints"],
         "Agents & AI":         ["agent", "agents", "coordinator", "autopilot", "undercover", "background", "btw"],
         "Context & Memory":    ["pin", "memory", "ctx", "trace", "compact", "worktree"],
-        "Tools & Integration": ["commit", "watch", "unwatch", "mcp", "skill", "plugin", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores"],
+        "Tools & Integration": ["commit", "watch", "unwatch", "mcp", "security", "skill", "plugin", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores"],
         "Info & Misc":         ["help", "cost", "export", "share", "stash", "crashes", "exit", "pet", "name", "companion"],
       }
       const cmdMap = new Map(commands.map(c => [c.name, c]))
@@ -685,6 +783,85 @@ const commands: CommandDef[] = [
         `  ${s.name.padEnd(16)} ${s.status.padEnd(12)} ${s.toolCount} tool${s.error ? "  ✗ " + s.error : ""}`
       )
       return { type: "text", content: "MCP Servers:\n" + lines.join("\n") }
+    },
+  },
+
+  // ── /security ─────────────────────────────────────────────────────────────
+  {
+    name:        "security",
+    aliases:     ["sec"],
+    description: "Manage security operator state, scope, verification, and reports",
+    usage:       "/security status|ledger|plan|scope|verify|graph|report|reset",
+    handler: (args, ctx): CommandResult => {
+      const action = args[0] ?? "status"
+      if (action === "status") {
+        return { type: "text", content: formatSecurityStatus(ctx.workdir) }
+      }
+      if (action === "ledger") {
+        const ledger = getOrCreateSecurityLedger(ctx.workdir)
+        return { type: "text", content: formatSecurityLedgerAnchor(ledger) }
+      }
+      if (action === "plan") {
+        const cfg = loadConfig(ctx.workdir)
+        const ledger = getOrCreateSecurityLedger(ctx.workdir)
+        const decision = evaluateSecurityOperatorStep(ledger, resolveSecuritySandboxConfig(cfg))
+        return { type: "text", content: formatSecurityOperatorDecision(decision) }
+      }
+      if (action === "scope") {
+        const sub = args[1] ?? "list"
+        const target = args.slice(2).join(" ").trim()
+        const ledger = getOrCreateSecurityLedger(ctx.workdir)
+        if (sub === "list") {
+          return { type: "text", content: ledger.scope.length ? `Security scope:\n${ledger.scope.map((item) => `  - ${item}`).join("\n")}` : "Security scope is empty." }
+        }
+        if (sub === "add") {
+          if (!target) return { type: "error", message: "Usage: /security scope add <target>" }
+          const scope = Array.from(new Set([...ledger.scope, target])).sort()
+          const next = rewriteSecurityLedger(ctx.workdir, ledger, { scope })
+          return { type: "text", content: formatSecurityLedgerAnchor(next) }
+        }
+        if (sub === "remove") {
+          if (!target) return { type: "error", message: "Usage: /security scope remove <target>" }
+          const next = rewriteSecurityLedger(ctx.workdir, ledger, { scope: ledger.scope.filter((item) => item !== target) })
+          return { type: "text", content: formatSecurityLedgerAnchor(next) }
+        }
+        return { type: "error", message: "Usage: /security scope list|add <target>|remove <target>" }
+      }
+      if (action === "verify") {
+        const selector = args[1]
+        if (!selector) return { type: "error", message: "Usage: /security verify <finding-id|number>" }
+        const ledger = getOrCreateSecurityLedger(ctx.workdir)
+        const finding = findLedgerFinding(ledger, selector)
+        if (!finding) return { type: "error", message: `Finding not found: ${selector}` }
+        const verification = verifySecurityFinding(finding)
+        const updated = applySecurityVerification(finding, verification)
+        const findings = ledger.findings.map((item) => item === finding ? updated : item)
+        const next = rewriteSecurityLedger(ctx.workdir, ledger, { findings })
+        return {
+          type: "text",
+          content: [
+            `Verification verdict: ${verification.verdict}`,
+            `Evidence strength: ${verification.evidenceStrength}`,
+            verification.whyCouldBeFalsePositive.length ? `False-positive considerations:\n${verification.whyCouldBeFalsePositive.map((item) => `  - ${item}`).join("\n")}` : "",
+            "",
+            formatSecurityLedgerAnchor(next),
+          ].filter(Boolean).join("\n"),
+        }
+      }
+      if (action === "graph") {
+        const ledger = getOrCreateSecurityLedger(ctx.workdir)
+        const graph = buildAttackGraphFromFindings(ledger.findings)
+        return { type: "text", content: formatAttackGraph(graph) }
+      }
+      if (action === "report") {
+        const ledger = getOrCreateSecurityLedger(ctx.workdir)
+        return { type: "text", content: formatSecurityReportFromLedger(ledger) }
+      }
+      if (action === "reset") {
+        resetSecurityAssessmentLedger(ctx.workdir)
+        return { type: "text", content: "Security assessment ledger reset." }
+      }
+      return { type: "error", message: "Usage: /security status|ledger|plan|scope list|scope add <target>|scope remove <target>|verify <finding-id|number>|graph|report|reset" }
     },
   },
 

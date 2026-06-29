@@ -2,6 +2,7 @@ import { z } from "zod"
 import { loadConfig } from "../../config/config.js"
 import { runWebBaselineScan } from "../../security/runner.js"
 import { runSecurityDockerTool, type SecurityDockerAction } from "../../security/docker-runner.js"
+import { distillSecurityDockerResult, distillSecurityRunResult, formatSecurityDistillationForModel } from "../../security/distiller.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
 const DOCKER_SCAN_TYPES = [
@@ -41,7 +42,11 @@ HTTP metadata collection. Docker-backed scan types run only through fixed comman
       const config = loadConfig(ctx.workdir)
       if (scanType === "web_baseline") {
         const result = await runWebBaselineScan(target, config)
-        return { output: JSON.stringify(result, null, 2) }
+        const security = distillSecurityRunResult(result, "web_baseline")
+        return {
+          output: formatSecurityDistillationForModel(security),
+          metadata: { security },
+        }
       }
 
       const result = await runSecurityDockerTool({
@@ -52,7 +57,12 @@ HTTP metadata collection. Docker-backed scan types run only through fixed comman
         signal: ctx.signal,
         ...(args["wordlist"] ? { wordlist: String(args["wordlist"]) } : {}),
       })
-      return { output: JSON.stringify(result, null, 2), ...(result.exitCode === 0 ? {} : { error: `security_scan ${scanType} exited with code ${result.exitCode}` }) }
+      const security = distillSecurityDockerResult(result)
+      return {
+        output: formatSecurityDistillationForModel(security),
+        metadata: { security },
+        ...(result.exitCode === 0 ? {} : { error: `security_scan ${scanType} exited with code ${result.exitCode}` }),
+      }
     } catch (err) {
       return { output: "", error: err instanceof Error ? err.message : String(err) }
     }

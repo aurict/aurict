@@ -35,6 +35,35 @@ describe("security-lite image manifest", () => {
       expect(included.has(tool)).toBe(false)
     }
   })
+
+  it("installs nikto outside apt because Debian bookworm does not package it", () => {
+    const dockerfile = readFileSync(join(process.cwd(), "docker/security-lite/Dockerfile"), "utf8")
+    const aptBlock = dockerfile.match(/apt-get install[\s\S]*?rm -rf \/var\/lib\/apt\/lists\/\*/)?.[0] ?? ""
+    expect(aptBlock).not.toContain("\n    nikto")
+    expect(dockerfile).toContain("ARG NIKTO_REF=2.6.0")
+    expect(dockerfile).toContain("https://github.com/sullo/nikto.git")
+  })
+
+  it("pins nuclei and ffuf release binaries instead of compiling latest Go sources", () => {
+    const dockerfile = readFileSync(join(process.cwd(), "docker/security-lite/Dockerfile"), "utf8")
+    expect(dockerfile).toContain("ARG NUCLEI_VERSION=3.4.10")
+    expect(dockerfile).toContain("ARG FFUF_VERSION=2.1.0")
+    expect(dockerfile).toContain("projectdiscovery/nuclei/releases/download")
+    expect(dockerfile).toContain("ffuf/ffuf/releases/download")
+    expect(dockerfile).not.toContain("go install")
+    expect(dockerfile).not.toContain("@latest")
+    expect(dockerfile).not.toContain("golang-go")
+  })
+
+  it("keeps version-report compatible with tool-specific version flags", () => {
+    const dockerfile = readFileSync(join(process.cwd(), "docker/security-lite/Dockerfile"), "utf8")
+    const entrypoint = readFileSync(join(process.cwd(), "docker/security-lite/entrypoint.sh"), "utf8")
+    expect(dockerfile).toContain("libjson-perl")
+    expect(entrypoint).toContain("openssl) openssl version")
+    expect(entrypoint).toContain("nikto) nikto -Version")
+    expect(entrypoint).toContain("ffuf) ffuf -V")
+    expect(entrypoint).toContain("gobuster) gobuster version")
+  })
 })
 
 describe("security-kali-full image manifest", () => {

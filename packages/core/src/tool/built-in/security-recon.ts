@@ -2,6 +2,7 @@ import { z } from "zod"
 import { loadConfig } from "../../config/config.js"
 import { runSecurityRecon } from "../../security/runner.js"
 import { runSecurityDockerTool } from "../../security/docker-runner.js"
+import { distillSecurityRunResult, formatSecurityDistillationForModel } from "../../security/distiller.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
 export const securityReconTool: ToolDef = {
@@ -49,7 +50,11 @@ exploit payloads, brute force, or port sweeps.`,
           evidence: [portResult.stdout, portResult.stderr].filter(Boolean).join("\n").slice(0, 2_000),
         })
       }
-      return { output: JSON.stringify(result, null, 2) }
+      const security = distillSecurityRunResult(result, "security_recon")
+      return {
+        output: formatSecurityDistillationForModel(security),
+        metadata: { security },
+      }
     } catch (err) {
       return { output: "", error: err instanceof Error ? err.message : String(err) }
     }

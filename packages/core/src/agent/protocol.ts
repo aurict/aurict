@@ -8,6 +8,9 @@ export type AgentType =
   | "performance" // read + bash: profiling, bundle analizi
   | "analytics"   // read-only: metrik, event, log analizi
   | "security"    // read + bash + web: güvenlik taraması, CVE araştırması, aktif scanning
+  | "security_operator" // active security operator loop: scope, recon, scan, validate
+  | "security_verifier" // adversarial finding verifier: evidence and false-positive review
+  | "security_reporter" // report-only security deliverables from verified findings
   | "pentest"     // full offensive: aktif sızma testi, exploit doğrulama
   | "adviser"     // read + web: stratejik güvenlik danışmanlığı — aktif eylem yok
   | "reporter"    // read + write: güvenlik bulgu raporu üretimi
@@ -29,6 +32,9 @@ export const AGENT_MAX_STEPS: Record<AgentType, number> = {
   performance: 30,
   analytics:   25,
   security:    35,
+  security_operator: 45,
+  security_verifier: 25,
+  security_reporter: 20,
   pentest:     50,   // aktif tarama + exploit doğrulama — uzun olabilir
   adviser:     15,   // strateji planı — kısa ve odaklı
   reporter:    20,   // bulguları okur ve rapor yazar
@@ -51,8 +57,11 @@ export const AGENT_TYPE_TOOLS: Record<AgentType, string[]> = {
   docs:        ["read", "write", "edit", "glob", "grep", "symbols", "code_map", "send_message", "file_stat"],
   performance: ["read", "write", "glob", "grep", "bash", "symbols", "code_map", "send_message", "process_monitor", "file_stat"],
   analytics:   ["read", "write", "glob", "grep", "webfetch", "symbols", "send_message", "file_stat"],
-  security:    ["read", "write", "glob", "grep", "bash", "lsp", "webfetch", "websearch", "symbols", "code_map", "scratchpad", "track_variable_taint", "security_recon", "security_scan", "security_report", "send_message", "file_stat"],
-  pentest:     ["read", "write", "glob", "grep", "bash", "webfetch", "websearch", "scratchpad", "track_variable_taint", "security_recon", "security_scan", "security_report", "atomic_patch_and_test", "inspect_live_process", "send_message", "file_stat"],
+  security:    ["read", "write", "glob", "grep", "bash", "lsp", "webfetch", "websearch", "symbols", "code_map", "scratchpad", "track_variable_taint", "security_recon", "security_scan", "security_verify", "security_attack_graph", "security_log_analyze", "security_threat_model", "security_report", "send_message", "file_stat"],
+  security_operator: ["read", "write", "glob", "grep", "webfetch", "websearch", "symbols", "code_map", "scratchpad", "security_recon", "security_scan", "security_verify", "security_attack_graph", "security_log_analyze", "security_threat_model", "security_report", "send_message", "file_stat"],
+  security_verifier: ["read", "glob", "grep", "webfetch", "websearch", "symbols", "code_map", "scratchpad", "security_verify", "security_attack_graph", "security_log_analyze", "security_report", "send_message", "file_stat"],
+  security_reporter: ["read", "write", "glob", "grep", "security_verify", "security_attack_graph", "security_log_analyze", "security_threat_model", "security_report", "send_message", "file_stat"],
+  pentest:     ["read", "write", "glob", "grep", "bash", "webfetch", "websearch", "scratchpad", "track_variable_taint", "security_recon", "security_scan", "security_verify", "security_attack_graph", "security_log_analyze", "security_threat_model", "security_report", "atomic_patch_and_test", "inspect_live_process", "send_message", "file_stat"],
   adviser:     ["read", "glob", "grep", "webfetch", "websearch", "track_variable_taint", "send_message", "file_stat"],
   reporter:    ["read", "write", "glob", "grep", "send_message", "file_stat"],
   debug:       ["read", "write", "glob", "grep", "bash", "lsp", "symbols", "verify", "scratchpad", "send_message", "env_inspect", "checkpoint", "process_monitor", "file_stat"],

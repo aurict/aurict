@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { z } from "zod"
 import { buildIntentSkillSection, clearSkillCache } from "../src/skill/injector.js"
 import { SkillRegistry } from "../src/skill/registry.js"
 import { classifyToolSecurityCapability, filterToolIdsForSecurityCapability, isSkillVisibleForSecurityCapability, prepareToolForSecurityCapability } from "../src/security/capability.js"
-import { securityPolicyManager } from "../src/security/policy.js"
+import { getSecurityActionPolicy, getSecurityActionRequestBudget, securityPolicyManager } from "../src/security/policy.js"
 import { parseSecurityTarget, targetMatchesAllowlist } from "../src/security/runner.js"
 import { loadSkillTool } from "../src/tool/built-in/load-skill.js"
 import { subagentTool } from "../src/tool/built-in/subagent.js"
@@ -202,17 +202,85 @@ describe("security capability gate", () => {
     })).toThrow("host-network")
   })
 
-  it("runs a bounded baseline scan against an allowlisted local target", async () => {
-    const server = Bun.serve({
-      hostname: "127.0.0.1",
-      port: 0,
-      fetch: () => new Response("ok", {
-        headers: {
-          "x-content-type-options": "nosniff",
-          "referrer-policy": "no-referrer",
-        },
-      }),
+  it("applies scan-type policy classes, request budgets, and dangerous action guards", () => {
+    const target = parseSecurityTarget("https://example.com/search?q=1")
+    const security = securityPolicyManager.assertActionAllowed("sqlmap", target, {
+      securitySandbox: {
+        enabled: true,
+        profile: "active-lite",
+        network: "restricted",
+        targetAllowlist: ["example.com"],
+        requestsPerMinute: 100,
+      },
     })
+    expect(getSecurityActionPolicy("sqlmap").actionClass).toBe("active-injection-check")
+    expect(getSecurityActionRequestBudget("sqlmap", security)).toBe(3)
+
+    expect(() => securityPolicyManager.assertActionAllowed("sqlmap", parseSecurityTarget("example.com"), {
+      securitySandbox: {
+        enabled: true,
+        profile: "active-lite",
+        network: "restricted",
+        targetAllowlist: ["example.com"],
+      },
+    })).toThrow("requires an explicit http(s) URL")
+
+    expect(() => securityPolicyManager.assertActionAllowed("sqlmap", target, {
+      securitySandbox: {
+        enabled: true,
+        profile: "active-lite",
+        network: "host",
+        targetAllowlist: ["example.com"],
+        requireApprovalFor: ["host-network"],
+      },
+    })).toThrow("cannot run with securitySandbox.network='host'")
+  })
+
+  it("writes per-target security audit trail events", async () => {
+    securityPolicyManager.resetForTests()
+    await withProjectConfig({
+      securitySandbox: {
+        enabled: true,
+        profile: "active-lite",
+        targetAllowlist: ["audit.example.com"],
+        requestsPerMinute: 100,
+      },
+    }, async (workdir) => {
+      const target = parseSecurityTarget("https://audit.example.com")
+      await securityPolicyManager.run({
+        action: "web_baseline",
+        target,
+        config: {
+          securitySandbox: {
+            enabled: true,
+            profile: "active-lite",
+            targetAllowlist: ["audit.example.com"],
+            requestsPerMinute: 100,
+          },
+        },
+        workdir,
+        fn: async () => "ok",
+      })
+      const path = join(workdir, ".aurict", "security", "audit", "audit.example.com.jsonl")
+      expect(existsSync(path)).toBe(true)
+      const content = readFileSync(path, "utf8")
+      expect(content).toContain("\"phase\":\"start\"")
+      expect(content).toContain("\"phase\":\"complete\"")
+      expect(content).toContain("\"actionClass\":\"passive-probe\"")
+    })
+    securityPolicyManager.resetForTests()
+  })
+
+  it("runs a bounded baseline scan against an allowlisted local target", async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async () => new Response("ok", {
+      status: 200,
+      statusText: "OK",
+      headers: {
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer",
+      },
+    })) as typeof fetch
     try {
       await withProjectConfig({
         securitySandbox: {
@@ -223,7 +291,7 @@ describe("security capability gate", () => {
       }, async (workdir) => {
         const result = await executeTool(
           securityScanTool,
-          { target: `http://127.0.0.1:${server.port}` },
+          { target: "http://127.0.0.1:40123" },
           { ...ctx(workdir), isSubagent: true },
         )
         expect(result.error).toBeUndefined()
@@ -231,7 +299,7 @@ describe("security capability gate", () => {
         expect(result.output).toContain("x-content-type-options")
       })
     } finally {
-      server.stop(true)
+      globalThis.fetch = originalFetch
     }
   })
 

@@ -24,8 +24,8 @@ const PASSIVE_SECURITY_SKILL_IDS = new Set([
   "security-review",
 ])
 
-const ACTIVE_SECURITY_AGENT_TYPES = new Set<AgentType>(["security", "pentest"])
-const PASSIVE_SECURITY_AGENT_TYPES = new Set<AgentType>(["adviser", "reporter"])
+const ACTIVE_SECURITY_AGENT_TYPES = new Set<AgentType>(["security", "security_operator", "pentest"])
+const PASSIVE_SECURITY_AGENT_TYPES = new Set<AgentType>(["security_verifier", "security_reporter", "adviser", "reporter"])
 
 const ACTIVE_SECURITY_TOOL_IDS = new Set([
   "security_recon",
@@ -38,6 +38,10 @@ const ACTIVE_SECURITY_TOOL_IDS = new Set([
 
 const PASSIVE_SECURITY_TOOL_IDS = new Set([
   "security_report",
+  "security_verify",
+  "security_attack_graph",
+  "security_log_analyze",
+  "security_threat_model",
 ])
 
 const AGENT_DESCRIPTIONS: Record<AgentType, string> = {
@@ -50,6 +54,9 @@ const AGENT_DESCRIPTIONS: Record<AgentType, string> = {
   performance: "profiling and performance analysis",
   analytics: "metrics and log analysis",
   security: "security audit and active scanning",
+  security_operator: "controlled security operator loop",
+  security_verifier: "adversarial verification and false-positive review",
+  security_reporter: "security report generation from validated findings",
   pentest: "active penetration testing",
   adviser: "security strategy, no active execution",
   reporter: "security report generation",
@@ -62,7 +69,7 @@ const AGENT_DESCRIPTIONS: Record<AgentType, string> = {
 }
 
 const BUILT_IN_TASK_TYPES: AgentType[] = [
-  "explore", "code", "review", "test", "docs", "performance", "analytics", "security", "debug",
+  "explore", "code", "review", "test", "docs", "performance", "analytics", "security", "security_operator", "security_verifier", "security_reporter", "debug",
 ]
 
 export function normalizeSecuritySandboxConfig(config?: OmniConfig | SecuritySandboxConfig): ResolvedSecuritySandboxConfig {

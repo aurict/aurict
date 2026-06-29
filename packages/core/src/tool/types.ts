@@ -1,6 +1,7 @@
 import type { z } from "zod"
 import type { DistilledToolResult } from "./result-distiller.js"
 import type { FailureCooldownEntry } from "../agent/failure-cooldown.js"
+import type { SecurityDistillation } from "../security/distiller.js"
 
 export type ToolCategory = "read" | "write" | "execute" | "network" | "system"
 export type RiskLevel    = "low" | "medium" | "high" | "critical"
@@ -38,6 +39,7 @@ export interface ExecuteResult {
   metadata?: {
     changedFiles?: string[]
     distilled?: DistilledToolResult
+    security?: SecurityDistillation
     failureCooldown?: FailureCooldownEntry
     verification?: {
       tsc?: {

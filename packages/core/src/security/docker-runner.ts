@@ -4,7 +4,7 @@ import { spawn } from "bun"
 import type { OmniConfig, SecuritySandboxConfig } from "../config/config.js"
 import { resolveSecuritySandboxConfig } from "../config/config.js"
 import { assertTargetAllowed, parseSecurityTarget, type SecurityTarget } from "./runner.js"
-import { securityPolicyManager } from "./policy.js"
+import { getSecurityActionRequestBudget, getSecurityActionTimeoutMs, securityPolicyManager } from "./policy.js"
 
 export type SecurityDockerAction =
   | "nmap_top"
@@ -39,19 +39,6 @@ export interface SecurityDockerRunResult {
 }
 
 const OUTPUT_MAX_CHARS = 60_000
-const DEFAULT_TIMEOUT_MS = 120_000
-
-const ACTION_TIMEOUT_MS: Record<SecurityDockerAction, number> = {
-  nmap_top: 90_000,
-  nmap_service: 120_000,
-  testssl: 180_000,
-  nikto: 180_000,
-  nuclei: 180_000,
-  ffuf: 120_000,
-  gobuster: 120_000,
-  sqlmap: 180_000,
-}
-
 export function buildSecurityDockerCommand(action: SecurityDockerAction, target: SecurityTarget, req: Pick<SecurityDockerRunRequest, "wordlist" | "extra"> = {}): string[] {
   const host = target.host
   const url = target.url?.toString() ?? `https://${host}`
@@ -122,7 +109,13 @@ export async function runSecurityDockerTool(req: SecurityDockerRunRequest): Prom
       const outputDir = join(req.workdir, ".aurict", "security", "runs", `${Date.now()}-${safeName(target.host)}-${req.action}`)
       await mkdir(outputDir, { recursive: true })
 
-      const command = buildSecurityDockerCommand(req.action, target, req)
+      const command = buildSecurityDockerCommand(req.action, target, {
+        ...req,
+        extra: {
+          ...(req.extra ?? {}),
+          rateLimit: getSecurityActionRequestBudget(req.action, security),
+        },
+      })
       const dockerArgs = buildSecurityDockerArgs({
         image,
         command,
@@ -131,7 +124,7 @@ export async function runSecurityDockerTool(req: SecurityDockerRunRequest): Prom
         network: security.network,
       })
 
-      const timeoutMs = ACTION_TIMEOUT_MS[req.action] ?? DEFAULT_TIMEOUT_MS
+      const timeoutMs = getSecurityActionTimeoutMs(req.action)
       const proc = spawn(["docker", ...dockerArgs], {
         cwd: req.workdir,
         stdout: "pipe",

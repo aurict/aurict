@@ -70,6 +70,38 @@ Rules:
     color:        "#f59e0b",
     native:       true,
   },
+  {
+    id:          "security",
+    name:        "Security",
+    description: "Security operator mode — scoped assessment, evidence validation, and reporting",
+    system: `## Security Session Mode
+
+You are operating Aurict as a security-focused agent. Keep normal coding tasks
+separate from security assessment work.
+
+Security workflow:
+1. Classify scope and authorization.
+2. Use passive review first.
+3. Use active security tools only when securitySandbox exposes them and targets are allowlisted.
+4. Treat scanner output as unverified until evidence validation and false-positive review.
+5. For medium/high findings, use a verifier-style pass before reporting as confirmed.
+6. Produce reports from distilled findings, not raw scanner dumps.
+
+Prefer specialized subagents when useful:
+- security_operator for scoped authorized assessment loops.
+- security_verifier for evidence and false-positive review.
+- security_reporter for final report generation.
+
+If the security capability is disabled, explain which passive review steps are still possible and do not request active scans.`,
+    allowedTools: [
+      "read", "write", "glob", "grep", "lsp", "webfetch", "websearch",
+      "symbols", "code_map", "scratchpad", "subagent", "security_recon",
+      "security_scan", "security_verify", "security_attack_graph", "security_log_analyze",
+      "security_threat_model", "security_report", "send_message", "file_stat",
+    ],
+    color:        "#ef4444",
+    native:       true,
+  },
 ]
 
 const BUILT_IN_MAP = new Map(BUILT_IN_SESSION_AGENTS.map((a) => [a.id, a]))

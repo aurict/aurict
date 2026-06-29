@@ -58,6 +58,21 @@ export { parseSecurityTarget, assertSecurityCapabilityEnabled, assertTargetAllow
 export type { SecurityTarget, SecurityFinding, SecurityRunResult, SecurityCheckStatus, SecuritySeverity } from "./security/runner.js"
 export { buildSecurityDockerArgs, buildSecurityDockerCommand, runSecurityDockerTool } from "./security/docker-runner.js"
 export type { SecurityDockerAction, SecurityDockerRunRequest, SecurityDockerRunResult } from "./security/docker-runner.js"
+export { distillSecurityRunResult, distillSecurityDockerResult, formatSecurityDistillationForModel } from "./security/distiller.js"
+export type { SecurityDistillation, SecurityDistilledFinding, SecurityConfidence, SecurityVerificationStatus } from "./security/distiller.js"
+export { verifySecurityFinding, applySecurityVerification, formatSecurityVerification } from "./security/verifier.js"
+export type { SecurityVerificationResult, SecurityEvidenceStrength } from "./security/verifier.js"
+export { buildSecurityAssessmentLedger, formatSecurityLedgerAnchor, inferSecurityPhase } from "./security/assessment-ledger.js"
+export type { SecurityAssessmentLedger, SecurityAsset, SecurityService, SecurityOperatorPhase } from "./security/assessment-ledger.js"
+export { evaluateSecurityOperatorStep, formatSecurityOperatorDecision } from "./security/operator-loop.js"
+export type { SecurityOperatorDecision, SecurityOperatorStatus } from "./security/operator-loop.js"
+export { getSecurityLedgerPath, readSecurityAssessmentLedger, writeSecurityAssessmentLedger, updateSecurityAssessmentLedger, resetSecurityAssessmentLedger } from "./security/ledger-store.js"
+export { buildAttackGraphFromFindings, formatAttackGraph } from "./security/attack-graph.js"
+export type { SecurityAttackGraph, SecurityGraphNode, SecurityGraphEdge, SecurityGraphNodeKind, SecurityGraphEdgeStatus } from "./security/attack-graph.js"
+export { analyzeSecurityLogs, formatSecurityLogAnalysis } from "./security/log-parser.js"
+export type { SecurityLogAnalysis, SecurityLogCluster, SecurityLogEvent } from "./security/log-parser.js"
+export { buildStrideThreatModel, formatThreatModel } from "./security/threat-model.js"
+export type { SecurityThreatModel, SecurityThreat, SecurityDataFlow, ThreatFramework, ThreatSeverity } from "./security/threat-model.js"
 export { loadSkillOverride, applyOverride }              from "./skill/override.js"
 export type { SkillOverride }                            from "./skill/override.js"
 export { installRemoteSkill, listInstalledSkills, uninstallSkill } from "./skill/remote.js"
@@ -280,8 +295,8 @@ export {
   filterAuditLogs,
 } from "./security/audit.js"
 export type { AuditEvent, AuditEventType, AuditLogConfig } from "./security/audit.js"
-export { SECURITY_ACTION_POLICIES, securityPolicyManager } from "./security/policy.js"
-export type { SecurityAction, SecurityActionPolicy, SecurityRisk } from "./security/policy.js"
+export { SECURITY_ACTION_POLICIES, securityPolicyManager, getSecurityActionPolicy, getSecurityActionTimeoutMs, getSecurityActionRequestBudget, appendSecurityAuditTrail } from "./security/policy.js"
+export type { SecurityAction, SecurityActionClass, SecurityActionPolicy, SecurityAuditTrailEvent, SecurityRisk } from "./security/policy.js"
 
 export {
   scanDependencies,
