@@ -1,0 +1,12 @@
+.git
+.aurict
+node_modules
+dist
+coverage
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.local
+deploy/.env
+deploy/**/*.log

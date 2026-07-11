@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: aurict
+      POSTGRES_USER: aurict
+      POSTGRES_PASSWORD: aurict-dev-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurict -d aurict"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5432:5432"
+    volumes:
+      - aurict_backend_postgres:/var/lib/postgresql/data
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://aurict:aurict-dev-password@postgres:5432/aurict
+      JWT_SECRET: dev-compose-secret-dev-compose-secret-32
+      CORS_ORIGINS: http://localhost:3000,http://localhost:8787
+      FIREBASE_PROJECT_ID: aurict-backend
+      REMOTE_MAX_ACTIVE_SESSIONS: 1
+      REMOTE_MAX_TTL_SECONDS: 300
+      REMOTE_MAX_IDLE_SECONDS: 90
+    command: ["bun", "run", "db:migrate"]
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      DATABASE_URL: postgres://aurict:aurict-dev-password@postgres:5432/aurict
+      JWT_SECRET: dev-compose-secret-dev-compose-secret-32
+      CORS_ORIGINS: http://localhost:3000,http://localhost:8787
+      TRUST_PROXY_HEADERS: "false"
+      REQUEST_LOGS: "false"
+      PUBLIC_OPENAPI: "false"
+      FIREBASE_PROJECT_ID: aurict-backend
+      REMOTE_MAX_ACTIVE_SESSIONS: 1
+      REMOTE_MAX_TTL_SECONDS: 300
+      REMOTE_MAX_IDLE_SECONDS: 90
+      TURN_URIS: ""
+      TURN_SHARED_SECRET: ""
+      TURN_USERNAME_TTL_SECONDS: 600
+    ports:
+      - "127.0.0.1:8787:8787"
+    command: ["bun", "run", "src/index.ts"]
+
+volumes:
+  aurict_backend_postgres:

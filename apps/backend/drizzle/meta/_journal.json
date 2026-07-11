@@ -1,0 +1,69 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1782859944152,
+      "tag": "0000_talented_kylun",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782872143086,
+      "tag": "0001_breezy_jamie_braddock",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782872682789,
+      "tag": "0002_talented_retro_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782873001258,
+      "tag": "0003_lazy_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782874297214,
+      "tag": "0004_huge_onslaught",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782910255272,
+      "tag": "0005_flippant_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782911006682,
+      "tag": "0006_unusual_rachel_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782929600000,
+      "tag": "0007_browser_cli_login",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782931200000,
+      "tag": "0008_feedback_reports",
+      "breakpoints": true
+    }
+  ]
+}
