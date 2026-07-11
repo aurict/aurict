@@ -1,0 +1,90 @@
+name: aurict-backend
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no", "--save", "", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aurict}
+      POSTGRES_USER: ${POSTGRES_USER:-aurict}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aurict} -d ${POSTGRES_DB:-aurict}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: Dockerfile.standalone
+    env_file:
+      - ./.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["bun", "run", "src/db/migrate.ts"]
+    restart: "no"
+    networks:
+      - backend
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile.standalone
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      TRUST_PROXY_HEADERS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bun", "--eval", "fetch('http://127.0.0.1:8787/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    ports:
+      - "127.0.0.1:${AURICT_BACKEND_HOST_PORT:-3077}:8787"
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  backend:
+    driver: bridge

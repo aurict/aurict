@@ -1,0 +1,25 @@
+{
+  "name": "@aurict/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate": "bun run src/db/migrate.ts",
+    "smoke": "bun run scripts/smoke.ts",
+    "test": "bun test test/*.test.ts",
+    "test:integration": "bun test test/integration.test.ts",
+    "typecheck": "bunx tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.40.0",
+    "hono": "^4.7.0",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.8.0"
+  }
+}

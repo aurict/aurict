@@ -1,0 +1,41 @@
+import type { Context, Next } from "hono"
+import { HTTPException } from "hono/http-exception"
+import { ZodError } from "zod"
+import type { AppBindings } from "../types"
+import { newId } from "../crypto/ids"
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string, public code = "error") {
+    super(message)
+  }
+}
+
+export async function requestContext(c: Context<AppBindings>, next: Next) {
+  c.set("requestId", c.req.header("x-request-id") ?? newId("req"))
+  await next()
+}
+
+export function errorResponse(c: Context<AppBindings>, error: unknown) {
+  const requestId = c.get("requestId") ?? newId("req")
+  if (error instanceof ApiError) {
+    return c.json({ ok: false, error: { code: error.code, message: error.message, requestId } }, error.status as never)
+  }
+  if (error instanceof HTTPException) {
+    return c.json({ ok: false, error: { code: "http_error", message: error.message, requestId } }, error.status as never)
+  }
+  if (error instanceof ZodError) {
+    return c.json({
+      ok: false,
+      error: {
+        code: "validation_error",
+        message: "Request validation failed.",
+        requestId,
+        issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+      },
+    }, 400)
+  }
+  const message = c.get("env")?.NODE_ENV === "production"
+    ? "Internal server error"
+    : error instanceof Error ? error.message : "Internal server error"
+  return c.json({ ok: false, error: { code: "internal_error", message, requestId } }, 500)
+}
