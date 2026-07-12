@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm"
 import { index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core"
 
-export const devicePlatform = pgEnum("device_platform", ["mobile", "cli", "web"])
+export * from "../legal/schema"
+
+export const devicePlatform = pgEnum("device_platform", ["mobile", "cli", "desktop", "web"])
 export const trustScope = pgEnum("trust_scope", ["remote", "secret_transfer", "all"])
 export const remoteStatus = pgEnum("remote_status", ["available", "accepted", "closed", "expired"])
 export const connectionMode = pgEnum("connection_mode", ["webrtc", "tunnel", "lan"])
@@ -15,6 +17,13 @@ export const users = pgTable("users", {
   disabledAt: timestamp("disabled_at"),
 }, (table) => ({
   emailIdx: uniqueIndex("users_email_idx").on(table.email),
+}))
+
+export const userPresence = pgTable("user_presence", {
+  userId: text("user_id").primaryKey().references(() => users.id),
+  lastSeenAt: timestamp("last_seen_at").notNull(),
+}, (table) => ({
+  lastSeenIdx: index("user_presence_last_seen_idx").on(table.lastSeenAt),
 }))
 
 export const authIdentities = pgTable("auth_identities", {
