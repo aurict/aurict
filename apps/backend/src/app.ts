@@ -17,6 +17,7 @@ import { authRoutes } from "./routes/auth"
 import { deviceRoutes } from "./routes/devices"
 import { feedbackRoutes } from "./routes/feedback"
 import { healthRoutes } from "./routes/health"
+import { legalRoutes } from "./legal/routes"
 import { remoteRoutes } from "./routes/remote"
 import { secretRoutes } from "./routes/secrets"
 import { trustRoutes } from "./routes/trust"
@@ -68,6 +69,7 @@ export function createApp(options: CreateAppOptions = {}) {
   app.route("/", secretRoutes)
   app.route("/", remoteRoutes)
   app.route("/", feedbackRoutes)
+  app.route("/", legalRoutes)
 
   return app
 }

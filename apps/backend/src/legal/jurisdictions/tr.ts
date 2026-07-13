@@ -187,15 +187,19 @@ function splitArticlesIntoParagraphs(unit: ParsedUnit): ParsedUnit {
   return unit
 }
 
-const CITATION_RE = /\d{1,2}\/\d{1,2}\/\d{4}\s+tarihli\s+ve\s+\d+\s+sayılı\s+(?:Kanunun|Kanun\s+Hükmünde\s+Kararnamenin)\s+\d+\s*(?:inci|nci|ncı|üncü|ıncı|uncu)\s+maddesiyle/g
+const CITATION_RE = /\d{1,2}\/\d{1,2}\/\d{4}\s+tarihli\s+ve\s+(\d+)\s+sayılı\s+(?:Kanunun|Kanun\s+Hükmünde\s+Kararnamenin)\s+(\d+)\s*(?:inci|nci|ncı|üncü|ıncı|uncu)\s+maddesiyle/g
 
 export function extractCitationsTr(units: ParsedUnit[]): ParsedCitation[] {
   const citations: ParsedCitation[] = []
   const walk = (unit: ParsedUnit) => {
     if (unit.bodyText) {
-      const matches = unit.bodyText.match(CITATION_RE)
-      if (matches) {
-        for (const rawText of matches) citations.push({ fromUnitPath: unit.path, rawText })
+      for (const match of unit.bodyText.matchAll(CITATION_RE)) {
+        citations.push({
+          fromUnitPath: unit.path,
+          rawText: match[0],
+          targetIdentifier: match[1]!,
+          targetArticleNumber: match[2]!,
+        })
       }
     }
     unit.children.forEach(walk)

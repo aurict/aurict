@@ -64,6 +64,27 @@
       "when": 1782931200000,
       "tag": "0008_feedback_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783803910766,
+      "tag": "0009_worthless_steel_serpent",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783890922157,
+      "tag": "0011_rapid_serpent_society",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783963115804,
+      "tag": "0012_thick_shen",
+      "breakpoints": true
     }
   ]
 }
