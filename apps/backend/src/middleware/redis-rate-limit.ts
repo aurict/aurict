@@ -8,24 +8,44 @@ type PendingCommand = {
   reject: (error: Error) => void
 }
 
+// Redis yavaş/ulaşılamaz olursa rate limiter tüm isteği sonsuza kadar bekletmemeli.
+// Rate limit ihlali bir güvenlik açığı değil, kullanılabilirlik önceliklidir —
+// zaman aşımında "izin ver" (fail-open) tercih edilir.
+const CHECK_TIMEOUT_MS = 500
+
 export function createRedisRateLimiter(env: BackendEnv): RateLimiter | undefined {
   if (!env.REDIS_URL) return undefined
   const client = new MinimalRedisClient(env.REDIS_URL, env.REDIS_CONNECT_TIMEOUT_SECONDS * 1000)
   return {
     async check(key, limit, windowMs): Promise<RateLimitDecision> {
-      const redisKey = `aurict:rl:${key}`
-      const count = await client.integer(["INCR", redisKey])
-      if (count === 1) {
-        await client.command(["PEXPIRE", redisKey, String(windowMs)])
+      const timeout = new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), CHECK_TIMEOUT_MS))
+      const result = await Promise.race([performCheck(client, key, limit, windowMs), timeout])
+      if (result === "timeout") {
+        console.error(`[redis-rate-limit] check() timed out after ${CHECK_TIMEOUT_MS}ms for key=${key}; failing open.`)
+        return { allowed: true, remaining: limit, resetAt: Date.now() + windowMs }
       }
-      const ttl = await client.integer(["PTTL", redisKey])
-      const resetAt = Date.now() + Math.max(ttl, 0)
-      return {
-        allowed: count <= limit,
-        remaining: Math.max(0, limit - count),
-        resetAt,
-      }
+      return result
     },
+  }
+}
+
+async function performCheck(client: MinimalRedisClient, key: string, limit: number, windowMs: number): Promise<RateLimitDecision> {
+  try {
+    const redisKey = `aurict:rl:${key}`
+    const count = await client.integer(["INCR", redisKey])
+    if (count === 1) {
+      await client.command(["PEXPIRE", redisKey, String(windowMs)])
+    }
+    const ttl = await client.integer(["PTTL", redisKey])
+    const resetAt = Date.now() + Math.max(ttl, 0)
+    return {
+      allowed: count <= limit,
+      remaining: Math.max(0, limit - count),
+      resetAt,
+    }
+  } catch (error) {
+    console.error(`[redis-rate-limit] check() failed for key=${key}; failing open.`, error)
+    return { allowed: true, remaining: limit, resetAt: Date.now() + windowMs }
   }
 }
 

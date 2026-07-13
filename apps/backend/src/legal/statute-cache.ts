@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { newId, now } from "../crypto/ids"
 import * as schema from "../db/schema"
+import { resolveCitations } from "./citation-resolver"
 import { legalCitations, legalDocuments, legalUnits } from "./schema"
 import type { JurisdictionAdapter, ParsedUnit } from "./types"
 
@@ -81,6 +82,8 @@ export async function fetchAndPersistStatute(
         id: newId("lgc"),
         fromUnitId,
         rawText: citation.rawText,
+        targetIdentifier: citation.targetIdentifier ?? null,
+        targetArticleNumber: citation.targetArticleNumber ?? null,
         resolvedDocumentId: null,
         resolvedUnitPath: null,
         createdAt,
@@ -110,5 +113,11 @@ export async function fetchAndPersistStatute(
   })
 
   const units = await db.query.legalUnits.findMany({ where: eq(legalUnits.documentId, documentId) })
+
+  // Bu yeni belge, daha önce hedefi cache'te olmadığı için çözülemeyen
+  // başka atıfların hedefi olabilir — her yeni belge cache'e girdiğinde
+  // bekleyen atıfları tekrar dener.
+  await resolveCitations(db)
+
   return { document, units }
 }

@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm"
+import { relations, sql } from "drizzle-orm"
 import { type AnyPgColumn, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core"
 
 // Ülke-bağımsız mevzuat ağacı: Belge -> hiyerarşik birimler -> atıflar.
@@ -39,12 +39,15 @@ export const legalCitations = pgTable("legal_citations", {
   id: text("id").primaryKey(),
   fromUnitId: text("from_unit_id").notNull().references(() => legalUnits.id, { onDelete: "cascade" }),
   rawText: text("raw_text").notNull(), // eşleşen atıf metni, örn. "17/1/2019 tarihli ve 7161 sayılı Kanunun 56 ncı maddesiyle"
+  targetIdentifier: text("target_identifier"), // atfedilen kanunun numarası, örn. "7161" — adapter çıkaramıyorsa null
+  targetArticleNumber: text("target_article_number"), // atfedilen madde numarası, örn. "56" — adapter çıkaramıyorsa null
   resolvedDocumentId: text("resolved_document_id").references(() => legalDocuments.id),
   resolvedUnitPath: text("resolved_unit_path"), // hedef belge cache'e girene kadar null kalır
   createdAt: timestamp("created_at").notNull(),
 }, (table) => ({
   fromUnitIdx: index("legal_citations_from_unit_idx").on(table.fromUnitId),
   resolvedDocumentIdx: index("legal_citations_resolved_document_idx").on(table.resolvedDocumentId),
+  unresolvedIdx: index("legal_citations_unresolved_idx").on(table.targetIdentifier).where(sql`${table.resolvedDocumentId} is null`),
 }))
 
 export const legalDocumentsRelations = relations(legalDocuments, ({ many }) => ({

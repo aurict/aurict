@@ -16,6 +16,7 @@ if (!databaseUrl) {
     NODE_ENV: "test",
     JWT_SECRET: "test-secret-test-secret-test-secret-test-secret",
     DATABASE_URL: databaseUrl,
+    REDIS_URL: process.env.REDIS_URL,
   })
 
   let db: BackendDb | undefined

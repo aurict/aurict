@@ -11,6 +11,10 @@ export type ParsedUnit = {
 export type ParsedCitation = {
   fromUnitPath: string
   rawText: string
+  /** Atfedilen kanunun numarası (örn. "7161"), adapter çıkarabiliyorsa. */
+  targetIdentifier?: string
+  /** Atfedilen maddenin numarası (örn. "56"), adapter çıkarabiliyorsa. */
+  targetArticleNumber?: string
 }
 
 export type ParsedStatute = {
