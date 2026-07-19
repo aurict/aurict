@@ -26,6 +26,8 @@ export type BackendRepository = {
   updateUser(user: User): Promise<void>
   updatePasswordIdentity(userId: string, passwordHash: string): Promise<void>
   deleteAccount(userId: string, deletedAt: Date): Promise<void>
+  touchUserPresence(userId: string, seenAt: Date): Promise<void>
+  countActiveUsers(since: Date): Promise<number>
 
   addAuditLog(log: AuditLog): Promise<void>
 
@@ -121,6 +123,14 @@ export function createMemoryRepository(store: BackendStore): BackendRepository {
       store.users.set(user.id, user)
       store.usersByEmail.set(user.email, user.id)
     },
+    async touchUserPresence(userId, seenAt) {
+      store.userPresence.set(userId, seenAt)
+    },
+    async countActiveUsers(since) {
+      let active = 0
+      for (const seenAt of store.userPresence.values()) if (seenAt > since) active++
+      return active
+    },
     async updatePasswordIdentity(userId, passwordHash) {
       const identity = [...store.identities.values()].find((candidate) =>
         candidate.userId === userId && candidate.provider === "password",
@@ -131,6 +141,7 @@ export function createMemoryRepository(store: BackendStore): BackendRepository {
       const user = store.users.get(userId)
       if (!user) return
       store.usersByEmail.delete(user.email)
+      store.userPresence.delete(userId)
       user.email = deletedEmail(userId)
       user.disabledAt = deletedAt
       delete user.emailVerifiedAt

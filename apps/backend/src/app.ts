@@ -21,6 +21,7 @@ import { legalRoutes } from "./legal/routes"
 import { remoteRoutes } from "./routes/remote"
 import { secretRoutes } from "./routes/secrets"
 import { trustRoutes } from "./routes/trust"
+import { presenceRoutes } from "./routes/presence"
 
 export type CreateAppOptions = {
   env?: BackendEnv
@@ -64,6 +65,7 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.route("/", healthRoutes)
   app.route("/", authRoutes)
+  app.route("/", presenceRoutes)
   app.route("/", deviceRoutes)
   app.route("/", trustRoutes)
   app.route("/", secretRoutes)

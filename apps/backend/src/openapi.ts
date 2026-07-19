@@ -20,6 +20,7 @@ export const openApiDocument = {
     "/auth/logout": { post: { summary: "Revoke one refresh token" } },
     "/auth/logout-all": { post: { summary: "Revoke all account refresh tokens" } },
     "/auth/me": { get: { summary: "Current account" } },
+    "/presence/heartbeat": { post: { summary: "Refresh the authenticated user's active-presence timestamp" } },
     "/auth/sessions": { get: { summary: "List refresh token sessions" } },
     "/auth/email-verification/request": { post: { summary: "Request email verification token" } },
     "/auth/email-verification/confirm": { post: { summary: "Confirm email verification token" } },
