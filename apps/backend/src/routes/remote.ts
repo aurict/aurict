@@ -80,7 +80,7 @@ export const remoteRoutes = new Hono<AppBindings>()
     const user = c.get("user")!
     const desktop = await ownedDevice(c, body.desktopDeviceId)
     assertVerifiedDevice(c, desktop)
-    if (desktop.platform !== "cli") throw new ApiError(400, "Remote desktop device must be a CLI device.", "invalid_device")
+    if (desktop.platform !== "cli" && desktop.platform !== "desktop") throw new ApiError(400, "Remote desktop device must be a CLI or desktop device.", "invalid_device")
     assertSignalFingerprint(body.signedOffer, desktop.signingKeyFingerprint, "offer")
     const createdAt = now()
     const openSessions = await c.get("repo").countOpenRemoteSessions(user.id, desktop.id, createdAt)
@@ -180,6 +180,7 @@ export const remoteRoutes = new Hono<AppBindings>()
     session.lastSequence = body.lastSequence
     session.lastHeartbeatAt = now()
     await c.get("repo").updateRemoteSession(session)
+    await c.get("repo").touchUserPresence(c.get("user")!.id, session.lastHeartbeatAt)
     return c.json({ ok: true, session: publicRemoteSession(session) })
   })
   .post("/remote/sessions/:id/close", async (c) => {

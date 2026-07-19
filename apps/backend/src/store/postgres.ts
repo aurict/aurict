@@ -1,4 +1,4 @@
-import { and, eq, gt, isNotNull, isNull, lte, ne, or } from "drizzle-orm"
+import { and, count, eq, gt, isNotNull, isNull, lte, ne, or } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import * as schema from "../db/schema"
 import type {
@@ -59,6 +59,16 @@ export function createPostgresRepository(db: Db): BackendRepository {
     async updateUser(user) {
       await db.update(schema.users).set(toUserInsert(user)).where(eq(schema.users.id, user.id))
     },
+    async touchUserPresence(userId, seenAt) {
+      await db.insert(schema.userPresence)
+        .values({ userId, lastSeenAt: seenAt })
+        .onConflictDoUpdate({ target: schema.userPresence.userId, set: { lastSeenAt: seenAt } })
+    },
+    async countActiveUsers(since) {
+      const rows = await db.select({ value: count() }).from(schema.userPresence)
+        .where(gt(schema.userPresence.lastSeenAt, since))
+      return Number(rows[0]?.value ?? 0)
+    },
     async updatePasswordIdentity(userId, passwordHash) {
       await db.update(schema.authIdentities)
         .set({ passwordHash })
@@ -90,6 +100,7 @@ export function createPostgresRepository(db: Db): BackendRepository {
         await tx.update(schema.remoteSessions)
           .set({ status: "closed", closedAt: deletedAt })
           .where(eq(schema.remoteSessions.userId, userId))
+        await tx.delete(schema.userPresence).where(eq(schema.userPresence.userId, userId))
         await tx.update(schema.deviceLoginFlows)
           .set({ deniedAt: deletedAt })
           .where(eq(schema.deviceLoginFlows.approvedUserId, userId))

@@ -4,6 +4,7 @@ export function createMemoryStore(): BackendStore {
   return {
     users: new Map(),
     usersByEmail: new Map(),
+    userPresence: new Map(),
     identities: new Map(),
     refreshTokens: new Map(),
     refreshTokensByHash: new Map(),

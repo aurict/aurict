@@ -57,7 +57,7 @@ export type RefreshTokenRecord = {
   createdAt: Date
 }
 
-export type DevicePlatform = "mobile" | "cli" | "web"
+export type DevicePlatform = "mobile" | "cli" | "desktop" | "web"
 export type TrustScope = "remote" | "secret_transfer" | "all"
 export type RemoteStatus = "available" | "accepted" | "closed" | "expired"
 export type ConnectionMode = "webrtc" | "tunnel" | "lan"
@@ -164,6 +164,7 @@ export type AuditLog = {
 export type BackendStore = {
   users: Map<string, User>
   usersByEmail: Map<string, string>
+  userPresence: Map<string, Date>
   identities: Map<string, AuthIdentity>
   refreshTokens: Map<string, RefreshTokenRecord>
   refreshTokensByHash: Map<string, string>

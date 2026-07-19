@@ -9,7 +9,7 @@ import type { AppBindings } from "../types"
 
 const deviceSchema = z.object({
   name: z.string().min(1).max(80),
-  platform: z.enum(["mobile", "cli", "web"]),
+  platform: z.enum(["mobile", "cli", "desktop", "web"]),
   encryptionPublicKey: z.string().min(32).max(2048),
   signingPublicKey: z.string().min(32).max(2048),
   signingKeyFingerprint: z.string().min(16).max(128),
@@ -73,6 +73,7 @@ export const deviceRoutes = new Hono<AppBindings>()
     const device = await ownedDevice(c, c.req.param("id"))
     device.lastSeenAt = now()
     await c.get("repo").updateDevice(device)
+    await c.get("repo").touchUserPresence(c.get("user")!.id, device.lastSeenAt)
     return c.json({ ok: true, device: publicDevice(device) })
   })
   .post("/devices/:id/rename", async (c) => {

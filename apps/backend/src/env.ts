@@ -30,6 +30,8 @@ const envSchema = z.object({
   REQUEST_BODY_LIMIT_BYTES: z.coerce.number().int().positive().max(10_000_000).default(1_000_000),
   REQUEST_LOGS: booleanString.default(false),
   METRICS_TOKEN: optionalString(z.string().min(24)),
+  ACTIVE_USERS_ADMIN_TOKEN: optionalString(z.string().min(32)),
+  ACTIVE_USERS_WINDOW_SECONDS: z.coerce.number().int().positive().max(300).default(90),
   PUBLIC_OPENAPI: booleanString.default(false),
   REQUIRE_DEVICE_VERIFICATION: booleanString.default(true),
   FIREBASE_PROJECT_ID: optionalString(z.string().min(1)),

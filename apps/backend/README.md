@@ -43,6 +43,8 @@ It intentionally does **not** proxy LLM traffic, store provider API keys in plai
 - `REQUEST_LOGS`: opt-in structured request logs. Defaults to `false`.
 - `TRUST_PROXY_HEADERS`: set to `true` only when Apache/Cloudflare forwards trusted client IP headers.
 - `METRICS_TOKEN`: optional bearer token for `/metrics`; production hides metrics without it.
+- `ACTIVE_USERS_ADMIN_TOKEN`: 32+ character operator token required by `GET /internal/active-users`.
+- `ACTIVE_USERS_WINDOW_SECONDS`: presence freshness window. Defaults to 90 seconds.
 - `PUBLIC_OPENAPI`: production exposes `/openapi.json` only when explicitly set to `true`.
 
 Remote sessions and secret transfers are TTL-bound. Expired remote sessions are marked `expired` and cannot be accepted or heartbeated; expired secret transfers cannot be claimed.
@@ -57,6 +59,18 @@ Backend persistence is PostgreSQL-first through Drizzle.
 - Runtime persistence: with `DATABASE_URL`, the app uses the Postgres-backed repository; without it, tests and local development use the in-memory repository.
 
 The database stores account, device, trust, encrypted secret-transfer metadata, and remote signaling metadata only. It must not store provider API keys in plaintext or remote-control commands, prompts, terminal output, tool results, or file contents.
+
+## Active User Count
+
+Authenticated clients should call `POST /presence/heartbeat` while open; existing device and remote
+heartbeats update the same signal automatically. The backend stores only a user id and its latest
+heartbeat, then `GET /internal/active-users` returns only the unique count within
+`ACTIVE_USERS_WINDOW_SECONDS`. It never returns a user list, email, device, IP, or history.
+
+```bash
+curl -fsS -H "X-Aurict-Admin-Token: $ACTIVE_USERS_ADMIN_TOKEN" \
+  https://api.aurict.com/internal/active-users
+```
 
 ## Security Contracts
 
