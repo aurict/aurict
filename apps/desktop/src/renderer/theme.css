@@ -93,8 +93,8 @@ button:disabled { cursor: not-allowed; }
 .aur-titlebar-status { justify-content: flex-end; gap: 14px; }
 .aur-titlebar-nav { display: flex; align-items: center; gap: 2px; max-width: min(56vw, 760px); overflow: hidden; background: var(--control-bg); border-radius: 7px; padding: 3px; }
 .aur-titlebar-nav button { flex: 0 0 auto; }
-.aur-onboarding { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px; background: radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--accent) 14%, transparent), var(--bg) 46%); }
-.aur-state-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--accent) 16%, transparent), var(--bg) 50%); }
+.aur-onboarding { height: 100vh; display: flex; align-items: flex-start; overflow-y: auto; justify-content: center; padding: 32px; background: radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--accent) 14%, transparent), var(--bg) 46%); }
+.aur-state-screen { height: 100vh; display: grid; place-items: center; padding: 24px; overflow-y: auto; background: radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--accent) 16%, transparent), var(--bg) 50%); }
 .aur-state-card { width: min(480px, 100%); padding: 32px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 20px 60px oklch(0 0 0 / .2); text-align: center; }
 .aur-state-brand { color: var(--titlebar-text); font-family: var(--font-serif); font-weight: 600; font-size: 18px; letter-spacing: -.02em; }
 .aur-state-brand span { color: var(--accent); }
@@ -202,3 +202,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media (max-width: 860px) { .aur-titlebar-nav { max-width: 48vw !important; } .aur-titlebar-status { gap: 8px !important; } .aur-titlebar-status > button { display: none; } .aur-settings-shell { grid-template-columns: 1fr; } .aur-settings-nav { display: flex; gap: 4px; padding: 10px; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border-subtle); } .aur-settings-nav button { width: auto; white-space: nowrap; } .aur-settings-content { padding: 26px 20px 48px; } .aur-finance-left { width: 150px !important; min-width: 150px !important; padding: 10px !important; } .aur-finance-main { padding: 24px 20px !important; } .aur-finance-prompts, .aur-calculation-grid { grid-template-columns: 1fr !important; } .aur-design-gallery { padding: 24px 20px 8px !important; } .aur-design-composer { padding: 14px 20px 18px !important; } .aur-developer-layout > :last-child { display: none !important; } .aur-artifact-rail { width: 100%; min-width: 0; grid-template-columns: 120px minmax(0, 1fr); } }
 @media (max-width: 760px) { .aur-choice-grid:not([data-compact]) { grid-template-columns: 1fr !important; } .aur-onboarding-appearance, .aur-onboarding-model-grid { grid-template-columns: 1fr !important; } .aur-role-templates { grid-template-columns: 1fr; } .aur-role-workspace { padding: 28px 20px; } }
 @media (max-width: 1040px) { .aur-app-shell { min-height: 0; } }
+/* Height-based responsive breakpoints: shrink spacing/text before the
+   overflow-y:auto fallback above kicks in. !important is needed here
+   because the choice-grid button sizes are set via inline styles. */
+@media (max-height: 800px) { .aur-onboarding { padding: 16px 32px; } .aur-choice-grid button { min-height: 72px !important; padding: 12px !important; } }
+@media (max-height: 650px) { .aur-onboarding { padding: 12px 24px; } .aur-choice-grid button { min-height: 52px !important; padding: 8px !important; } .aur-onboarding h1 { font-size: 22px !important; } }
+/* Same shrink-then-scroll pattern for the loading/error state card. 
+  No !important needed — nothing here is set inline. */
+@media (max-height: 700px) { .aur-state-screen { padding: 16px; } .aur-state-card { padding: 20px; } .aur-state-card h1 { font-size: 22px; margin: 14px 0 6px; } }
+@media (max-height: 550px) { .aur-state-card { padding: 14px; } .aur-state-card h1 { font-size: 18px; margin: 10px 0 5px; } .aur-state-brand { font-size: 15px; } .aur-state-actions { margin-top: 14px; } }

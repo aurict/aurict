@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, protocol, screen, shell } from 'electron';
 import path from 'node:path';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, unlinkSync, renameSync, mkdirSync, openSync, closeSync, copyFileSync } from 'node:fs';
@@ -406,12 +406,20 @@ function handleSidecarMessage(msg: SidecarMessage): void {
   }
 }
 
+// Clamp the initial window size to the primary display's available work area
+// (excludes the taskbar/dock) instead of a fixed 1360x840. On small/short
+// displays the fixed size pushed onboarding content past the visible area
+// with no way to reach it — see fix/onboarding-window-sizing.
 const createWindow = () => {
+  const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+  const windowWidth = Math.min(1360, screenWidth);
+  const windowHeight = Math.min(840, screenHeight);
+
   mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 840,
-    minWidth: 960,
-    minHeight: 640,
+    width: windowWidth,
+    height: windowHeight,
+    minWidth: Math.min(960, screenWidth),
+    minHeight: Math.min(640, screenHeight),
     frame: false,
     backgroundColor: '#0d0a09',
     webPreferences: {
