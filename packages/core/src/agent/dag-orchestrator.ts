@@ -1,5 +1,8 @@
 import type { AgentType } from "./protocol.js"
 import { agentPool } from "./pool.js"
+import { taskManager } from "../task/manager.js"
+
+export type DAGNodeStatus = "pending" | "running" | "completed" | "failed" | "blocked"
 
 export interface DAGNode {
   id: string
@@ -7,143 +10,165 @@ export interface DAGNode {
   desc: string
   prompt: string
   dependencies: string[]
-  status: "pending" | "running" | "completed" | "failed"
+  fileScopes?: string[]
+  maxAttempts?: number
+  optional?: boolean
+  status: DAGNodeStatus
+  attempts?: number
   output?: string
   error?: string
 }
 
+export interface DAGRunOptions {
+  parentSessionId: string
+  provider: string
+  model: string
+  workdir: string
+  maxConcurrency?: number
+}
+
+type SpawnWorker = typeof agentPool.spawn
+
 export class DAGOrchestrator {
-  private nodes = new Map<string, DAGNode>()
+  private readonly nodes = new Map<string, DAGNode>()
 
-  constructor(nodes: DAGNode[]) {
-    // Cycle check (bağımlılıklarda döngü kontrolü)
-    this.detectCycles(nodes)
-    for (const n of nodes) {
-      this.nodes.set(n.id, { ...n, status: "pending" })
-    }
+  constructor(nodes: DAGNode[], private readonly spawnWorker: SpawnWorker = agentPool.spawn.bind(agentPool)) {
+    this.validate(nodes)
+    for (const node of nodes) this.nodes.set(node.id, { ...node, status: "pending", attempts: 0 })
   }
 
-  private detectCycles(nodes: DAGNode[]) {
-    const adj = new Map<string, string[]>()
-    for (const n of nodes) {
-      adj.set(n.id, n.dependencies)
-    }
-
-    const visited = new Set<string>()
-    const recStack = new Set<string>()
-
-    const dfs = (id: string): boolean => {
-      if (recStack.has(id)) return true
-      if (visited.has(id)) return false
-
-      visited.add(id)
-      recStack.add(id)
-
-      const deps = adj.get(id) ?? []
-      for (const d of deps) {
-        if (dfs(d)) return true
-      }
-
-      recStack.delete(id)
-      return false
-    }
-
-    for (const n of nodes) {
-      if (dfs(n.id)) {
-        throw new Error(`Cycle detected in DAG task dependencies at node '${n.id}'`)
-      }
-    }
-  }
-
-  async run(opts: {
-    parentSessionId: string
-    provider: string
-    model: string
-    workdir: string
-  }): Promise<{ outputs: Record<string, string>; errors: Record<string, string> }> {
+  async run(opts: DAGRunOptions): Promise<{
+    outputs: Record<string, string>
+    errors: Record<string, string>
+    statuses: Record<string, DAGNodeStatus>
+  }> {
     const outputs: Record<string, string> = {}
     const errors: Record<string, string> = {}
-
-    // Grafın tamamlanmasını izleyen ana döngü
-    while (true) {
-      const activeNodes = [...this.nodes.values()]
-      const allDone = activeNodes.every(n => n.status === "completed" || n.status === "failed")
-      if (allDone) break
-
-      const hasFailed = activeNodes.some(n => n.status === "failed")
-      if (hasFailed) {
-        // Bir görev çöktüyse zinciri bozup iptal et
-        const pending = activeNodes.filter(n => n.status === "pending")
-        for (const p of pending) {
-          p.status = "failed"
-          p.error = "Cancelled due to dependency failure"
-          errors[p.id] = p.error
-        }
-        break
-      }
-
-      // Çalışmaya hazır düğümleri bul (dependencies completed olanlar)
-      const runnable = activeNodes.filter(n => {
-        if (n.status !== "pending") return false
-        return n.dependencies.every(depId => {
-          const dep = this.nodes.get(depId)
-          return dep && dep.status === "completed"
-        })
-      })
-
-      if (runnable.length === 0) {
-        // Hiç runnable yok ama hala tamamlanmamış/çalışanlar var, bekle
-        const running = activeNodes.filter(n => n.status === "running")
-        if (running.length === 0) {
-          // Kilitlenme (Deadlock)
-          throw new Error("Orchestration deadlock: no running or runnable nodes")
-        }
-        // Kısa bir süre uyu ve tekrar kontrol et
-        await new Promise(r => setTimeout(r, 200))
-        continue
-      }
-
-      // Runnable'ları paralel başlat
-      await Promise.all(
-        runnable.map(async (node) => {
-          node.status = "running"
-          try {
-            // Ajanın prompt'unu bağımlı olduğu çıktıları enjekte edecek şekilde zenginleştir
-            let enrichedPrompt = node.prompt
-            if (node.dependencies.length > 0) {
-              enrichedPrompt += "\n\n[DEPENDENT TASK OUTPUTS]\n"
-              for (const depId of node.dependencies) {
-                const dep = this.nodes.get(depId)
-                if (dep?.output) {
-                  enrichedPrompt += `--- Output from '${depId}' (${dep.agentType}) ---\n${dep.output}\n`
-                }
-              }
-            }
-
-            const result = await agentPool.spawn({
-              id: node.id,
-              agentType: node.agentType,
-              desc: node.desc,
-              prompt: enrichedPrompt,
-              provider: opts.provider,
-              model: opts.model,
-              workdir: opts.workdir,
-              sessionId: opts.parentSessionId,
-              workerSessionId: node.id,
-            })
-
-            node.status = "completed"
-            node.output = result
-            outputs[node.id] = result
-          } catch (err) {
-            node.status = "failed"
-            node.error = err instanceof Error ? err.message : String(err)
-            errors[node.id] = node.error
-          }
-        })
-      )
+    const scope = taskManager.configureScope(opts.workdir, opts.parentSessionId)
+    for (const node of this.nodes.values()) {
+      if (!taskManager.getTask(node.id, scope)) taskManager.createTask(node.id, node.desc, node.dependencies, scope)
     }
 
-    return { outputs, errors }
+    while ([...this.nodes.values()].some(node => node.status === "pending")) {
+      this.blockFailedDescendants(errors, scope)
+      const ready = [...this.nodes.values()].filter(node =>
+        node.status === "pending"
+        && node.dependencies.every(dependency => this.nodes.get(dependency)?.status === "completed")
+      )
+      const batch = selectNonConflicting(ready, opts.maxConcurrency ?? Number.POSITIVE_INFINITY)
+      if (batch.length === 0) {
+        if ([...this.nodes.values()].every(node => node.status !== "pending")) break
+        throw new Error("Orchestration deadlock: no runnable nodes")
+      }
+      await Promise.all(batch.map(node => this.executeNode(node, opts, outputs, errors, scope)))
+    }
+
+    return {
+      outputs,
+      errors,
+      statuses: Object.fromEntries([...this.nodes].map(([id, node]) => [id, node.status])),
+    }
   }
+
+  private async executeNode(
+    node: DAGNode,
+    opts: DAGRunOptions,
+    outputs: Record<string, string>,
+    errors: Record<string, string>,
+    scope: ReturnType<typeof taskManager.configureScope>,
+  ): Promise<void> {
+    node.status = "running"
+    taskManager.updateTask(node.id, { status: "in_progress", owner: node.agentType }, scope)
+    const maxAttempts = Math.max(1, node.maxAttempts ?? 2)
+    while ((node.attempts ?? 0) < maxAttempts) {
+      node.attempts = (node.attempts ?? 0) + 1
+      try {
+        const result = await this.spawnWorker({
+          id: node.id,
+          agentType: node.agentType,
+          desc: node.desc,
+          prompt: this.enrichedPrompt(node),
+          provider: opts.provider,
+          model: opts.model,
+          workdir: opts.workdir,
+          sessionId: opts.parentSessionId,
+          workerSessionId: node.id,
+        })
+        node.status = "completed"
+        node.output = result
+        outputs[node.id] = result
+        taskManager.completeTask(node.id, result, scope)
+        return
+      } catch (error) {
+        node.error = error instanceof Error ? error.message : String(error)
+      }
+    }
+    node.status = "failed"
+    errors[node.id] = node.error ?? "Worker failed"
+    taskManager.failTask(node.id, errors[node.id]!, scope)
+  }
+
+  private enrichedPrompt(node: DAGNode): string {
+    const dependencyOutputs = node.dependencies
+      .map(id => this.nodes.get(id))
+      .filter((dependency): dependency is DAGNode => Boolean(dependency?.output))
+      .map(dependency => `--- Output from '${dependency.id}' (${dependency.agentType}) ---\n${dependency.output}`)
+    return dependencyOutputs.length === 0
+      ? node.prompt
+      : `${node.prompt}\n\n[DEPENDENT TASK OUTPUTS]\n${dependencyOutputs.join("\n")}`
+  }
+
+  private blockFailedDescendants(errors: Record<string, string>, scope: ReturnType<typeof taskManager.configureScope>): void {
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const node of this.nodes.values()) {
+        if (node.status !== "pending") continue
+        const blocker = node.dependencies.map(id => this.nodes.get(id)).find(dep => dep?.status === "failed" || dep?.status === "blocked")
+        if (!blocker) continue
+        node.status = "blocked"
+        node.error = `Blocked by failed dependency '${blocker.id}'`
+        errors[node.id] = node.error
+        taskManager.updateTask(node.id, { status: "blocked", error: node.error }, scope)
+        changed = true
+      }
+    }
+  }
+
+  private validate(nodes: DAGNode[]): void {
+    const ids = new Set(nodes.map(node => node.id))
+    if (ids.size !== nodes.length) throw new Error("Duplicate node ID in DAG")
+    for (const node of nodes) {
+      for (const dependency of node.dependencies) {
+        if (!ids.has(dependency)) throw new Error(`Unknown dependency '${dependency}' for node '${node.id}'`)
+      }
+    }
+    const visited = new Set<string>()
+    const visiting = new Set<string>()
+    const byId = new Map(nodes.map(node => [node.id, node]))
+    const visit = (id: string): void => {
+      if (visiting.has(id)) throw new Error(`Cycle detected in DAG task dependencies at node '${id}'`)
+      if (visited.has(id)) return
+      visiting.add(id)
+      for (const dependency of byId.get(id)?.dependencies ?? []) visit(dependency)
+      visiting.delete(id)
+      visited.add(id)
+    }
+    for (const node of nodes) visit(node.id)
+  }
+}
+
+function selectNonConflicting(nodes: DAGNode[], limit: number): DAGNode[] {
+  const selected: DAGNode[] = []
+  for (const node of nodes) {
+    if (selected.length >= limit) break
+    if (selected.some(other => scopesConflict(node.fileScopes ?? [], other.fileScopes ?? []))) continue
+    selected.push(node)
+  }
+  return selected
+}
+
+function scopesConflict(left: string[], right: string[]): boolean {
+  if (left.length === 0 || right.length === 0) return false
+  return left.some(a => right.some(b => a === "*" || b === "*" || a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`)))
 }

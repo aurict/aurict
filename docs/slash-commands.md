@@ -58,7 +58,10 @@ Switch the active session agent: `omni`, `plan`, `review`, or any custom agent d
 Toggle multi-agent coordinator mode. When enabled, the coordinator breaks tasks into subtasks and routes them to specialist worker agents.
 
 ### `/autopilot`
-Toggle autopilot mode — auto-approves all permission prompts. Use with care; intended for trusted automated workflows.
+Toggle Project Auto for the current project (alias: `/auto`). Project Auto approves only bounded
+`write`, `edit`, and `apply_patch` requests inside the active project. Shell commands, secrets,
+`.git/.aurict`, paths outside the project, dangerous requests, and broad deletions still require
+direct approval. Changing the active workdir disables the mode and opens a new Yes/No choice.
 
 ### `/agents`
 List custom agents defined in `.aurict/agents/`. Shows name, type, and activation status.

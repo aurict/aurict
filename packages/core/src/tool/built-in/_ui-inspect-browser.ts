@@ -17,6 +17,8 @@ export type BrowserPage = {
   locator?(selector: string): unknown
   $(selector: string): Promise<unknown>
   accessibility?: unknown
+  keyboard?: { press(key: string): Promise<unknown> }
+  screenshot?(opts?: unknown): Promise<unknown>
   close(): Promise<unknown>
 }
 

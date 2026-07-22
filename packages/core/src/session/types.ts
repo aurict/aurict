@@ -23,4 +23,5 @@ export interface SessionConfig {
   provider: string
   model: string
   system?: string
+  workdir?: string
 }

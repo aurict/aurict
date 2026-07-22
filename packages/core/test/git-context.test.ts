@@ -112,4 +112,23 @@ describe("git_context", () => {
     expect(res.output).toContain("lib.ts")
     expect(res.output).toContain("lib.test.ts")
   })
+
+  it("supports pickaxe, blame ranges, and historical file reads", async () => {
+    const { gitContextTool } = await import("../src/tool/built-in/git-context.js")
+    const pickaxe = await gitContextTool.execute(
+      { action: "pickaxe", files: ["lib.ts"], query: "temporary", max_count: 10 },
+      ctx(repoDir),
+    )
+    expect(pickaxe.output).toContain("fix: add validation note")
+    const blame = await gitContextTool.execute(
+      { action: "blame_range", files: ["lib.ts"], start_line: 2, end_line: 2, max_count: 10 },
+      ctx(repoDir),
+    )
+    expect(blame.output).toContain('"line": 2')
+    const historical = await gitContextTool.execute(
+      { action: "show_at_ref", files: ["lib.ts"], ref: "HEAD~2", max_count: 10 },
+      ctx(repoDir),
+    )
+    expect(historical.output).not.toContain("HACK")
+  })
 })

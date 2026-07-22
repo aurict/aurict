@@ -15,6 +15,7 @@ import { PromptInput } from "../PromptInput.js";
 import { QuestionPrompt } from "../QuestionPrompt.js";
 import { QuickSearch } from "../QuickSearch.js";
 import { SettingsPanel } from "../SettingsPanel.js";
+import { TranscriptSearch } from "../TranscriptSearch.js";
 
 type ComponentConfig<T extends React.ElementType> = React.ComponentProps<T> | null;
 
@@ -23,6 +24,7 @@ export interface AppOverlayContentsProps {
   theme: Theme;
   keyboardShortcuts: ComponentConfig<typeof KeyboardShortcuts>;
   historySearch: ComponentConfig<typeof HistorySearch>;
+  transcriptSearch: ComponentConfig<typeof TranscriptSearch>;
   quickSearch: ComponentConfig<typeof QuickSearch>;
   commandPalette: ComponentConfig<typeof CommandPalette>;
   settings: ComponentConfig<typeof SettingsPanel>;
@@ -48,6 +50,8 @@ export function AppOverlayContents(props: AppOverlayContentsProps) {
       return <KeyboardShortcuts {...requireConfig(props.activeLayer, props.keyboardShortcuts)} />;
     case "historySearch":
       return <HistorySearch {...requireConfig(props.activeLayer, props.historySearch)} />;
+    case "transcriptSearch":
+      return <TranscriptSearch {...requireConfig(props.activeLayer, props.transcriptSearch)} />;
     case "quickSearch":
       return <QuickSearch {...requireConfig(props.activeLayer, props.quickSearch)} />;
     case "commandPalette":
@@ -67,6 +71,7 @@ export function AppOverlayContents(props: AppOverlayContentsProps) {
     case "question":
       return <QuestionPrompt {...requireConfig(props.activeLayer, props.question)} />;
     case "permission":
+    case "projectAuto":
       return null;
     case "attach": {
       const attachmentInput = requireConfig(props.activeLayer, props.attachmentInput);

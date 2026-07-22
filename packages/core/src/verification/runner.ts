@@ -1,6 +1,7 @@
 import { join } from "node:path"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { createHash } from "node:crypto"
+import { fingerprintWorkspaceRevision } from "../transaction/workspace-revision.js"
 
 const TEST_TIMEOUT_MS = 30_000
 
@@ -92,7 +93,7 @@ function detectFramework(workdir: string): Framework | null {
   }
 
   // dotnet test (C#)
-  if (hasFile(workdir, "*.sln") || hasFile(workdir, "*.csproj")) {
+  if (readdirSync(workdir, { withFileTypes: true }).some(entry => entry.isFile() && /\.(sln|csproj)$/.test(entry.name))) {
     return {
       name: "dotnet",
       command: () => ["dotnet", "test", "--no-build", "-q"],
@@ -114,8 +115,14 @@ const CACHE_TTL_MS = 60_000
 const MAX_CACHE    = 100
 const cache        = new Map<string, CacheEntry>()
 
-function cacheKey(files: string[], workdir: string): string {
-  return createHash("sha1").update(workdir + files.sort().join(",")).digest("hex")
+async function cacheKey(files: string[], workdir: string, command: string[]): Promise<string> {
+  const revisionPaths = [
+    ...files,
+    "package.json", "tsconfig.json", "pyproject.toml", "go.mod", "Cargo.toml",
+    "bun.lock", "bun.lockb", "package-lock.json", "pnpm-lock.yaml",
+  ]
+  const revision = await fingerprintWorkspaceRevision(workdir, revisionPaths)
+  return createHash("sha1").update(workdir).update(command.join("\0")).update(revision.hash).digest("hex")
 }
 
 function cacheGet(key: string): CacheEntry | null {
@@ -144,6 +151,7 @@ export interface TestRunResult {
   passed:    boolean
   framework: string
   cached:    boolean
+  available: boolean
 }
 
 export async function runRelatedTests(
@@ -156,19 +164,19 @@ export async function runRelatedTests(
   if (!framework) {
     return {
       output:    "No test framework detected (checked: bun, vitest, jest, pytest, go, cargo, dotnet).",
-      passed:    true,
+      passed:    false,
+      available: false,
       framework: "none",
       cached:    false,
     }
   }
 
-  const key     = cacheKey(files, workdir)
+  const cmd = framework.command(files, workdir)
+  const key     = await cacheKey(files, workdir, cmd)
   const cached  = cacheGet(key)
   if (cached) {
-    return { ...cached, framework: framework.name, cached: true }
+    return { ...cached, framework: framework.name, cached: true, available: true }
   }
-
-  const cmd = framework.command(files, workdir)
 
   let output = ""
   let passed = false
@@ -213,7 +221,7 @@ export async function runRelatedTests(
   const entry: CacheEntry = { output, passed, ts: Date.now() }
   cacheSet(key, entry)
 
-  return { output, passed, framework: framework.name, cached: false }
+  return { output, passed, framework: framework.name, cached: false, available: true }
 }
 
 export { detectFramework }

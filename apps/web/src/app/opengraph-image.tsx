@@ -14,11 +14,11 @@ export default async function OgImage() {
     tr = false
   }
 
-  const badge     = tr ? "v1.0.7 · Açık Kaynak" : "v1.0.7 · Open Source"
+  const badge     = tr ? "En son sürüm · Açık Kaynak" : "Latest release · Open Source"
   const headline2 = tr ? "Kodlama Asistanı" : "Coding Assistant"
   const tagline   = tr
-    ? "Açık kaynak · Çoklu ajan · 9 sağlayıcı · IDE gerekmez"
-    : "Open-source · Multi-agent · 9 providers · No IDE required"
+    ? "Açık kaynak · Çoklu ajan · Sağlayıcı seçimi · IDE gerekmez"
+    : "Open-source · Multi-agent · Provider choice · No IDE required"
   const statLabels = tr
     ? ["uzman ajan", "bağlamsal yetenek", "yerel platform"]
     : ["specialist agents", "contextual skills", "native platforms"]

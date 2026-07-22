@@ -12,6 +12,7 @@ export interface WorkingSetItem {
   reason: string
   status?: "active" | "resolved" | "failed" | "passed" | "skipped" | undefined
   path?: string | undefined
+  workspaceRevision?: string | undefined
 }
 
 export interface WorkingSetSnapshot {
@@ -111,6 +112,27 @@ export function resolveCritiqueRequired(sessionId: string): WorkingSetSnapshot {
   const existing = set?.get("critique:pending")
   if (existing) set!.set("critique:pending", { ...existing, status: "resolved", lastSeenAt: Date.now() })
   critiqueLineCounters.delete(normalizeSessionId(sessionId))
+  return getWorkingSetSnapshot(sessionId)
+}
+
+export function recordVerificationRevision(
+  sessionId: string,
+  source: string,
+  status: "passed" | "failed" | "skipped",
+  workspaceRevision: string,
+  label: string,
+): WorkingSetSnapshot {
+  upsert(sessionId, {
+    id: `verification-revision:${source}`,
+    kind: "verification",
+    label: label.slice(0, 1_500),
+    score: status === "failed" ? 99 : 90,
+    lastSeenAt: Date.now(),
+    source,
+    reason: "revision-bound verification",
+    status,
+    workspaceRevision,
+  })
   return getWorkingSetSnapshot(sessionId)
 }
 

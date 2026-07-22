@@ -3,6 +3,7 @@
 import { useLocale } from "next-intl"
 import { CopyCommand } from "@/components/CopyCommand"
 import { Link } from "@/i18n/navigation"
+import { currentEditionLabel, providerCount } from "@/content/product-facts"
 import styles from "./LandingHero.module.css"
 
 const providers = ["Anthropic", "OpenAI", "Google", "xAI", "Azure", "AWS Bedrock", "Ollama", "OpenRouter"]
@@ -21,7 +22,7 @@ export function LandingHero() {
         </aside>
         <div className={styles.content}>
           <header className={styles.masthead}>
-            <p className={styles.version}>v1.2.5 · AGPLv3</p>
+            <p className={styles.version}>{currentEditionLabel} · AGPLv3</p>
             <p>{tr ? "masaüstü · terminal · mobil" : "desktop · terminal · mobile"}</p>
           </header>
           <h1>{tr ? <>İşiniz neredeyse,<br />Aurict orada.</> : <>One intelligence.<br />Every surface.</>}</h1>
@@ -45,7 +46,7 @@ export function LandingHero() {
       <div className={styles.providers}>
         <span>{tr ? "uyumlu" : "works with"}</span>
         {providers.map((provider) => <b key={provider}>{provider}</b>)}
-        <span>{tr ? "+1 daha — kendi anahtarını getir" : "+1 more — bring your own key"}</span>
+        <span>{tr ? `+${providerCount - providers.length} daha — kendi anahtarını getir` : `+${providerCount - providers.length} more — bring your own key`}</span>
       </div>
     </section>
   )

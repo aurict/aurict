@@ -1,29 +1,27 @@
-import { join, resolve } from "path";
+import { resolve } from "path";
 import { readFile } from "fs/promises";
 import { hooks } from "../hook/emitter.js";
 import { PermissionEvaluator } from "../permission/evaluator.js";
-import { PermissionGate, PermissionStore } from "../permission/store.js";
+import { PermissionStore } from "../permission/store.js";
 import { gateGuard } from "../permission/gateguard.js";
 import { SessionManager } from "../session/manager.js";
 import { classifyCommand } from "../terminal/classifier.js";
 import { chooseSandboxBackend } from "../terminal/sandbox.js";
 import { diagnosticsStore } from "../diagnostics/store.js";
 import { truncateOutput, resolveTruncationConfig } from "./truncation.js";
+import { storeToolOutputArtifact } from "./output-artifacts.js";
 import { toolResultCache } from "./cache.js";
 import { metrics } from "../util/metrics.js";
 import {
   shouldRunTsc,
-  runIncrementalTsc,
-  filterTscForFile,
 } from "../verification/tsc.js";
 import {
   detectHallucinations,
   formatHallucinationWarnings,
 } from "../verification/hallucination.js";
-import {
-  withTscVerification,
-  withVerification,
-} from "../verification/pipeline.js";
+import { withVerification } from "../verification/pipeline.js";
+import { schedulePostEditTsc } from "../verification/post-edit-scheduler.js";
+import { isAgentFeatureEnabled } from "../agent/runtime-features.js";
 import { runLanguageChecks } from "../verification/language-runners.js";
 import { loadConfig } from "../config/config.js";
 import { progressTracker, getToolProgressMessage } from "../util/progress.js";
@@ -38,16 +36,38 @@ import { distillToolResult } from "./result-distiller.js";
 import {
   updateWorkingSetFromTool,
   recordLinesChangedForCritique,
+  getWorkingSetSnapshot,
+  recordVerificationRevision,
 } from "../agent/working-set.js";
 import { acquireFileLock, releaseFileLock } from "../agent/file-lock.js";
 import { recordFailureCooldown } from "../agent/failure-cooldown.js";
 import { failedStrategiesStore } from "../agent/failed-strategies-store.js";
 import { recordRunTrace } from "../agent/run-trace.js";
-import { recordFlightFailure, type FlightReplayPolicy } from "../diagnostics/flight-recorder.js";
+import { recordFlightFailure } from "../diagnostics/flight-recorder.js";
 import type { ToolDef, ToolContext, ExecuteResult } from "./types.js";
+import { toolOutcomeFromExecuteResult } from "../runtime/tool-outcome.js";
+import { WorkspaceTransaction, mutationPathsForTool } from "../transaction/workspace-transaction.js";
+import { fingerprintWorkspaceRevision } from "../transaction/workspace-revision.js";
+import {
+  affectedPatchPaths,
+  analyzeToolError,
+  approvePermission,
+  flightReplayPolicy,
+  isInsideWorkdir,
+  isPermissionApproved,
+  normalizeKnownToolArgs,
+  normalizePermissionPattern,
+  patchPattern,
+  patchPermissionMetadata,
+  verifyLocalImports,
+  waitForPermission,
+  withTimeout,
+  withToolTimeout,
+} from "./execution-helpers.js";
+
+export { normalizeKnownToolArgs } from "./execution-helpers.js";
 import type {
   PermissionRequest,
-  PermissionResponse,
 } from "../permission/types.js";
 import {
   filterPatchTextByFiles,
@@ -73,334 +93,13 @@ export const ExecutorEvents = {
   },
 };
 
-// Default max time a single tool call is allowed to run before it's aborted.
-// Individual tools can override this with ToolDef.timeoutMs.
-const TOOL_EXEC_TIMEOUT_MS = 120_000; // 2 minutes default
-const PERMISSION_PROMPT_TIMEOUT_MS = 60_000;
-const POST_EDIT_TSC_TIMEOUT_MS = 6_000;
+const POST_EDIT_LANGUAGE_TIMEOUT_MS = 30_000;
 const POST_EDIT_ANALYSIS_TIMEOUT_MS = 3_000;
 const POST_EDIT_TEST_DISCOVERY_TIMEOUT_MS = 3_000;
 const HOOK_TIMEOUT_MS = 5_000;
 
 // ── TypeScript file regex ──────────────────────────────────────────────────────
 const TYPED_FILE_RE = /\.(ts|tsx|js|jsx|mts|cts)$/;
-
-function analyzeToolError(toolId: string, error: string): string {
-  const e = error.toLowerCase();
-  let hint = "";
-  if (/cannot find module|module not found/.test(e))
-    hint =
-      "Module resolution failure — check path spelling, file existence, or whether a build step is needed.";
-  else if (/error ts\d+|\.tsx?.*:\d+:\d+/.test(e))
-    hint =
-      "TypeScript error — run 'tsc --noEmit' for the full error list before retrying.";
-  else if (/permission denied|eacces/.test(e))
-    hint = "Permission denied — check file/directory permissions.";
-  else if (toolId === "bash" && /command not found|not found/.test(e))
-    hint = "Binary not in PATH — check if it's installed: which <binary>";
-  else if (/eaddrinuse|address already in use/.test(e))
-    hint = "Port already in use — find the process: lsof -i :<port>";
-  else if (/no such file or directory|enoent/.test(e))
-    hint = "Path doesn't exist — verify with: ls -la <parent-dir>";
-  else if (/syntax error/.test(e))
-    hint =
-      "Syntax error — check for mismatched quotes, braces, or missing semicolons.";
-  else if (/out of memory|killed/.test(e))
-    hint =
-      "Process killed (OOM or ulimit) — operation requires too much memory.";
-  return hint ? `${error}\n[Hint] ${hint}` : error;
-}
-
-function flightReplayPolicy(
-  def: ToolDef,
-  args: Record<string, unknown>,
-): { policy: FlightReplayPolicy; reason?: string } {
-  if (def.id === "bash") {
-    const action = String(args["action"] ?? "run");
-    if (action !== "run") return { policy: "blocked", reason: `Bash action '${action}' is stateful` };
-    const analysis = classifyCommand(String(args["command"] ?? ""));
-    if (analysis.level === "danger") return { policy: "blocked", reason: analysis.reason };
-    return analysis.isReadOnly
-      ? { policy: "safe" }
-      : { policy: "confirm", reason: analysis.reason };
-  }
-  if (def.spec?.category === "read") return { policy: "safe" };
-  if (def.spec?.category === "execute") return { policy: "confirm", reason: "Execution may mutate workspace state" };
-  return { policy: "blocked", reason: `${def.spec?.category ?? "unknown"} tools are not replayed automatically` };
-}
-
-// C: Pre-verify named imports from existing local modules before write/edit
-const MAX_IMPORT_CHECKS = 4;
-const MAX_TARGET_BYTES = 100_000;
-
-function escapeRegexC(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-async function verifyLocalImports(
-  content: string,
-  absFilePath: string,
-  workdir: string,
-): Promise<string | null> {
-  const dir = absFilePath.includes("/")
-    ? absFilePath.slice(0, absFilePath.lastIndexOf("/"))
-    : workdir;
-  const re = /import\s+(?:type\s+)?\{([^}]+)\}\s+from\s+['"](\.[^'"]+)['"]/g;
-  const issues: string[] = [];
-  let m: RegExpExecArray | null;
-  let checks = MAX_IMPORT_CHECKS;
-
-  while ((m = re.exec(content)) !== null && checks-- > 0) {
-    const namesRaw = m[1] ?? "";
-    const fromPath = m[2] ?? "";
-    if (!fromPath) continue;
-
-    const base = resolve(dir, fromPath);
-    const candidates = [
-      base,
-      base + ".ts",
-      base + ".tsx",
-      base + ".js",
-      base + ".jsx",
-      base + ".mts",
-      base + "/index.ts",
-      base + "/index.tsx",
-      base + "/index.js",
-    ];
-
-    let targetFile: string | null = null;
-    for (const c of candidates) {
-      try {
-        if (await Bun.file(c).exists()) {
-          targetFile = c;
-          break;
-        }
-      } catch {}
-    }
-    if (!targetFile) continue; // doesn't exist yet — skip (may be created later)
-
-    try {
-      const f = Bun.file(targetFile);
-      if (f.size > MAX_TARGET_BYTES) continue;
-      const src = await f.text();
-
-      const names = namesRaw
-        .split(",")
-        .map((n) =>
-          n
-            .trim()
-            .replace(/\s+as\s+\w+$/, "")
-            .replace(/^type\s+/, "")
-            .trim(),
-        )
-        .filter((n) => n && n !== "*");
-
-      for (const name of names) {
-        const escaped = escapeRegexC(name);
-        const exportRe = new RegExp(`\\bexport\\b[^;\\n]*\\b${escaped}\\b`);
-        if (!exportRe.test(src))
-          issues.push(`'${name}' not exported from ${fromPath}`);
-      }
-    } catch {}
-  }
-
-  return issues.length > 0 ? issues.join("; ") : null;
-}
-
-function withToolTimeout<T>(
-  promise: Promise<T>,
-  def: ToolDef,
-  onTimeout: () => void,
-): Promise<T> {
-  const ms = def.timeoutMs ?? TOOL_EXEC_TIMEOUT_MS;
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => {
-      onTimeout(); // execAC'yi abort et → tool ctx.signal'i görür
-      reject(
-        new Error(
-          `Tool '${def.id}' timed out after ${ms / 1000}s — aborted to prevent freeze`,
-        ),
-      );
-    }, ms);
-    promise.then(
-      (v) => {
-        clearTimeout(t);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(t);
-        reject(e);
-      },
-    );
-  });
-}
-
-function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  onTimeout?: () => void,
-): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      try {
-        onTimeout?.();
-      } catch {}
-      reject(new Error(`operation timed out after ${ms / 1000}s`));
-    }, ms);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (err) => {
-        clearTimeout(timer);
-        reject(err);
-      },
-    );
-  });
-}
-
-// Returns true when the file path is safely inside the project workdir.
-// Subagents auto-approve writes inside their workdir scope.
-function isInsideWorkdir(filePath: string, workdir: string): boolean {
-  const resolved = filePath.startsWith("/")
-    ? filePath
-    : join(workdir, filePath);
-  const norm = workdir.endsWith("/") ? workdir : workdir + "/";
-  return resolved.startsWith(norm) || resolved === workdir;
-}
-
-function patchPattern(summary: PatchSummary): string {
-  const files = summary.files.flatMap((file) =>
-    file.action === "move" && file.targetPath
-      ? [file.path, file.targetPath]
-      : [file.path],
-  );
-  if (files.length === 0) return "*";
-  if (files.length <= 3) return files.join(", ");
-  return `${files.slice(0, 3).join(", ")} +${files.length - 3} more`;
-}
-
-function patchPermissionMetadata(
-  summary: PatchSummary,
-  patchText?: string,
-  granular = false,
-): Pick<PermissionRequest, "files" | "diff" | "patch"> {
-  return {
-    files: summary.files.map((file) => {
-      const entry: NonNullable<PermissionRequest["files"]>[number] = {
-        path: file.path,
-        action: file.action,
-      };
-      if (file.targetPath) entry.targetPath = file.targetPath;
-      return entry;
-    }),
-    diff: {
-      added: summary.added,
-      removed: summary.removed,
-      fileCount: summary.files.length,
-    },
-    ...(patchText ? { patch: { text: patchText, granular } } : {}),
-  };
-}
-
-function affectedPatchPaths(summary: PatchSummary): string[] {
-  return [
-    ...new Set(
-      summary.files.flatMap((file) =>
-        file.action === "move" && file.targetPath
-          ? [file.path, file.targetPath]
-          : [file.path],
-      ),
-    ),
-  ];
-}
-
-function normalizePermissionPattern(
-  defId: string,
-  pattern: string,
-  workdir: string,
-): string {
-  if (defId !== "write" && defId !== "edit" && defId !== "apply_patch")
-    return pattern;
-  return resolve(workdir, pattern);
-}
-
-function isPermissionApproved(
-  defId: string,
-  pattern: string,
-  patchSummary: PatchSummary | undefined,
-  workdir: string,
-  scope: string,
-): boolean {
-  if (patchSummary) {
-    const paths = affectedPatchPaths(patchSummary);
-    return (
-      paths.length > 0 &&
-      paths.every((filePath) =>
-        PermissionStore.isApproved(
-          defId,
-          normalizePermissionPattern(defId, filePath, workdir),
-          scope,
-        ),
-      )
-    );
-  }
-  return PermissionStore.isApproved(
-    defId,
-    normalizePermissionPattern(defId, pattern, workdir),
-    scope,
-  );
-}
-
-function approvePermission(
-  defId: string,
-  pattern: string,
-  patchSummary: PatchSummary | undefined,
-  directory: boolean,
-  workdir: string,
-  scope: string,
-): void {
-  if (patchSummary) {
-    for (const filePath of affectedPatchPaths(patchSummary)) {
-      const normalized = normalizePermissionPattern(defId, filePath, workdir);
-      if (directory) PermissionStore.approveDirectory(defId, normalized, scope);
-      else PermissionStore.approve(defId, normalized, scope);
-    }
-    return;
-  }
-  const normalized = normalizePermissionPattern(defId, pattern, workdir);
-  if (directory) PermissionStore.approveDirectory(defId, normalized, scope);
-  else PermissionStore.approve(defId, normalized, scope);
-}
-
-function waitForPermission(
-  id: string,
-  ctx: ToolContext,
-): Promise<PermissionResponse> {
-  return PermissionGate.wait(id, {
-    signal: ctx.signal,
-    timeoutMs: PERMISSION_PROMPT_TIMEOUT_MS,
-  });
-}
-
-const TODO_ACTIONS = new Set(["list", "add", "complete", "delete"]);
-
-/** Repairs one documented, side-effect-free argument alias emitted by weaker models.
- * The repair runs before schema validation; execution still uses the exact validated action. */
-export function normalizeKnownToolArgs(
-  toolId: string,
-  rawArgs: Record<string, unknown>,
-): Record<string, unknown> {
-  if (
-    toolId !== "todo" ||
-    rawArgs["action"] !== undefined ||
-    typeof rawArgs["list"] !== "string"
-  )
-    return rawArgs;
-  if (!TODO_ACTIONS.has(rawArgs["list"])) return rawArgs;
-  return { ...rawArgs, action: rawArgs["list"] };
-}
 
 export async function executeTool(
   def: ToolDef,
@@ -435,6 +134,7 @@ export async function executeTool(
   }
   let patchSummary: PatchSummary | undefined;
   let preWriteContent: string | undefined;
+  let importPrecheckWarning: string | undefined;
   if (def.id === "apply_patch") {
     try {
       patchSummary = summarizePatchText(String(args["patchText"] ?? ""));
@@ -829,10 +529,7 @@ export async function executeTool(
         ctx.workdir,
       );
       if (importIssues) {
-        return {
-          output: "",
-          error: `[Import pre-check] ${importIssues}. Verify the export names exist before writing.`,
-        };
+        importPrecheckWarning = `[Import pre-check warning] ${importIssues}. The edit was allowed because barrels, re-exports, and ambient declarations can produce false positives; verify with the compiler.`;
       }
     }
   }
@@ -840,7 +537,12 @@ export async function executeTool(
   // --- Tool Result Cache check (pre-execute) ---
   // Cacheable tool'lar için cache'den sonuç al, varsa execute etme
   const cacheScope = `${resolve(ctx.workdir)}\0${ctx.sessionId || "anonymous"}`;
-  const cachedResult = toolResultCache.get(def.id, args, cacheScope);
+  const validateCacheSource = isAgentFeatureEnabled(
+    "mtime_tool_cache",
+    toolResultCache.isCacheable(def.id) ? loadConfig(ctx.workdir) : {},
+    ctx.sessionId,
+  );
+  const cachedResult = toolResultCache.get(def.id, args, cacheScope, validateCacheSource);
   if (cachedResult) {
     // Cache hit — execute etmeden dön
     const durationMs = 0;
@@ -913,6 +615,16 @@ export async function executeTool(
   const start = Date.now();
   let result: ExecuteResult;
   let execError: string | null = null;
+  const verificationPaths = def.id === "verify"
+    ? verificationPathsForSession(ctx, args)
+    : [];
+  const verificationBase = verificationPaths.length > 0
+    ? await fingerprintWorkspaceRevision(ctx.workdir, verificationPaths)
+    : undefined;
+  const transaction = await WorkspaceTransaction.begin(
+    ctx.workdir,
+    mutationPathsForTool(def.id, args),
+  );
 
   try {
     result = await withToolTimeout(def.execute(args, execCtx), def, () =>
@@ -927,6 +639,41 @@ export async function executeTool(
       const absLockPath = resolve(ctx.workdir, lockTargetPath);
       releaseFileLock(ctx.workdir, absLockPath, ctx.sessionId).catch(() => {});
     }
+  }
+
+  if (transaction) {
+    const committed = await transaction.commit();
+    const transactionRecord = result.error ? await transaction.rollback() : committed;
+    result = {
+      ...result,
+      metadata: { ...result.metadata, transaction: transactionRecord },
+      ...(transactionRecord.status === "rollback_conflict"
+        ? { error: `${result.error ?? "Tool failed"}\n[transaction] Rollback refused because the file changed after this tool attempt.` }
+        : {}),
+    };
+  }
+
+  if (!result.error && importPrecheckWarning) {
+    result = { ...result, output: `${result.output}\n\n${importPrecheckWarning}` };
+  }
+
+  if (verificationBase && result.metadata?.verification) {
+    const current = await fingerprintWorkspaceRevision(ctx.workdir, verificationPaths);
+    const changedDuringVerification = current.hash !== verificationBase.hash;
+    const verification = Object.fromEntries(
+      Object.entries(result.metadata.verification).map(([check, checkResult]) => {
+        if (!checkResult) return [check, checkResult];
+        return [check, {
+          ...checkResult,
+          baseRevision: verificationBase.hash,
+          workspaceRevision: current.hash,
+          ...(changedDuringVerification && checkResult.status === "passed"
+            ? { status: "failed", reason: "workspace changed during verification" }
+            : {}),
+        }];
+      }),
+    ) as NonNullable<NonNullable<ExecuteResult["metadata"]>["verification"]>;
+    result = { ...result, metadata: { ...result.metadata, verification } };
   }
 
   // --- Faz 6: Progress tracking bitir ---
@@ -959,7 +706,7 @@ export async function executeTool(
   // --- Tool Result Cache write (post-execute) ---
   // Cache miss ise sonucu cache'e yaz (sadece başarılı sonuçlar)
   if (!cachedResult && !result.error) {
-    toolResultCache.set(def.id, args, result.output, result.error, cacheScope);
+    toolResultCache.set(def.id, args, result.output, result.error, cacheScope, validateCacheSource);
   }
   metrics.record(def.id, durationMs, false);
 
@@ -984,11 +731,17 @@ export async function executeTool(
   if (result.error) {
     result = { ...result, error: analyzeToolError(def.id, result.error) };
   } else if (result.output) {
-    const truncCfg = resolveTruncationConfig(def.id, ctx.truncation);
+    const truncCfg = resolveTruncationConfig(def.id, ctx.truncation, ctx.contextWindow);
     if (result.output.length > truncCfg.maxChars) {
+      const stored = await storeToolOutputArtifact({
+        workdir: ctx.workdir,
+        sessionId: ctx.sessionId,
+        output: result.output,
+      });
+      const preview = truncateOutput(result.output, truncCfg, def.id);
       result = {
         ...result,
-        output: truncateOutput(result.output, truncCfg, def.id),
+        output: `${preview}\n\n[full output: ${stored.handle} · ${stored.chars} chars; continue with read_tool_output]`,
       };
     }
   }
@@ -1033,50 +786,20 @@ export async function executeTool(
 
       // shouldRunTsc: comment-only veya string-only change'lerde false döner
       if (shouldRunTsc(filePath, preWriteContent ?? "", postWriteContent)) {
-        try {
-          const tscOut = await withTimeout(
-            runIncrementalTsc(ctx.workdir, [filePath]),
-            POST_EDIT_TSC_TIMEOUT_MS,
-          );
-          const fileErr = filterTscForFile(tscOut, filePath);
-
-          if (fileErr && fileErr !== "✓") {
-            result = withTscVerification(result, {
-              status: "failed",
-              output: fileErr,
-            });
-            result = {
-              ...result,
-              output:
-                result.output +
-                `\n\n[TypeScript] Errors in this file after edit:\n${fileErr}`,
-            };
-          } else if (tscOut === "✓") {
-            result = withTscVerification(result, { status: "passed" });
-            result = {
-              ...result,
-              output: result.output + "\n[TypeScript] ✓ No errors",
-            };
-          } else {
-            result = withTscVerification(result, {
-              status: "passed",
-              reason: "no errors for changed file",
-            });
-          }
-        } catch {
-          result = withTscVerification(result, {
-            status: "timeout",
-            reason: "post-edit check timed out",
-          });
+        if (isAgentFeatureEnabled("background_verification", postEditCfg, ctx.sessionId)) {
+          schedulePostEditTsc({ sessionId: ctx.sessionId, workdir: ctx.workdir, filePath });
           result = {
             ...result,
-            output:
-              result.output +
-              "\n[TypeScript] Skipped (post-edit check timed out)",
+            output: result.output + "\n[TypeScript] Background verification scheduled; its revision-bound result will appear in the next agent state.",
+          };
+        } else {
+          result = {
+            ...result,
+            output: result.output + "\n[TypeScript] Automatic background verification is disabled; run verify before completion.",
           };
         }
       } else {
-        result = withTscVerification(result, {
+        result = withVerification(result, "tsc", {
           status: "skipped",
           reason: "non-type change",
         });
@@ -1115,7 +838,7 @@ export async function executeTool(
               ? { autoLint: verificationCfg.autoLint }
               : {}),
           }),
-          POST_EDIT_TSC_TIMEOUT_MS,
+          POST_EDIT_LANGUAGE_TIMEOUT_MS,
         );
         for (const check of checks) {
           result = withVerification(result, check.checkId, {
@@ -1223,6 +946,18 @@ export async function executeTool(
     },
   };
   updateWorkingSetFromTool(ctx.sessionId, ctx.workdir, distilled);
+  const revisionCheck = Object.entries(result.metadata?.verification ?? {})
+    .map(([, check]) => check)
+    .find(check => check?.workspaceRevision);
+  if (revisionCheck?.workspaceRevision) {
+    recordVerificationRevision(
+      ctx.sessionId,
+      def.id,
+      revisionCheck.status === "passed" ? "passed" : revisionCheck.status === "skipped" ? "skipped" : "failed",
+      revisionCheck.workspaceRevision,
+      distilled.verification.join("; ") || result.output,
+    );
+  }
   if (cooldown?.strategyShiftRequired) {
     result = {
       ...result,
@@ -1259,6 +994,13 @@ export async function executeTool(
   }
 
   // durationMs zaten yukarıda (post-execute) hesaplandı
+
+  // Runtime doğruluk kararları kullanıcıya/model'e gösterilen string çıktıyı
+  // parse etmez. Built-in tool sonucu burada tek kez typed outcome'a çevrilir.
+  result = {
+    ...result,
+    outcome: toolOutcomeFromExecuteResult(def, result, durationMs),
+  };
 
   // --- v1.tool.after hook (outcome-aware) ---
   const outcome = execError || result.error ? "error" : "success";
@@ -1343,6 +1085,16 @@ function isDestructiveOutsideWorkdir(
 
 function usesShellFileReader(command: string): boolean {
   return /(?:^|[;&|]\s*)(?:(?:command|env|time)\s+)*(?:cat|head|tail|less|more|grep|rg)\b/.test(command)
+}
+
+function verificationPathsForSession(ctx: ToolContext, args: Record<string, unknown>): string[] {
+  const explicit = String(args["path"] ?? "");
+  if (explicit) return [explicit];
+  const changed = getWorkingSetSnapshot(ctx.sessionId).items
+    .filter(item => item.kind === "file" && item.reason === "changed file" && item.path)
+    .map(item => item.path!);
+  if (changed.length > 0) return changed;
+  return ["package.json", "tsconfig.json", "bun.lock", "bun.lockb"];
 }
 
 function extractPattern(

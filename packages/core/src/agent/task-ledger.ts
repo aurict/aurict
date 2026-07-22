@@ -107,12 +107,12 @@ export function formatTaskLedgerAnchor(ledger: TaskLedger, maxChars = 1_500): st
 
 function buildOpenSteps(tasks: ContinuationTaskState[] = []): LedgerStep[] {
   return tasks
-    .filter(task => task.status === "pending" || task.status === "in_progress")
+    .filter(task => ["pending", "ready", "in_progress", "verifying", "blocked"].includes(task.status))
     .slice(0, 12)
     .map((task, index) => ({
-      id: `task-${index + 1}`,
-      status: task.status === "in_progress" ? "in_progress" : "pending",
-      label: task.status,
+      id: task.id ?? `task-${index + 1}`,
+      status: task.status === "in_progress" || task.status === "verifying" ? "in_progress" : "pending",
+      label: task.subject?.trim() || task.id || `Task ${index + 1}`,
     }))
 }
 

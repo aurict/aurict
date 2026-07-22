@@ -4,16 +4,17 @@
  * doğrular.
  */
 import { describe, it, expect, mock } from "bun:test"
+import { randomUUID } from "node:crypto"
 import { ProviderRegistry } from "../src/provider/registry.js"
 import { createMockProvider, createMockContext, createTempDir } from "./helpers.js"
 import { markCritiqueRequired, getWorkingSetSnapshot, clearWorkingSet } from "../src/agent/working-set.js"
 
-const spawnCalls: Array<{ desc: string; prompt: string; model: string }> = []
+const spawnCalls: Array<{ desc: string; prompt: string; model: string; provider: string }> = []
 
 mock.module("../src/agent/pool.js", () => ({
   agentPool: {
-    spawn: async (opts: { desc: string; prompt: string; model: string }) => {
-      spawnCalls.push({ desc: opts.desc, prompt: opts.prompt, model: opts.model })
+    spawn: async (opts: { desc: string; prompt: string; model: string; provider: string }) => {
+      spawnCalls.push({ desc: opts.desc, prompt: opts.prompt, model: opts.model, provider: opts.provider })
       return `mock critic output for ${opts.desc}`
     },
   },
@@ -22,14 +23,25 @@ mock.module("../src/agent/pool.js", () => ({
 
 const { critiqueTool } = await import("../src/tool/built-in/critique.js")
 
+function nextCritiqueId(label: string): string {
+  return `${label}-${randomUUID()}`
+}
+
+function createCritiqueContext(options: Parameters<typeof createMockContext>[0] = {}) {
+  return createMockContext({
+    ...options,
+    sessionId: options.sessionId ?? nextCritiqueId("critique-session"),
+  })
+}
+
 describe("critiqueTool", () => {
   it("adversarial kapalıyken (varsayılan) tek bir critic spawn eder", async () => {
     spawnCalls.length = 0
     const { dir, cleanup } = createTempDir()
     try {
-      const ctx = createMockContext({ workdir: dir, provider: "anthropic" })
+      const ctx = createCritiqueContext({ workdir: dir, provider: "anthropic" })
       const result = await critiqueTool.execute(
-        { target: "code", content: "function foo() {}", context: `no-adversarial-${Date.now()}` },
+        { target: "code", content: "function foo() {}", context: nextCritiqueId("no-adversarial") },
         ctx,
       )
       expect(result.error).toBeUndefined()
@@ -46,9 +58,9 @@ describe("critiqueTool", () => {
     const { dir, cleanup, createFile } = createTempDir()
     createFile(".aurict/config.json", JSON.stringify({ critique: { adversarial: true } }))
     try {
-      const ctx = createMockContext({ workdir: dir, provider: "anthropic" })
+      const ctx = createCritiqueContext({ workdir: dir, provider: "anthropic" })
       const result = await critiqueTool.execute(
-        { target: "code", content: "function foo() {}", context: `adversarial-${Date.now()}` },
+        { target: "code", content: "function foo() {}", context: nextCritiqueId("adversarial") },
         ctx,
       )
       expect(result.error).toBeUndefined()
@@ -65,10 +77,10 @@ describe("critiqueTool", () => {
     ProviderRegistry.register(createMockProvider({ id: "test-critique-provider", defaultModel: "critique-default-model" }))
     const { dir, cleanup } = createTempDir()
     try {
-      const ctx = createMockContext({ workdir: dir, provider: "test-critique-provider" })
+      const ctx = createCritiqueContext({ workdir: dir, provider: "test-critique-provider" })
       ;(ctx as { model?: string }).model = undefined
       await critiqueTool.execute(
-        { target: "code", content: "x", context: `byok-${Date.now()}` },
+        { target: "code", content: "x", context: nextCritiqueId("byok") },
         ctx,
       )
       expect(spawnCalls[0]!.model).toBe("critique-default-model")
@@ -77,15 +89,31 @@ describe("critiqueTool", () => {
     }
   })
 
+  it("configured independent reviewer uses its own provider and model visibly", async () => {
+    spawnCalls.length = 0
+    ProviderRegistry.register(createMockProvider({ id: "reviewer-provider", defaultModel: "reviewer-default" }))
+    const { dir, cleanup, createFile } = createTempDir()
+    createFile(".aurict/config.json", JSON.stringify({ critique: { provider: "reviewer-provider", model: "reviewer-model" } }))
+    try {
+      const result = await critiqueTool.execute(
+        { target: "code", content: "x", context: nextCritiqueId("independent") },
+        createCritiqueContext({ workdir: dir, provider: "anthropic", model: "primary-model" }),
+      )
+      expect(spawnCalls[0]?.provider).toBe("reviewer-provider")
+      expect(spawnCalls[0]?.model).toBe("reviewer-model")
+      expect(result.output).toContain("independent")
+    } finally { cleanup() }
+  })
+
   it("çalıştırıldığında working-set'teki bekleyen critique kaydını çözer", async () => {
-    const sid = "critique-tool-resolve-test"
+    const sid = nextCritiqueId("critique-tool-resolve")
     markCritiqueRequired(sid, ["src/a.ts"], 80)
     expect(getWorkingSetSnapshot(sid).items.find(i => i.kind === "critique")?.status).toBe("active")
 
     const { dir, cleanup } = createTempDir()
     try {
       const ctx = createMockContext({ workdir: dir, provider: "anthropic", sessionId: sid })
-      await critiqueTool.execute({ target: "code", content: "x", context: `resolve-${Date.now()}` }, ctx)
+      await critiqueTool.execute({ target: "code", content: "x", context: nextCritiqueId("resolve") }, ctx)
       expect(getWorkingSetSnapshot(sid).items.find(i => i.kind === "critique")?.status).toBe("resolved")
     } finally {
       clearWorkingSet(sid)

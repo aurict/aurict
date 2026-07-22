@@ -118,6 +118,64 @@ Example `CLAUDE.md`:
 | `messageCountThreshold` | `100` | Compact when conversation exceeds this many messages |
 | `contextLimit` | model default | Override context window (tokens) |
 
+## Agent harness routing
+
+The core runtime dynamically selects a bounded set of tool capability packs for
+each request. This is enabled by default and can be tuned per project:
+
+```json
+{
+  "toolRouting": {
+    "enabled": true,
+    "maxVisible": 32
+  },
+  "routing": {
+    "enabled": true,
+    "budgetThresholdUsd": 1,
+    "maxSessionCostUsd": 10
+  }
+}
+```
+
+An explicit agent or subagent tool allowlist remains a hard upper bound: dynamic
+routing may remove tools from it but never adds tools outside it.
+
+### Tool output retention
+
+Without an explicit override, output limits scale with the selected model context window and remain
+bounded by tool type. Truncated output is retained under `.aurict/tool-results/<session>/` and can be
+continued by the agent with the `read_tool_output` handle shown in the result.
+
+```json
+{
+  "truncation": {
+    "strategy": "head_tail",
+    "maxChars": 24000,
+    "perTool": {
+      "read": { "maxChars": 48000 },
+      "bash": { "strategy": "smart" }
+    }
+  }
+}
+```
+
+Setting `maxChars` globally or per tool disables adaptive sizing for that scope.
+
+Housekeeping calls such as compaction summaries and memory extraction use an economy model when the provider exposes one. Pin this route when cost or data-boundary policy requires an explicit model:
+
+```json
+{
+  "utilityModel": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "maxInputTokens": 24000,
+    "maxOutputTokens": 1200
+  }
+}
+```
+
+Both `provider` and `model` are required together. Without a known economy model, Aurict emits a visible warning before using the primary model.
+
 ---
 
 ## GateGuard — protected paths
@@ -304,3 +362,32 @@ You can override this in config:
   }
 }
 ```
+## Agent intelligence tools
+
+Aurict routes advanced tools by task intent and keeps the model-visible catalog bounded.
+The following runtime features can be disabled through `agentFeatures.disabled`:
+
+- `multimodal_tools` — workspace `read_image` and multipart image results.
+- `code_navigation` — type-aware navigation and safe rename support.
+- `browser_drive` — bounded interactive Chromium sessions.
+- `semantic_search` — local mtime-invalidated hybrid source index.
+
+The tools remain subject to their normal permission policy. Browser access to external URLs,
+stateless code evaluation, project-wide rename apply, and AST apply require confirmation.
+
+Independent critique can be configured without changing the primary chat model:
+
+```json
+{
+  "critique": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "maxEstimatedCostUsd": 0.20,
+    "fallbackToPrimary": false,
+    "showReviewerIdentity": true
+  }
+}
+```
+
+When a cost ceiling is configured, unknown remote-model pricing fails visibly instead of
+silently bypassing the ceiling.

@@ -1,5 +1,10 @@
+import type { TurnStatusState } from "./turn-status.js"
+
 export interface ContinuationTaskState {
+  id?: string
+  subject?: string
   status: string
+  blockedBy?: string[]
 }
 
 export type ContinuationReason =
@@ -7,6 +12,7 @@ export type ContinuationReason =
   | "empty_response"
   | "stalled_text"
   | "open_tasks"
+  | "structured_continuing"
 
 export type ContinuationStopReason =
   | "complete"
@@ -18,6 +24,7 @@ export interface ContinuationSignal {
   finishReason?: string | undefined
   newMessageCount: number
   tasks?: ContinuationTaskState[]
+  structuredStatus?: TurnStatusState | undefined
 }
 
 export interface ContinuationBudget {
@@ -54,7 +61,7 @@ export function stalledMidTask(text: string): boolean {
 }
 
 export function hasOpenContinuationTasks(tasks: ContinuationTaskState[] = []): boolean {
-  return tasks.some((task) => task.status === "pending" || task.status === "in_progress")
+  return tasks.some((task) => ["pending", "ready", "in_progress", "verifying", "blocked"].includes(task.status))
 }
 
 export function shouldContinueAgentRun(signal: ContinuationSignal): boolean {
@@ -72,7 +79,7 @@ export function evaluateContinuation(signal: ContinuationSignal, budget: Continu
   if (!reason) {
     return {
       shouldContinue: false,
-      stopReason: reportsBlocker(signal.text) ? "blocked" : "complete",
+      stopReason: signal.structuredStatus === "blocked" || reportsBlocker(signal.text) ? "blocked" : "complete",
       previousContinuations,
       maxContinuations,
       nextContinuationCount: previousContinuations,
@@ -105,6 +112,9 @@ export function evaluateContinuation(signal: ContinuationSignal, budget: Continu
 function continuationReason(signal: ContinuationSignal, tasksOpen: boolean): ContinuationReason | undefined {
   if (finishReasonNeedsContinuation(signal.finishReason)) return "finish_reason"
   if (!signal.text.trim() && signal.newMessageCount > 0) return "empty_response"
+  if (signal.structuredStatus === "continuing") return "structured_continuing"
+  if (signal.structuredStatus === "blocked") return undefined
+  if (signal.structuredStatus === "done") return tasksOpen ? "open_tasks" : undefined
   if (stalledMidTask(signal.text)) return "stalled_text"
   if (tasksOpen && !reportsBlocker(signal.text)) return "open_tasks"
   return undefined

@@ -1,4 +1,7 @@
 import type { AppLocale } from "@/i18n/routing"
+import { providerCount, providerNames } from "@/content/product-facts"
+
+const providerSummary = providerNames.join(", ")
 
 const faqJsonLdEn = {
   "@context":  "https://schema.org",
@@ -12,7 +15,7 @@ const faqJsonLdEn = {
     {
       "@type":          "Question",
       "name":           "How is Aurict different from Claude Code?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Claude Code is tied to Anthropic only. Aurict supports 9 providers, ships with 9 specialist agents, 218+ auto-injected skills, a bash command classifier, and runs as a native binary — no Node.js runtime required." },
+      "acceptedAnswer": { "@type": "Answer", "text": `Claude Code is Anthropic-first. Aurict supports ${providerCount} built-in providers, 218+ auto-injected skills, a bash command classifier, and runs as a native binary — no Node.js runtime required.` },
     },
     {
       "@type":          "Question",
@@ -22,7 +25,7 @@ const faqJsonLdEn = {
     {
       "@type":          "Question",
       "name":           "Which AI providers does Aurict support?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Anthropic (Claude), OpenAI (GPT-4o, o1), Google (Gemini), OpenRouter, xAI (Grok), Azure OpenAI, AWS Bedrock, Ollama (local models), and OpenCode — switchable at any time with /providers." },
+      "acceptedAnswer": { "@type": "Answer", "text": `${providerSummary} — switchable at any time with /providers.` },
     },
     {
       "@type":          "Question",
@@ -37,7 +40,7 @@ const faqJsonLdEn = {
     {
       "@type":          "Question",
       "name":           "Can I use my existing MCP servers with Aurict?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes — Aurict reads your claude_desktop_config.json automatically. Any MCP server you have configured for Claude Desktop works immediately." },
+      "acceptedAnswer": { "@type": "Answer", "text": "Aurict can import compatible servers from claude_desktop_config.json. Use /mcp to confirm that each configured server connected and to inspect its available tools." },
     },
   ],
 }
@@ -54,7 +57,7 @@ const faqJsonLdTr = {
     {
       "@type":          "Question",
       "name":           "Aurict, Claude Code'tan nasıl farklı?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Claude Code yalnızca Anthropic'e bağlıdır. Aurict 9 sağlayıcıyı destekler, 9 uzman ajan, 218+ otomatik enjekte edilen beceri, bir bash komut sınıflandırıcıcısı ile gelir ve yerel bir ikili dosya olarak çalışır — Node.js çalışma zamanı gerekmez." },
+      "acceptedAnswer": { "@type": "Answer", "text": `Claude Code Anthropic odaklıdır. Aurict ${providerCount} yerleşik sağlayıcıyı, 218+ otomatik enjekte edilen beceriyi ve bir bash komut sınıflandırıcısını destekler; Node.js çalışma zamanı gerektirmeyen yerel bir ikili dosya olarak çalışır.` },
     },
     {
       "@type":          "Question",
@@ -64,7 +67,7 @@ const faqJsonLdTr = {
     {
       "@type":          "Question",
       "name":           "Aurict hangi yapay zeka sağlayıcılarını destekliyor?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Anthropic (Claude), OpenAI (GPT-4o, o1), Google (Gemini), OpenRouter, xAI (Grok), Azure OpenAI, AWS Bedrock, Ollama (yerel modeller) ve OpenCode — /providers ile istediğiniz zaman değiştirilebilir." },
+      "acceptedAnswer": { "@type": "Answer", "text": `${providerSummary} — /providers ile istediğiniz zaman değiştirilebilir.` },
     },
     {
       "@type":          "Question",
@@ -79,7 +82,7 @@ const faqJsonLdTr = {
     {
       "@type":          "Question",
       "name":           "Mevcut MCP sunucularımı Aurict ile kullanabilir miyim?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Evet — Aurict, claude_desktop_config.json dosyanızı otomatik olarak okur. Claude Desktop için yapılandırdığınız herhangi bir MCP sunucusu anında çalışır." },
+      "acceptedAnswer": { "@type": "Answer", "text": "Aurict, claude_desktop_config.json içindeki uyumlu sunucuları içe aktarabilir. Her yapılandırılmış sunucunun bağlandığını ve araçlarını /mcp ile doğrulayın." },
     },
   ],
 }
@@ -109,7 +112,7 @@ const howToJsonLdEn = {
       "@type":    "HowToStep",
       "position": 3,
       "name":     "Configure",
-      "text":     "On first launch, an interactive wizard guides you through selecting a provider, entering your API key, and choosing a model.",
+      "text":     "On first launch, choose a provider, enter your API key, select a model, then choose whether Project Auto may approve bounded file changes in this project for this session.",
       "url":      "https://aurict.com/docs",
     },
   ],
@@ -140,7 +143,7 @@ const howToJsonLdTr = {
       "@type":    "HowToStep",
       "position": 3,
       "name":     "Yapılandır",
-      "text":     "İlk başlatmada etkileşimli bir sihirbaz, bir sağlayıcı seçme, API anahtarınızı girme ve bir model seçme konusunda size rehberlik eder.",
+      "text":     "İlk başlatmada bir sağlayıcı seçin, API anahtarınızı girin, modeli belirleyin; ardından Project Auto'nun bu projedeki sınırlı dosya değişikliklerini yalnızca bu oturum için onaylamasını isteyip istemediğinizi seçin.",
       "url":      "https://aurict.com/docs",
     },
   ],
@@ -158,7 +161,6 @@ const jsonLdEn = {
       "url":                 "https://aurict.com",
       "downloadUrl":         "https://www.npmjs.com/package/aurict",
       "installUrl":          "https://www.npmjs.com/package/aurict",
-      "softwareVersion":     "1.2.8",
       "releaseNotes":        "https://aurict.com/changelog",
       "license":             "https://www.gnu.org/licenses/agpl-3.0.html",
       "author": {
@@ -177,7 +179,9 @@ const jsonLdEn = {
         "218+ auto-injected contextual skills",
         "Bash command classifier — dangerous commands require confirmation",
         "MCP client — reads claude_desktop_config.json",
-        "Multi-provider: Anthropic, OpenAI, OpenRouter, Google, xAI, Azure, AWS Bedrock, Ollama",
+        `Multi-provider: ${providerSummary}`,
+        "Project Auto for bounded project file changes; exceptions still require direct approval",
+        "Durable completion proof with verification evidence and open work",
         "Mobile BYOK AI assistant for chat, research, PDF generation, and reports",
         "Mobile CLI companion for browser login, permission approvals, and live session control",
         "Design agent wizard with 150+ design systems",
@@ -227,7 +231,6 @@ const jsonLdTr = {
       "url":                 "https://aurict.com",
       "downloadUrl":         "https://www.npmjs.com/package/aurict",
       "installUrl":          "https://www.npmjs.com/package/aurict",
-      "softwareVersion":     "1.2.8",
       "releaseNotes":        "https://aurict.com/changelog",
       "license":             "https://www.gnu.org/licenses/agpl-3.0.html",
       "author": {
@@ -246,7 +249,9 @@ const jsonLdTr = {
         "218+ otomatik enjekte edilen bağlamsal beceri",
         "Bash komut sınıflandırıcı — tehlikeli komutlar onay gerektirir",
         "MCP istemcisi — claude_desktop_config.json dosyasını okur",
-        "Çoklu sağlayıcı: Anthropic, OpenAI, OpenRouter, Google, xAI, Azure, AWS Bedrock, Ollama",
+        `Çoklu sağlayıcı: ${providerSummary}`,
+        "Proje içindeki sınırlı dosya değişiklikleri için Project Auto; istisnalar doğrudan onay gerektirir",
+        "Doğrulama kanıtı ve açık işleri içeren kalıcı tamamlanma kaydı",
         "Sohbet, araştırma, PDF oluşturma ve raporlar için mobil BYOK yapay zeka asistanı",
         "Tarayıcı girişi, izin onayları ve canlı oturum kontrolü için mobil CLI yoldaşı",
         "150+ tasarım sistemine sahip tasarım ajanı sihirbazı",
@@ -423,7 +428,7 @@ const FEATURES_EN: FeatureItem[] = [
     icon: "mcp",
     title: "MCP Client",
     description:
-      "Drop your claude_desktop_config.json and every MCP server you already use works immediately — filesystem, GitHub, Postgres, Slack, browser automation.",
+      "Import compatible claude_desktop_config.json entries, then inspect each connected MCP server and its tools before relying on it.",
     tag: "Integration",
     color: "#4eba65",
   },
@@ -490,7 +495,7 @@ const FEATURES_TR: FeatureItem[] = [
     icon: "mcp",
     title: "MCP İstemcisi",
     description:
-      "claude_desktop_config.json dosyanı bırak, halihazırda kullandığın her MCP sunucusu anında çalışsın — dosya sistemi, GitHub, Postgres, Slack, tarayıcı otomasyonu.",
+      "Uyumlu claude_desktop_config.json girdilerini içe aktarın; ardından güvenmeden önce bağlı her MCP sunucusunu ve araçlarını inceleyin.",
     tag: "Entegrasyon",
     color: "#4eba65",
   },
@@ -549,7 +554,7 @@ const FAQS_EN: FaqItem[] = [
   },
   {
     q: "How is Aurict different from Claude Code?",
-    a: "Claude Code is tied to a single provider (Anthropic) and tightly integrated with the Claude.ai ecosystem. Aurict supports 9 providers (Anthropic, OpenAI, Google, OpenRouter, xAI, Azure, AWS Bedrock, Ollama and more), ships with 9 specialist agents, 218+ auto-injected skills, a bash command classifier, and runs as a native compiled binary — no Node.js runtime required.",
+    a: `Claude Code is Anthropic-first. Aurict supports ${providerCount} built-in providers (${providerSummary}), 218+ auto-injected skills, a bash command classifier, and runs as a native compiled binary — no Node.js runtime required.`,
   },
   {
     q: "Does Aurict work on Windows?",
@@ -557,7 +562,7 @@ const FAQS_EN: FaqItem[] = [
   },
   {
     q: "Which AI providers does Aurict support?",
-    a: "Anthropic (Claude), OpenAI (GPT-4o, o1, o3), Google (Gemini), OpenRouter, xAI (Grok), Azure OpenAI, AWS Bedrock, Ollama (local models), and OpenCode. Switch between them at any time with /providers.",
+    a: `${providerSummary}. Switch between them at any time with /providers.`,
   },
   {
     q: "Do I need Node.js installed?",
@@ -565,7 +570,7 @@ const FAQS_EN: FaqItem[] = [
   },
   {
     q: "Can I use my existing MCP servers?",
-    a: "Yes — Aurict reads your claude_desktop_config.json automatically. Any MCP server you've already configured for Claude Desktop works immediately without any extra setup.",
+    a: "Aurict can import compatible servers from claude_desktop_config.json. Use /mcp to confirm that each configured server connected and to inspect its available tools.",
   },
   {
     q: "How do I add my API key?",
@@ -580,7 +585,7 @@ const FAQS_TR: FaqItem[] = [
   },
   {
     q: "Aurict, Claude Code'tan nasıl farklı?",
-    a: "Claude Code tek bir sağlayıcıya (Anthropic) bağlıdır ve Claude.ai ekosistemiyle sıkı entegredir. Aurict 9 sağlayıcıyı destekler (Anthropic, OpenAI, Google, OpenRouter, xAI, Azure, AWS Bedrock, Ollama ve daha fazlası), 9 uzman ajan, 218+ otomatik enjekte edilen beceri ve bir bash komut sınıflandırıcı ile gelir; yerel derlenmiş bir ikili olarak çalışır — Node.js runtime gerekmez.",
+    a: `Claude Code Anthropic odaklıdır. Aurict ${providerCount} yerleşik sağlayıcıyı (${providerSummary}), 218+ otomatik enjekte edilen beceriyi ve bir bash komut sınıflandırıcıyı destekler; Node.js runtime gerektirmeyen yerel derlenmiş bir ikili olarak çalışır.`,
   },
   {
     q: "Aurict Windows'ta çalışır mı?",
@@ -588,7 +593,7 @@ const FAQS_TR: FaqItem[] = [
   },
   {
     q: "Aurict hangi yapay zeka sağlayıcılarını destekliyor?",
-    a: "Anthropic (Claude), OpenAI (GPT-4o, o1, o3), Google (Gemini), OpenRouter, xAI (Grok), Azure OpenAI, AWS Bedrock, Ollama (yerel modeller) ve OpenCode. Aralarında istediğin an /providers ile geçiş yap.",
+    a: `${providerSummary}. Aralarında istediğin an /providers ile geçiş yap.`,
   },
   {
     q: "Node.js kurulu olmalı mı?",
@@ -596,7 +601,7 @@ const FAQS_TR: FaqItem[] = [
   },
   {
     q: "Mevcut MCP sunucularımı kullanabilir miyim?",
-    a: "Evet — Aurict, claude_desktop_config.json dosyanı otomatik olarak okur. Claude Desktop için halihazırda yapılandırdığın her MCP sunucusu, ek bir kurulum olmadan anında çalışır.",
+    a: "Aurict, claude_desktop_config.json içindeki uyumlu sunucuları içe aktarabilir. Kullanmadan önce her bağlantıyı ve kullanılabilir aracı /mcp içinde doğrulayın.",
   },
   {
     q: "API anahtarımı nasıl eklerim?",

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test"
 import {
   clearPromptSectionCache,
   dynamicPromptSection,
+  freshSessionPromptSection,
   joinPromptSections,
   promptSectionCacheStats,
   resolvePromptSections,
@@ -90,5 +91,24 @@ describe("prompt sections", () => {
 
     expect(split.cacheable).toBe("instructions\n\ncore")
     expect(split.dynamic).toBe("git\n\nmemory")
+  })
+
+  it("orders stable prefixes before dynamic sections for every provider", async () => {
+    const sections = await resolvePromptSections([
+      dynamicPromptSection("intent", () => "intent"),
+      sessionPromptSection("project", () => "project"),
+      staticPromptSection("core", () => "core"),
+    ])
+    expect(sections.map(section => section.name)).toEqual(["core", "project", "intent"])
+    expect(joinPromptSections(sections)).toBe("core\n\nproject\n\nintent")
+  })
+
+  it("recomputes fresh session sections without moving them behind dynamic content", async () => {
+    let calls = 0
+    const definition = freshSessionPromptSection("memory", () => `memory-${++calls}`)
+    const first = await resolvePromptSections([definition], "project")
+    const second = await resolvePromptSections([definition], "project")
+    expect(first[0]?.content).toBe("memory-1")
+    expect(second[0]?.content).toBe("memory-2")
   })
 })

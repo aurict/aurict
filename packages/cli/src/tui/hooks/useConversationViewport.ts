@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { DisplayMessage } from "../conversation/types.js";
 import { injectInput, useMouseEvents } from "../mouse.js";
+import { summarizeUnseenMessages } from "../conversation/unseen-summary.js";
 
 interface ConversationViewportParams {
   messages: DisplayMessage[];
@@ -13,7 +14,7 @@ interface ConversationViewportParams {
 }
 
 export function useConversationViewport(params: ConversationViewportParams) {
-  const [scrollLocked, setScrollLocked] = useState(false);
+  const [scrollLocked, setScrollLockedState] = useState(false);
   const scrollLockedRef = useRef(false);
   const [conversationOffsetRows, setConversationOffsetRows] = useState(0);
   const [measuredViewportRows, setMeasuredViewportRows] = useState(() =>
@@ -25,9 +26,19 @@ export function useConversationViewport(params: ConversationViewportParams) {
   useEffect(() => {
     scrollLockedRef.current = scrollLocked;
   }, [scrollLocked]);
-  useEffect(() => {
-    if (scrollLocked) scrollLockMessageCountRef.current = params.messages.length;
-  }, [params.messages.length, scrollLocked]);
+  const setScrollLocked = useCallback<Dispatch<SetStateAction<boolean>>>((nextValue) => {
+    setScrollLockedState((current) => {
+      const next = typeof nextValue === "function" ? nextValue(current) : nextValue;
+      if (next && !current) scrollLockMessageCountRef.current = params.messages.length;
+      return next;
+    });
+  }, [params.messages.length]);
+  const unseen = useMemo(
+    () => scrollLocked
+      ? summarizeUnseenMessages(params.messages.slice(scrollLockMessageCountRef.current))
+      : { count: 0, label: "" },
+    [params.messages, scrollLocked],
+  );
 
   const scrollConversation = useCallback((deltaRows: number) => {
     if (deltaRows === 0) return;
@@ -65,9 +76,8 @@ export function useConversationViewport(params: ConversationViewportParams) {
     setConversationOffsetRows,
     measuredViewportRows,
     setMeasuredViewportRows,
-    unseenCount: scrollLocked
-      ? Math.max(0, params.messages.length - scrollLockMessageCountRef.current)
-      : 0,
+    unseenCount: unseen.count,
+    unseenLabel: unseen.label,
     scrollConversation,
     handleScrollRange,
     pageConversation,

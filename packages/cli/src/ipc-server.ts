@@ -270,6 +270,7 @@ export async function runIpcServer(workdir: string): Promise<void> {
         backendAccessTokenResolver: resolveBackendAccessToken,
         ...(agentDef.system ? { system: agentDef.system } : {}),
         messages: nextHistory,
+        runtime: { profile: "desktop-sidecar" },
         ...(attachments ? { attachments } : {}),
         signal: controller.signal,
         onText: (delta, isReasoning) => send({ type: "chat:event", event: { type: "text-delta", turnId: payload.turnId, delta, isReasoning } }),
@@ -291,6 +292,7 @@ export async function runIpcServer(workdir: string): Promise<void> {
         onProviderFallback: (from, to) => send({ type: "chat:event", event: { type: "provider-fallback", turnId: payload.turnId, from, to } }),
         onStreamRestart: () => send({ type: "chat:event", event: { type: "stream-restart", turnId: payload.turnId } }),
         onPhase: (phase) => send({ type: "chat:event", event: { type: "phase", turnId: payload.turnId, phase } }),
+        onEvent: (runtimeEvent) => send({ type: "chat:event", event: { type: "runtime:event", turnId: payload.turnId, runtimeEvent } }),
         onFinish: (result) => {
           history.push(historyMessage, ...result.newMessages)
           if (payload.artifactId && payload.artifactIntent !== "promote") {

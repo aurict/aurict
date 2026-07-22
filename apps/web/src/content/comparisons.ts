@@ -1,3 +1,14 @@
+export type ComparisonRow = {
+  name: string
+  aurict: string
+  competitor: string
+}
+
+export type ComparisonSource = {
+  label: string
+  url: string
+}
+
 export type Comparison = {
   slug: string
   competitor: string
@@ -8,157 +19,102 @@ export type Comparison = {
   updatedAt: string
   ourStrengths: string[]
   theirStrengths: string[]
-  features: { name: string; aurict: boolean; competitor: boolean }[]
+  rows: ComparisonRow[]
+  sources: ComparisonSource[]
 }
+
+const reviewedAt = "2026-07-22"
 
 export const COMPARISONS: Comparison[] = [
   {
     slug: "claude-code",
     competitor: "Claude Code",
     title: "Aurict vs Claude Code",
-    description:
-      "Claude Code is Anthropic-first. Aurict is a terminal-native alternative focused on provider flexibility, specialist agents, contextual skills, and native binary distribution.",
-    tagline: "Provider flexibility meets multi-agent power",
-    differentiator: "Multi-provider + multi-agent",
-    updatedAt: "2026-07-03",
-    ourStrengths: [
-      "Multiple AI providers — switch without changing your workflow",
-      "Specialist agents for coding, review, testing, docs, security, debugging, performance, and analytics",
-      "Contextual skills injected from detected project context",
-      "Native binary execution after install",
-      "macOS, Linux, and Windows support",
-      "Command safety controls for terminal workflows",
-      "MCP-oriented extensibility",
+    description: "Both are terminal coding agents. Aurict emphasizes a broad built-in provider catalog, bounded Project Auto, and durable completion evidence; Claude Code is Anthropic-first with Anthropic, Bedrock, and Vertex deployment paths.",
+    tagline: "Provider breadth and proof-oriented delivery",
+    differentiator: "Provider choice + durable evidence",
+    updatedAt: reviewedAt,
+    ourStrengths: ["12 built-in provider adapters", "Bounded Project Auto for project-local file mutations", "Durable completion proof with verification evidence and open work", "Local semantic search, dependency docs, image reading, and verification tools"],
+    theirStrengths: ["Official Anthropic workflow", "Anthropic Console, Claude subscription, Bedrock, and Vertex authentication paths"],
+    rows: [
+      { name: "Terminal workflow", aurict: "Native terminal runtime", competitor: "Official terminal coding workflow" },
+      { name: "Provider configuration", aurict: "12 built-in adapters", competitor: "Anthropic API, Bedrock, or Vertex" },
+      { name: "MCP", aurict: "Compatible config import and /mcp inspection", competitor: "MCP-oriented integration" },
+      { name: "Completion record", aurict: "Durable /proof record", competitor: "Review the current Claude Code documentation" },
     ],
-    theirStrengths: ["Official Anthropic workflow", "Tight Claude integration"],
-    features: [
-      { name: "Multiple AI providers", aurict: true, competitor: false },
-      { name: "Specialist agent architecture", aurict: true, competitor: false },
-      { name: "Contextual skills", aurict: true, competitor: false },
-      { name: "Native compiled binary", aurict: true, competitor: false },
-      { name: "Windows support", aurict: true, competitor: false },
-      { name: "Command safety controls", aurict: true, competitor: false },
-      { name: "MCP-oriented integration", aurict: true, competitor: true },
-      { name: "Open source", aurict: true, competitor: true },
-    ],
+    sources: [{ label: "Claude Code setup", url: "https://docs.anthropic.com/en/docs/claude-code/getting-started" }],
   },
   {
     slug: "cursor",
     competitor: "Cursor",
     title: "Aurict vs Cursor",
-    description:
-      "Cursor is an IDE. Aurict is a terminal AI assistant for developers who want repository-scale agent workflows without leaving the shell.",
-    tagline: "Terminal-native vs IDE-bound",
-    differentiator: "Terminal-native, no IDE switch required",
-    updatedAt: "2026-07-03",
-    ourStrengths: [
-      "Works in the terminal you already use",
-      "Lightweight native binary model",
-      "Multi-agent orchestration",
-      "Provider flexibility",
-      "Contextual skills and MCP-oriented extension points",
-      "SSH-friendly workflow for remote development",
+    description: "Cursor combines an IDE experience with a CLI and model selection. Aurict is built around a terminal-first runtime, project-scoped automation controls, and evidence-backed completion.",
+    tagline: "Terminal-first runtime and IDE workflow",
+    differentiator: "Scoped automation + terminal control",
+    updatedAt: reviewedAt,
+    ourStrengths: ["Terminal-first work without an IDE dependency", "Project Auto stays bounded to one project session", "Completion proof keeps evidence and open work visible", "Local toolchain for semantic search, dependency docs, vision, and verification"],
+    theirStrengths: ["Visual editor experience", "Inline suggestions and visual diff workflow", "Curated model selection and configurable MCP servers"],
+    rows: [
+      { name: "Primary surface", aurict: "Terminal runtime", competitor: "IDE plus CLI" },
+      { name: "Model selection", aurict: "12 built-in provider adapters", competitor: "Curated models and supported BYOK providers" },
+      { name: "MCP", aurict: "Imported config inspected in /mcp", competitor: "mcp.json and MCP directory" },
+      { name: "Automation control", aurict: "Bounded Project Auto + direct-approval exceptions", competitor: "Agent auto-run and guardrails" },
     ],
-    theirStrengths: ["Visual IDE experience", "Inline code suggestions", "Visual diff workflow"],
-    features: [
-      { name: "Terminal-native", aurict: true, competitor: false },
-      { name: "IDE-based", aurict: false, competitor: true },
-      { name: "Multiple AI providers", aurict: true, competitor: true },
-      { name: "Specialist agents", aurict: true, competitor: false },
-      { name: "Works over SSH", aurict: true, competitor: false },
-      { name: "Lightweight binary", aurict: true, competitor: false },
-      { name: "Inline suggestions", aurict: false, competitor: true },
-      { name: "Open source", aurict: true, competitor: false },
-    ],
+    sources: [{ label: "Cursor models", url: "https://docs.cursor.com/models/" }, { label: "Cursor MCP", url: "https://docs.cursor.com/context/model-context-protocol" }],
   },
   {
     slug: "aider",
     competitor: "Aider",
     title: "Aurict vs Aider",
-    description:
-      "Aider is a Git-focused AI pair programmer. Aurict adds a broader terminal agent runtime with specialist agents, contextual skills, and safety controls.",
-    tagline: "Agent runtime vs Git-focused pair programmer",
-    differentiator: "Broader agent orchestration",
-    updatedAt: "2026-07-03",
-    ourStrengths: [
-      "Specialist agents for different engineering tasks",
-      "Multi-provider BYOK model",
-      "Contextual skill injection",
-      "Command safety controls",
-      "Policy-oriented terminal execution",
-      "Design and documentation workflows",
-      "Windows native binary",
+    description: "Both support terminal-based, bring-your-own-model workflows. Aurict adds a wider runtime layer for scoped permissions, durable completion evidence, and local workspace intelligence.",
+    tagline: "Git-focused pairing and evidence-backed runtime",
+    differentiator: "Scoped permissioning + verification record",
+    updatedAt: reviewedAt,
+    ourStrengths: ["Project Auto only covers bounded project-local edits", "Durable /proof completion records", "Semantic source search and installed dependency documentation", "Browser and eval tools for verification"],
+    theirStrengths: ["Focused Git-centered pairing workflow", "Broad LLM and local-model connectivity"],
+    rows: [
+      { name: "Runtime", aurict: "Terminal agent runtime", competitor: "Terminal pair-programming workflow" },
+      { name: "Model connectivity", aurict: "12 built-in provider adapters", competitor: "Many API providers and local OpenAI-compatible models" },
+      { name: "Edit approval", aurict: "Bounded Project Auto plus direct-approval exceptions", competitor: "Review Aider's current model and edit settings" },
+      { name: "Completion record", aurict: "Durable /proof record", competitor: "Review Aider's current workflow documentation" },
     ],
-    theirStrengths: ["Strong Git workflow", "Simple single-agent mental model"],
-    features: [
-      { name: "Specialist agent architecture", aurict: true, competitor: false },
-      { name: "Multiple AI providers", aurict: true, competitor: true },
-      { name: "Contextual skills", aurict: true, competitor: false },
-      { name: "Command safety controls", aurict: true, competitor: false },
-      { name: "Policy-oriented execution", aurict: true, competitor: false },
-      { name: "Git-focused workflow", aurict: false, competitor: true },
-      { name: "Windows support", aurict: true, competitor: false },
-      { name: "Open source", aurict: true, competitor: true },
-    ],
+    sources: [{ label: "Aider model connectivity", url: "https://aider.chat/docs/llms.html" }, { label: "Aider model and key settings", url: "https://aider.chat/docs/troubleshooting/models-and-keys.html" }],
   },
   {
     slug: "github-copilot",
     competitor: "GitHub Copilot",
-    title: "Aurict vs GitHub Copilot",
-    description:
-      "GitHub Copilot is strongest as an IDE assistant and autocomplete product. Aurict is built for terminal-native agent tasks, provider choice, and repository workflows.",
-    tagline: "Full terminal assistant vs IDE autocomplete",
-    differentiator: "Agentic tasks, not only completions",
-    updatedAt: "2026-07-03",
-    ourStrengths: [
-      "Full terminal assistant workflow",
-      "Specialist agents",
-      "BYOK provider choice",
-      "Contextual skills",
-      "Codebase-aware terminal execution",
-      "Custom tools and MCP-oriented extension",
-      "No required subscription to use the open-source core",
+    title: "Aurict vs GitHub Copilot CLI",
+    description: "Both provide terminal agent workflows with model selection, permissions, MCP, and customisation. Aurict distinguishes itself with its own provider catalog, bounded Project Auto, and durable completion proof.",
+    tagline: "Explicit scoped automation and local proof",
+    differentiator: "Project Auto + completion proof",
+    updatedAt: reviewedAt,
+    ourStrengths: ["12 built-in provider adapters", "Project-local automatic approval for bounded edits only", "Completion proof with changes, evidence, open work, and waivers", "Local workspace intelligence tools"],
+    theirStrengths: ["GitHub ecosystem integration", "Copilot CLI model selection, MCP, plugins, and custom agents"],
+    rows: [
+      { name: "Terminal agent", aurict: "Aurict CLI", competitor: "GitHub Copilot CLI" },
+      { name: "Provider configuration", aurict: "12 built-in adapters", competitor: "GitHub-hosted models and documented BYOK paths" },
+      { name: "MCP", aurict: "Imported compatible config and /mcp inspection", competitor: "Built-in and configurable MCP servers" },
+      { name: "Permission scope", aurict: "Project Auto with direct-approval exceptions", competitor: "Tool and path permission controls" },
     ],
-    theirStrengths: ["Inline IDE suggestions", "GitHub ecosystem integration"],
-    features: [
-      { name: "Full coding assistant", aurict: true, competitor: false },
-      { name: "Specialist agent architecture", aurict: true, competitor: false },
-      { name: "Multiple AI providers", aurict: true, competitor: false },
-      { name: "Terminal-native", aurict: true, competitor: false },
-      { name: "Inline IDE suggestions", aurict: false, competitor: true },
-      { name: "GitHub ecosystem integration", aurict: false, competitor: true },
-      { name: "Open source", aurict: true, competitor: false },
-    ],
+    sources: [{ label: "GitHub Copilot CLI reference", url: "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference" }, { label: "GitHub Copilot CLI BYOK", url: "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/use-byok-models" }],
   },
   {
     slug: "opencode",
     competitor: "OpenCode",
     title: "Aurict vs OpenCode",
-    description:
-      "Both projects target terminal AI workflows. Aurict emphasizes specialist agents, contextual skills, safety controls, mobile BYOK work, and a broader product surface.",
-    tagline: "Feature-rich agent runtime vs minimal terminal AI",
-    differentiator: "Skills system + safety + mobile companion",
-    updatedAt: "2026-07-03",
-    ourStrengths: [
-      "Specialist agents",
-      "Multiple providers",
-      "Contextual skills",
-      "Command safety controls",
-      "Policy-oriented execution",
-      "Windows native binary",
-      "Mobile BYOK assistant and companion direction",
+    description: "Both are open-source terminal coding agents with provider and permission configuration. Aurict focuses on a curated built-in provider catalog, bounded Project Auto, completion evidence, and a broader local verification toolchain.",
+    tagline: "Curated runtime controls and proof-oriented delivery",
+    differentiator: "Scoped project automation + completion proof",
+    updatedAt: reviewedAt,
+    ourStrengths: ["12 built-in provider adapters", "Bounded Project Auto for safe typed file changes", "Durable completion proof and verification evidence", "Semantic search, dependency docs, vision, browser, and eval tools"],
+    theirStrengths: ["Large provider ecosystem", "Per-tool allow, deny, and ask permissions", "Built-in LSP and extensible MCP tooling"],
+    rows: [
+      { name: "Provider approach", aurict: "12 built-in adapters", competitor: "75+ provider ecosystem and custom configuration" },
+      { name: "Edit permissions", aurict: "Project Auto for bounded typed file changes", competitor: "Per-tool allow, deny, or ask configuration" },
+      { name: "Code intelligence", aurict: "Semantic search, dependency docs, and workspace vision", competitor: "Built-in tools and documented LSP operations" },
+      { name: "Completion evidence", aurict: "Durable /proof record", competitor: "Review OpenCode's current workflow documentation" },
     ],
-    theirStrengths: ["Minimal approach", "Smaller surface area"],
-    features: [
-      { name: "Specialist agent architecture", aurict: true, competitor: false },
-      { name: "Multiple AI providers", aurict: true, competitor: false },
-      { name: "Contextual skills", aurict: true, competitor: false },
-      { name: "Command safety controls", aurict: true, competitor: false },
-      { name: "Policy-oriented execution", aurict: true, competitor: false },
-      { name: "Windows support", aurict: true, competitor: false },
-      { name: "Open source", aurict: true, competitor: true },
-      { name: "Terminal-native", aurict: true, competitor: true },
-    ],
+    sources: [{ label: "OpenCode providers", url: "https://opencode.ai/docs/providers" }, { label: "OpenCode tools and permissions", url: "https://opencode.ai/docs/tools/" }],
   },
 ]
 

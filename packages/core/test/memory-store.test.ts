@@ -36,6 +36,13 @@ function addGlobal(content: string, category: Memory["category"] = "fact"): Memo
 // ─── add + list ──────────────────────────────────────────────────────────────
 
 describe("memoryStore.add + list", () => {
+  it("deduplicates normalized content within the same scope", () => {
+    const first = addProject("Use Bun for tests.")
+    const duplicate = addProject("  use bun for tests  ")
+    expect(duplicate.id).toBe(first.id)
+    expect(memoryStore.list(workdir).filter((memory) => memory.id === first.id)).toHaveLength(1)
+  })
+
   it("added memory appears in list", () => {
     addProject("user prefers bun over npm")
     const all = memoryStore.list(workdir)
@@ -168,6 +175,13 @@ describe("memoryStore.search", () => {
 // ─── getRelevant ─────────────────────────────────────────────────────────────
 
 describe("memoryStore.getRelevant", () => {
+  it("ranks query-relevant memories above newer unrelated memories", () => {
+    addProject("Postgres migrations use drizzle")
+    addProject("The terminal theme is oxblood")
+    const results = memoryStore.getRelevant(workdir, 2, 99_999, "fix postgres migration")
+    expect(results[0]?.content).toContain("Postgres")
+  })
+
   it("returns memories within the default budget", () => {
     addProject("fact one")
     addProject("fact two")

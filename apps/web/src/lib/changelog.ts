@@ -3,6 +3,7 @@ const REPO_NAME = process.env.AURICT_GITHUB_REPO ?? "aurict"
 const FALLBACK_VERSION = process.env.AURICT_VERSION ?? "current"
 const RELEASE_LIMIT = 20
 const GENERATED_CHANGE_LIMIT = 10
+const GITHUB_REQUEST_TIMEOUT_MS = 8_000
 
 export type ChangelogChange = {
   type: "new" | "fix" | "break" | "perf"
@@ -81,14 +82,19 @@ function githubHeaders(): HeadersInit {
   return headers
 }
 
+function fetchGitHub(url: string, headers: HeadersInit) {
+  return fetch(url, {
+    headers,
+    next: { revalidate: 60 * 30 },
+    signal: AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS),
+  })
+}
+
 export async function getChangelog(): Promise<ChangelogRelease[]> {
   const headers = githubHeaders()
 
   try {
-    const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=${RELEASE_LIMIT}`, {
-      headers,
-      next: { revalidate: 60 * 30 },
-    })
+    const response = await fetchGitHub(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=${RELEASE_LIMIT}`, headers)
 
     if (!response.ok) return await getTagGeneratedChangelog(headers)
 
@@ -107,10 +113,7 @@ export async function getChangelog(): Promise<ChangelogRelease[]> {
 }
 
 async function getTagGeneratedChangelog(headers: HeadersInit): Promise<ChangelogRelease[]> {
-  const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/tags?per_page=${Math.min(RELEASE_LIMIT, 10)}`, {
-    headers,
-    next: { revalidate: 60 * 30 },
-  })
+  const response = await fetchGitHub(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/tags?per_page=${Math.min(RELEASE_LIMIT, 10)}`, headers)
 
   if (!response.ok) return FALLBACK_RELEASES
 
@@ -163,10 +166,7 @@ async function getGeneratedChanges(
 ): Promise<ChangelogChange[]> {
   if (!previousTag) return []
 
-  const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/compare/${previousTag}...${currentTag}`, {
-    headers,
-    next: { revalidate: 60 * 30 },
-  })
+  const response = await fetchGitHub(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/compare/${previousTag}...${currentTag}`, headers)
 
   if (!response.ok) return []
 
@@ -175,10 +175,7 @@ async function getGeneratedChanges(
 }
 
 async function getTagDate(tag: string, headers: HeadersInit) {
-  const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits/${tag}`, {
-    headers,
-    next: { revalidate: 60 * 30 },
-  })
+  const response = await fetchGitHub(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits/${tag}`, headers)
 
   if (!response.ok) return new Date().toISOString().slice(0, 10)
 

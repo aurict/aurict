@@ -25,6 +25,17 @@ Current task coverage includes:
 
 `--json` emits a machine-readable summary with pass/fail counts, failed task IDs, and per-task details for CI dashboards or regression tracking.
 
+## Agent policy A/B checks
+
+The deterministic policy harness measures the agent framework without provider calls. It compares the legacy last-message/full-prompt behavior with the current objective-aware routing, prompt tiering, bounded summary input, and structured completion protocol:
+
+```bash
+bun run eval:policy
+bun run eval:policy -- --profile=current --json
+```
+
+The current profile exits non-zero if any policy contract regresses. The JSON result includes per-case outcomes, routed capabilities, prompt/summary size, structured status, and legacy-to-current deltas. This harness proves framework behavior only; repository task quality remains covered by the fixture runner and external benchmark adapters.
+
 ## Public benchmark preparation
 
 Aurict is prepared for two external benchmark tracks, but the real CLI integration should be wired later when a stable headless command exists.

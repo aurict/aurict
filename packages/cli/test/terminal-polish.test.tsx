@@ -36,6 +36,25 @@ describe("terminal polish contract", () => {
     expect(rows.findIndex((row) => row.includes("Latest result"))).toBeGreaterThanOrEqual(6);
   });
 
+  test("keeps a semantic unseen indicator visible while output is paused at the bottom", () => {
+    const frame = stripAnsi(render(
+      <ConversationViewport
+        height={8}
+        width={60}
+        messages={[{ id: "notice", role: "system", content: "Latest result" }]}
+        loading={false}
+        streamingText={null}
+        streamingReason={null}
+        streamingError={null}
+        scrollLocked
+        offsetRowsFromBottom={0}
+        unseenCount={1}
+        unseenLabel="verify failed"
+      />,
+    ).lastFrame() ?? "");
+    expect(frame).toContain("⋯ 1 new · verify failed ↓");
+  });
+
   test("centers a large branded startup wordmark on capable terminals", () => {
     const frame = stripAnsi(render(
       <StartupBanner

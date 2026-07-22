@@ -35,6 +35,10 @@ export function updateSession(id: string, data: Partial<{ title: string; status:
     .run()
 }
 
+export function updateSessionConfig(id: string, value: string): void {
+  db.update(sessions).set({ config: value, updatedAt: Date.now() }).where(eq(sessions.id, id)).run()
+}
+
 /** Session'ı ve tüm part'larını kalıcı olarak siler. Cascade FK'ye güvenmez —
  * migration/PRAGMA durumundan bağımsız olarak her zaman doğru sonuç verir. */
 export function deleteSession(id: string) {

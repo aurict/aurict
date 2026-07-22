@@ -111,6 +111,7 @@ export function collectTranscriptDetails(messages: TranscriptMessage[]): Transcr
           tool: message.tool ?? "tool",
           args: message.content,
           ...(message.resultContent !== undefined ? { resultContent: message.resultContent } : {}),
+          ...(message.artifact !== undefined ? { artifact: message.artifact } : {}),
         }),
       );
     }

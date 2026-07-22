@@ -122,10 +122,19 @@ describe("TUI responsive regression", () => {
     cleanup()
 
     const wide = render(
-      <StatusBar {...DEFAULT_STATUS_PROPS} cols={140} />,
+      <CockpitHeader {...DEFAULT_STATUS_PROPS} cols={140} contextTokens={50_000} />,
     ).lastFrame() ?? ""
     expect(wide).toContain("projects/aurict")
-    expect(wide).not.toContain("opus-4-5")
+    expect(wide).toContain("opus-4-5")
+    cleanup()
+
+    const footer = render(
+      <StatusBar cols={140} sandboxBackend="policy" />,
+    ).lastFrame() ?? ""
+    expect(footer).toContain("ready")
+    expect(footer).toContain("policy")
+    expect(footer).not.toContain("projects/aurict")
+    expect(footer).not.toContain("opus-4-5")
   })
 
   it("keeps the micro-cockpit compact and exposes wide telemetry", () => {
@@ -258,7 +267,7 @@ describe("TUI stress regression", () => {
       />,
     ).lastFrame() ?? ""
 
-    expect(frame).toContain("120 lines · ctrl+o")
+    expect(frame).toMatch(/120 lines\s+details \^O/)
     expect(frame).not.toContain("line 001")
     expect(frame).not.toContain("line 120")
   })

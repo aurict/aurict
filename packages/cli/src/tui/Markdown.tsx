@@ -4,6 +4,8 @@ import { tokenizeLine, detectLang, C, type Lang } from "../utils/highlight.js"
 import { useTerminalSize } from "./TerminalSizeContext.js"
 import { useTheme } from "../utils/theme.js"
 import { useSemanticTheme, type SemanticTheme } from "./theme/semantic-theme.js"
+import { terminalHyperlink } from "./terminal-text/hyperlink.js"
+import { displayWidth, truncateDisplayWidth } from "./terminal-text/display-width.js"
 
 interface Props {
   content: string
@@ -184,7 +186,7 @@ function renderInline(text: string, key: number, width: number | undefined, them
       const short = url.length > 40 ? url.slice(0, 37) + "…" : url
       parts.push(
         <Text key={k++}>
-          <Text color={theme.markdown.link} underline>{label}</Text>
+          <Text color={theme.markdown.link} underline>{terminalHyperlink(label, url)}</Text>
           <Text color={theme.foreground.muted}>{" ("}{short}{")"}</Text>
         </Text>
       )
@@ -232,8 +234,8 @@ function TableView({
   const cols = header.length
   // Compute the max width for each column
   const colWidths = header.map((h, ci) => {
-    const dataMax = rows.reduce((mx, row) => Math.max(mx, (row[ci] ?? "").length), 0)
-    return Math.max(h.length, dataMax, 3)
+    const dataMax = rows.reduce((mx, row) => Math.max(mx, displayWidth(row[ci] ?? "")), 0)
+    return Math.max(displayWidth(h), dataMax, 3)
   })
 
   // Total width check — shrink so it doesn't exceed the terminal width
@@ -244,8 +246,8 @@ function TableView({
   }
 
   const pad = (s: string, w: number, a: Align): string => {
-    const text = s.length > w ? s.slice(0, w - 1) + "…" : s
-    const pad   = w - text.length
+    const text = truncateDisplayWidth(s, w)
+    const pad   = w - displayWidth(text)
     if (a === "center") {
       const l = Math.floor(pad / 2), r = pad - l
       return " ".repeat(l) + text + " ".repeat(r)

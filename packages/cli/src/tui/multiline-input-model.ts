@@ -1,3 +1,5 @@
+import { clampGraphemeBoundary, graphemeSegments } from "./terminal-text/graphemes.js"
+
 export interface LocalPoint { row: number; col: number }
 
 export function extractRange(lines: string[], a: LocalPoint, b: LocalPoint): string {
@@ -18,15 +20,21 @@ export function splitLines(value: string): string[] {
 }
 
 export function wordLeft(line: string, column: number): number {
-  let index = column
-  while (index > 0 && /\s/.test(line[index - 1]!)) index--
-  while (index > 0 && /\S/.test(line[index - 1]!)) index--
-  return index
+  const parts = graphemeSegments(line)
+  const boundary = clampGraphemeBoundary(line, column)
+  let index = parts.findIndex((part) => part.end > boundary)
+  if (index < 0) index = parts.length
+  while (index > 0 && /\s/u.test(parts[index - 1]!.segment)) index--
+  while (index > 0 && /\S/u.test(parts[index - 1]!.segment)) index--
+  return parts[index]?.start ?? line.length
 }
 
 export function wordRight(line: string, column: number): number {
-  let index = column
-  while (index < line.length && /\S/.test(line[index]!)) index++
-  while (index < line.length && /\s/.test(line[index]!)) index++
-  return index
+  const parts = graphemeSegments(line)
+  const boundary = clampGraphemeBoundary(line, column, "forward")
+  let index = parts.findIndex((part) => part.start >= boundary)
+  if (index < 0) return line.length
+  while (index < parts.length && /\S/u.test(parts[index]!.segment)) index++
+  while (index < parts.length && /\s/u.test(parts[index]!.segment)) index++
+  return parts[index]?.start ?? line.length
 }

@@ -20,6 +20,8 @@ export interface AppKeyboardParams {
   transcriptDetails: TranscriptDetail[];
   selectedTranscriptDetailId: string | null;
   permission: PermissionRequest | null;
+  projectAutoPromptOpen: boolean;
+  resolveProjectAutoPrompt: (enabled: boolean) => void;
   pickerOpen: boolean;
   questionOpen: boolean;
   overlay: ReturnType<typeof useOverlayState>;
@@ -53,6 +55,7 @@ export interface AppKeyboardParams {
 }
 
 export type PrimaryOverlayTarget =
+  | "transcriptSearch"
   | "quickSearch"
   | "commandPalette"
   | "historySearch"

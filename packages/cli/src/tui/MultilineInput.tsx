@@ -13,6 +13,15 @@ import {
   sanitizePaste,
 } from "./input-limits.js"
 import { extractRange, splitLines, wordLeft, wordRight, type LocalPoint } from "./multiline-input-model.js"
+import { cursorLineParts, inputPointFromTerminal } from "./multiline-input-layout.js"
+import { verticalCursorOffset } from "./terminal-text/cursor-map.js"
+import {
+  clampGraphemeBoundary,
+  graphemeCount,
+  nextGraphemeBoundary,
+  previousGraphemeBoundary,
+} from "./terminal-text/graphemes.js"
+import { useInputUndo } from "./hooks/useInputUndo.js"
 
 export { extractRange, type LocalPoint } from "./multiline-input-model.js"
 
@@ -46,6 +55,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
   // Keep refs in sync with state
   useEffect(() => { linesRef.current = lines }, [lines])
   useEffect(() => { cursorRef.current = cursor }, [cursor])
+  const inputUndo = useInputUndo({ linesRef, cursorRef, setLines, setCursor })
   useEffect(() => {
     if (lines.join("\n").length < MAX_DRAFT_CHARS && lines.length < MAX_DRAFT_LINES) {
       hasReportedLimitRef.current = false
@@ -62,34 +72,16 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     boundsRef.current = { row: pos.row, col: pos.col, width: size.width, height: size.height }
   })
 
-  // Absolute terminal (x,y) [1-based] → local (row,col) within the box, or
-  // null if out of bounds (meaning this click isn't related to the input box).
-  // In a multi-line input, the line-number gutter ("N │ ") shifts the text
-  // right — so the gutter width is subtracted from the column calculation.
-  function toLocalPoint(x: number, y: number): LocalPoint | null {
-    const b = boundsRef.current
-    const localRow = y - 1 - b.row
-    const rawCol   = x - 1 - b.col
-    if (localRow < 0 || localRow >= b.height || rawCol < 0 || rawCol > b.width) return null
-    const currentLines = linesRef.current
-    const showLineNum  = currentLines.length > 1
-    const gutterWidth  = showLineNum ? String(currentLines.length).length + 3 : 0
-    const clampedRow   = Math.min(localRow, currentLines.length - 1)
-    const lineLen      = (currentLines[clampedRow] ?? "").length
-    const textCol      = Math.max(0, rawCol - gutterWidth)
-    return { row: clampedRow, col: Math.min(textCol, lineLen) }
-  }
-
   useMouseEvents((e) => {
     if (disabled) return
     if (e.type === "click") {
-      dragStartRef.current = toLocalPoint(e.x, e.y)
+      dragStartRef.current = inputPointFromTerminal(e.x, e.y, boundsRef.current, linesRef.current)
       return
     }
     if (e.type === "release") {
       const start = dragStartRef.current
       dragStartRef.current = null
-      const end = toLocalPoint(e.x, e.y)
+      const end = inputPointFromTerminal(e.x, e.y, boundsRef.current, linesRef.current)
       if (!start || !end) return
       if (start.row === end.row && start.col === end.col) {
         // No drag — a plain click: position the cursor there.
@@ -99,7 +91,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
       const text = extractRange(linesRef.current, start, end)
       if (text) {
         writeClipboard(text)
-        onCopied?.(text.length)
+        onCopied?.(graphemeCount(text))
       }
     }
   })
@@ -139,8 +131,10 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     const pastedLines = pasted.split("\n")
     const currentCursor = cursorRef.current
     const next = [...currentLines]
-    const before = (next[currentCursor.row] ?? "").slice(0, currentCursor.col)
-    const after = (next[currentCursor.row] ?? "").slice(currentCursor.col)
+    const currentLine = next[currentCursor.row] ?? ""
+    const currentCol = clampGraphemeBoundary(currentLine, currentCursor.col)
+    const before = currentLine.slice(0, currentCol)
+    const after = currentLine.slice(currentCol)
     next[currentCursor.row] = before + pastedLines[0]!
     const rest = pastedLines.slice(1)
     if (rest.length > 0) {
@@ -154,7 +148,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     const lastLine = pastedLines[pastedLines.length - 1]!
     const nextCursor = {
       row: currentCursor.row + pastedLines.length - 1,
-      col: pastedLines.length === 1 ? currentCursor.col + lastLine.length : lastLine.length,
+      col: pastedLines.length === 1 ? currentCol + lastLine.length : lastLine.length,
     }
     cursorRef.current = nextCursor
     setCursor(nextCursor)
@@ -162,6 +156,12 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
 
   useInput((input, key) => {
     if (disabled) return
+
+    if ((key.ctrl || key.meta) && input.toLowerCase() === "z") {
+      if (key.shift || key.meta) inputUndo.redo()
+      else inputUndo.undo()
+      return
+    }
 
     // Catch sequences here that slip past the emit-level filter.
     // When Ink consumes \x1b as an ESC keypress, the remaining "[<65;206;45M"
@@ -172,14 +172,16 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
 
     // Some terminal emulators produce \x7f instead of backspace
     if (!key.backspace && !key.delete && input.includes("\x7f")) {
+      inputUndo.checkpoint()
       const count = (input.match(/\x7f/g) ?? []).length
       for (let i = 0; i < count; i++) {
         setLines(prev => {
           const next = [...prev]
           const line = next[cursor.row] ?? ""
           if (cursor.col > 0) {
-            next[cursor.row] = line.slice(0, cursor.col - 1) + line.slice(cursor.col)
-            setCursor(c => ({ ...c, col: Math.max(0, c.col - 1) }))
+            const newCol = previousGraphemeBoundary(line, cursor.col)
+            next[cursor.row] = line.slice(0, newCol) + line.slice(cursor.col)
+            setCursor(c => ({ ...c, col: newCol }))
           } else if (cursor.row > 0) {
             const prevLine = next[cursor.row - 1] ?? ""
             next[cursor.row - 1] = prevLine + line
@@ -198,6 +200,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
       input.includes("\x1b[200~") || input.includes("\x1b[201~") ||
       input.includes("[200~") || input.includes("[201~")
     ) {
+      inputUndo.checkpoint()
       applyPaste(input)
       return
     }
@@ -222,11 +225,13 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
 
     // ── Kitty CSI u: Shift+Enter = \x1b[13;2u ────────────────────────────
     if (input === "\x1b[13;2u") {
+      inputUndo.checkpoint()
       setLines(prev => {
         const next  = [...prev]
         const line  = next[cursor.row] ?? ""
-        next[cursor.row] = line.slice(0, cursor.col)
-        next.splice(cursor.row + 1, 0, line.slice(cursor.col))
+        const col = clampGraphemeBoundary(line, cursor.col)
+        next[cursor.row] = line.slice(0, col)
+        next.splice(cursor.row + 1, 0, line.slice(col))
         return next
       })
       setCursor(c => ({ row: c.row + 1, col: 0 }))
@@ -247,11 +252,13 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
 
     // ── Shift+Enter / Ctrl+Enter: new line ──────────────────────────────
     if ((key.return && key.shift) || (key.return && key.ctrl)) {
+      inputUndo.checkpoint()
       setLines(prev => {
         const next = [...prev]
         const line = next[cursor.row] ?? ""
-        next[cursor.row] = line.slice(0, cursor.col)
-        next.splice(cursor.row + 1, 0, line.slice(cursor.col))
+        const col = clampGraphemeBoundary(line, cursor.col)
+        next[cursor.row] = line.slice(0, col)
+        next.splice(cursor.row + 1, 0, line.slice(col))
         return next
       })
       setCursor(c => ({ row: c.row + 1, col: 0 }))
@@ -261,9 +268,10 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     // ── Escape: collapse to a single line if multi-line ───────────────────
     if (key.escape) {
       if (lines.length > 1) {
+        inputUndo.checkpoint()
         const joined = lines.join(" ")
         setLines([joined])
-        setCursor({ row: 0, col: Math.min(cursor.col, joined.length) })
+        setCursor({ row: 0, col: clampGraphemeBoundary(joined, cursor.col) })
       }
       return
     }
@@ -273,7 +281,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
       if (cursor.row > 0) {
         setCursor(c => {
           const newRow = c.row - 1
-          return { row: newRow, col: Math.min(c.col, (lines[newRow] ?? "").length) }
+          return { row: newRow, col: verticalCursorOffset(lines[c.row] ?? "", lines[newRow] ?? "", c.col) }
         })
         return
       }
@@ -300,7 +308,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
       if (cursor.row < lines.length - 1) {
         setCursor(c => {
           const newRow = c.row + 1
-          return { row: newRow, col: Math.min(c.col, (lines[newRow] ?? "").length) }
+          return { row: newRow, col: verticalCursorOffset(lines[c.row] ?? "", lines[newRow] ?? "", c.col) }
         })
         return
       }
@@ -358,7 +366,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     // ── Left arrow ────────────────────────────────────────────────────────────
     if (key.leftArrow) {
       setCursor(c => {
-        if (c.col > 0) return { row: c.row, col: c.col - 1 }
+        if (c.col > 0) return { row: c.row, col: previousGraphemeBoundary(lines[c.row] ?? "", c.col) }
         if (c.row > 0) return { row: c.row - 1, col: (lines[c.row - 1] ?? "").length }
         return c
       })
@@ -368,8 +376,8 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     // ── Right arrow ────────────────────────────────────────────────────────────
     if (key.rightArrow) {
       setCursor(c => {
-        const lineLen = (lines[c.row] ?? "").length
-        if (c.col < lineLen) return { row: c.row, col: c.col + 1 }
+        const line = lines[c.row] ?? ""
+        if (c.col < line.length) return { row: c.row, col: nextGraphemeBoundary(line, c.col) }
         if (c.row < lines.length - 1) return { row: c.row + 1, col: 0 }
         return c
       })
@@ -377,25 +385,13 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     }
 
     // ── Ctrl+Backspace / Ctrl+W / Alt+Backspace: delete word ──────────────
-    // Verified with real user data via AURICT_DEBUG_KEYS=1: Ink converts known
-    // escape sequences into its own key.*/input pair BEFORE they reach
-    // `useInput` — the raw bytes are NOT PRESERVED in `input`.
-    // So the two checks below ACTUALLY work (verified end-to-end):
-    //   - key.delete && key.meta  → Ctrl+Backspace OR Alt+Backspace in the
-    //     gnome-terminal family; Ink produces this from \x1b\x7f.
-    //   - key.ctrl && input==="w" → Ctrl+W; Ink always reports Ctrl+<letter>
-    //     as {ctrl:true, input:"<letter>"} (\x17 never appears literally in input).
-    // The raw string matches below (\x17/\x1b\x7f/\x08/\x1b[127;5u) practically
-    // NEVER match in ink 5, since Ink consumes these sequences as EXPLAINED
-    // ABOVE (verified via the same diagnostic process — \x08 arrives as bare
-    // {backspace:true}, indistinguishable from plain backspace; kitty CSI-u
-    // gets split into TWO SEPARATE events, ESC and "[127;5u").
-    // Left in anyway as a harmless defensive fallback, in case some future
-    // terminal/Ink version passes the raw sequence through unchanged.
+    // Ink normalizes Ctrl/Alt+Backspace differently across terminal families;
+    // keep both parsed-key and defensive raw-sequence variants.
     if (
       (key.backspace && key.ctrl) || (key.delete && key.meta) || (key.ctrl && input === "w") ||
       input === "\x17" || input === "\x1b\x7f" || input === "\x08" || input === "\x1b[127;5u"
     ) {
+      inputUndo.checkpoint()
       const row = cursor.row
       const col = cursor.col
       setLines(prev => {
@@ -411,6 +407,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
 
     // ── Backspace ─────────────────────────────────────────────────────────
     if (key.backspace || key.delete) {
+      inputUndo.checkpoint()
       // Read the cursor beforehand — avoid async state inside setLines
       const row = cursor.row
       const col = cursor.col
@@ -418,8 +415,9 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
         const next = [...prev]
         const line = next[row] ?? ""
         if (col > 0) {
-          next[row] = line.slice(0, col - 1) + line.slice(col)
-          setCursor({ row, col: col - 1 })
+          const newCol = previousGraphemeBoundary(line, col)
+          next[row] = line.slice(0, newCol) + line.slice(col)
+          setCursor({ row, col: newCol })
         } else if (row > 0) {
           const prevLine = next[row - 1] ?? ""
           next[row - 1] = prevLine + line
@@ -435,6 +433,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     if (input && !key.ctrl && !key.meta) {
       const clean = sanitizeInput(input)
       if (!clean) return
+      inputUndo.checkpoint()
 
       // SSH coalesced Enter: arrives as "text\r" — the trailing \r means Enter
       // e.g. on slow SSH, "o" + Enter arrives combined as "o\r"
@@ -442,7 +441,8 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
         const textPart = clean.slice(0, -1)
         const currentLines = [...linesRef.current]
         const line = currentLines[cursor.row] ?? ""
-        currentLines[cursor.row] = line.slice(0, cursor.col) + textPart + line.slice(cursor.col)
+        const col = clampGraphemeBoundary(line, cursor.col)
+        currentLines[cursor.row] = line.slice(0, col) + textPart + line.slice(col)
         const text = currentLines.join("\n").trim()
         if (text) {
           setLines([""])
@@ -480,10 +480,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
         // Note: nested <Text> inside <Text wrap="wrap"> creates a separate Yoga node,
         // breaking inline flow and causing stacked rendering after history navigation.
         // Instead, use three sibling <Text> components in a flexDirection="row" Box.
-        const safeCol = Math.min(cursor.col, line.length)
-        const before  = line.slice(0, safeCol)
-        const at      = line[safeCol] ?? " "
-        const after   = line.slice(safeCol + 1)
+        const { before, at, after } = cursorLineParts(line, cursor.col)
         return (
           <Box key={i} flexDirection="row">
             {showLineNum && (

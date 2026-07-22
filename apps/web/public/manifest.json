@@ -1,7 +1,7 @@
 {
   "name": "Aurict",
   "short_name": "Aurict",
-  "description": "Open-source terminal AI coding assistant with 9 specialist agents and 218+ contextual skills.",
+  "description": "Open-source terminal AI coding assistant with local context, provider choice, and explicit control.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0606",

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { allCommands } from "../commands/registry.js";
 import { useApp } from "./design-system/renderer.js";
 import { useOverlayState } from "./hooks/useOverlayState.js";
@@ -18,7 +18,8 @@ import { useAppState } from "./hooks/useAppState.js";
 import { AppScreen } from "./app/AppScreen.js";
 import type { AppProps as Props } from "./app/app-props.js";
 import { configuredSandboxBackend } from "./app/app-environment.js";
-
+import { useTerminalAttention } from "./hooks/useTerminalAttention.js";
+import { useProjectAutoMode } from "./hooks/useProjectAutoMode.js";
 
 export function App({
   initialProvider,
@@ -62,6 +63,7 @@ export function App({
     promptDiagnostics, setPromptDiagnostics,
     promptCacheHealth, setPromptCacheHealth, activeAgentCount,
     setActiveAgentCount, updateInfo, autopilotMode, setAutopilotMode,
+    projectAutoPromptOpen, setProjectAutoPromptOpen,
     recentCmds, setRecentCmds, designInitialBrief, setDesignInitialBrief,
     watchedPaths, setWatchedPaths, checkpoints, setCheckpoints, branches,
     setBranches, activeBranchIdx, setActiveBranchIdx, remoteStatus,
@@ -78,7 +80,16 @@ export function App({
     keybindingContext,
     blockingOverlayOpen,
     composerInputActive,
-  } = useAppFocusModel({ overlay, permission, question, picker, prompt, loading });
+  } = useAppFocusModel({
+    overlay,
+    permission,
+    projectAutoPromptOpen,
+    question,
+    picker,
+    prompt,
+    loading,
+  });
+  useTerminalAttention({ loading, permission, sessionTitle });
 
   const {
     details: transcriptDetails,
@@ -112,6 +123,7 @@ export function App({
     measuredViewportRows,
     setMeasuredViewportRows,
     unseenCount,
+    unseenLabel,
     scrollConversation,
     handleScrollRange,
     pageConversation,
@@ -133,16 +145,28 @@ export function App({
   const showStartupBanner = !viewingSubagentId && startupBannerVisible;
   const taskSummary = useMemo(
     () => ({
-      pending: tasks.filter((t) => t.status === "pending").length,
-      inProgress: tasks.filter((t) => t.status === "in_progress").length,
-      done: tasks.filter((t) => t.status === "done").length,
+      pending: tasks.filter((t) => t.status === "pending" || t.status === "ready" || t.status === "blocked").length,
+      inProgress: tasks.filter((t) => t.status === "in_progress" || t.status === "verifying").length,
+      done: tasks.filter((t) => t.status === "done" || t.status === "cancelled").length,
       error: tasks.filter((t) => t.status === "error").length,
     }),
     [tasks],
   );
   const sandboxBackend = useMemo(() => configuredSandboxBackend(), []);
+  const [selectionHintVisible, setSelectionHintVisible] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setSelectionHintVisible(false), 10_000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const inputRef = useRef(input);
+  const resolveProjectAutoPrompt = useProjectAutoMode({
+    workdir: workdirState,
+    autopilotRef,
+    setAutopilotMode,
+    setPromptOpen: setProjectAutoPromptOpen,
+    addSystemMsg,
+  });
   const openExternalEditor = useExternalEditor({
     inputRef,
     loadingRef,
@@ -151,12 +175,13 @@ export function App({
   });
   useAppLifecycle({
     initialProvider,
-    workdir,
+    workdir: workdirState,
     input,
     loading,
     autopilotRef,
     inputRef,
     loadingRef,
+    mainSessionId,
     remoteRuntimeRef,
     setTermCols,
     setTermRows,
@@ -174,8 +199,6 @@ export function App({
     setBranch,
     addSystemMsg,
   });
-
-
   const {
     setProvider,
     setModel,
@@ -213,6 +236,8 @@ export function App({
     transcriptDetails,
     selectedTranscriptDetailId,
     permission,
+    projectAutoPromptOpen,
+    resolveProjectAutoPrompt,
     pickerOpen: picker !== null,
     questionOpen: question !== null,
     overlay,
@@ -304,6 +329,7 @@ export function App({
     setDesignInitialBrief,
     setInput,
     addSystemMsg,
+    exit,
   });
   const { handleSubmit, handleQueue } = useAgentSubmit({
     provider,
@@ -423,6 +449,8 @@ export function App({
       scrollLocked={scrollLocked}
       conversationOffsetRows={conversationOffsetRows}
       unseenCount={unseenCount}
+      unseenLabel={unseenLabel}
+      selectionHintVisible={selectionHintVisible}
       measuredViewportRows={measuredViewportRows}
       commandHistory={commandHistory}
       commandDefs={commandDefs}
@@ -432,6 +460,8 @@ export function App({
       prompt={prompt}
       question={question}
       permission={permission}
+      projectAutoPromptOpen={projectAutoPromptOpen}
+      resolveProjectAutoPrompt={resolveProjectAutoPrompt}
       permissionQueueLength={permissionQueue.length}
       transcriptDetails={transcriptDetails}
       input={input}
@@ -442,6 +472,7 @@ export function App({
       mainSessionId={mainSessionId}
       btwFrameRef={btwFrameRef}
       setMeasuredViewportRows={setMeasuredViewportRows}
+      setConversationOffsetRows={setConversationOffsetRows}
       setHistory={setHistory}
       setMessages={setMessages}
       setRecentCmds={setRecentCmds}

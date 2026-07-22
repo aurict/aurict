@@ -1,10 +1,12 @@
 export type FocusLayer =
   | "permission"
+  | "projectAuto"
   | "question"
   | "picker"
   | "prompt"
   | "keyboardShortcuts"
   | "subagent"
+  | "transcriptSearch"
   | "historySearch"
   | "quickSearch"
   | "commandPalette"
@@ -21,11 +23,13 @@ export type FocusLayer =
 
 export interface FocusState {
   permission: boolean;
+  projectAuto: boolean;
   question: boolean;
   picker: boolean;
   prompt: boolean;
   keyboardShortcuts: boolean;
   subagent: boolean;
+  transcriptSearch: boolean;
   historySearch: boolean;
   quickSearch: boolean;
   commandPalette: boolean;

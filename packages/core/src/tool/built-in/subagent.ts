@@ -3,6 +3,7 @@ import { agentPool, PoolFullError } from "../../agent/pool.js"
 import { AGENT_TYPE_TOOLS, AGENT_MAX_STEPS } from "../../agent/protocol.js"
 import { getAgentPrompt } from "../../agent/agent-prompts.js"
 import { SessionManager } from "../../session/manager.js"
+import { readSessionResumeState } from "../../session/resume-state.js"
 import { loadConfig } from "../../config/config.js"
 import { ProviderRegistry } from "../../provider/registry.js"
 import { filterToolIdsForSecurityCapability, isAgentTypeVisibleForSecurityCapability } from "../../security/capability.js"
@@ -93,6 +94,8 @@ Focus your prompt on the specific task — no need to repeat what was already di
 
     const recentParts   = SessionManager.getPartsTail(sessionId, 12)
     const parentContext = buildParentContext(recentParts)
+    const parentState = await readSessionResumeState(ctx.workdir, sessionId)
+    const taskContext = ctx.taskContext ?? parentState?.taskContext
 
     const id = `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const startMs = Date.now()
@@ -111,6 +114,7 @@ Focus your prompt on the specific task — no need to repeat what was already di
         allowedTools,
         ...(ctx.backendAccessToken !== undefined ? { backendAccessToken: ctx.backendAccessToken } : {}),
         ...(parentContext ? { parentContext } : {}),
+        ...(taskContext ? { taskContext } : {}),
       })
 
       return { output: formatResult(role, agentType, result, Date.now() - startMs) }
@@ -124,6 +128,14 @@ Focus your prompt on the specific task — no need to repeat what was already di
           system:   getAgentPrompt(agentType, AGENT_MAX_STEPS[agentType]),
           messages: [{ role: "user", content: prompt }],
           toolsOverride: allowedTools,
+          ...(taskContext ? { taskContext } : {}),
+          runtime: {
+            profile: "subagent",
+            maxSteps: AGENT_MAX_STEPS[agentType],
+            isSubagent: true,
+            agentType,
+            ...(ctx.sendMessage ? { sendMessage: ctx.sendMessage } : {}),
+          },
           ...(ctx.backendAccessToken !== undefined ? { backendAccessToken: ctx.backendAccessToken } : {}),
         })
         return { output: formatResult(role, agentType, r.text, Date.now() - startMs) }

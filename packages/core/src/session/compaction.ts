@@ -2,7 +2,8 @@ import { generateText } from "ai"
 import { readFile }     from "fs/promises"
 import type { CoreMessage } from "ai"
 import { ProviderRegistry }   from "../provider/registry.js"
-import { countTokens }        from "../provider/tokenizer.js"
+import { countMessageTokens, countTokens, tokenizableMessageText } from "../provider/tokenizer.js"
+import { calibratedTokenEstimate } from "../provider/token-calibration.js"
 import { hooks }              from "../hook/emitter.js"
 import {
   smartCompact,
@@ -12,72 +13,22 @@ import {
   extractFilePaths,
 } from "./context-compactor.js"
 import { resolveWithinWorkspace } from "../security/path-boundary.js"
-
-// ─── Faz 3: Error Chain Detection ─────────────────────────────────────────────
-export interface ErrorChain {
-  error: string      // orijinal hata mesajı (verbatim)
-  fix: string        // nasıl çözüldüğü
-  files: string[]    // ilgili dosyalar
-  lesson: string     // LLM'e özet
-}
-
-/**
- * Messages içindeki error→fix çiftlerini tespit eder.
- * Compaction sırasında bu zincirler korunur.
- */
-export function extractErrorChains(messages: CoreMessage[]): ErrorChain[] {
-  const chains: ErrorChain[] = []
-  let currentError: string | null = null
-  let errorFiles: string[] = []
-  let errorMsgStart = -1
-
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i]!
-    const text = extractText(msg)
-
-    // Error detection (sadece tool result'ta, assistant'ın "I see the error" gibi mesajlarında değil)
-    if (/error|failed|exception|cannot find|unable to/i.test(text)) {
-      if (msg.role === "tool") {
-        currentError = text.slice(0, 500)
-        errorFiles = extractFilePaths(text)
-        errorMsgStart = i
-      }
-    }
-
-    // Fix detection (assistant mesajında, error'dan sonra)
-    // "fixed" kelimesi tek başına yeterli değil, "fixed the" veya "fixed by" gibi kalıplar ara
-    if (currentError && msg.role === "assistant" && i > errorMsgStart) {
-      if (/fixed the|fixed by|resolved the|solved the|now works|corrected the/i.test(text)) {
-        chains.push({
-          error: currentError,
-          fix: text.slice(0, 500),
-          files: errorFiles,
-          lesson: `Error "${currentError.slice(0, 100)}..." was fixed by: ${text.slice(0, 200)}`,
-        })
-        currentError = null
-        errorFiles = []
-        errorMsgStart = -1
-      }
-    }
-  }
-
-  return chains
-}
-
-/**
- * Error chain'leri summary'ye ekler.
- * Compaction sonrası agent bu hataları tekrarlamaz.
- */
-export function addProtectedErrors(summary: string, chains: ErrorChain[]): string {
-  if (chains.length === 0) return summary
-
-  const section = [
-    "\n\n[PROTECTED ERROR CHAINS — DO NOT FORGET]",
-    ...chains.slice(0, 5).map((c, i) => `${i + 1}. ${c.lesson}`),
-  ].join("\n")
-
-  return summary + section
-}
+import { clearToolMessageResults } from "./tool-message-compaction.js"
+import { addProtectedErrors, extractErrorChains } from "./compaction-errors.js"
+import { buildBoundedSummaryTranscript, SUMMARY_SYSTEM_PROMPT } from "./summary-input.js"
+import {
+  extractProtectedContextFacts,
+  formatProtectedContextFacts,
+  injectProtectedFacts,
+  PROTECTED_FACTS_MARKER,
+} from "./protected-context.js"
+export {
+  extractProtectedContextFacts,
+  formatProtectedContextFacts,
+  PROTECTED_FACTS_MARKER,
+  type ProtectedContextFacts,
+} from "./protected-context.js"
+export { addProtectedErrors, extractErrorChains, type ErrorChain } from "./compaction-errors.js"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const COMPACTION_BUFFER     = 20_000
@@ -87,7 +38,6 @@ export const PRUNE_MINIMUM         = 20_000
 export const PRUNE_PROTECT         = 40_000
 export const DEFAULT_MSG_THRESHOLD =    100
 export const TOOL_RESULT_CLEARED_MESSAGE = "[Old tool result content cleared]"
-export const PROTECTED_FACTS_MARKER = "[Protected context facts]"
 
 export type CompactionStrategy = "aggressive" | "balanced" | "conservative"
 
@@ -102,6 +52,10 @@ export interface CompactionConfig {
   sessionId?:             string
   strategy?:              CompactionStrategy
   messageCountThreshold?: number
+  utilityProvider?:       string
+  utilityModel?:          string
+  utilityMaxInputTokens?: number
+  utilityMaxOutputTokens?: number
 }
 
 export class ContextCompactionError extends Error {
@@ -180,14 +134,12 @@ export function splitTailTurns(messages: CoreMessage[], turns: number): { head: 
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 export function estimateTokens(messages: CoreMessage[], modelId?: string, tokenizerEncoding?: string): number {
-  return messages.reduce((sum, m) => {
-    const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content)
-    return sum + countTokens(text, modelId, tokenizerEncoding) + 4
-  }, 0)
+  return messages.reduce((sum, message) => sum + countMessageTokens(message, modelId, tokenizerEncoding), 0)
 }
 
 export interface EffectiveContextOptions {
   modelId: string
+  providerId?: string
   tokenizerEncoding?: string
   systemPrompt?: string
   toolSchemaReserveTokens?: number
@@ -210,12 +162,18 @@ export function estimateEffectiveContextTokens(
     + systemTokens
     + (options.toolSchemaReserveTokens ?? 0)
     + (options.attachmentReserveTokens ?? 0)
-  return Math.ceil(raw * (options.safetyMargin ?? 1.15))
+  return Math.ceil(
+    calibratedTokenEstimate(options.providerId, options.modelId, raw) * (options.safetyMargin ?? 1.15),
+  )
 }
 
 export function isOverflow(messages: CoreMessage[], cfg: CompactionConfig): boolean {
   const usable = cfg.contextLimit - cfg.maxOutput - COMPACTION_BUFFER
-  return estimateTokens(messages, cfg.model, cfg.tokenizerEncoding) >= usable
+  return calibratedTokenEstimate(
+    cfg.provider,
+    cfg.model,
+    estimateTokens(messages, cfg.model, cfg.tokenizerEncoding),
+  ) >= usable
 }
 
 export function isOverflowByMessages(messages: CoreMessage[], cfg: CompactionConfig): boolean {
@@ -229,21 +187,13 @@ export interface ContextBreakdown {
   percentUsed: number
 }
 
-export interface ProtectedContextFacts {
-  files: string[]
-  errors: string[]
-  verification: string[]
-  decisions: string[]
-  nextSteps: string[]
-}
-
 export function getContextBreakdown(messages: CoreMessage[], contextWindow: number, modelId?: string, tokenizerEncoding?: string): ContextBreakdown {
   const byRole: Record<string, number> = {}
   const withTokens: Array<{ preview: string; tokens: number; role: string }> = []
 
   for (const msg of messages) {
-    const text   = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)
-    const tokens = countTokens(text, modelId, tokenizerEncoding) + 4
+    const text   = tokenizableMessageText(msg)
+    const tokens = countMessageTokens(msg, modelId, tokenizerEncoding)
     byRole[msg.role] = (byRole[msg.role] ?? 0) + tokens
     withTokens.push({ preview: text.slice(0, 60).replace(/\n/g, " "), tokens, role: msg.role })
   }
@@ -277,72 +227,13 @@ export function microCompactOldToolResults(
   const compacted = messages.map((message, index) => {
     if (message.role !== "tool" || keep.has(index)) return message
     changed = true
-    return { ...message, content: TOOL_RESULT_CLEARED_MESSAGE as never } as CoreMessage
+    return clearToolMessageResults(message, TOOL_RESULT_CLEARED_MESSAGE)
   })
 
   if (!changed) return messages
 
   const protectedFacts = formatProtectedContextFacts(extractProtectedContextFacts(messages))
   return protectedFacts ? injectProtectedFacts(compacted, protectedFacts) : compacted
-}
-
-export function extractProtectedContextFacts(messages: CoreMessage[]): ProtectedContextFacts {
-  const files = new Set<string>()
-  const errors: string[] = []
-  const verification: string[] = []
-  const decisions: string[] = []
-  const nextSteps: string[] = []
-
-  for (const message of messages) {
-    const text = extractText(message)
-    for (const file of extractFilePaths(text)) files.add(file)
-    collectMatchingLines(text, /\b(error|failed|exception|cannot find|typeerror|syntaxerror|enoent)\b/i, errors, 6)
-    collectMatchingLines(text, /\b(tsc|typecheck|test|lint|playwright|vitest|bun test|passed|failed|✓|0 fail)\b/i, verification, 8)
-    collectMatchingLines(text, /\b(decided|decision|chose|selected|we will|we'll|karar|seçtik|uygulayacağız)\b/i, decisions, 6)
-    collectMatchingLines(text, /\b(next step|remaining|todo|still need|not verified|kalan|sıradaki|henüz|devam)\b/i, nextSteps, 6)
-  }
-
-  return {
-    files: [...files].slice(0, 12),
-    errors,
-    verification,
-    decisions,
-    nextSteps,
-  }
-}
-
-export function formatProtectedContextFacts(facts: ProtectedContextFacts): string {
-  const sections = [
-    facts.files.length ? `FILES:\n${facts.files.map((item) => `- ${item}`).join("\n")}` : "",
-    facts.verification.length ? `VERIFICATION:\n${facts.verification.map((item) => `- ${item}`).join("\n")}` : "",
-    facts.errors.length ? `ERRORS:\n${facts.errors.map((item) => `- ${item}`).join("\n")}` : "",
-    facts.decisions.length ? `DECISIONS:\n${facts.decisions.map((item) => `- ${item}`).join("\n")}` : "",
-    facts.nextSteps.length ? `NEXT_STEPS:\n${facts.nextSteps.map((item) => `- ${item}`).join("\n")}` : "",
-  ].filter(Boolean)
-
-  return sections.length ? `${PROTECTED_FACTS_MARKER}\n${sections.join("\n\n")}` : ""
-}
-
-function injectProtectedFacts(messages: CoreMessage[], protectedFacts: string): CoreMessage[] {
-  if (messages.some((message) => extractText(message).includes(PROTECTED_FACTS_MARKER))) return messages
-  const firstNonSystem = messages.findIndex((message) => message.role !== "system")
-  const insertAt = firstNonSystem === -1 ? messages.length : firstNonSystem
-  const factMessages: CoreMessage[] = [
-    { role: "user", content: PROTECTED_FACTS_MARKER },
-    { role: "assistant", content: protectedFacts },
-  ]
-  return [...messages.slice(0, insertAt), ...factMessages, ...messages.slice(insertAt)]
-}
-
-function collectMatchingLines(text: string, pattern: RegExp, target: string[], limit: number): void {
-  if (target.length >= limit) return
-  for (const rawLine of text.split(/\r?\n/)) {
-    if (target.length >= limit) return
-    const line = rawLine.trim()
-    if (line.length < 8 || !pattern.test(line)) continue
-    const compact = line.replace(/\s+/g, " ").slice(0, 220)
-    if (!target.includes(compact)) target.push(compact)
-  }
 }
 
 // ─── Strategy 1: microCompact ─────────────────────────────────────────────────
@@ -385,16 +276,20 @@ async function snipCompact(
     return `[${m.role}]: ${text}`
   }).join("\n\n")
 
-  const plugin = ProviderRegistry.get(cfg.provider)
-  const model  = plugin.getModel(cfg.model)
+  const utilityProvider = cfg.utilityProvider ?? cfg.provider
+  const utilityModel = cfg.utilityModel ?? cfg.model
+  const plugin = ProviderRegistry.get(utilityProvider)
+  const model  = plugin.getModel(utilityModel)
 
   let snipSummary: string
   try {
     const { text } = await generateText({
       model,
+      system: SUMMARY_SYSTEM_PROMPT,
       messages: [
         { role: "user", content: `These are tool operations from a coding session. Extract the following — copy file paths and error messages VERBATIM, do not paraphrase:\n\nMODIFIED_FILES: list every file path that was read, written, or edited\nCOMMANDS_RUN: list bash commands and their outcomes (success/fail/error)\nERRORS_FIXED: bugs found and how they were resolved (include exact error messages)\nCURRENT_STATE: one sentence on where the task stands now\n\nTool operations:\n\n${toolContext}` },
       ],
+      maxTokens: Math.min(cfg.utilityMaxOutputTokens ?? 1_200, 800),
     })
     snipSummary = text
   } catch (error) {
@@ -431,8 +326,12 @@ async function sessionCompact(
   const tailTurns = Math.max(1, (cfg.tailTurns ?? DEFAULT_TAIL_TURNS) + tailBonus)
 
   const { head, tail } = splitTailTurns(messages, tailTurns)
-  const budget = Math.max(0, estimateTokens(head, cfg.model, cfg.tokenizerEncoding) - PRUNE_MINIMUM)
-  const pruned = smartCompact(head, budget)
+  const transcript = buildBoundedSummaryTranscript(
+    head,
+    cfg.utilityMaxInputTokens ?? 24_000,
+    cfg.utilityModel ?? cfg.model,
+    cfg.tokenizerEncoding,
+  )
 
   const summaryPrompt = cfg.strategy === "aggressive"
     ? [
@@ -461,17 +360,20 @@ async function sessionCompact(
         "Preserve all specific values: line numbers, error codes, variable names, config keys.",
       ].join("\n")
 
-  const plugin = ProviderRegistry.get(cfg.provider)
-  const model  = plugin.getModel(cfg.model)
+  const utilityProvider = cfg.utilityProvider ?? cfg.provider
+  const utilityModel = cfg.utilityModel ?? cfg.model
+  const plugin = ProviderRegistry.get(utilityProvider)
+  const model  = plugin.getModel(utilityModel)
 
   let summary: string
   try {
     const { text } = await generateText({
       model,
+      system: SUMMARY_SYSTEM_PROMPT,
       messages: [
-        ...pruned,
-        { role: "user", content: summaryPrompt },
+        { role: "user", content: `${summaryPrompt}\n\nBounded session transcript:\n\n${transcript}` },
       ],
+      maxTokens: cfg.utilityMaxOutputTokens ?? 1_200,
     })
     summary = text
   } catch (error) {

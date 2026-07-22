@@ -12,8 +12,8 @@ export async function generateMetadata(): Promise<Metadata> {
     "/",
     locale === "tr" ? "Aurict — Terminal tabanlı yapay zeka kodlama asistanı" : "Aurict — Terminal-native AI coding assistant",
     locale === "tr"
-      ? "Çoklu ajan kodlama, MCP, yerel bağlam ve açık komut onayları için açık kaynaklı terminal çalışma zamanı. Aurict ayrıca yerel öncelikli masaüstü çalışma alanı olan Hoprel'i ve Aurict Mobile'ı sunar."
-      : "Open-source terminal runtime for multi-agent coding, MCP, local context, and explicit command approvals. Aurict also ships Hoprel, its local-first desktop workspace, and Aurict Mobile.",
+      ? "Çoklu ajan kodlama, MCP, yerel bağlam, sınırlı Project Auto ve açık onaylar için açık kaynaklı terminal çalışma zamanı. Aurict ayrıca yerel öncelikli masaüstü çalışma alanı olan Hoprel'i ve Aurict Mobile'ı sunar."
+      : "Open-source terminal runtime for multi-agent coding, MCP, local context, scoped Project Auto, and explicit approvals. Aurict also ships Hoprel, its local-first desktop workspace, and Aurict Mobile.",
   )
 }
 

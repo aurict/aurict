@@ -1,4 +1,4 @@
-import { createSession, getSession, listSessions, updateSession, deleteSession as dbDeleteSession, appendPart, getSessionParts, getSessionPartsCount, getSessionPartsTail, recordTurn as dbRecordTurn, listSessionsWithStats, getSessionStats, searchSessions as dbSearchSessions } from "../storage/queries.js"
+import { createSession, getSession, listSessions, updateSession, updateSessionConfig, deleteSession as dbDeleteSession, appendPart, getSessionParts, getSessionPartsCount, getSessionPartsTail, recordTurn as dbRecordTurn, listSessionsWithStats, getSessionStats, searchSessions as dbSearchSessions } from "../storage/queries.js"
 import type { Session, Part, SessionConfig } from "./types.js"
 import type { SessionStats, SessionSearchResult } from "../storage/queries.js"
 import { hooks } from "../hook/emitter.js"
@@ -60,8 +60,12 @@ export const SessionManager = {
   },
 
   ensureExists(id: string, cfg: SessionConfig): void {
-    if (!getSession(id)) {
+    const existing = getSession(id)
+    if (!existing) {
       createSession({ id, config: JSON.stringify(cfg) })
+    } else if (cfg.workdir) {
+      const stored = parseSessionConfig(existing.config)
+      if (stored.workdir !== cfg.workdir) updateSessionConfig(id, JSON.stringify({ ...stored, ...cfg }))
     }
   },
 
@@ -118,4 +122,10 @@ export const SessionManager = {
   search(query: string, limit?: number): SessionSearchResult[] {
     return dbSearchSessions(query, limit)
   },
+}
+
+function parseSessionConfig(value: string | null): Partial<SessionConfig> {
+  if (!value) return {}
+  try { return JSON.parse(value) as Partial<SessionConfig> }
+  catch { return {} }
 }

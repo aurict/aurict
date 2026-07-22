@@ -38,6 +38,7 @@ export interface TranscriptMessage {
   reasoningContent?: string;
   timestamp?: number;
   durationMs?: number;
+  artifact?: ToolResultArtifact;
   errorPresentation?: TranscriptErrorPresentation;
 }
 

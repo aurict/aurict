@@ -1,91 +1,98 @@
 import { z } from "zod"
 import { spawn } from "bun"
+import { executeTypeScriptNavigation, type NavigationAction } from "../language/typescript-navigation.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
-const DIAGNOSTIC_COMMANDS: Record<string, { cmd: string[], fileRequired?: boolean, cwdOnly?: boolean }> = {
-  "typescript": { cmd: ["bunx", "tsc", "--noEmit", "--pretty", "false"] },
-  "javascript": { cmd: ["bunx", "tsc", "--noEmit", "--pretty", "false", "--allowJs"] },
-  "python":     { cmd: ["python", "-m", "compileall", "."], cwdOnly: true },
-  "go":         { cmd: ["go", "build", "-v", "./..."], cwdOnly: true },
-  "rust":       { cmd: ["cargo", "check"], cwdOnly: true },
-  "php":        { cmd: ["php", "-l", "<file>"], fileRequired: true },
-  "c":          { cmd: ["gcc", "-fsyntax-only", "<file>"], fileRequired: true },
-  "cpp":        { cmd: ["g++", "-fsyntax-only", "<file>"], fileRequired: true },
-  "csharp":     { cmd: ["dotnet", "build", "--no-incremental"], cwdOnly: true },
-  "fsharp":     { cmd: ["dotnet", "build"], cwdOnly: true },
-  "java":       { cmd: ["javac", "<file>"], fileRequired: true },
-  "kotlin":     { cmd: ["kotlinc", "-nowarn", "<file>"], fileRequired: true },
-  "lua":        { cmd: ["luac", "-p", "<file>"], fileRequired: true },
-  "ruby":       { cmd: ["ruby", "-c", "<file>"], fileRequired: true },
-  "swift":      { cmd: ["swiftc", "-typecheck", "<file>"], fileRequired: true },
-  "dart":       { cmd: ["dart", "analyze"], cwdOnly: true },
-  "elixir":     { cmd: ["mix", "compile"], cwdOnly: true },
-  "zig":        { cmd: ["zig", "build"], cwdOnly: true },
-  "bash":       { cmd: ["bash", "-n", "<file>"], fileRequired: true },
-  "dockerfile": { cmd: ["hadolint", "<file>"], fileRequired: true },
-  "yaml":       { cmd: ["yamllint", "<file>"], fileRequired: true },
-  "terraform":  { cmd: ["terraform", "validate"], cwdOnly: true },
-  "vue":        { cmd: ["bunx", "vue-tsc", "--noEmit"] },
-  "svelte":     { cmd: ["bunx", "svelte-check"], cwdOnly: true },
-  "astro":      { cmd: ["bunx", "astro", "check"], cwdOnly: true },
-  "prisma":     { cmd: ["bunx", "prisma", "validate"], cwdOnly: true },
-  "haskell":    { cmd: ["cabal", "build"], cwdOnly: true },
-  "ocaml":      { cmd: ["dune", "build"], cwdOnly: true },
-  "clojure":    { cmd: ["clj", "-M:check"], cwdOnly: true },
-  "julia":      { cmd: ["julia", "-e", "include(\"<file>\")"], fileRequired: true },
-  "nix":        { cmd: ["nix-instantiate", "--parse", "<file>"], fileRequired: true },
-  "gleam":      { cmd: ["gleam", "check"], cwdOnly: true },
-  "deno":       { cmd: ["deno", "check", "<file>"], fileRequired: true },
+const DIAGNOSTIC_COMMANDS: Record<string, { cmd: string[]; fileRequired?: boolean; cwdOnly?: boolean }> = {
+  typescript: { cmd: ["bunx", "tsc", "--noEmit", "--pretty", "false"] },
+  javascript: { cmd: ["bunx", "tsc", "--noEmit", "--pretty", "false", "--allowJs"] },
+  python: { cmd: ["python", "-m", "compileall", "."], cwdOnly: true },
+  go: { cmd: ["go", "build", "-v", "./..."], cwdOnly: true },
+  rust: { cmd: ["cargo", "check"], cwdOnly: true },
+  php: { cmd: ["php", "-l", "<file>"], fileRequired: true },
+  c: { cmd: ["gcc", "-fsyntax-only", "<file>"], fileRequired: true },
+  cpp: { cmd: ["g++", "-fsyntax-only", "<file>"], fileRequired: true },
+  csharp: { cmd: ["dotnet", "build", "--no-incremental"], cwdOnly: true },
+  java: { cmd: ["javac", "<file>"], fileRequired: true },
+  kotlin: { cmd: ["kotlinc", "-nowarn", "<file>"], fileRequired: true },
+  ruby: { cmd: ["ruby", "-c", "<file>"], fileRequired: true },
+  swift: { cmd: ["swiftc", "-typecheck", "<file>"], fileRequired: true },
+  dart: { cmd: ["dart", "analyze"], cwdOnly: true },
+  zig: { cmd: ["zig", "build"], cwdOnly: true },
+  bash: { cmd: ["bash", "-n", "<file>"], fileRequired: true },
+  vue: { cmd: ["bunx", "vue-tsc", "--noEmit"] },
+  svelte: { cmd: ["bunx", "svelte-check"], cwdOnly: true },
 }
+
+const NAVIGATION_ACTIONS = [
+  "definition", "references", "hover", "document_symbols",
+  "call_hierarchy", "rename_preview", "rename_apply",
+] as const
 
 export const lspTool: ToolDef = {
   id: "lsp",
-  description: "Language Server Protocol (LSP) tool to check your code for errors BEFORE making massive edits. Supports 30+ languages.",
+  description: `Type-aware code intelligence and diagnostics.
+
+For TypeScript/JavaScript use definition, references, hover, document_symbols,
+call_hierarchy, rename_preview, or rename_apply. Provide a 1-based line/column
+for exact navigation; symbol is a convenience fallback. Always preview a rename
+before applying it. Other languages currently support diagnostics/check_file.`,
   parameters: z.object({
-    action: z.enum(["diagnostics", "check_file"]).describe("Action to perform."),
-    language: z.enum(Object.keys(DIAGNOSTIC_COMMANDS) as [string, ...string[]]).describe("The language of the project or file"),
-    path: z.string().optional().describe("Absolute path to the file (required for 'check_file' in some languages)"),
+    action: z.enum(["diagnostics", "check_file", ...NAVIGATION_ACTIONS]),
+    language: z.enum(Object.keys(DIAGNOSTIC_COMMANDS) as [string, ...string[]]).default("typescript"),
+    path: z.string().optional(),
+    line: z.number().int().positive().optional(),
+    column: z.number().int().positive().optional(),
+    symbol: z.string().optional(),
+    direction: z.enum(["incoming", "outgoing", "both"]).optional(),
+    new_name: z.string().optional(),
   }),
-  async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
+  spec: {
+    category: "write",
+    riskLevel: "medium",
+    requiresConfirmation: args => args["action"] === "rename_apply",
+    permissionSummary: "Apply a type-aware project-wide symbol rename",
+  },
+  async execute(args, ctx): Promise<ExecuteResult> {
     const action = String(args["action"])
-    const language = String(args["language"])
+    const language = String(args["language"] ?? "typescript")
     const path = args["path"] ? String(args["path"]) : undefined
-
-    const config = DIAGNOSTIC_COMMANDS[language]
-    if (!config) return { output: "", error: `Unsupported language: ${language}` }
-
-    if (config.fileRequired && !path) {
-      return { output: "", error: `path is required for ${language} file check` }
-    }
-
-    try {
-      const finalCmd = [...config.cmd]
-      
-      // Replace <file> placeholder if exists
-      const fileIndex = finalCmd.indexOf("<file>")
-      if (fileIndex !== -1 && path) {
-        finalCmd[fileIndex] = path
-      } else if (!config.cwdOnly && path && fileIndex === -1 && action === "check_file") {
-        // Append path if it's a file check and no placeholder exists
-        finalCmd.push(path)
+    if ((NAVIGATION_ACTIONS as readonly string[]).includes(action)) {
+      if (!path) return { output: "", error: "path is required for code navigation" }
+      if (language !== "typescript" && language !== "javascript") {
+        return { output: "", error: `${action} currently supports TypeScript/JavaScript; use diagnostics for ${language}` }
       }
-
-      const proc  = spawn(finalCmd, { cwd: ctx.workdir })
-      const timer = setTimeout(() => { try { proc.kill() } catch { /* zaten kapanmış */ } }, 60_000)
-      const [out, err, exitCode] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-        proc.exited,
-      ])
-      clearTimeout(timer)
-
-      if (exitCode === 0) {
-        return { output: `[${language.toUpperCase()}] Check successful. No syntax/type errors found.` }
-      } else {
-        return { output: `[${language.toUpperCase()}] Diagnostics found errors:\n` + out + err }
-      }
-    } catch (e) {
-      return { output: "", error: `LSP execution failed for ${language}: ${e instanceof Error ? e.message : String(e)}` }
+      return executeTypeScriptNavigation({
+        action: action as NavigationAction,
+        path,
+        ...(args["line"] !== undefined ? { line: Number(args["line"]) } : {}),
+        ...(args["column"] !== undefined ? { column: Number(args["column"]) } : {}),
+        ...(args["symbol"] ? { symbol: String(args["symbol"]) } : {}),
+        ...(args["direction"] ? { direction: args["direction"] as "incoming" | "outgoing" | "both" } : {}),
+        ...(args["new_name"] ? { newName: String(args["new_name"]) } : {}),
+      }, ctx)
     }
+    return runDiagnostics(language, action, path, ctx)
+  },
+}
+
+async function runDiagnostics(language: string, action: string, path: string | undefined, ctx: ToolContext): Promise<ExecuteResult> {
+  const config = DIAGNOSTIC_COMMANDS[language]
+  if (!config) return { output: "", error: `Unsupported language: ${language}` }
+  if (config.fileRequired && !path) return { output: "", error: `path is required for ${language} file check` }
+  const command = config.cmd.map(part => part === "<file>" ? path! : part)
+  if (!config.cwdOnly && path && !command.includes(path) && action === "check_file") command.push(path)
+  try {
+    const proc = spawn(command, { cwd: ctx.workdir })
+    const timer = setTimeout(() => proc.kill(), 60_000)
+    const [out, err, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited,
+    ])
+    clearTimeout(timer)
+    return exitCode === 0
+      ? { output: `[${language.toUpperCase()}] Check successful. No syntax/type errors found.` }
+      : { output: `[${language.toUpperCase()}] Diagnostics found errors:\n${out}${err}` }
+  } catch (error) {
+    return { output: "", error: `Diagnostic execution failed for ${language}: ${error instanceof Error ? error.message : String(error)}` }
   }
 }

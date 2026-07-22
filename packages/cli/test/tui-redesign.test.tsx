@@ -198,11 +198,16 @@ describe("Session chrome density breakpoints", () => {
     expect(frame).toContain("opus-4")
   })
 
-  test("footer owns directory and sandbox without duplicating the model", () => {
-    const frame = render(<StatusBar {...PROPS} cols={140} sandboxBackend="policy" />).lastFrame() ?? ""
-    expect(frame).toContain("/home/user/project")
-    expect(frame).toContain("policy")
-    expect(frame).not.toContain("opus-4")
+  test("header owns location while footer owns runtime status", () => {
+    const header = render(<CockpitHeader {...PROPS} contextTokens={0} cols={140} />).lastFrame() ?? ""
+    expect(header).toContain("/home/user/project")
+    expect(header).toContain("opus-4")
+
+    const footer = render(<StatusBar cols={140} sandboxBackend="policy" />).lastFrame() ?? ""
+    expect(footer).toContain("ready")
+    expect(footer).toContain("policy")
+    expect(footer).not.toContain("/home/user/project")
+    expect(footer).not.toContain("opus-4")
   })
 })
 

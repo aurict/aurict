@@ -15,6 +15,7 @@ interface Props {
   scrollLocked: boolean;
   offsetRowsFromBottom: number;
   unseenCount?: number;
+  unseenLabel?: string;
   activeTool?: string;
   activity?: RunActivity;
   onScrollRange: (maximum: number) => void;

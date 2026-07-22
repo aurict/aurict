@@ -2,6 +2,10 @@
 
 Aurict is designed to produce reliable results even when using weaker, cheaper, or poorly-calibrated models. The robustness layer is a set of framework-level features that compensate for common LLM failure modes — so reliability doesn't depend entirely on model quality.
 
+Runtime correctness state is structured rather than inferred from display text.
+`RunStateMachine`, typed `ToolOutcome` records, canonical task storage, and
+versioned runtime events are described in [Agent Runtime](./agent-runtime.md).
+
 ---
 
 ## Failure modes this addresses
@@ -139,16 +143,23 @@ Every tool error string is inspected by regex patterns. If a known pattern match
 
 ---
 
-## Output summarization
+## Lossless adaptive tool output
 
-**Location:** `packages/core/src/tool/executor.ts` — `summarizeToolOutput`
+**Locations:** `packages/core/src/tool/truncation.ts`, `packages/core/src/tool/output-artifacts.ts`
 
-Tool outputs exceeding 4 000 characters are automatically summarized before being returned to the model:
+Tool output budgets scale with the active model context window and are bounded by tool type. Explicit
+`truncation.maxChars` and per-tool values remain authoritative. Large read results use a 12k–48k character
+budget; other tools use 6k–32k.
+
+Truncation is lossless: the full output is stored under the current workspace and session as a
+content-addressed artifact. The model receives a `tool-output:<sha256>` handle and can continue with
+`read_tool_output(handle, offset, limit)`. Handles cannot read output from another session.
 
 **grep results:**
 ```
+[grep summary: 312 result lines across 8 files · src/a.ts (84), src/b.ts (51), ...]
 <first 50 match lines>
-[312 matches across 8 file(s) — showing first 50]
+[312 result lines — showing first 50]
 ```
 
 **General output:**
@@ -178,15 +189,31 @@ This means the model starts with the relevant file content already in context �
 
 ---
 
-## Git context freshness
+## Prompt prefix and history caching
 
-**Location:** `packages/core/src/agent/loop.ts` + `packages/core/src/skill/injector.ts`
+**Locations:** `packages/core/src/agent/prompt-cache-layout.ts`, `packages/core/src/agent/prompt-sections.ts`
 
-The git section (branch, status, recent commits) is generated fresh on every turn and placed in a **separate, uncached system message block** for Anthropic providers.
+All providers receive prompt sections in the same prefix-friendly order: static core, session/project
+state, then turn-dynamic content. Anthropic uses up to four explicit breakpoints: core, project/session,
+skills, and the conversation history boundary immediately before the current user turn.
 
-This prevents the 5-minute Anthropic prompt cache from serving stale git state. The static system prompt (skills, memory, instructions) is cached normally; the git section is not.
+Volatile git/task/attention context is inserted after the cached history boundary for Anthropic, so it
+stays fresh without invalidating the accumulated transcript. Tool selection is persisted in resume state
+and remains sticky within its explicit allowlist; this avoids changing the tool-schema prefix on every turn.
 
-For non-Anthropic providers, the full system prompt is regenerated each turn.
+## Token accounting
+
+**Locations:** `packages/core/src/provider/tokenizer.ts`, `packages/core/src/provider/token-calibration.ts`
+
+Message counting walks semantic content parts. Image/PDF bytes and base64 payloads are represented by a
+fixed attachment estimate instead of being tokenized as text, preventing both base64 explosions and the
+previous attachment-reserve double count. Tool schemas are converted to their real JSON schema and counted
+once per model/encoding instead of using a flat per-tool constant.
+
+Tokenization results are memoized by content hash. Comparable single-step provider usage samples update a
+bounded EWMA calibration factor per provider/model; tool-driven multi-step totals are deliberately excluded.
+Session run traces include estimated context, actual input/cache usage, schema reserve, tokenizer-cache
+hits/misses, and the current calibration factor.
 
 ---
 

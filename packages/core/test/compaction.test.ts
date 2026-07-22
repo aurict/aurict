@@ -36,10 +36,24 @@ describe("estimateTokens", () => {
 
   it("handles object content (tool results)", () => {
     const msgs: CoreMessage[] = [
-      { role: "tool", content: [{ type: "tool-result", toolCallId: "x", content: "result" }] }
+      { role: "tool", content: [{ type: "tool-result", toolCallId: "x", toolName: "read", result: "result" }] }
     ]
     const n = estimateTokens(msgs)
     expect(n).toBeGreaterThan(0)
+  })
+
+  it("counts multimodal attachments once instead of stringifying base64", () => {
+    const msgs = [{
+      role: "user",
+      content: [{ type: "image", image: "A".repeat(200_000), mimeType: "image/png" }],
+    }] as CoreMessage[]
+    const estimated = estimateEffectiveContextTokens(msgs, {
+      modelId: "gpt-4o",
+      attachmentReserveTokens: 0,
+      safetyMargin: 1,
+    })
+    expect(estimated).toBeGreaterThan(1_000)
+    expect(estimated).toBeLessThan(2_000)
   })
 
   it("uses the selected model encoding instead of always falling back", () => {

@@ -10,6 +10,7 @@ import { glyph } from "./terminal-glyphs.js";
 import { useSemanticTheme } from "./theme/semantic-theme.js";
 import { CockpitSignal } from "./CockpitSignal.js";
 import { shellHorizontalInset } from "./app-shell/layout-metrics.js";
+import { displayWidth, truncateDisplayWidth } from "./terminal-text/display-width.js";
 
 export interface SessionHeaderProps {
   provider: string; model: string; workdir: string; tokens: TokenBreakdown;
@@ -23,20 +24,17 @@ export interface SessionHeaderProps {
 }
 
 export interface SessionFooterProps {
-  provider: string; model: string; tokens: TokenBreakdown; contextTokens?: number | undefined;
-  workdir: string; skills?: string[] | undefined; turnSkills?: string[] | undefined; contextWindow?: number | undefined;
-  isUndercover?: boolean | undefined; coordinatorMode?: boolean | undefined; branch?: string | undefined; wasCompacted?: boolean | undefined;
-  activeAgent?: string | undefined; agentColor?: string | undefined; bgTaskCount?: number | undefined; taskCount?: number | undefined;
+  skills?: string[] | undefined; turnSkills?: string[] | undefined;
+  bgTaskCount?: number | undefined;
   taskSummary?: { pending: number; inProgress: number; done: number; error: number } | undefined;
-  taskPanelOpen?: boolean | undefined; localServer?: { enabled: boolean; port?: number; started: boolean; reused: boolean; reason?: string } | undefined;
-  sandboxBackend?: "none" | "policy" | "docker" | undefined; effort?: number | undefined; autopilotMode?: boolean | undefined;
-  cols?: number | undefined; draftSavedAt?: number | undefined; activeAgentCount?: number | undefined; hasBtwNote?: boolean | undefined;
+  sandboxBackend?: "none" | "policy" | "docker" | undefined; autopilotMode?: boolean | undefined;
+  cols?: number | undefined;
   scrollLocked?: boolean | undefined; remoteConnected?: boolean | undefined;
+  selectionHint?: boolean | undefined;
 }
 
 function short(value: string, max: number): string {
-  const suffix = glyph("ellipsis");
-  return value.length <= max ? value : `${value.slice(0, Math.max(1, max - suffix.length))}${suffix}`;
+  return truncateDisplayWidth(value, max, glyph("ellipsis"));
 }
 
 function shortModel(model: string): string {
@@ -45,9 +43,9 @@ function shortModel(model: string): string {
 
 function shortDir(workdir: string, max: number): string {
   const dir = workdir.replace(process.env["HOME"] ?? "", "~");
-  if (dir.length <= max) return dir;
+  if (displayWidth(dir) <= max) return dir;
   const parts = dir.split("/").filter(Boolean);
-  return `${glyph("ellipsis")}/${parts.slice(-2).join("/")}`;
+  return truncateDisplayWidth(`${glyph("ellipsis")}/${parts.slice(-2).join("/")}`, max, glyph("ellipsis"));
 }
 
 function contextState(tokens: number, window = 200_000) {
@@ -101,6 +99,7 @@ export function SessionHeader(props: SessionHeaderProps) {
             <StatusDot tone={props.loading ? "accent" : "safe"} active={Boolean(props.loading)} />
             {!compact && <CockpitSignal active={Boolean(props.loading)} />}
             <Text color={theme.accent} bold>AURICT</Text>
+            {compact && <Text color={theme.textDim}>{shortDir(props.workdir, tiny ? 10 : 18)}</Text>}
             {!tiny && <Text color={props.loading ? theme.textPrimary : theme.textDim}>{state}</Text>}
             {!compact && props.activeAgent && <Text color={theme.accentAlt}>@{short(props.activeAgent, 16)}</Text>}
           </HStack>
@@ -145,20 +144,23 @@ export function SessionFooter(props: SessionFooterProps) {
   const taskErrors = props.taskSummary?.error ?? 0;
   const skills = (props.skills?.length ?? 0) + (props.turnSkills?.length ?? 0);
   const sandbox = props.sandboxBackend === "none" ? "no sandbox" : props.sandboxBackend === "docker" ? "docker" : "policy";
+  const state = props.scrollLocked
+    ? "output paused"
+    : taskErrors > 0
+      ? `${taskErrors} task${taskErrors === 1 ? "" : "s"} failed`
+      : (props.bgTaskCount ?? 0) > 0
+        ? `${props.bgTaskCount} background running`
+        : "ready";
 
   return (
     <Surface variant="ghost" tone="muted" paddingX="md" paddingY="none">
       <HStack justify="space-between">
         <HStack gap="sm">
           <Text color={theme.borderBright}>{glyph("headingMinor")}</Text>
-          <Text color={theme.textSecondary}>{shortDir(props.workdir, compact ? 24 : 42)}</Text>
-          {!compact && props.branch && <Text color={theme.textDim}>{glyph("branch")} {short(props.branch, 16)}</Text>}
-          {!compact && props.activeAgent && <Text color={props.agentColor ?? theme.accent}>@{short(props.activeAgent, 14)}</Text>}
+          <Text color={props.scrollLocked || taskErrors > 0 ? semantic.status.warning : theme.textSecondary}>{state}</Text>
         </HStack>
         <HStack gap="sm">
-          {props.scrollLocked && <Text color={semantic.status.warning}>paused</Text>}
-          {taskErrors > 0 && <Text color={semantic.status.error}>{taskErrors} failed</Text>}
-          {(props.bgTaskCount ?? 0) > 0 && <Text color={semantic.status.info}>bg {props.bgTaskCount}</Text>}
+          {!compact && props.selectionHint && <Text color={theme.textDim}>Shift+drag selects</Text>}
           {!compact && skills > 0 && <Text color={theme.textDim}>{skills} skills</Text>}
           {!compact && props.remoteConnected && <Text color={semantic.status.success}>{glyph("statusTiny")} remote</Text>}
           {!compact && props.autopilotMode && <Text color={semantic.status.warning}>{glyph("statusTiny")} auto</Text>}

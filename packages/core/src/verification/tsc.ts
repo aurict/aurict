@@ -9,7 +9,7 @@ import { spawn } from "bun"
  * 3. Debounce — ardışık edit'lerde 2s bekle, toplu kontrol et
  */
 
-const TSC_TIMEOUT_MS = 4_000
+const TSC_TIMEOUT_MS = 30_000
 const TSC_CACHE_TTL_MS = 8_000
 
 interface TscCacheEntry {
@@ -106,14 +106,22 @@ export async function runIncrementalTsc(
       stderr: "pipe",
     })
 
+    let timedOut = false
     const timer = setTimeout(() => {
-      try { proc.kill() } catch {}
+      timedOut = true
+      try {
+        proc.kill()
+      } catch (error) {
+        console.warn("[aurict] failed to stop timed-out TypeScript verification", error)
+      }
     }, TSC_TIMEOUT_MS)
 
     const out = await new Response(proc.stdout).text()
     const err = await new Response(proc.stderr).text()
     await proc.exited
     clearTimeout(timer)
+
+    if (timedOut) throw new Error(`TypeScript verification timed out after ${TSC_TIMEOUT_MS}ms`)
 
     const result = (out + err).trim() || "✓"
     
@@ -125,8 +133,8 @@ export async function runIncrementalTsc(
     })
 
     return result
-  } catch {
-    return ""
+  } catch (error) {
+    throw new Error(`TypeScript verification failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
   }
 }
 

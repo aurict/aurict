@@ -146,7 +146,26 @@ export interface CritiqueConfig {
   enabled?: boolean
   adversarial?: boolean
   minLinesForAuto?: number
+  provider?: string
+  model?: string
+  maxEstimatedCostUsd?: number
+  fallbackToPrimary?: boolean
+  showReviewerIdentity?: boolean
 }
+
+/** Low-cost model route for summaries, memory extraction, and other housekeeping. */
+export interface UtilityModelConfig {
+  provider?: string
+  model?: string
+  maxInputTokens?: number
+  maxOutputTokens?: number
+}
+
+export type AgentRuntimeFeature =
+  | "canonical_state" | "structured_status" | "utility_model"
+  | "persistent_tool_routing" | "prompt_tiering"
+  | "background_verification" | "mtime_tool_cache"
+  | "multimodal_tools" | "code_navigation" | "browser_drive" | "semantic_search"
 
 export interface OmniConfig {
   providers?:  Record<string, { apiKey?: string; baseUrl?: string }>
@@ -188,6 +207,18 @@ export interface OmniConfig {
     enabled?: boolean
     budgetThresholdUsd?: number
     maxSessionCostUsd?: number
+  }
+  /** Explicit/economy model used for non-user-facing housekeeping calls. */
+  utilityModel?: UtilityModelConfig
+  /** Staged rollout and emergency kill-switches for agent harness layers. */
+  agentFeatures?: {
+    rolloutPercent?: number
+    disabled?: AgentRuntimeFeature[]
+  }
+  /** Limits the model-visible tool surface to capability packs inferred from the current intent. */
+  toolRouting?: {
+    enabled?: boolean
+    maxVisible?: number
   }
   /** MCP (Model Context Protocol) server yapılandırmaları */
   mcpServers?: Record<string, McpServerConfig>
@@ -259,6 +290,9 @@ function merge(a: OmniConfig, b: OmniConfig): OmniConfig {
     agents: { ...(a.agents ?? {}), ...(b.agents ?? {}) },
     fallback: { ...(a.fallback ?? {}), ...(b.fallback ?? {}) },
     routing: { ...(a.routing ?? {}), ...(b.routing ?? {}) },
+    utilityModel: { ...(a.utilityModel ?? {}), ...(b.utilityModel ?? {}) },
+    agentFeatures: { ...(a.agentFeatures ?? {}), ...(b.agentFeatures ?? {}) },
+    toolRouting: { ...(a.toolRouting ?? {}), ...(b.toolRouting ?? {}) },
     mcpServers: { ...(a.mcpServers ?? {}), ...(b.mcpServers ?? {}) },
     securitySandbox: { ...(a.securitySandbox ?? {}), ...(b.securitySandbox ?? {}) },
     longTaskRuntime: { ...(a.longTaskRuntime ?? {}), ...(b.longTaskRuntime ?? {}) },

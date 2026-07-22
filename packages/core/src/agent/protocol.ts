@@ -21,6 +21,8 @@ export type AgentType =
   | "data"        // read + write + bash: veri dönüşümü, SQL, analiz
   | "critic"      // read-only: kod/plan/mimari eleştirisi — yazma erişimi yok
 
+import type { TaskContext } from "../context/types.js"
+
 // Per-type MAX_STEPS — uzun görevler kırpılmaz, kısa görevler boşa tur atmaz
 export const AGENT_MAX_STEPS: Record<AgentType, number> = {
   coordinator: 10,   // sadece dispatch — LLM çağrısı az
@@ -87,6 +89,7 @@ export interface WorkerRequest {
   backendAccessToken?: string
   envVars?:      Record<string, string>  // API keys from parent process
   parentContext?: string     // son N parent mesajının özeti — subagent'a bağlam sağlar
+  taskContext?: TaskContext  // canonical parent task state; preferred over transcript summary
 }
 
 // Parent → Worker (control)

@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { Box, Text } from "./design-system/renderer.js";
 import type { TranscriptMessage } from "./conversation/types.js";
 import { useTheme } from "../utils/theme.js";
-import { projectLiveTranscript, projectStableTranscript, type TranscriptRow } from "./conversation/projector.js";
+import { projectLiveTranscript, type TranscriptRow } from "./conversation/projector.js";
 import { TranscriptRows } from "./TranscriptRows.js";
 import type { RunActivity } from "./run-status.js";
 import { useTerminalSize } from "./TerminalSizeContext.js";
 import { shellHorizontalInset } from "./app-shell/layout-metrics.js";
+import { TranscriptProjectionCache } from "./conversation/projection-cache.js";
 
 export interface ConversationViewportProps {
   height: number;
@@ -21,6 +22,7 @@ export interface ConversationViewportProps {
   scrollLocked: boolean;
   offsetRowsFromBottom: number;
   unseenCount?: number;
+  unseenLabel?: string;
   onScrollRange?: (maxOffset: number) => void;
   onAnchorShift?: (deltaRows: number) => void;
 }
@@ -34,8 +36,10 @@ export function viewportTopPadding(contentRows: number, viewportRows: number, of
 export function ConversationViewport(props: ConversationViewportProps) {
   const theme = useTheme();
   const columns = useTerminalSize().columns;
+  const projectionCache = useRef<TranscriptProjectionCache>();
+  if (!projectionCache.current) projectionCache.current = new TranscriptProjectionCache();
   const stableLines = useMemo(
-    () => projectStableTranscript(props.messages, props.width),
+    () => projectionCache.current!.project(props.messages, props.width),
     [props.messages, props.width],
   );
   const hasAssistantHeader = useMemo(
@@ -70,8 +74,8 @@ export function ConversationViewport(props: ConversationViewportProps) {
     const rows = [...stableLines, ...liveLines];
     return rows.length > 0 ? rows : [{ id: "empty", segments: [{ text: "", tone: "muted" }] }];
   }, [stableLines, liveLines]);
-  const reserveUnseen =
-    (props.unseenCount ?? 0) > 0 && props.offsetRowsFromBottom > 0;
+  const reserveUnseen = (props.unseenCount ?? 0) > 0
+    && (props.scrollLocked || props.offsetRowsFromBottom > 0);
   const viewportRows = Math.max(1, props.height - (reserveUnseen ? 1 : 0));
   const maxOffset = Math.max(0, lines.length - viewportRows);
   const offset = Math.min(props.offsetRowsFromBottom, maxOffset);
@@ -98,7 +102,9 @@ export function ConversationViewport(props: ConversationViewportProps) {
       {...(theme.bgDeep !== undefined ? { backgroundColor: theme.bgDeep } : {})}
     >
       {reserveUnseen && (
-        <Text color={theme.accent} bold>⋯ {props.unseenCount} new messages below</Text>
+        <Text color={theme.accent} bold>
+          ⋯ {props.unseenCount} new · {props.unseenLabel ?? "content"} ↓
+        </Text>
       )}
       {topPaddingRows > 0 && <Box height={topPaddingRows} flexShrink={0} />}
       <TranscriptRows rows={lines.slice(start, start + viewportRows)} rail={columns >= 60} />

@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import crypto from "node:crypto";
 import {
-  getSessionAgent,
   PlanGate,
   ProviderRegistry,
   SessionManager,
@@ -23,6 +22,8 @@ import { AppHeader } from "./AppHeader.js";
 import { AppOverlayContents } from "./AppOverlayContents.js";
 import { AppView } from "./AppView.js";
 import type { AppScreenProps } from "./app-screen-types.js";
+import { formatExitTranscript } from "../conversation/transcript-export.js";
+import { transcriptOffsetForMessage } from "../conversation/search-model.js";
 
 export function AppScreen(props: AppScreenProps) {
   const {
@@ -34,9 +35,10 @@ export function AppScreen(props: AppScreenProps) {
     activeAgent, skillNames, turnSkillNames, isUndercover, wasCompacted,
     remoteConnected, effort, showStartupBanner, updateInfo, sessionTitle,
     history, messages, streamingText, streamingReason, streamingError,
-    scrollLocked, conversationOffsetRows, unseenCount, measuredViewportRows,
+    scrollLocked, conversationOffsetRows, unseenCount, unseenLabel, measuredViewportRows,
     commandHistory, commandDefs, recentCmds, designInitialBrief, picker,
-    prompt, question, permission, permissionQueueLength, transcriptDetails,
+    prompt, question, permission, projectAutoPromptOpen,
+    resolveProjectAutoPrompt, permissionQueueLength, transcriptDetails,
     input, composerQueue, inlineSuggestionActive, cmdFilter, mentionFilter,
     mainSessionId, btwFrameRef, setMeasuredViewportRows, setHistory,
     setMessages, setRecentCmds, setInput, setThemeName, setDesignInitialBrief,
@@ -46,7 +48,8 @@ export function AppScreen(props: AppScreenProps) {
     handleScrollRange, scrollConversation, moveTranscriptDetail,
   } = props;
   const {
-    quickSearchOpen, setQuickSearchOpen, cmdPaletteOpen, setCmdPaletteOpen,
+    quickSearchOpen, setQuickSearchOpen, transcriptSearchOpen, setTranscriptSearchOpen,
+    cmdPaletteOpen, setCmdPaletteOpen,
     settingsOpen, setSettingsOpen, designWizardOpen, setDesignWizardOpen,
     historySearchOpen, setHistorySearchOpen, keyboardShortcutsOpen,
     setKeyboardShortcutsOpen, taskPanelOpen, setTaskPanelOpen,
@@ -63,12 +66,16 @@ export function AppScreen(props: AppScreenProps) {
       .find((candidate) => candidate.id === model)?.contextWindow,
     [provider, model],
   );
-  const subSessions = viewingSubagentId
+  const subSessions = useMemo(() => viewingSubagentId
     ? SessionManager.list()
         .filter((session) => session.parentId === mainSessionId.current)
         .sort((left, right) => left.createdAt - right.createdAt)
-    : [];
+    : [], [activeAgentCount, mainSessionId, viewingSubagentId]);
   const subIndex = subSessions.findIndex((session) => session.id === viewingSubagentId);
+  const exitTranscript = useMemo(
+    () => formatExitTranscript(messages, sessionTitle ?? "Aurict session"),
+    [messages, sessionTitle],
+  );
   return (
     <AppView
       rows={termRows}
@@ -76,6 +83,7 @@ export function AppScreen(props: AppScreenProps) {
       theme={activeTheme}
       keybindingContext={keybindingContext}
       overlayOpen={blockingOverlayOpen}
+      exitTranscript={exitTranscript}
       onTranscriptHeight={(rows) => setMeasuredViewportRows(Math.max(6, rows))}
       header={
         <AppHeader
@@ -153,6 +161,7 @@ export function AppScreen(props: AppScreenProps) {
           onScrollRange={handleScrollRange}
           onAnchorShift={scrollConversation}
           {...(unseenCount > 0 ? { unseenCount } : {})}
+          {...(unseenLabel ? { unseenLabel } : {})}
           {...(activeTool !== undefined ? { activeTool } : {})}
           {...(runActivity !== undefined ? { activity: runActivity } : {})}
         />
@@ -170,6 +179,19 @@ export function AppScreen(props: AppScreenProps) {
             onSelect: (text) => {
               setHistorySearchOpen(false);
               setInput(text);
+            },
+          } : null}
+          transcriptSearch={transcriptSearchOpen ? {
+            messages,
+            onClose: () => setTranscriptSearchOpen(false),
+            onSelect: (messageId) => {
+              setTranscriptSearchOpen(false);
+              props.setConversationOffsetRows(transcriptOffsetForMessage(
+                messages,
+                Math.max(20, termCols - 9),
+                measuredViewportRows,
+                messageId,
+              ));
             },
           } : null}
           quickSearch={quickSearchOpen ? {
@@ -333,6 +355,10 @@ export function AppScreen(props: AppScreenProps) {
             ),
           } : null}
           attachmentNames={attachments.map((attachment) => attachment.name)}
+          projectAuto={projectAutoPromptOpen && !permission ? {
+            workdir: workdirState,
+            onDecide: resolveProjectAutoPrompt,
+          } : null}
           permission={permission ? {
             request: permission,
             onDecide: handlePermission,
@@ -357,38 +383,16 @@ export function AppScreen(props: AppScreenProps) {
             ),
           }}
           status={terminalMeasured ? {
-            provider,
-            model,
-            tokens,
-            workdir: workdirState,
             skills: skillNames,
             turnSkills: turnSkillNames,
-            isUndercover,
-            coordinatorMode,
-            wasCompacted,
-            activeAgent,
-            agentColor: getSessionAgent(activeAgent, workdirState).color,
-            taskPanelOpen,
             sandboxBackend,
             autopilotMode,
             cols: termCols,
-            hasBtwNote: btwState !== null,
             scrollLocked,
             remoteConnected,
-            ...(contextUsage?.effectiveTokens !== undefined
-              ? { contextTokens: contextUsage.effectiveTokens }
-              : {}),
+            selectionHint: props.selectionHintVisible,
             ...(runningBackgroundTaskCount > 0 ? { bgTaskCount: runningBackgroundTaskCount } : {}),
-            ...(tasks.length > 0 ? { taskCount: tasks.length, taskSummary } : {}),
-            ...(localServer !== undefined ? { localServer } : {}),
-            ...(effort !== undefined ? { effort } : {}),
-            ...(activeAgentCount > 0 ? { activeAgentCount } : {}),
-            ...(branch !== undefined ? { branch } : {}),
-            ...(contextUsage?.contextWindow !== undefined
-              ? { contextWindow: contextUsage.contextWindow }
-              : currentContextWindow !== undefined
-                ? { contextWindow: currentContextWindow }
-                : {}),
+            ...(tasks.length > 0 ? { taskSummary } : {}),
           } : null}
         />
       }

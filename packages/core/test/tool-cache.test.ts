@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { toolResultCache, createToolResultCache } from "../src/tool/cache.js"
 
 describe("ToolResultCache", () => {
@@ -89,6 +92,21 @@ describe("ToolResultCache", () => {
   })
 
   describe("TTL", () => {
+    it("invalidates read results immediately when the file mtime/size changes", () => {
+      const workdir = mkdtempSync(join(tmpdir(), "aurict-cache-"))
+      try {
+        const path = join(workdir, "sample.ts")
+        writeFileSync(path, "one", "utf8")
+        const scope = `${workdir}\0session`
+        cache.set("read", { path: "sample.ts" }, "one", undefined, scope)
+        expect(cache.get("read", { path: "sample.ts" }, scope)?.result).toBe("one")
+        writeFileSync(path, "two changed", "utf8")
+        expect(cache.get("read", { path: "sample.ts" }, scope)).toBeNull()
+      } finally {
+        rmSync(workdir, { recursive: true, force: true })
+      }
+    })
+
     it("cache entry expires after TTL", async () => {
       // LSP has 10s TTL — test with a shorter approach
       cache.set("lsp", { path: "x.ts" }, "diagnostics")

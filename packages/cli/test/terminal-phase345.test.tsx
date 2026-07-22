@@ -80,9 +80,39 @@ describe("terminal phases 3-5", () => {
       ] }],
     });
     const text = rows.map(rowText).join("\n");
-    expect(text).toContain("2 passed · 0 failed · ctrl+o");
+    expect(text).toMatch(/2 passed · 0 failed\s+details \^O/);
     expect(text).not.toContain("test one: passed");
     expect(text).not.toContain("test two: passed");
+  });
+
+  test("summarizes verification from structured metadata instead of localized stdout", () => {
+    const rows = projectTranscript({
+      width: 90, streamingText: null, streamingReason: null, streamingError: null,
+      messages: [{ id: "structured-verify", role: "assistant", content: "", blocks: [{
+        type: "tool",
+        id: "verify",
+        tool: "bash",
+        args: '{"command":"bun test"}',
+        pending: false,
+        resultContent: "すべてのテストが完了しました",
+        artifact: {
+          kind: "shell",
+          output: "すべてのテストが完了しました",
+          outputLines: 1,
+          presentation: {
+            status: "success",
+            changedFiles: [],
+            filePaths: [],
+            errors: [],
+            importantLines: [],
+            verification: [{ check: "test", status: "passed" }],
+          },
+        },
+      }] }],
+    });
+    const text = rows.map(rowText).join("\n");
+    expect(text).toMatch(/test passed\s+details \^O/);
+    expect(text).not.toContain("すべてのテスト");
   });
 
   test("presents git diff as a compact artifact instead of stdout", () => {
@@ -101,7 +131,7 @@ describe("terminal phases 3-5", () => {
     });
     const text = rows.map(rowText).join("\n");
     expect(text).toMatch(/› git\s+diff/);
-    expect(text).toContain("└ src/a.ts · +1 −1 · ctrl+o");
+    expect(text).toMatch(/└ src\/a\.ts · \+1 −1\s+details \^O/);
     expect(text).not.toContain("diff --git");
     expect(text).not.toContain("-old");
   });

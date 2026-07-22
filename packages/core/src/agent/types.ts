@@ -9,6 +9,9 @@ import type { LongTaskContinuationDecision } from "./continuation-controller.js"
 import type { TaskLedger } from "./task-ledger.js"
 import type { CompletionProof } from "./completion-proof.js"
 import type { ToolResultArtifact } from "./tool-result-artifact.js"
+import type { AgentEvent, RuntimeExecutionOptions, RuntimeRunSummary, ToolOutcome } from "../runtime/contracts.js"
+import type { TaskContext } from "../context/types.js"
+import type { TurnStatus } from "./turn-status.js"
 
 export interface AgentContinuationOptions {
   getTasks?: (() => ContinuationTaskState[]) | undefined
@@ -38,9 +41,11 @@ export interface CompactionEvent {
 }
 
 export interface AgentRunOptions {
+  runId?:       string
   sessionId?:   string
   provider?:    string
   model?:       string
+  modelSelection?: { mode: "auto" } | { mode: "pinned"; provider: string; model: string }
   /** Aurict backend access token (varsa) — bonds/rates/legal gibi backend'e konuşan
    *  tool'lara ToolContext üzerinden aktarılır. Yoksa bu tool'lar "giriş yapmamışsın"
    *  mesajı döner, agent turn'u hiç engellenmez. */
@@ -62,6 +67,11 @@ export interface AgentRunOptions {
   attachments?:    Attachment[]   // multimodal dosya ekleri
   toolsOverride?:  string[]       // set ise sadece bu tool'lar etkin (session agent kısıtlaması)
   continuation?:   AgentContinuationOptions
+  runtime?:        RuntimeExecutionOptions
+  taskContext?:    TaskContext
+  onEvent?:        (event: AgentEvent) => void
+  onModelSelected?: (selection: { provider: string; model: string; mode: "auto" | "pinned" }) => void
+  onToolSelection?: (selection: { toolIds: string[]; capabilities: string[]; omittedCount: number; reason: string }) => void
   onText?:        (delta: string, isReasoning?: boolean) => void
   onToolCall?:    (call: { id: string; tool: string; args: unknown }) => void
   onToolResult?:  (res: AgentToolResultEvent) => void
@@ -70,7 +80,11 @@ export interface AgentRunOptions {
   onStepFinish?:  () => void
   onCompaction?:  (event: CompactionEvent) => void
   /** Provider fallback zinciri farklı bir provider'a geçtiğinde bir kez tetiklenir. */
-  onProviderFallback?: (fromProvider: string, toProvider: string) => void
+  onProviderFallback?: (
+    fromProvider: string,
+    toProvider: string,
+    models?: { fromModel: string; toModel: string },
+  ) => void
   /** Bir retry/fallback denemesi başlıyor — UI önceki (başarısız) denemeden akmış
    *  kısmi stream metnini/reasoning buffer'ını sıfırlamalı. */
   onStreamRestart?: () => void
@@ -88,6 +102,7 @@ export interface AgentToolResultEvent {
   result: string
   durationMs: number
   artifact: ToolResultArtifact
+  outcome?: ToolOutcome
 }
 
 export interface TokenBreakdown {
@@ -111,6 +126,9 @@ export interface AgentFinishResult {
   longTask?: LongTaskContinuationDecision
   taskLedger?: TaskLedger
   completionProof?: CompletionProof
+  taskContext?: TaskContext
+  turnStatus?: TurnStatus
+  runtime?: RuntimeRunSummary
 }
 
 export type AgentStatus = "idle" | "running" | "done" | "error" | "aborted"

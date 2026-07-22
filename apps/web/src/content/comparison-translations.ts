@@ -1,22 +1,77 @@
+import type { Comparison } from "@/content/comparisons"
 import type { AppLocale } from "@/i18n/routing"
 
-type Feature = { name: string; aurict: boolean; competitor: boolean }
-type LocalizableComparison = { slug: string; title: string; description: string; tagline: string; differentiator?: string; ourStrengths: string[]; theirStrengths: string[]; features: Feature[] }
-
 const phrases: Record<string, string> = {
-  "Multiple AI providers": "Birden fazla yapay zekâ sağlayıcısı", "Multi-agent architecture": "Çoklu ajan mimarisi", "Auto-injected skills": "Otomatik eklenen beceriler", "Native compiled binary": "Yerel derlenmiş binary", "Windows support": "Windows desteği", "Bash command classifier": "Bash komut sınıflandırıcısı", "MCP integration": "MCP entegrasyonu", "Open source (AGPLv3)": "Açık kaynak (AGPLv3)", "Persistent memory": "Kalıcı bellek", "Terminal-native": "Terminal odaklı", "IDE-based": "IDE tabanlı", "Works over SSH": "SSH üzerinden çalışır", "Lightweight binary": "Hafif binary", "Inline suggestions": "Satır içi öneriler", "Open source": "Açık kaynak", "Sandbox execution": "Sandbox çalıştırma", "Git-focused workflow": "Git odaklı iş akışı", "Full coding assistant": "Tam kodlama asistanı", "No subscription fee": "Abonelik ücreti yok", "GitHub integration": "GitHub entegrasyonu", "Specialist agent architecture": "Uzman ajan mimarisi", "Contextual skills": "Bağlamsal beceriler", "Command safety controls": "Komut güvenlik kontrolleri", "Policy-oriented execution": "Politika odaklı çalıştırma", "Inline IDE suggestions": "Satır içi IDE önerileri", "9 AI providers": "9 yapay zekâ sağlayıcısı", "218+ skills": "218'den fazla beceri", "Bash classifier": "Bash sınıflandırıcısı",
+  "Terminal workflow": "Terminal iş akışı",
+  "Provider configuration": "Sağlayıcı yapılandırması",
+  "MCP": "MCP",
+  "Completion record": "Tamamlanma kaydı",
+  "Primary surface": "Birincil yüzey",
+  "Model selection": "Model seçimi",
+  "Automation control": "Otomasyon kontrolü",
+  "Runtime": "Çalışma zamanı",
+  "Model connectivity": "Model bağlantısı",
+  "Edit approval": "Düzenleme izni",
+  "Terminal agent": "Terminal ajanı",
+  "Permission scope": "İzin kapsamı",
+  "Provider approach": "Sağlayıcı yaklaşımı",
+  "Edit permissions": "Düzenleme izinleri",
+  "Code intelligence": "Kod zekâsı",
 }
 
-const tr: Record<string, Omit<LocalizableComparison, "slug">> = {
-  "claude-code": { title: "Aurict ve Claude Code", description: "Claude Code yalnızca Anthropic'e bağlıdır. Aurict 9 sağlayıcıyı, 9 uzman ajanı, 218'den fazla otomatik eklenen beceriyi destekler ve yerel binary olarak çalışır.", tagline: "Sağlayıcı esnekliği çoklu ajan gücüyle buluşuyor", differentiator: "Sağlayıcı esnekliği + çoklu ajan", ourStrengths: ["9 yapay zekâ sağlayıcısı — istediğiniz an geçiş, sağlayıcı bağımlılığı yok", "Paralel çalışan 9 uzman ajan", "218'den fazla otomatik eklenen bağlamsal beceri", "Yerel binary — Node.js çalışma zamanı gerekmez", "macOS, Linux ve Windows'ta çalışır", "Komut güvenliği için Bash sınıflandırıcısı", "MCP istemcisi — mevcut yapılandırmanızı kullanın"], theirStrengths: ["Sıkı Anthropic entegrasyonu", "Resmi Claude aracı"], features: [] },
-  cursor: { title: "Aurict ve Cursor", description: "Cursor bir IDE'dir; Aurict bir terminal yapay zekâsıdır. Farklı yaklaşımlar, farklı güçlü yanlar: seçimi iş akışınıza göre yapın.", tagline: "Terminal odaklı ve IDE odaklı yaklaşım", differentiator: "Terminal ve IDE", ourStrengths: ["Her terminalde çalışır — IDE gerekmez", "Hafif yerel binary", "Çoklu ajan orkestrasyonu", "9 sağlayıcı, istediğiniz an geçiş", "218'den fazla bağlamsal beceri", "SSH dostu — uzak sunucularda çalışır"], theirStrengths: ["Görsel IDE deneyimi", "Satır içi kod önerileri", "Görsel diff görüntüleyici"], features: [] },
-  aider: { title: "Aurict ve Aider", description: "Aider tek ajanlı, Git odaklı bir araçtır. Aurict ise çoklu sağlayıcı desteği ve bağlamsal becerilerle uzman ajanlar kullanır.", tagline: "Çoklu ajan ve tek ajan", differentiator: "Çoklu ajan + güvenlik", ourStrengths: ["Farklı görevler için 9 uzman ajan", "Tek sağlayıcıya bağlı olmayan 9 yapay zekâ sağlayıcısı", "218'den fazla bağlamsal beceri", "Güvenlik için Bash sınıflandırıcısı", "Korumalı terminal çalıştırması için politika sandbox'ı", "Tasarım ajanı sihirbazı", "Yerel Windows binary'si"], theirStrengths: ["Git entegrasyonu odağı", "Basit tek ajan yaklaşımı"], features: [] },
-  "github-copilot": { title: "Aurict ve GitHub Copilot", description: "GitHub Copilot bir otomatik tamamlama aracıdır. Aurict, çoklu ajan orkestrasyonu ve derin kod tabanı anlayışı sunan tam bir yapay zekâ kodlama asistanıdır.", tagline: "Tam asistan ve otomatik tamamlama", differentiator: "Tam asistan + çoklu ajan", ourStrengths: ["Yalnızca otomatik tamamlama değil, tam kodlama asistanı", "9 uzman ajan", "9 yapay zekâ sağlayıcısı", "218'den fazla bağlamsal beceri", "Kod tabanı farkındalıklı bağlam", "Özel araçlar ve beceriler", "MCP entegrasyonu", "Zorunlu abonelik yok"], theirStrengths: ["Satır içi IDE önerileri", "GitHub ekosistemi entegrasyonu"], features: [] },
-  opencode: { title: "Aurict ve OpenCode", description: "İki proje de açık kaynak terminal yapay zekâ iş akışlarını hedefler. Aurict uzman ajanlara, bağlamsal becerilere, güvenlik kontrollerine, mobil BYOK çalışmasına ve daha geniş bir ürün ekosistemine odaklanır.", tagline: "Zengin ajan çalışma zamanı ve minimal terminal yapay zekâsı", differentiator: "Beceriler + güvenlik + mobil", ourStrengths: ["Uzman ajanlar", "Birden fazla sağlayıcı", "Bağlamsal beceriler", "Komut güvenlik kontrolleri", "Politika odaklı çalıştırma", "Yerel Windows binary'si", "Mobil BYOK asistanı ve companion yönü"], theirStrengths: ["Minimal yaklaşım", "Daha küçük kapsam"], features: [] },
+type Translation = Pick<Comparison, "title" | "description" | "tagline" | "differentiator" | "ourStrengths" | "theirStrengths">
+
+const tr: Record<string, Translation> = {
+  "claude-code": {
+    title: "Aurict ve Claude Code",
+    description: "İkisi de terminal kodlama ajanıdır. Aurict geniş yerleşik sağlayıcı kataloğuna, sınırlı Project Auto'ya ve kalıcı tamamlanma kanıtına odaklanır; Claude Code ise Anthropic, Bedrock ve Vertex dağıtım yolları sunar.",
+    tagline: "Sağlayıcı genişliği ve kanıt odaklı teslim",
+    differentiator: "Sağlayıcı seçimi + kalıcı kanıt",
+    ourStrengths: ["12 yerleşik sağlayıcı adaptörü", "Proje içi sınırlı dosya değişiklikleri için Project Auto", "Doğrulama kanıtı ve açık işleri içeren kalıcı tamamlanma kaydı", "Yerel anlamsal arama, dependency docs, görsel okuma ve doğrulama araçları"],
+    theirStrengths: ["Resmî Anthropic iş akışı", "Anthropic Console, Claude aboneliği, Bedrock ve Vertex kimlik doğrulama yolları"],
+  },
+  cursor: {
+    title: "Aurict ve Cursor",
+    description: "Cursor bir IDE deneyimini CLI ve model seçimiyle birleştirir. Aurict terminal öncelikli çalışma zamanı, proje kapsamlı otomasyon denetimleri ve kanıta dayalı tamamlanma için tasarlanmıştır.",
+    tagline: "Terminal öncelikli çalışma zamanı ve IDE iş akışı",
+    differentiator: "Kapsamlı otomasyon + terminal denetimi",
+    ourStrengths: ["IDE bağımlılığı olmadan terminal öncelikli çalışma", "Project Auto tek proje oturumuyla sınırlıdır", "Tamamlanma kanıtı, evidence ve açık işleri görünür tutar", "Anlamsal arama, dependency docs, vision ve doğrulama için yerel araç zinciri"],
+    theirStrengths: ["Görsel düzenleyici deneyimi", "Satır içi öneriler ve görsel diff iş akışı", "Seçilmiş model seti ve yapılandırılabilir MCP sunucuları"],
+  },
+  aider: {
+    title: "Aurict ve Aider",
+    description: "İkisi de terminal tabanlı kendi modelini getir iş akışlarını destekler. Aurict, kapsamlı izinler, kalıcı tamamlanma kanıtı ve yerel çalışma alanı zekâsı için daha geniş bir runtime katmanı ekler.",
+    tagline: "Git odaklı eşleşme ve kanıtlı runtime",
+    differentiator: "Kapsamlı izin + doğrulama kaydı",
+    ourStrengths: ["Project Auto yalnızca sınırlı proje içi düzenlemeleri kapsar", "Kalıcı /proof tamamlanma kaydı", "Anlamsal kaynak araması ve kurulu dependency dokümantasyonu", "Doğrulama için tarayıcı ve eval araçları"],
+    theirStrengths: ["Odaklı Git merkezli eşli programlama iş akışı", "Geniş LLM ve yerel model bağlantısı"],
+  },
+  "github-copilot": {
+    title: "Aurict ve GitHub Copilot CLI",
+    description: "İkisi de model seçimi, izinler, MCP ve özelleştirme içeren terminal ajanı iş akışları sunar. Aurict kendi sağlayıcı kataloğu, sınırlı Project Auto ve kalıcı tamamlanma kanıtıyla ayrışır.",
+    tagline: "Açık kapsamlı otomasyon ve yerel kanıt",
+    differentiator: "Project Auto + tamamlanma kanıtı",
+    ourStrengths: ["12 yerleşik sağlayıcı adaptörü", "Sınırlı düzenlemeler için proje yerelinde otomatik onay", "Değişiklik, kanıt, açık iş ve muafiyet içeren tamamlanma kaydı", "Yerel çalışma alanı zekâsı araçları"],
+    theirStrengths: ["GitHub ekosistemi entegrasyonu", "Copilot CLI model seçimi, MCP, eklentiler ve özel ajanlar"],
+  },
+  opencode: {
+    title: "Aurict ve OpenCode",
+    description: "İkisi de provider ve izin yapılandırması sunan açık kaynak terminal kodlama ajanlarıdır. Aurict seçilmiş yerleşik sağlayıcı kataloğu, sınırlı Project Auto, tamamlanma kanıtı ve yerel doğrulama araç zincirine odaklanır.",
+    tagline: "Seçilmiş runtime denetimleri ve kanıt odaklı teslim",
+    differentiator: "Kapsamlı proje otomasyonu + tamamlanma kanıtı",
+    ourStrengths: ["12 yerleşik sağlayıcı adaptörü", "Güvenli, tipli dosya değişiklikleri için sınırlı Project Auto", "Kalıcı tamamlanma kanıtı ve doğrulama evidence'ı", "Anlamsal arama, dependency docs, vision, browser ve eval araçları"],
+    theirStrengths: ["Geniş sağlayıcı ekosistemi", "Araç başına allow, deny ve ask izinleri", "Yerleşik LSP ve genişletilebilir MCP araçları"],
+  },
 }
 
-export function localizeComparison<T extends LocalizableComparison>(comparison: T, locale: AppLocale): T {
-  if (locale !== "tr" || !tr[comparison.slug]) return comparison
+export function localizeComparison(comparison: Comparison, locale: AppLocale): Comparison {
+  if (locale !== "tr") return comparison
   const translation = tr[comparison.slug]
-  return { ...comparison, ...translation, features: comparison.features.map((feature) => ({ ...feature, name: phrases[feature.name] ?? feature.name })) }
+  if (!translation) return comparison
+
+  return {
+    ...comparison,
+    ...translation,
+    rows: comparison.rows.map((row) => ({ ...row, name: phrases[row.name] ?? row.name })),
+  }
 }

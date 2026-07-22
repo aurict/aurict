@@ -22,7 +22,9 @@ Or switch mid-session with `/model`.
 | `claude-sonnet-4-6` | 200k | Recommended default — speed/quality balance |
 | `claude-haiku-4-5-20251001` | 200k | Fastest, lowest cost |
 
-**Prompt caching:** Git context and proactive file injections are placed in separate uncached system message blocks so they stay fresh every turn.
+**Prompt caching:** Stable core, project/session, and skill prefixes are ordered before turn-dynamic
+content for every provider. Anthropic additionally marks the prior conversation boundary as cacheable;
+fresh git/task context is inserted after that boundary so it does not invalidate cached history.
 
 **Extended thinking:** Select effort level through the `/models` picker after choosing a model.
 

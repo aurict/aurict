@@ -20,25 +20,35 @@ function ensureTable() {
       source TEXT NOT NULL,
       tags TEXT
     )`)
-  } catch { /* migration already ran */ }
+  } catch (error) {
+    console.warn("[aurict] memory table initialization could not be confirmed", error)
+  }
 }
 
 class MemoryStore {
   constructor() {
     // Tablo yoksa oluştur (Drizzle migration'ı beklemeye gerek yok)
-    try { ensureTable() } catch { /* ignore */ }
+    ensureTable()
   }
 
   /** Workdir için alakalı memoryleri döner: project önce, global sonra; token limiti dahilinde */
-  getRelevant(workdir: string, maxEntries = 15, maxTokens = 600): Memory[] {
+  getRelevant(workdir: string, maxEntries = 15, maxTokens = 600, query = ""): Memory[] {
+    const words = keywords(query)
     const all = this.list(workdir)
+      .map((memory, index) => ({
+        memory,
+        index,
+        relevance: relevanceScore(memory, words),
+      }))
+      .sort((a, b) => b.relevance - a.relevance || a.index - b.index)
+      .map(({ memory }) => memory)
     const selected: Memory[] = []
     let   total = 0
 
     for (const m of all) {
       if (selected.length >= maxEntries) break
       const tok = countTokens(m.content) + 10  // tag + category overhead
-      if (total + tok > maxTokens) break
+      if (total + tok > maxTokens) continue
       selected.push(m)
       total += tok
     }
@@ -54,9 +64,18 @@ class MemoryStore {
     source:   Source
     tags?:    string[]
   }): Memory {
+    const content = data.content.trim()
+    if (!content) throw new Error("Memory content cannot be empty")
+    const duplicate = this.list(data.project).find((memory) => (
+      memory.scope === data.scope
+      && (data.scope === "global" || memory.project === data.project)
+      && normalizeContent(memory.content) === normalizeContent(content)
+    ))
+    if (duplicate) return duplicate
+
     const entry: Memory = {
       id:        crypto.randomUUID(),
-      content:   data.content.trim(),
+      content,
       category:  data.category,
       scope:     data.scope,
       timestamp: Date.now(),
@@ -155,8 +174,28 @@ class MemoryStore {
       const dir  = join(workdir, ".aurict")
       mkdirSync(dir, { recursive: true })
       writeFileSync(join(dir, "memory.md"), this.toMarkdown(workdir), "utf8")
-    } catch { /* dosya yazma başarısız → sessizce geç */ }
+    } catch (error) {
+      console.warn(`[aurict] memory export failed for ${workdir}`, error)
+    }
   }
+}
+
+function normalizeContent(content: string): string {
+  return content.toLocaleLowerCase().replace(/\s+/g, " ").replace(/[.!?]+$/g, "").trim()
+}
+
+function keywords(query: string): string[] {
+  return Array.from(new Set(
+    query.toLocaleLowerCase().match(/[\p{L}\p{N}_-]{3,}/gu) ?? [],
+  ))
+}
+
+function relevanceScore(memory: Memory, words: string[]): number {
+  if (words.length === 0) return 0
+  const text = `${memory.content} ${(memory.tags ?? []).join(" ")}`.toLocaleLowerCase()
+  const overlap = words.reduce((score, word) => score + (text.includes(word) ? 1 : 0), 0)
+  const projectBoost = memory.scope === "project" ? 0.25 : 0
+  return overlap / words.length + projectBoost
 }
 
 export const memoryStore = new MemoryStore()

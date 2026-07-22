@@ -2,7 +2,7 @@
 
 ## Overview
 
-Aurict runs long tasks by distributing work across a pool of typed specialist agents. Each agent runs in an isolated Bun Worker thread with its own tool scope, system prompt, and context window.
+Aurict runs long tasks by distributing work across a pool of typed specialist agents. Each agent runs in an isolated Bun Worker thread with its own tool scope and context budget. Main and worker agents use the same `AgentRuntime`; the Worker layer only adapts heartbeat, inbox, and pool messages. See [Agent Runtime](./agent-runtime.md).
 
 ```
 User request
@@ -68,7 +68,7 @@ Any agent can spawn a subagent using the `subagent` tool:
 Spawn a security agent to audit src/auth/ for injection vulnerabilities
 ```
 
-The subagent runs with restricted tools (based on type), executes in its own thread, and returns a structured result.
+The subagent runs with restricted tools (based on type), executes in its own thread, receives structured task context, and returns through the same versioned runtime event contract as the main agent.
 
 ---
 
@@ -82,6 +82,13 @@ The pool manages up to 8 concurrent workers per parent session. Worker names and
 ```
 
 Worker timeout: **5 minutes** per task. Long-running tasks should be broken into smaller subtasks by the coordinator.
+
+The `orchestrate` tool accepts an explicit DAG (`id`, `dependencies`,
+`fileScopes`, and per-node `maxAttempts`) or infers dependencies from the
+decomposed roles. Independent branches continue if another branch fails; only
+transitive dependents are marked blocked. Runnable nodes with overlapping file
+scopes are serialized to avoid concurrent edits, while disjoint scopes run in
+parallel. Node state is mirrored into the session-scoped task store.
 
 ---
 
@@ -120,15 +127,18 @@ aurict --undercover
 
 ---
 
-## Autopilot mode
+## Project Auto mode
 
-In autopilot mode, Aurict executes multi-step tasks without asking for confirmation on safe operations:
+The TUI asks whether to enable Project Auto when Aurict opens in a folder. It can also be toggled
+during the session:
 
 ```
-/autopilot
+/auto
 ```
 
-Autopilot respects the permission system — dangerous operations (destructive bash commands, force pushes) still require explicit approval.
+Project Auto skips repeated prompts only for bounded typed file changes inside that project.
+Shell commands, secrets, internal paths, project escapes, dangerous operations, and broad deletes
+still require explicit approval. The grant is session-scoped and is reset when the workdir changes.
 
 ---
 

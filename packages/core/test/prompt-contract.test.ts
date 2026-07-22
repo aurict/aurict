@@ -12,13 +12,13 @@ describe("prompt contracts", () => {
     }
   })
 
-  it("keeps git and runtime sections dynamic instead of cacheable", async () => {
+  it("keeps git dynamic while making stable skill discovery session-cacheable", async () => {
     const sections = await buildSystemPromptSections(process.cwd(), undefined, true, undefined, "fix tests")
     const git = sections.find(section => section.name === "git")
     const skills = sections.find(section => section.name === "skills")
 
     if (git) expect(git.cache).toBe("dynamic")
-    if (skills) expect(skills.cache).toBe("dynamic")
+    if (skills) expect(skills.cache).toBe("session")
   })
 
   it("reports attention anchor budget warnings semantically", () => {

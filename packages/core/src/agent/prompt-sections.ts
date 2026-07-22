@@ -3,6 +3,7 @@ export type PromptSectionCache = "static" | "session" | "dynamic"
 export interface PromptSection {
   name: string
   cache: PromptSectionCache
+  memoize: boolean
   compute: () => string | null | Promise<string | null>
 }
 
@@ -24,7 +25,7 @@ export function promptSection(
   cache: PromptSectionCache,
   compute: PromptSection["compute"],
 ): PromptSection {
-  return { name, cache, compute }
+  return { name, cache, memoize: cache !== "dynamic", compute }
 }
 
 export function staticPromptSection(
@@ -41,6 +42,14 @@ export function sessionPromptSection(
   return promptSection(name, "session", compute)
 }
 
+/** Provider-cacheable session content that is recomputed on every turn. */
+export function freshSessionPromptSection(
+  name: string,
+  compute: PromptSection["compute"],
+): PromptSection {
+  return { name, cache: "session", memoize: false, compute }
+}
+
 export function dynamicPromptSection(
   name: string,
   compute: PromptSection["compute"],
@@ -53,7 +62,19 @@ export async function resolvePromptSections(
   cacheKey = "default",
 ): Promise<ResolvedPromptSection[]> {
   const resolved = await Promise.all(sections.map(section => resolveSection(section, cacheKey)))
-  return resolved.filter((section): section is ResolvedPromptSection => section !== null)
+  return orderPromptSectionsForCaching(
+    resolved.filter((section): section is ResolvedPromptSection => section !== null),
+  )
+}
+
+export function orderPromptSectionsForCaching(
+  sections: ResolvedPromptSection[],
+): ResolvedPromptSection[] {
+  const rank: Record<PromptSectionCache, number> = { static: 0, session: 1, dynamic: 2 }
+  return sections
+    .map((section, index) => ({ section, index }))
+    .sort((left, right) => rank[left.section.cache] - rank[right.section.cache] || left.index - right.index)
+    .map(({ section }) => section)
 }
 
 export function joinPromptSections(sections: ResolvedPromptSection[]): string {
@@ -101,7 +122,7 @@ async function resolveSection(
   section: PromptSection,
   cacheKey: string,
 ): Promise<ResolvedPromptSection | null> {
-  if (section.cache === "dynamic") {
+  if (!section.memoize || section.cache === "dynamic") {
     return toResolved(section, await section.compute())
   }
 

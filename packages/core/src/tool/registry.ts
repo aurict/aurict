@@ -61,19 +61,27 @@ import { marketDataTool } from "./built-in/market-data.js"
 import { legalSearchTool } from "./built-in/legal-search.js"
 import { documentExtractTool } from "./built-in/document-extract.js"
 import { structuredDataTool } from "./built-in/structured-data.js"
+import { readToolOutputTool } from "./built-in/read-tool-output.js"
+import { requestToolsTool } from "./built-in/request-tools.js"
+import { readImageTool } from "./built-in/read-image.js"
+import { depDocsTool } from "./built-in/dep-docs.js"
+import { browserTool } from "./built-in/browser.js"
+import { evalTool } from "./built-in/eval.js"
+import { astEditTool } from "./built-in/ast-edit.js"
+import { semanticSearchTool } from "./built-in/semantic-search.js"
 
 const tools = new Map<string, ToolDef>()
 
 for (const t of [
-  bashTool, readTool, writeTool, editTool, globTool, grepTool,
+  bashTool, evalTool, readTool, readImageTool, readToolOutputTool, requestToolsTool, depDocsTool, writeTool, editTool, globTool, grepTool,
   webfetchTool, todoTool,
-  applyPatchTool, questionTool, websearchTool, undoTool,
+  applyPatchTool, astEditTool, questionTool, websearchTool, undoTool,
   taskCreateTool, taskUpdateTool, taskCompleteTool,
   planEnterTool, planVerifyTool,
   lspTool, notebookEditTool, subagentTool, worktreeTool, memoryTool, gitTool,
   svnTool, perforceTool,
   sendMessageTool,
-  symbolsTool, codeMapTool,
+  symbolsTool, codeMapTool, semanticSearchTool,
   loadSkillTool,
   httpRequestTool, jwtDecodeTool, regexTestTool, jqTool,
   pptxTool, renderPdfTool, chartTool, mermaidTool,
@@ -82,7 +90,7 @@ for (const t of [
   trackVariableTaintTool, atomicPatchAndTestTool, inspectLiveProcessTool,
   blastRadiusTool,
   gitContextTool,
-  uiInspectTool,
+  uiInspectTool, browserTool,
   securityReconTool, securityScanTool, securityReportTool, securityVerifyTool,
   securityAttackGraphTool, securityLogAnalyzeTool, securityThreatModelTool,
   financeCalculateTool,

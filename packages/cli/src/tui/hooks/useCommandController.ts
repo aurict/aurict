@@ -18,6 +18,7 @@ import type { DisplayMessage } from "../conversation/types.js";
 import type { ConversationBranch } from "../app/app-state-types.js";
 import { ZERO_TOKENS } from "../app/app-state-types.js";
 import type { AppCommandParams } from "../app/app-command-types.js";
+import { writeClipboard } from "../../util/clipboard.js";
 
 export function useCommandController(params: AppCommandParams) {
   const buildContext = useCallback(() => ({
@@ -32,6 +33,7 @@ export function useCommandController(params: AppCommandParams) {
     coordinatorMode: params.coordinatorMode,
     activeAgent: params.activeAgent,
     addSystemMsg: params.addSystemMsg,
+    copyText: writeClipboard,
     setAgent: (id: string) => {
       params.setActiveAgent(id);
       params.addSystemMsg(`Agent: ${getSessionAgent(id, params.workdir).name}`);
@@ -51,8 +53,8 @@ export function useCommandController(params: AppCommandParams) {
         const next = !value;
         params.addSystemMsg(
           next
-            ? "⚡ Autopilot ON — all permissions auto-approved"
-            : "⚡ Autopilot OFF — manual confirmation restored",
+            ? `Project Auto ON for ${params.workdir} — typed file changes are auto-approved; shell and sensitive operations still ask`
+            : "Project Auto OFF — manual confirmation restored",
         );
         return next;
       });
@@ -334,7 +336,7 @@ export function useCommandController(params: AppCommandParams) {
         params.addSystemMsg("History cleared");
         break;
       case "exit":
-        process.exit(0);
+        params.exit();
     }
   }, [params]);
 

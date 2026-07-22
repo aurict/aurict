@@ -1,4 +1,9 @@
 import type { AppLocale } from "@/i18n/routing"
+import { productFacts, providerCount } from "@/content/product-facts"
+
+const providerCode = productFacts.providers
+  .map((provider) => `${provider.id.padEnd(12)} → ${provider.name}`)
+  .join("\n")
 
 const DOCS_SECTIONS_EN = [
   {
@@ -64,7 +69,7 @@ const DOCS_SECTIONS_EN = [
       },
       {
         heading: "First run",
-        body: "Navigate to any project directory and launch. A setup wizard runs on first launch — pick a provider, enter your API key, and choose a model. Takes about 30 seconds.",
+        body: "Navigate to any project directory and launch. On first run, choose a provider, enter an API key, choose a model, then decide whether Project Auto may approve bounded file changes in this project for this session.",
         code: "cd your-project\naurict",
       },
       {
@@ -106,8 +111,8 @@ const DOCS_SECTIONS_EN = [
       },
       {
         heading: "Supported providers",
-        body: "9 providers are built in. Ollama requires no API key and works with any locally running model (llama3, mistral, deepseek-r1, etc).",
-        code: "anthropic   → Claude 4 Opus, Sonnet, Haiku\nopenai      → GPT-4o, o1, o3, o4-mini\ngoogle      → Gemini 1.5 Pro/Flash, 2.0\nopenrouter  → 200+ models via one key\nxai         → Grok 2, Grok 3\nazure       → Azure OpenAI deployments\nbedrock     → Claude via AWS\nollama      → Local models (no key needed)\nopencode    → OpenCode / Zenmux",
+        body: `${providerCount} providers are built in. Ollama requires no API key and works with locally running models. Use /providers and /models for the current models available to your configured providers.`,
+        code: providerCode,
       },
       {
         heading: "Thinking / reasoning mode",
@@ -154,7 +159,7 @@ const DOCS_SECTIONS_EN = [
     content: [
       {
         heading: "Using your existing MCP config",
-        body: "Aurict reads your claude_desktop_config.json automatically on startup. Any MCP server you have configured for Claude Desktop works immediately — no re-configuration needed.",
+        body: "Aurict can import compatible servers from claude_desktop_config.json on startup. Use /mcp to confirm each connection and inspect the tools it exposes; server compatibility, credentials, and local dependencies still apply.",
         code: "# macOS\n~/Library/Application Support/Claude/claude_desktop_config.json\n\n# Linux\n~/.config/Claude/claude_desktop_config.json\n\n# Windows\n%APPDATA%\\Claude\\claude_desktop_config.json",
       },
       {
@@ -187,6 +192,16 @@ const DOCS_SECTIONS_EN = [
         heading: "Context compaction",
         body: "When approaching the context window limit, Aurict can compact old messages while preserving critical context. Use /compact to view or change the compaction strategy.",
         code: "/compact         # show current strategy\n/compact auto    # auto-compact at 80% usage\n/compact manual  # prompt before compacting\n/ctx             # show context usage",
+      },
+      {
+        heading: "Project Auto",
+        body: "Project Auto removes repeated prompts only for bounded write, edit, and apply_patch requests inside the active project. The grant is session-scoped and resets when the workdir changes. Shell commands, secrets, .git and .aurict paths, project escapes, dangerous operations, and broad deletions still require direct approval.",
+        code: "/auto            # toggle Project Auto\n/autopilot       # alias\n\n# On startup: choose Yes or No for this project session",
+      },
+      {
+        heading: "Completion proof",
+        body: "Use /proof to inspect the durable completion record: changed files, verification evidence, open work, and explicit waivers. Required work stays gated while its evidence is pending or failed.",
+        code: "/proof\n/proof json\n/proof waive verification test runner unavailable in this environment",
       },
     ],
   },
@@ -325,7 +340,7 @@ const DOCS_SECTIONS_TR = [
       },
       {
         heading: "İlk çalıştırma",
-        body: "Herhangi bir proje dizinine gidin ve başlatın. İlk başlatmada bir kurulum sihirbazı çalışır — bir sağlayıcı seçin, API anahtarınızı girin ve bir model seçin. Yaklaşık 30 saniye sürer.",
+        body: "Herhangi bir proje dizinine gidin ve başlatın. İlk çalıştırmada bir sağlayıcı seçin, API anahtarınızı girin, modeli belirleyin; ardından Project Auto'nun bu projedeki sınırlı dosya değişikliklerini bu oturum için onaylamasını isteyip istemediğinizi seçin.",
         code: "cd your-project\naurict",
       },
       {
@@ -367,8 +382,8 @@ const DOCS_SECTIONS_TR = [
       },
       {
         heading: "Desteklenen sağlayıcılar",
-        body: "9 sağlayıcı yerleşik olarak gelir. Ollama API anahtarı gerektirmez ve yerel olarak çalışan herhangi bir modelle (llama3, mistral, deepseek-r1 vb.) çalışır.",
-        code: "anthropic   → Claude 4 Opus, Sonnet, Haiku\nopenai      → GPT-4o, o1, o3, o4-mini\ngoogle      → Gemini 1.5 Pro/Flash, 2.0\nopenrouter  → 200+ models via one key\nxai         → Grok 2, Grok 3\nazure       → Azure OpenAI deployments\nbedrock     → Claude via AWS\nollama      → Local models (no key needed)\nopencode    → OpenCode / Zenmux",
+        body: `${providerCount} sağlayıcı yerleşik olarak gelir. Ollama API anahtarı gerektirmez ve yerel olarak çalışan modellerle çalışır. Yapılandırdığınız sağlayıcılarda güncel modelleri görmek için /providers ve /models kullanın.`,
+        code: providerCode,
       },
       {
         heading: "Düşünme / muhakeme modu",
@@ -415,7 +430,7 @@ const DOCS_SECTIONS_TR = [
     content: [
       {
         heading: "Mevcut MCP yapılandırmanızı kullanma",
-        body: "Aurict, başlangıçta claude_desktop_config.json dosyanızı otomatik olarak okur. Claude Desktop için yapılandırdığınız herhangi bir MCP sunucusu yeniden yapılandırmaya gerek kalmadan anında çalışır.",
+        body: "Aurict, başlangıçta claude_desktop_config.json içindeki uyumlu sunucuları içe aktarabilir. Her bağlantıyı ve sunduğu araçları /mcp ile doğrulayın; sunucu uyumluluğu, kimlik bilgileri ve yerel bağımlılıklar yine geçerlidir.",
         code: "# macOS\n~/Library/Application Support/Claude/claude_desktop_config.json\n\n# Linux\n~/.config/Claude/claude_desktop_config.json\n\n# Windows\n%APPDATA%\\Claude\\claude_desktop_config.json",
       },
       {
@@ -448,6 +463,16 @@ const DOCS_SECTIONS_TR = [
         heading: "Bağlam sıkıştırma",
         body: "Bağlam penceresi sınırına yaklaşıldığında Aurict, kritik bağlamı koruyarak eski mesajları sıkıştırabilir. Sıkıştırma stratejisini görüntülemek veya değiştirmek için /compact kullanın.",
         code: "/compact         # show current strategy\n/compact auto    # auto-compact at 80% usage\n/compact manual  # prompt before compacting\n/ctx             # show context usage",
+      },
+      {
+        heading: "Project Auto",
+        body: "Project Auto yalnızca etkin proje içindeki sınırlı write, edit ve apply_patch isteklerinde tekrar eden izinleri kaldırır. İzin oturum kapsamındadır ve çalışma dizini değiştiğinde sıfırlanır. Kabuk komutları, secret'lar, .git ve .aurict yolları, proje dışına çıkışlar, tehlikeli işlemler ve geniş silmeler hâlâ doğrudan onay ister.",
+        code: "/auto            # Project Auto'yu aç/kapat\n/autopilot       # takma ad\n\n# Başlangıçta bu proje oturumu için Evet veya Hayır seçin",
+      },
+      {
+        heading: "Tamamlanma kanıtı",
+        body: "Kalıcı tamamlanma kaydını görmek için /proof kullanın: değişen dosyalar, doğrulama kanıtı, açık işler ve açıkça verilmiş muafiyetler. Kanıtı bekleyen veya başarısız olan gerekli işler tamamlanmış sayılmaz.",
+        code: "/proof\n/proof json\n/proof waive verification test runner unavailable in this environment",
       },
     ],
   },
@@ -547,6 +572,6 @@ export function localizeDocsArticleJsonLd(locale: AppLocale) {
     "author": { "@type": "Organization", "name": "aurict", "url": "https://github.com/aurict" },
     "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.com" },
     "datePublished": "2026-06-07",
-    "dateModified":  "2026-06-09",
+    "dateModified":  "2026-07-22",
   }
 }

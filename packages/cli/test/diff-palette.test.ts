@@ -7,6 +7,8 @@ import { DiffRenderer } from "../src/tui/DiffRenderer/index.js"
 import { TerminalSizeContext } from "../src/tui/TerminalSizeContext.js"
 import { ThemeContext } from "../src/utils/theme.js"
 import { KeybindingsProvider } from "../src/keybindings/index.js"
+import { TranscriptRows } from "../src/tui/TranscriptRows.js"
+import { projectStableTranscript } from "../src/tui/conversation/projector.js"
 
 describe("diff palette", () => {
   test("derives distinct add, remove, and word-highlight surfaces", () => {
@@ -51,5 +53,26 @@ describe("diff palette", () => {
     expect(frame).toContain("example.ts")
     expect(frame).toContain("status = 'old'")
     expect(frame).toContain("status = 'new'")
+  })
+
+  test("renders projected change rows through the real transcript component", () => {
+    const rows = projectStableTranscript([{
+      id: "change",
+      role: "tool_call",
+      tool: "edit",
+      content: JSON.stringify({ path: "example.ts" }),
+      resultContent: "Updated example.ts\n__UNIFIED_DIFF__\n--- a/example.ts\n+++ b/example.ts\n@@ -1,1 +1,1 @@\n-old value\n+new value",
+    }], 80)
+    const { lastFrame } = render(
+      React.createElement(
+        ThemeContext.Provider,
+        { value: THEMES["oxblood"]! },
+        React.createElement(TranscriptRows, { rows }),
+      ),
+    )
+    const frame = lastFrame() ?? ""
+    expect(frame).toContain("example.ts")
+    expect(frame).toContain("old value")
+    expect(frame).toContain("new value")
   })
 })

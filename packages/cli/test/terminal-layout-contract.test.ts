@@ -29,6 +29,6 @@ describe("terminal layout contract", () => {
     const shell = projectTranscript({ messages: terminalScenarios.shell!, width: 80, streamingText: null, streamingReason: null, streamingError: null });
     expect(diff.map(rowText).join("\n")).toMatch(/│ change\s+2 files · \+2 −2/);
     expect(diff.map(rowText).join("\n")).toContain("└ completed");
-    expect(shell.map(rowText).join("\n")).toContain("80 passed · 0 failed · ctrl+o");
+    expect(shell.map(rowText).join("\n")).toMatch(/80 passed · 0 failed\s+details \^O/);
   });
 });
