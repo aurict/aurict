@@ -10,6 +10,7 @@ import type { AgentType } from "../agent/protocol.js"
 import type { PromptModuleId } from "../agent/system.js"
 import {
   dynamicPromptSection,
+  freshSessionPromptSection,
   joinPromptSections,
   resolvePromptSections,
   sessionPromptSection,
@@ -67,24 +68,21 @@ export async function buildSystemPromptSections(
   userText = "",
 ): Promise<ResolvedPromptSection[]> {
   const basePrompt = agentType !== undefined ? SUBAGENT_SYSTEM_PROMPT : MAIN_SYSTEM_PROMPT
-  const finalBase = [basePrompt, base].filter(Boolean).join("\n\n---\n\n")
-  const systemSection = base
-    ? dynamicPromptSection(`core_system:${agentType ?? "main"}:custom`, () => finalBase)
-    : staticPromptSection(`core_system:${agentType ?? "main"}`, () => finalBase)
-
-  // Order: project instructions → project context → core system → intent modules → pins → git → skills → memory
+  // Stable prefixes always precede turn-dependent content. Custom system text
+  // remains dynamic without sacrificing caching for the built-in core prompt.
   return resolvePromptSections([
+    staticPromptSection(`core_system:${agentType ?? "main"}`, () => basePrompt),
     sessionPromptSection("project_instructions", () => readProjectInstructions(projectDir)),
     sessionPromptSection("project_context", () => buildProjectContextSection(projectDir)),
-    systemSection,
-    dynamicPromptSection("intent_modules", () => buildPromptModuleSection(selectPromptModules(userText, agentType))),
-    dynamicPromptSection("pins", () => pinStore.toPromptSection(projectDir)),
-    dynamicPromptSection("git", () => includeGit ? buildGitSection(projectDir) : ""),
-    dynamicPromptSection("skills", async () => {
+    freshSessionPromptSection("pins", () => pinStore.toPromptSection(projectDir)),
+    freshSessionPromptSection("skills", async () => {
       const skills = await getSkillDefsForProject(projectDir)
       return skills.length > 0 ? buildSkillDefSection(skills) : ""
     }),
-    dynamicPromptSection("memory", () => buildMemorySection(projectDir)),
+    freshSessionPromptSection("memory", () => buildMemorySection(projectDir, userText)),
+    ...(base ? [dynamicPromptSection(`custom_system:${agentType ?? "main"}`, () => base)] : []),
+    dynamicPromptSection("intent_modules", () => buildPromptModuleSection(selectPromptModules(userText, agentType))),
+    dynamicPromptSection("git", () => includeGit ? buildGitSection(projectDir) : ""),
   ], projectDir)
 }
 
@@ -188,9 +186,9 @@ export function buildGitSection(workdir: string): string {
   } catch { return "" }
 }
 
-function buildMemorySection(workdir: string): string {
+function buildMemorySection(workdir: string, query: string): string {
   try {
-    const memories = memoryStore.getRelevant(workdir, 15, 600)
+    const memories = memoryStore.getRelevant(workdir, 15, 600, query)
     if (!memories.length) return ""
 
     const lines = memories.map((m) => `[${m.category}] ${m.content}`)
@@ -200,7 +198,10 @@ function buildMemorySection(workdir: string): string {
       "",
       ...lines,
     ].join("\n")
-  } catch { return "" }
+  } catch (error) {
+    console.warn(`[aurict] relevant memory lookup failed for ${workdir}`, error)
+    return ""
+  }
 }
 
 function loadCustomSkillDefs(projectDir: string): SkillDef[] {

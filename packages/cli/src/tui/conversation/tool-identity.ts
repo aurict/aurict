@@ -90,6 +90,8 @@ export function toolDisplayIdentity(tool: string, artifact: ToolArtifact): ToolD
 
   if (["read", "file_stat", "ui_inspect", "blast_radius"].includes(tool))
     return { key: "read", label: "read" };
+  if (tool === "env_inspect")
+    return { key: "environment", label: "env inspect" };
   if (["grep", "glob", "code_map"].includes(tool))
     return { key: "search", label: "search" };
   if (["write", "edit", "apply_patch"].includes(tool))

@@ -76,4 +76,5 @@ export interface AppCommandParams {
   setDesignInitialBrief: Dispatch<SetStateAction<string | undefined>>;
   setInput: Dispatch<SetStateAction<string>>;
   addSystemMsg: (content: string) => void;
+  exit: () => void;
 }

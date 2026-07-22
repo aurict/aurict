@@ -1,4 +1,4 @@
-# Terminal design baseline (Phases 0–6)
+# Terminal design baseline (Phases 0–7)
 
 Date: 2026-07-17
 
@@ -8,9 +8,9 @@ This document is the acceptance contract for Aurict's terminal UI. It records th
 
 - The transcript is the primary surface. Chrome must not compete with the work.
 - One responsive cockpit answers: “what is Aurict doing, with which model, how full is context, and is completion proven?”
-- One compact footer answers: “where am I, and are there exceptional session states?”
+- The cockpit owns identity and location. One compact footer reports only current runtime state and exceptional conditions.
 - The composer remains writable while Aurict works. Enter adds a priority steering message; Tab adds a normal queued message.
-- Tool calls are summaries first. Raw output, reasoning, and actual diffs stay available through `Ctrl+O`.
+- Tool calls are summaries first, except successful `write`, `edit`, and `apply_patch` changes: their complete unified diffs render inline. Raw non-change output and reasoning stay available through `Ctrl+O`, which also provides a full-screen diff view.
 - Color communicates semantics: identity tones distinguish people and Aurict, the activity tone marks current work, green is reserved for meaningful success, red for errors, warning for risk/attention, and neutral tones for routine tool history and metadata.
 - Text labels, glyphs, and order carry meaning independently of color. Every status remains understandable under `NO_COLOR`, ANSI-only terminals, and color-vision deficiency.
 
@@ -69,11 +69,14 @@ Provider and runtime events normalize into `TranscriptMessage` and `TranscriptBl
 
 - Core classifies every tool result into a typed `ToolResultArtifact` (`diff`, `write`, `patch`, `shell`, `error`, or `output`) before it reaches CLI presentation. Persisted legacy events are the only values classified at the TUI boundary.
 - Tool calls use concise action-first rows (`Read`, `Ran`, `Patched`, `Explored`) with command/path, meaningful durations, bounded shell previews, and a `Ctrl+O` detail affordance. Read/search result counts stay hidden because they duplicate the action row.
-- Directly adjacent low-level calls are progressively disclosed: repeated reads, searches, web research, and file changes collapse into one action-first summary. Prose is always a grouping boundary; every underlying detail remains reachable through `Ctrl+O` navigation.
+- Directly adjacent low-level calls are progressively disclosed: repeated reads, searches, and web research collapse into action-first summaries. File changes retain the shared `activity` summary but render every emitted diff hunk beneath it; prose is always a grouping boundary and `Ctrl+O` remains available for full-screen inspection.
 - Unified diff parsing preserves file identity per hunk. Multi-file summaries show file count and names; the detail view labels every hunk with its owning file and keeps additions/deletions visible.
 
 ## Phase 5 recovery and permission model
 
+- On startup, an inline Yes/No Project Auto prompt appears above the composer. Yes applies only to
+  bounded typed file mutations in the active project for the current session; No preserves normal
+  per-request approval. Workdir changes reopen the choice.
 - Provider/runtime failures render once as a short diagnosis, original first-line detail, and concrete recovery action. Authentication, rate limit, context, connection, and cancellation failures have specific guidance.
 - Permission requests use one compact inline decision surface immediately above the composer. Risk and execution scope are textual rather than decorative gauges, and dangerous actions still default to deny.
 - Direct permission keys are `y` (allow once), `n` (deny), and for shell requests `e` (edit). Arrow/Enter selection and Escape denial remain available.
@@ -85,6 +88,12 @@ Provider and runtime events normalize into `TranscriptMessage` and `TranscriptBl
 - `projectTranscript` remains the compatibility boundary and composes the same stable/live rows, so commands and tests do not need parallel rendering paths.
 - `AURICT_ASCII=1`, `TERM=dumb`, and explicitly non-UTF locales select an ASCII-safe glyph vocabulary. Transcript decorations, activity/error markers, startup chrome, status dots, branch/separator symbols, and composer affordances use that vocabulary without relying on color alone.
 - Phase 6 tests lock the split-projection contract and ASCII decoration fallback, complementing the cross-size layout and real-PTY checks.
+
+## Unicode layout contract
+
+- Terminal geometry is measured in display cells, not JavaScript string length. Transcript wrapping, tool rows, cockpit shortening, mouse hit-testing, and vertical cursor movement share the `terminal-text` primitives backed by `string-width`.
+- Composer offsets remain safe string-slice boundaries, while movement, deletion, word navigation, selection, and cursor painting advance by `Intl.Segmenter` grapheme clusters. Emoji ZWJ sequences, flags, combining marks, and CJK text must never be split into malformed output.
+- Unicode regression tests cover both the pure layout model and real Ink keyboard input. Any new terminal truncation or alignment path must use the shared display-width helpers rather than `.length`, `slice`, or `padEnd` as a column calculation.
 
 ## Semantic themes and accessibility
 
@@ -132,6 +141,15 @@ Theme and palette selections are user preferences. Every picker, slash-command, 
 - Every TypeScript/TSX file under `packages/cli/src/tui` is capped at 500 physical lines by the architecture characterization test. Controller and presentation growth must be split across stable modules rather than added back to `App.tsx`.
 - The interactive path is exercised in a real PTY at 80×24 before release.
 
+## Phase 7 interaction and feedback contract
+
+- Leaving the alternate screen prints a bounded plain-text copy of the last three conversation turns into normal terminal scrollback. `/export clipboard`, `Ctrl+Y`, and `Alt+Y` provide full-transcript, last-response, and last-code-block copy paths; clipboard writes include an OSC 52 path for SSH and terminal multiplexers.
+- `Ctrl+F` searches within the current conversation and jumps using projected row offsets; `Ctrl+Shift+F` retains cross-session search. Composer undo/redo stores at most 30 complete input snapshots and never splits grapheme clusters.
+- Terminal focus drives attention behavior. While unfocused, completed turns and permission requests emit BEL plus OSC 9 notifications; OSC 0 titles expose ready, running, and permission state and are sanitized before output.
+- Stable transcript projection is cached by message identity and terminal width. App rendering does not synchronously enumerate subagent sessions unless its session dependencies change.
+- Tool presentation metadata travels from core execution to the transcript artifact. Verification status, changed files, and failures therefore render without reparsing localized stdout; regex summarization remains only for legacy persisted events and tools without structured metadata.
+- Paused output reports both unseen message count and semantic kind, such as `verify failed`, `response`, or `tool result`. Cancelling an active turn records `Turn cancelled — session state preserved.` so the user can distinguish cancellation from a stalled provider.
+
 ## Final polish contract
 
 - Short transcripts are bottom-anchored so the latest answer rests one natural gap above the composer. Scrolled history remains top-aligned, and every one-row header/composer resize updates the scroll boundary.
@@ -150,11 +168,14 @@ Theme and palette selections are user preferences. Every picker, slash-command, 
 - Wide terminals may add branch, completed/total tasks, active-agent count, and running-background-task count to the cockpit. Compact terminals remove this optional telemetry before it can compete with provider/model and context state.
 - The working cockpit uses the same responsive horizontal inset, rounded frame width, card background, and border language as the composer. Its outer frame is three rows at tiny/compact density and four rows at normal/wide density, making session continuity distinct from transcript content without becoming a dashboard.
 - The transcript timeline rail changes color only for identity, active work, and errors; routine body/tool rows remain on the subtle border token. This preserves scan rhythm without turning every line into a card.
-- Transcript rhythm is semantic: prose-to-tool and tool-to-prose transitions receive exactly one truly blank row, while adjacent tool calls remain a tight activity cluster. Code fences receive the same single-row breathing space, and gap rows intentionally interrupt the timeline rail to expose block boundaries.
+- Transcript rhythm is semantic: prose-to-tool and tool-to-prose transitions receive exactly one truly blank row, while adjacent tool calls remain a tight activity cluster. Consecutive tool failures stay compact as one error run, with one blank row separating that run from successful activity or prose on either side. Code fences receive the same single-row breathing space, and gap rows intentionally interrupt the timeline rail to expose block boundaries.
 - Successful permission approvals are transient interaction state and never create transcript rows. Denials, aborts, and edit handoffs remain visible because they change or interrupt execution.
 - Permission prompts use a compact action strip: risk, sandbox, executable, and command preview are summary-first; only the selected action exposes its hint. Long commands and patches retain a scrollable `d` detail view.
 - Horizontal permission action strips use `←/→`; vertical granular-patch actions use `↑/↓`, leaving `←/→` exclusively for patch-file navigation in that specialized view.
-- A single tool call uses a stable marker, fixed-width semantic action, primary target, and right-aligned muted metadata. Two or more adjacent successful calls render as one `activity` tree: one aggregate row per semantic family (`read`, `search`, `change`, `verify`, `git`, `web`, or `run`) and one right-aligned total-duration footer. Multi-line stdout never spills into the transcript; complete raw output remains available through `ctrl+o` on the family row.
+- A single tool call uses a stable marker, responsive semantic-action column, guaranteed two-cell subject separator, primary target, and right-aligned muted metadata. At 51 columns and below, subject data moves to an indented continuation row instead of colliding with or over-truncating the action. A completed standalone call and its short outcome are separated by exactly one blank row; the outcome keeps a right-aligned `details ^O` hint. Two or more adjacent successful calls render as one dense `activity` tree: one aggregate row per semantic family (`read`, `search`, `change`, `verify`, `git`, `web`, `environment`, or `run`) and one right-aligned total-duration footer. Multi-line stdout never spills into the transcript; the sole exception is a typed `change` artifact, whose complete diff renders inline with file headers, hunk headers, line numbers, semantic add/remove surfaces, and lossless wrapping. `Ctrl+O` remains available on every artifact.
 - Shell commands are named by intent instead of transport, so `cat` appears as `read`, test/build/lint commands as `verify`, and Git commands as `git`. Colon, flattened, and provider-safe MCP identifiers (`mcp:git:git_status`, `mcp_git_git_status`, `mcp__git__git_status`) normalize to one `git / status` identity; repeated family prefixes never enter the action column. Unknown tools retain one humanized label and an aligned singular/plural call count. Shell file readers still require explicit approval because they bypass the dedicated read tool boundary, but they are warning-level review requests rather than destructive red alerts.
 - Routine environment detection never enters the conversation. Public-repository detection silently enables undercover behavior; pending crash diagnostics appear only as a transient composer-adjacent snackbar with `/crashes` as the recovery path.
 - User turns use a quiet raised transcript surface, while assistant prose stays borderless. Activity trees have no card around every event and follow the compact `┌ activity` / `│ family` / `└ completed` visual grammar.
+- Tool status owns the strongest color: failed calls keep a red marker/action while the explanatory outcome returns to normal reading contrast; verified outcomes may use success color. Structured metadata is preferred over stdout parsing, and environment/search/Git summaries expose useful counts without leaking raw output.
+- Inline Markdown has one projection contract across stable transcripts and full Markdown views: emphasis, strike-through, code, and links never leak raw delimiter syntax. Safe `http`, `https`, `file`, and `mailto` targets use OSC 8 links; control characters and unsafe schemes are never emitted.
+- The cockpit is the sole owner of provider, model, context, session identity, workspace, and branch. The footer is the sole owner of runtime exceptions, background activity, remote/autopilot state, sandbox scope, and transient selection guidance.

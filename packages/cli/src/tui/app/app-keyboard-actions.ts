@@ -13,11 +13,17 @@ export function closeFocusedLayer(params: AppKeyboardParams): boolean {
     case "prompt":
     case "streaming":
       return true;
+    case "projectAuto":
+      params.resolveProjectAutoPrompt(false);
+      return true;
     case "keyboardShortcuts":
       overlay.setKeyboardShortcutsOpen(false);
       return true;
     case "subagent":
       overlay.setViewingSubagentId(null);
+      return true;
+    case "transcriptSearch":
+      overlay.setTranscriptSearchOpen(false);
       return true;
     case "historySearch":
       overlay.setHistorySearchOpen(false);
@@ -71,6 +77,7 @@ export function togglePrimaryOverlay(
 ): void {
   const overlay = params.overlay;
   const wasOpen =
+    (target === "transcriptSearch" && overlay.transcriptSearchOpen) ||
     (target === "quickSearch" && overlay.quickSearchOpen) ||
     (target === "commandPalette" && overlay.cmdPaletteOpen) ||
     (target === "historySearch" && overlay.historySearchOpen) ||
@@ -80,6 +87,7 @@ export function togglePrimaryOverlay(
 
   overlay.closePrimaryOverlays();
   if (wasOpen) return;
+  if (target === "transcriptSearch") overlay.setTranscriptSearchOpen(true);
   if (target === "quickSearch") overlay.setQuickSearchOpen(true);
   if (target === "commandPalette") overlay.setCmdPaletteOpen(true);
   if (target === "historySearch") overlay.setHistorySearchOpen(true);

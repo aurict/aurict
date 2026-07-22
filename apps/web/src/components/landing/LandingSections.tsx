@@ -4,6 +4,7 @@ import Image from "next/image"
 import { useLocale } from "next-intl"
 import type { CSSProperties } from "react"
 import { CopyCommand } from "@/components/CopyCommand"
+import { TerminalWindow } from "@/components/terminal/TerminalWindow"
 import {
   localizeCapabilityItems,
   localizeInstallSteps,
@@ -31,7 +32,7 @@ export function LandingSections() {
               <p>{tr ? "Sohbetler, dosyalar, çıktılar, Tasarım Stüdyosu, Finans Masası ve uzaktan kontrol için yerel öncelikli bir yapay zekâ çalışma alanı." : "A local-first AI workspace for conversations, files, artifacts, Design Studio, Finance Desk, and remote control."}</p>
               <Link href="/downloads">{tr ? "Hoprel'i indir" : "download Hoprel"} <span>→</span></Link>
             </article>
-            <SurfaceCard eyebrow={tr ? "yerel çalışma zamanı" : "native runtime"} title="Aurict Terminal" body={tr ? "Ajan tabanlı kodlama, çoklu ajan yürütmesi, MCP, yerel bağlam ve açık komut onayları için açık kaynak çalışma zamanı." : "The open-source runtime for agentic coding, multi-agent execution, MCP, local context, and explicit command approvals."} href="#install" link={tr ? "kabuğunuza kurun" : "install in your shell"} />
+            <SurfaceCard eyebrow={tr ? "yerel çalışma zamanı" : "native runtime"} title="Aurict Terminal" body={tr ? "Ajan tabanlı kodlama, çoklu ajan yürütmesi, MCP, yerel bağlam, sınırlı Project Auto ve açık onaylar için açık kaynak çalışma zamanı." : "The open-source runtime for agentic coding, multi-agent execution, MCP, local context, scoped Project Auto, and explicit approvals."} href="#install" link={tr ? "kabuğunuza kurun" : "install in your shell"} />
             <SurfaceCard eyebrow={tr ? "yoldaş" : "companion"} title="Aurict Mobile" body={tr ? "BYOK sohbeti, araştırma, belge üretimi ve masaüstü çalışmanız ilginizi gerektirdiğinde canlı uzaktan kontrol." : "BYOK chat, research, document generation, and live remote control when your desktop work needs your attention."} href="https://mobile.aurict.com" link={tr ? "Aurict Mobile'ı ziyaret et" : "visit Aurict Mobile"} external />
           </div>
         </div>
@@ -51,6 +52,9 @@ export function LandingSections() {
           <SectionIntro eyebrow={tr ? "yetenek mimarisi" : "capability architecture"} title={tr ? "Çalışmayı anlayın, koordine edin, güvenle yürütün." : "Understand the work. Coordinate it. Act safely."} body={tr ? "Her özellik ayrı bir kutu değil; bağlamdan sonuca uzanan aynı operasyon akışının bir parçasıdır." : "Every capability is not a separate box. It is part of the same operating path from context to result."} />
           <div className={styles.capabilityGrid}>
             {localizeCapabilityItems(locale).map(([title, body, color], index) => <article key={title} style={{ "--capability-color": color } as CSSProperties}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{body}</p></article>)}
+          </div>
+          <div className={styles.runtimeDemo} aria-label={tr ? "Aurict terminal çalışma akışı örneği" : "Aurict terminal workflow example"}>
+            <TerminalWindow />
           </div>
         </div>
       </section>

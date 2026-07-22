@@ -9,7 +9,10 @@ import {
 } from "@aurict/core";
 import { useInput } from "../design-system/renderer.js";
 import { readClipboard } from "../../util/clipboard.js";
+import { writeClipboard } from "../../util/clipboard.js";
+import { lastAssistantCodeBlock, lastAssistantText } from "../conversation/transcript-export.js";
 import type { AppKeyboardParams } from "../app/app-keyboard-types.js";
+import { TURN_CANCELLED_NOTICE } from "../app/cancellation-feedback.js";
 import {
   closeFocusedLayer,
   togglePrimaryOverlay,
@@ -48,7 +51,7 @@ export function useAppKeyboard(params: AppKeyboardParams): void {
         params.setStreamingReason(null);
         params.setScrollLocked(false);
         params.setConversationOffsetRows(0);
-        params.addSystemMsg("Aborted.");
+        params.addSystemMsg(TURN_CANCELLED_NOTICE);
         return;
       }
       ctrlCCountRef.current += 1;
@@ -165,12 +168,25 @@ export function useAppKeyboard(params: AppKeyboardParams): void {
       return;
     }
 
+    if ((key.ctrl || key.meta) && input === "y") {
+      const content = key.meta
+        ? lastAssistantCodeBlock(params.messages)
+        : lastAssistantText(params.messages);
+      if (!content) {
+        params.addSystemMsg(key.meta ? "No code block to copy." : "No assistant response to copy.");
+        return;
+      }
+      writeClipboard(content);
+      params.addSystemMsg(`Copied ${key.meta ? "last code block" : "last response"} (${content.length.toLocaleString()} chars).`);
+      return;
+    }
+
     if (key.ctrl && input === "t") {
       if (params.tasks.length > 0) togglePrimaryOverlay("taskPanel", params);
       return;
     }
-    if (key.ctrl && input === "f") {
-      togglePrimaryOverlay("quickSearch", params);
+    if (key.ctrl && input.toLowerCase() === "f") {
+      togglePrimaryOverlay(key.shift ? "quickSearch" : "transcriptSearch", params);
       return;
     }
     if (key.ctrl && input === "r") {

@@ -5,7 +5,8 @@
  * Tracks which overlays are open and computes the `overlayOpen` flag.
  *
  * Overlays:
- * - QuickSearch (Ctrl+F)
+ * - TranscriptSearch (Ctrl+F)
+ * - QuickSearch (Ctrl+Shift+F)
  * - CommandPalette (Ctrl+P)
  * - SettingsPanel (Ctrl+S)
  * - DesignWizard
@@ -53,6 +54,7 @@ export interface ExpandedContent {
 }
 
 export type PrimaryOverlay =
+  | "transcriptSearch"
   | "quickSearch"
   | "commandPalette"
   | "settings"
@@ -67,6 +69,7 @@ export interface OverlayState {
   primaryOverlay: PrimaryOverlay
   // Overlay open flags
   quickSearchOpen: boolean
+  transcriptSearchOpen: boolean
   cmdPaletteOpen: boolean
   settingsOpen: boolean
   designWizardOpen: boolean
@@ -92,6 +95,7 @@ export interface OverlayState {
 export interface OverlayActions {
   // Open/close toggles
   setQuickSearchOpen: Dispatch<SetStateAction<boolean>>
+  setTranscriptSearchOpen: Dispatch<SetStateAction<boolean>>
   setCmdPaletteOpen: Dispatch<SetStateAction<boolean>>
   setSettingsOpen: Dispatch<SetStateAction<boolean>>
   setDesignWizardOpen: Dispatch<SetStateAction<boolean>>
@@ -143,6 +147,9 @@ export function useOverlayState(): OverlayState & OverlayActions {
   const setQuickSearchOpen = useCallback((action: SetStateAction<boolean>) => {
     setPrimaryOpen("quickSearch", action)
   }, [setPrimaryOpen])
+  const setTranscriptSearchOpen = useCallback((action: SetStateAction<boolean>) => {
+    setPrimaryOpen("transcriptSearch", action)
+  }, [setPrimaryOpen])
   const setCmdPaletteOpen = useCallback((action: SetStateAction<boolean>) => {
     setPrimaryOpen("commandPalette", action)
   }, [setPrimaryOpen])
@@ -162,6 +169,7 @@ export function useOverlayState(): OverlayState & OverlayActions {
     setPrimaryOpen("attach", action)
   }, [setPrimaryOpen])
   const quickSearchOpen = primaryOverlay === "quickSearch"
+  const transcriptSearchOpen = primaryOverlay === "transcriptSearch"
   const cmdPaletteOpen = primaryOverlay === "commandPalette"
   const settingsOpen = primaryOverlay === "settings"
   const designWizardOpen = primaryOverlay === "designWizard"
@@ -192,6 +200,7 @@ export function useOverlayState(): OverlayState & OverlayActions {
       settingsOpen ||
       cmdPaletteOpen ||
       quickSearchOpen ||
+      transcriptSearchOpen ||
       historySearchOpen ||
       keyboardShortcutsOpen ||
       !!planRequest ||
@@ -208,7 +217,7 @@ export function useOverlayState(): OverlayState & OverlayActions {
       !!extras?.prompt
     )
   }, [
-    designWizardOpen, settingsOpen, cmdPaletteOpen, quickSearchOpen,
+    designWizardOpen, settingsOpen, cmdPaletteOpen, quickSearchOpen, transcriptSearchOpen,
     historySearchOpen, keyboardShortcutsOpen,
     planRequest, editingMsg, expandedContent, btwState, viewingSubagentId,
     taskPanelOpen, attachInput,
@@ -236,6 +245,7 @@ export function useOverlayState(): OverlayState & OverlayActions {
     // State
     primaryOverlay,
     quickSearchOpen,
+    transcriptSearchOpen,
     cmdPaletteOpen,
     settingsOpen,
     designWizardOpen,
@@ -255,6 +265,7 @@ export function useOverlayState(): OverlayState & OverlayActions {
 
     // Actions
     setQuickSearchOpen,
+    setTranscriptSearchOpen,
     setCmdPaletteOpen,
     setSettingsOpen,
     setDesignWizardOpen,

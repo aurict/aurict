@@ -6,6 +6,7 @@ import { BrandMark } from "@/components/BrandMark"
 import { AuthNavSlot } from "@/components/auth/AuthNavSlot"
 import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 import { Link } from "@/i18n/navigation"
+import { currentEditionLabel } from "@/content/product-facts"
 import styles from "./Nav.module.css"
 
 const SITE_LINKS = [
@@ -85,7 +86,7 @@ export function Nav() {
         <div className={styles.frame}>
           <div className={styles.identity}>
             <BrandMark compact />
-            <span className={styles.edition}>v1.2.8 · AGPLv3</span>
+            <span className={styles.edition}>{currentEditionLabel} · AGPLv3</span>
           </div>
 
           <div className={styles.desktopNav}>

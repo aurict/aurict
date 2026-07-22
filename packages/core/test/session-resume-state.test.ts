@@ -51,6 +51,20 @@ describe("session resume state", () => {
         blockers: [],
         lastProgressAt: 123,
       },
+      taskContext: {
+        version: 1,
+        objective: "finish implementation",
+        constraints: [],
+        decisions: [],
+        workspaceFacts: [],
+        relevantFiles: [{ path: "src/a.ts", reason: "changed file", status: "changed" }],
+        failedStrategies: [],
+        openQuestions: [],
+        tasks: [{ id: "implement", subject: "Implement runtime", status: "in_progress", blockedBy: [] }],
+        evidenceRefs: [],
+        updatedAt: 123,
+      },
+      activeToolIds: ["read", "grep", "edit"],
     })
 
     const state = await readSessionResumeState(workdir, "s1")
@@ -59,6 +73,8 @@ describe("session resume state", () => {
     expect(state?.continuation?.nextContinuationCount).toBe(2)
     expect(state?.taskLedger?.phase).toBe("verifying")
     expect(state?.taskLedger?.changedFiles).toEqual(["src/a.ts"])
+    expect(state?.taskContext?.tasks[0]?.subject).toBe("Implement runtime")
+    expect(state?.activeToolIds).toEqual(["read", "grep", "edit"])
   })
 
   it("extracts verification status from final text", () => {

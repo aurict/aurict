@@ -103,16 +103,17 @@ describe("symbol pre-verification (C)", () => {
     expect(res.error).toBeUndefined()
   })
 
-  it("blocks write when named import does NOT exist in local file", async () => {
+  it("warns but allows write when a local import pre-check may be a false positive", async () => {
     const { executeTool } = await import("../src/tool/executor.js")
     const { writeTool }   = await import("../src/tool/built-in/write.js")
 
     const content = "import { phantomExport } from './lib'\nconsole.log(phantomExport)\n"
     const res = await executeTool(writeTool, { path: join(dir, "consumer-bad.ts"), content }, ctx())
 
-    expect(res.error).toBeDefined()
-    expect(res.error).toContain("phantomExport")
-    expect(res.error).toContain("Import pre-check")
+    expect(res.error).toBeUndefined()
+    expect(res.output).toContain("phantomExport")
+    expect(res.output).toContain("Import pre-check warning")
+    expect(await Bun.file(join(dir, "consumer-bad.ts")).text()).toBe(content)
   })
 
   it("does NOT block when importing from non-existent file (may be created later)", async () => {
@@ -176,20 +177,34 @@ describe("analyzeToolError", () => {
 // ── summarizeToolOutput ───────────────────────────────────────────────────────
 
 describe("summarizeToolOutput", () => {
-  it("output > 4000 chars is truncated with omission notice", async () => {
+  it("large output is truncated with a durable continuation handle", async () => {
     const { executeTool } = await import("../src/tool/executor.js")
     const { bashTool }    = await import("../src/tool/built-in/bash.js")
 
-    // Generate ~6000 chars: 200 lines × 30 chars
-    const cmd = "seq 1 200 | while read i; do printf 'line %04d: xxxxxxxxxxxxxxxxxxxxxxxxxx\\n' $i; done"
+    // Exceed the bounded adaptive default (16k when model info is unavailable).
+    const cmd = "seq 1 1000 | while read i; do printf 'line %04d: xxxxxxxxxxxxxxxxxxxxxxxxxx\\n' $i; done"
     const res = await executeTool(bashTool, { command: cmd }, ctx())
     if (res.error) return  // bash unavailable — skip
 
     const out = res.output ?? ""
-    if (out.length > 4000) {
-      expect(out).toContain("omitted")
-    }
+    expect(out).toContain("omitted")
+    expect(out).toContain("tool-output:")
+    expect(out).toContain("read_tool_output")
     // Should never blow up beyond reasonable limit
     expect(out.length).toBeLessThan(20_000)
+  })
+
+  it("keeps the complete UI diff when the model-facing write output is truncated", async () => {
+    const { executeTool } = await import("../src/tool/executor.js")
+    const { writeTool } = await import("../src/tool/built-in/write.js")
+    const content = Array.from({ length: 80 }, (_, index) => `line-${index}`).join("\n")
+    const res = await executeTool(
+      writeTool,
+      { path: join(dir, "large-diff.txt"), content },
+      ctx({ truncation: { maxChars: 200 } }),
+    )
+
+    expect(res.output).toContain("read_tool_output")
+    expect(res.metadata?.uiArtifact?.rawDiff).toContain("+line-79")
   })
 })

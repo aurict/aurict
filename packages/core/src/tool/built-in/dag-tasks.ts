@@ -16,7 +16,7 @@ export const taskCreateTool: ToolDef = {
     const blockedBy = (args["blockedBy"] as string[] | undefined) ?? []
 
     try {
-      const task = taskManager.createTask(id, subject, blockedBy)
+      const task = taskManager.createTask(id, subject, blockedBy, { workdir: ctx.workdir, sessionId: ctx.sessionId })
       return { output: `Task [${task.id}] created successfully. Blocked by: ${blockedBy.length > 0 ? blockedBy.join(", ") : "none"}` }
     } catch (err) {
       return { output: "", error: String(err) }
@@ -39,12 +39,12 @@ export const taskUpdateTool: ToolDef = {
     
     try {
       if (args["status"] === "completed") {
-        taskManager.completeTask(id, "")
+        taskManager.completeTask(id, "", { workdir: ctx.workdir, sessionId: ctx.sessionId })
         return { output: `Task [${id}] completed.` }
       }
 
       if (args["status"] === "error" && args["errorMsg"]) {
-        taskManager.failTask(id, String(args["errorMsg"]))
+        taskManager.failTask(id, String(args["errorMsg"]), { workdir: ctx.workdir, sessionId: ctx.sessionId })
         return { output: `Task [${id}] failed with error: ${args["errorMsg"]}` }
       }
 
@@ -53,7 +53,7 @@ export const taskUpdateTool: ToolDef = {
       if (args["owner"]) updates.owner = args["owner"]
       if (args["blockedBy"]) updates.blockedBy = args["blockedBy"]
 
-      const task = taskManager.updateTask(id, updates)
+      const task = taskManager.updateTask(id, updates, { workdir: ctx.workdir, sessionId: ctx.sessionId })
       return { output: `Task [${task.id}] updated successfully.` }
     } catch (err) {
       return { output: "", error: String(err) }
@@ -73,7 +73,7 @@ export const taskCompleteTool: ToolDef = {
     const result = String(args["result"])
 
     try {
-      taskManager.completeTask(id, result)
+      taskManager.completeTask(id, result, { workdir: ctx.workdir, sessionId: ctx.sessionId })
       return { output: `Task [${id}] completed. Result context injected into dependent tasks.` }
     } catch (err) {
       return { output: "", error: String(err) }

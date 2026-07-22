@@ -32,7 +32,8 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: "Navigation",
     shortcuts: [
-      { keys: "Ctrl+F",     description: "Quick search (sessions)" },
+      { keys: "Ctrl+F",     description: "Find in conversation" },
+      { keys: "Ctrl+Shift+F", description: "Search saved sessions" },
       { keys: "Ctrl+R",     description: "Reverse history search" },
       { keys: "Ctrl+P",     description: "Command palette" },
       { keys: "Ctrl+T",     description: "Toggle task panel" },
@@ -51,12 +52,15 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: "↑ ↓",        description: "Navigate input history" },
       { keys: "Ctrl+← →",   description: "Jump by word" },
       { keys: "Ctrl+W",     description: "Delete word backward" },
+      { keys: "Ctrl+Z",     description: "Undo input edit" },
+      { keys: "Ctrl+Shift+Z / Alt+Z", description: "Redo input edit" },
     ],
   },
   {
     title: "Output",
     shortcuts: [
       { keys: "Ctrl+O",     description: "Inspect latest tool, diff, or reasoning" },
+      { keys: "Ctrl+Y / Alt+Y", description: "Copy last response / code block" },
       { keys: "[ / ]",      description: "Browse transcript details while inspecting" },
       { keys: "Ctrl+S",     description: "Open settings" },
     ],

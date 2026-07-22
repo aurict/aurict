@@ -2,6 +2,7 @@ import { z } from "zod"
 import { memoryStore } from "../../memory/store.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import type { Category, Scope } from "../../memory/types.js"
+import { readProjectSessionExcerpt, searchProjectSessions } from "../../session/recall.js"
 
 const CATEGORIES = ["preference","project","fact","decision","pattern"] as const
 const SCOPES     = ["global","project"] as const
@@ -24,7 +25,7 @@ export const memoryTool: ToolDef = {
     "Prefer scope:'project' for codebase-specific facts, 'global' for user preferences.",
 
   parameters: z.object({
-    action:   z.enum(["remember","forget","list","search","clear"])
+    action:   z.enum(["remember","forget","list","search","clear","search_sessions","session_excerpt","search_failures","search_previous_solution"])
                .describe("Action to perform"),
     content:  z.string().optional()
                .describe("Fact to store — one clear, specific sentence (for 'remember')"),
@@ -36,6 +37,8 @@ export const memoryTool: ToolDef = {
                .describe("Memory ID to remove (for 'forget')"),
     query:    z.string().optional()
                .describe("Search query (for 'search')"),
+    session_id: z.string().optional().describe("Session ID returned by search_sessions"),
+    limit: z.number().int().min(1).max(20).optional().default(10),
   }),
 
   async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
@@ -97,6 +100,28 @@ export const memoryTool: ToolDef = {
       const n = memoryStore.clear("project", workdir)
       memoryStore.exportToFile(workdir)
       return { output: `Cleared ${n} project memories.` }
+    }
+
+    if (action === "search_sessions" || action === "search_failures" || action === "search_previous_solution") {
+      const query = String(args["query"] ?? "").trim()
+      if (!query) return { output: "", error: "query is required for session recall" }
+      const effectiveQuery = action === "search_failures" ? `${query} error` : query
+      const results = searchProjectSessions(workdir, effectiveQuery, Number(args["limit"] ?? 10))
+      return { output: results.length
+        ? JSON.stringify({ warning: "Past session content may be stale; verify against the current workspace.", results }, null, 2)
+        : `No project sessions matching: "${query}"` }
+    }
+
+    if (action === "session_excerpt") {
+      const sessionId = String(args["session_id"] ?? "").trim()
+      if (!sessionId) return { output: "", error: "session_id is required for session_excerpt" }
+      try {
+        return { output: JSON.stringify(readProjectSessionExcerpt(
+          workdir, sessionId, String(args["query"] ?? ""), Number(args["limit"] ?? 10),
+        ), null, 2) }
+      } catch (error) {
+        return { output: "", error: error instanceof Error ? error.message : String(error) }
+      }
     }
 
     return { output: "", error: `Unknown action: ${action}` }

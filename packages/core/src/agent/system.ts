@@ -80,34 +80,8 @@ const TOOL_USAGE_CORE = `
 
 ## Search
 - grep/glob before read when locating unknown files or symbols.
-- Use websearch for recent changelogs, CVEs, or unfamiliar current APIs.
-- Use webfetch when the exact URL is known.
-
-## Subagent
-- Spawn for scans over ~20 files, parallel workstreams, or isolated deep dives.
-- Do not spawn for trivial work; do it inline.
-- Prompts must include context, goal, constraints, and expected output.
-- For multiple agents, tell the user what each is doing and why.
-- Subagent output should be structured: findings/files/errors, then one status line.
-
-## LSP
-- Run after editing typed code. LSP/typecheck is the authority, not inspection.
-- Fix errors you introduced before reporting completion.
-
-## Critique
-Use critique() before finalizing significant work:
-- Writing >50 lines of new logic for a critical path → critique(target="code")
-- Making an architectural decision affecting multiple modules → critique(target="architecture")
-- Security-sensitive code (auth, crypto, user input) → critique(target="security")
-- A complex plan touching >5 files → critique(target="plan")
-- Fix CRITICAL/MAJOR findings before continuing. Rework "reject" verdicts.
-- Do not critique simple edits or code already verified.
-
-## Scratchpad
-Use scratchpad(action="update") to maintain a persistent reasoning state during complex tasks:
-- Starting a task with >5 steps: set hypothesis and confidence
-- After each significant finding: update evidence_for or evidence_against
-- When confidence changes: update confidence field
+- Use only research, navigation, browser, review, memory, or coordination tools
+  listed in the dynamic Available Tools section. Never call an absent optional tool.
 - When stuck: add to blockers, update next_step
 - If confidence is low and contrary evidence accumulates, report the blocker.
 - Do not use scratchpad for simple, single-step tasks.

@@ -2,6 +2,25 @@ import { describe, expect, it } from "bun:test"
 import { evaluateContinuation, hasOpenContinuationTasks, shouldContinueAgentRun, stalledMidTask } from "../src/agent/continuation.js"
 
 describe("continuation decision", () => {
+  it("uses structured status before language-specific text heuristics", () => {
+    const done = evaluateContinuation({
+      text: "Next, I will continue...",
+      finishReason: "stop",
+      newMessageCount: 1,
+      structuredStatus: "done",
+    })
+    expect(done.shouldContinue).toBe(false)
+    expect(done.stopReason).toBe("complete")
+
+    const blocked = evaluateContinuation({
+      text: "Unbekannte Formulierung",
+      finishReason: "stop",
+      newMessageCount: 1,
+      structuredStatus: "blocked",
+    })
+    expect(blocked.stopReason).toBe("blocked")
+  })
+
   it("detects unfinished text", () => {
     expect(stalledMidTask("I will now update the tests")).toBe(true)
   })

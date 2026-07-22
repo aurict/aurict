@@ -21,6 +21,44 @@ describe("assessComplexity", () => {
     expect(actionable.level).not.toBe("trivial")
   })
 
+  it("kısa ama zor uygulama görevlerini complex seviyesine yükseltir", () => {
+    for (const text of [
+      "Race condition'ı düzelt",
+      "fix intermittent memory leak",
+      "security audit",
+      "zero-downtime schema migration uygula",
+      "Güvenlik açığını incele",
+      "Bellek sızıntısını düzelt",
+      "Üretim olayındaki gecikme regresyonunu araştır",
+    ]) {
+      const result = assessComplexity({ text, hasAttachments: false })
+      expect(result.level).toBe("complex")
+      expect(result.signals.length).toBeGreaterThan(0)
+    }
+  })
+
+  it("zor bir kavramı açıklama isteğini uygulama görevi gibi complex yapmaz", () => {
+    const result = assessComplexity({ text: "Race condition nedir?", hasAttachments: false })
+    expect(result.level).toBe("moderate")
+    expect(result.signals).toContain("concurrency")
+  })
+
+  it("continuation mesajında kanonik objective zorluğunu korur", () => {
+    const result = assessComplexity({
+      text: "devam et",
+      objective: "Intermittent authentication race condition'ını düzelt",
+      hasAttachments: false,
+    })
+    expect(result.level).toBe("complex")
+    expect(result.signals).toEqual(expect.arrayContaining(["concurrency", "intermittent_failure"]))
+  })
+
+  it("sıradan kısa görevleri zor sinyal yokken yükseltmez", () => {
+    const result = assessComplexity({ text: "README yazım hatasını düzelt", hasAttachments: false })
+    expect(result.level).toBe("moderate")
+    expect(result.signals).toEqual([])
+  })
+
   it("attachments varsa en az moderate'a çıkar", () => {
     const result = assessComplexity({ text: "kısa", hasAttachments: true })
     expect(["moderate", "complex"]).toContain(result.level)

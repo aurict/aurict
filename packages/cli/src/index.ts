@@ -59,6 +59,7 @@ process.on("unhandledRejection", (r) => {
 
 const flags   = parseFlags()
 const workdir = process.cwd()
+const [subCmd, recipeFile] = process.argv.slice(2)
 profileCheckpoint("flags_parsed")
 
 /** Resolves the signed backend token only for runs that may call Aurict modules. */
@@ -77,20 +78,21 @@ async function resolveBackendAccessToken(signal?: AbortSignal): Promise<string |
 
 // --version
 if (flags.version) {
-  console.log("Aurict v1.2.10")
+  console.log("Aurict v1.2.13")
   process.exit(0)
 }
 
 // --help
-if (flags.help) {
+if (flags.help && subCmd !== "run-agent") {
   console.log(`
-Aurict v1.2.10 — Terminal AI assistant
+Aurict v1.2.13 — Terminal AI assistant
 
 Usage:
   aurict [options]
   aurict doctor              Run local install diagnostics
   aurict doctor --json       Machine-readable JSON report (aurict.doctor/v1 schema)
   aurict run <recipe.yaml>   Run a recipe (automated multi-step task)
+  aurict run-agent <task>    Run the agent headlessly with a JSON result
 
 Options:
   -p, --provider <id>   Select provider (anthropic, openai, openrouter, google, opencode, ollama, xai, azure, bedrock, nvidia, zai, alibaba)
@@ -127,12 +129,16 @@ Environment variables:
   process.exit(0)
 }
 
-const [subCmd, recipeFile] = process.argv.slice(2)
 if (subCmd === "doctor") {
   const jsonFlag = process.argv.slice(2).includes("--json") || process.argv.slice(2).includes("-j")
   const { runDoctor } = await import("./util/doctor.js")
   const exitCode = await runDoctor(workdir, { json: jsonFlag })
   process.exit(exitCode)
+}
+
+if (subCmd === "run-agent") {
+  const { runHeadlessAgentCommand } = await import("./headless/run-agent.js")
+  process.exit(await runHeadlessAgentCommand(process.argv.slice(3)))
 }
 
 migrateLegacyCoreState()
@@ -378,6 +384,7 @@ if (process.stdin.isTTY) {
       backendAccessTokenResolver: resolveBackendAccessToken,
       ...(cfg.system !== undefined ? { system: cfg.system } : {}),
       messages: [{ role: "user", content: input }],
+      runtime: { profile: "headless" },
       onText:   (d) => process.stdout.write(d),
       onFinish: ({ tokens }) => {
         process.stdout.write("\n")

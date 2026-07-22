@@ -35,7 +35,8 @@ const TABS: Array<{ id: Tab; label: string }> = [
 
 const KEYBINDING_ROWS = [
   { key: "Ctrl+C",       action: "Abort / Exit" },
-  { key: "Ctrl+F",       action: "Quick Search" },
+  { key: "Ctrl+F",       action: "Find in conversation" },
+  { key: "Ctrl+Shift+F", action: "Search saved sessions" },
   { key: "Ctrl+P",       action: "Command Palette" },
   { key: "Ctrl+E",       action: "Edit last message" },
   { key: "Ctrl+T",       action: "Task Panel" },

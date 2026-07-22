@@ -29,6 +29,10 @@ execution is guarded by the policy sandbox: permission gates, protected paths, s
 timeouts, output limits, and audit trails. This is not container isolation; Docker is optional
 for heavier isolation. You always know what's happening and why.
 
+The interactive TUI asks about **Project Auto** when it opens. Enabling it removes repeated
+prompts for bounded typed file changes inside the current project for that session. Shell,
+secret, internal-state, external-path, dangerous, and broad-delete requests still ask.
+
 **It thinks in parallel, not in sequence.**
 Long tasks — refactoring a module, writing a test suite, auditing security — are broken into
 subtasks and distributed across a pool of specialized worker agents: code, review, test, docs,

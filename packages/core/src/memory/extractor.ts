@@ -1,161 +1,119 @@
 import { generateText } from "ai"
 import type { CoreMessage } from "ai"
 import { ProviderRegistry } from "../provider/registry.js"
+import type { UtilityModelSelection } from "../provider/utility-model.js"
 import { memoryStore } from "./store.js"
 import type { Category, Scope } from "./types.js"
 
 interface ExtractedFact {
   category: Category
-  scope:    Scope
-  content:  string
+  scope: Scope
+  content: string
 }
 
-const EXTRACTION_PROMPT = `Review this conversation and identify 1-5 genuinely useful facts
-worth remembering for FUTURE sessions. Focus on:
-- User preferences (how they like things done, communication style)
-- Project-specific facts (architecture, constraints, tech decisions)
-- Recurring patterns (what they do often, their workflow)
-- Key discoveries (important findings about the codebase)
+const VALID_CATEGORIES = new Set<Category>(["preference", "project", "fact", "decision", "pattern"])
+const VALID_SCOPES = new Set<Scope>(["global", "project"])
 
-For each fact output a JSON object:
-{ "category": "preference|project|fact|decision|pattern", "scope": "global|project", "content": "one clear, specific sentence" }
+const EXTRACTION_PROMPT = `Review this conversation and identify 1-5 genuinely useful facts worth remembering for FUTURE sessions.
+Focus on user preferences, durable project facts, recurring workflows, key discoveries, and decisions.
+Return a JSON array of { "category": "preference|project|fact|decision|pattern", "scope": "global|project", "content": "one clear sentence" }.
+Return exactly NONE if there is nothing durable to remember. Do not store trivial or session-specific details.`
 
-Wrap facts in a JSON array.
-Output "NONE" (the string) if there is nothing genuinely worth remembering.
-Be selective — only store facts that would actually help in a future session.
-Do NOT store trivial or session-specific details.`
+const PER_TURN_EXTRACTION_PROMPT = `Review only these recent messages for durable preferences, project facts, decisions, or user corrections.
+Return JSON: { "memories": [{ "category": "preference|project|fact|decision|pattern", "scope": "global|project", "content": "one clear sentence" }] }.
+Return { "memories": [] } when nothing will help a FUTURE session. Be very selective.`
 
-// ─── Faz 3: Per-Turn Memory Extraction ────────────────────────────────────────
-const PER_TURN_EXTRACTION_PROMPT = `Review the LAST FEW messages (not the entire conversation) and identify if the user expressed any:
-- Preferences (how they like things done)
-- Project facts (architecture, constraints)
-- Corrections (agent did something wrong, user corrected)
-
-Output JSON: { "memories": [{ "category": "preference|project|fact|decision|pattern", "scope": "global|project", "content": "one clear sentence" }] }
-Output { "memories": [] } if nothing worth remembering.
-Be VERY selective — only store facts that would help in a FUTURE session.`
-
-/**
- * Her turn sonunda memory extraction yapar.
- * Sadece son birkaç mesaja bakar, tüm conversation'a değil.
- * Compaction'dan daha sık çalışır, daha küçük ve bağlamsal.
- */
 export async function extractPerTurnMemories(
   provider: string,
-  model:    string,
+  model: string,
   messages: CoreMessage[],
-  workdir:  string,
+  workdir: string,
+  utility?: UtilityModelSelection,
 ): Promise<void> {
-  // Son 5 mesajı analiz et (son turn)
   const recent = messages.slice(-5)
   if (recent.length < 2) return
 
-  const plugin  = ProviderRegistry.get(provider)
-  const aiModel = plugin.getModel(model)
-
-  let raw: string
-  try {
-    const result = await generateText({
-      model:    aiModel,
-      messages: [
-        ...recent,
-        { role: "user", content: PER_TURN_EXTRACTION_PROMPT },
-      ],
-      maxTokens: 400,
-    })
-    raw = result.text.trim()
-  } catch { return }
-
-  if (!raw || raw.includes('"memories": []') || raw.includes('"memories":[]')) return
-
-  // JSON'dan memories array'ini çıkar
-  const jsonMatch = raw.match(/\{[\s\S]*"memories"[\s\S]*\}/)
-  if (!jsonMatch) return
-
-  let parsed: { memories?: ExtractedFact[] }
-  try {
-    parsed = JSON.parse(jsonMatch[0])
-  } catch { return }
-
-  const facts = parsed.memories
-  if (!Array.isArray(facts) || facts.length === 0) return
-
-  // Doğrula ve kaydet
-  for (const fact of facts.slice(0, 3)) {
-    if (!fact.content || !fact.category || !fact.scope) continue
-    const validCategories = ["preference", "project", "fact", "decision", "pattern"]
-    const validScopes     = ["global", "project"]
-    if (!validCategories.includes(fact.category)) continue
-    if (!validScopes.includes(fact.scope))         continue
-
-    const addData: Parameters<typeof memoryStore.add>[0] = {
-      content:  fact.content,
-      category: fact.category as Category,
-      scope:    fact.scope    as Scope,
-      source:   "auto",
-    }
-    if (fact.scope === "project") addData.project = workdir
-    memoryStore.add(addData)
-  }
+  const route = utility ?? primaryRoute(provider, model, 400)
+  const result = await generateText({
+    model: ProviderRegistry.get(route.provider).getModel(route.model),
+    system: PER_TURN_EXTRACTION_PROMPT,
+    messages: recent,
+    maxTokens: Math.min(route.maxOutputTokens, 400),
+  })
+  const facts = parsePerTurnFacts(result.text)
+  storeFacts(facts.slice(0, 3), workdir)
 }
 
 export async function extractAndStoreMemories(
-  provider:  string,
-  model:     string,
-  messages:  CoreMessage[],
-  workdir:   string,
+  provider: string,
+  model: string,
+  messages: CoreMessage[],
+  workdir: string,
+  utility?: UtilityModelSelection,
 ): Promise<void> {
-  // Çok kısa session'larda çalıştırma
   if (messages.length < 4) return
 
-  const plugin    = ProviderRegistry.get(provider)
-  const aiModel   = plugin.getModel(model)
-  const recent    = messages.slice(-30)  // son 30 mesaj — token tasarrufu
+  const route = utility ?? primaryRoute(provider, model, 800)
+  const result = await generateText({
+    model: ProviderRegistry.get(route.provider).getModel(route.model),
+    system: EXTRACTION_PROMPT,
+    messages: messages.slice(-30),
+    maxTokens: Math.min(route.maxOutputTokens, 800),
+  })
+  const facts = parseSessionFacts(result.text)
+  storeFacts(facts.slice(0, 5), workdir)
+  if (facts.length > 0) memoryStore.exportToFile(workdir)
+}
 
-  let raw: string
-  try {
-    const result = await generateText({
-      model:    aiModel,
-      messages: [
-        ...recent,
-        { role: "user", content: EXTRACTION_PROMPT },
-      ],
-      maxTokens: 800,
+export function parsePerTurnFacts(rawOutput: string): ExtractedFact[] {
+  const raw = rawOutput.trim()
+  if (!raw) return []
+  const json = raw.match(/\{[\s\S]*"memories"[\s\S]*\}/)?.[0]
+  if (!json) throw new Error("Memory extractor returned no memories JSON object")
+  const parsed = JSON.parse(json) as { memories?: unknown }
+  return validateFacts(parsed.memories)
+}
+
+export function parseSessionFacts(rawOutput: string): ExtractedFact[] {
+  const raw = rawOutput.trim()
+  if (!raw || raw === "NONE") return []
+  const json = raw.match(/\[[\s\S]*\]/)?.[0]
+  if (!json) throw new Error("Memory extractor returned neither exact NONE nor a JSON array")
+  return validateFacts(JSON.parse(json))
+}
+
+function validateFacts(value: unknown): ExtractedFact[] {
+  if (!Array.isArray(value)) throw new Error("Memory extractor JSON payload is not an array")
+  return value.flatMap((candidate): ExtractedFact[] => {
+    if (!candidate || typeof candidate !== "object") return []
+    const fact = candidate as Record<string, unknown>
+    if (typeof fact["content"] !== "string" || !fact["content"].trim()) return []
+    if (!VALID_CATEGORIES.has(fact["category"] as Category)) return []
+    if (!VALID_SCOPES.has(fact["scope"] as Scope)) return []
+    return [{
+      content: fact["content"].trim(),
+      category: fact["category"] as Category,
+      scope: fact["scope"] as Scope,
+    }]
+  })
+}
+
+function storeFacts(facts: ExtractedFact[], workdir: string): void {
+  for (const fact of facts) {
+    memoryStore.add({
+      ...fact,
+      source: "auto",
+      ...(fact.scope === "project" ? { project: workdir } : {}),
     })
-    raw = result.text.trim()
-  } catch { return }
-
-  if (!raw || raw === "NONE" || raw.includes("NONE")) return
-
-  // JSON array'i çıkar
-  const jsonMatch = raw.match(/\[[\s\S]*\]/)
-  if (!jsonMatch) return
-
-  let facts: ExtractedFact[]
-  try {
-    facts = JSON.parse(jsonMatch[0]) as ExtractedFact[]
-  } catch { return }
-
-  if (!Array.isArray(facts) || facts.length === 0) return
-
-  // Doğrula ve kaydet
-  for (const fact of facts.slice(0, 5)) {
-    if (!fact.content || !fact.category || !fact.scope) continue
-    const validCategories = ["preference","project","fact","decision","pattern"]
-    const validScopes     = ["global","project"]
-    if (!validCategories.includes(fact.category)) continue
-    if (!validScopes.includes(fact.scope))         continue
-
-    const addData: Parameters<typeof memoryStore.add>[0] = {
-      content:  fact.content,
-      category: fact.category as Category,
-      scope:    fact.scope    as Scope,
-      source:   "auto",
-    }
-    if (fact.scope === "project") addData.project = workdir
-    memoryStore.add(addData)
   }
+}
 
-  // Human-readable yedek
-  memoryStore.exportToFile(workdir)
+function primaryRoute(provider: string, model: string, maxOutputTokens: number): UtilityModelSelection {
+  return {
+    provider,
+    model,
+    maxInputTokens: 24_000,
+    maxOutputTokens,
+    source: "primary-visible-fallback",
+  }
 }

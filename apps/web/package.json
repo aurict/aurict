@@ -1,11 +1,11 @@
 {
   "name": "web",
-  "version": "0.1.0",
+  "version": "1.2.13",
   "private": true,
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },

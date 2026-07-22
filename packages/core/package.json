@@ -1,6 +1,6 @@
 {
   "name": "@aurict/core",
-  "version": "1.2.8",
+  "version": "1.2.13",
   "private": false,
   "type": "module",
   "description": "Aurict core engine — agent loop, tools, sessions, providers",
@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/node": "^22.10.0",
     "typescript": "^5.8.0"
   },
   "peerDependencies": {

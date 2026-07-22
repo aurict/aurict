@@ -243,13 +243,13 @@ describe("Session chrome", () => {
       ...DEFAULT_STATUS_PROPS,
       workdir: `${process.env["HOME"] ?? "/home/user"}/project`,
     };
-    const { lastFrame } = render(<StatusBar {...props} />);
+    const { lastFrame } = render(<CockpitHeader {...props} contextTokens={0} cols={120} />);
     expect(lastFrame()).toContain("~/proj");
   });
 
   it("renders branch when provided", () => {
     const { lastFrame } = render(
-      <StatusBar {...DEFAULT_STATUS_PROPS} branch="main" cols={120} />,
+      <CockpitHeader {...DEFAULT_STATUS_PROPS} branch="main" contextTokens={0} cols={120} />,
     );
     expect(lastFrame()).toContain("main");
   });
@@ -459,10 +459,10 @@ describe("Tool output rendering", () => {
     );
 
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("12 lines · ctrl+o");
+    expect(frame).toMatch(/12 lines\s+details \^O/);
     expect(frame).not.toContain("line-1");
     expect(frame).not.toContain("line-12");
-    expect(frame).toContain("ctrl+o");
+    expect(frame).toContain("details ^O");
   });
 
   it("renders empty expanded output explicitly", () => {

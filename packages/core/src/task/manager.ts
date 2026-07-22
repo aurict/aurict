@@ -1,150 +1,230 @@
-import type { Task } from "./types.js"
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import type { Task, TaskEvent, TaskScope } from "./types.js"
 
-type Listener = () => void
+type Listener = (tasks: Task[], scope: TaskScope | null) => void
+
+interface PersistedTaskState {
+  version: 1
+  sessionId: string
+  sequence: number
+  tasks: Task[]
+  events: TaskEvent[]
+}
+
+interface ScopeState {
+  scope: TaskScope | null
+  tasks: Map<string, Task>
+  events: TaskEvent[]
+  sequence: number
+  loaded: boolean
+}
 
 class TaskManagerImpl {
-  private tasks = new Map<string, Task>()
-  private listeners = new Set<Listener>()
+  private readonly states = new Map<string, ScopeState>()
+  private readonly listeners = new Set<Listener>()
+  private activeScope: TaskScope | null = null
 
-  public onUpdate(cb: Listener): () => void {
+  onUpdate(cb: Listener): () => void {
     this.listeners.add(cb)
     return () => this.listeners.delete(cb)
   }
 
-  private emit() {
-    this.listeners.forEach((cb) => cb())
+  configureScope(workdir: string, sessionId: string): TaskScope {
+    const scope = { workdir, sessionId }
+    this.activeScope = scope
+    this.state(scope)
+    return scope
   }
 
-  public getTasks(): Task[] {
-    return Array.from(this.tasks.values())
+  getTasks(scope: TaskScope | null = this.activeScope): Task[] {
+    return [...this.state(scope).tasks.values()].map(cloneTask)
   }
 
-  public getTask(id: string): Task | undefined {
-    return this.tasks.get(id)
+  getTask(id: string, scope: TaskScope | null = this.activeScope): Task | undefined {
+    const task = this.state(scope).tasks.get(id)
+    return task ? cloneTask(task) : undefined
   }
 
-  /**
-   * Kahn Algoritması ile Deadlock (Döngüsel Bağımlılık) Kontrolü
-   */
-  private hasCycle(tasksToCheck: Task[]): boolean {
-    const adj = new Map<string, string[]>()
-    const inDegree = new Map<string, number>()
-
-    for (const t of tasksToCheck) {
-      adj.set(t.id, [])
-      inDegree.set(t.id, 0)
-    }
-
-    for (const t of tasksToCheck) {
-      for (const blockerId of t.blockedBy) {
-        if (!adj.has(blockerId)) continue // Eğer blocker listede yoksa yoksay (veya hata verilebilir)
-        adj.get(blockerId)!.push(t.id)
-        inDegree.set(t.id, inDegree.get(t.id)! + 1)
-      }
-    }
-
-    const q: string[] = []
-    for (const [id, deg] of inDegree.entries()) {
-      if (deg === 0) q.push(id)
-    }
-
-    let visited = 0
-    while (q.length > 0) {
-      const curr = q.shift()!
-      visited++
-      for (const neighbor of adj.get(curr)!) {
-        const newDeg = inDegree.get(neighbor)! - 1
-        inDegree.set(neighbor, newDeg)
-        if (newDeg === 0) q.push(neighbor)
-      }
-    }
-
-    return visited !== tasksToCheck.length
+  getEvents(scope: TaskScope | null = this.activeScope): TaskEvent[] {
+    return this.state(scope).events.map(event => ({ ...event, task: cloneTask(event.task) }))
   }
 
-  /**
-   * Yeni bir görev oluşturur. Deadlock yaratıyorsa hata fırlatır.
-   */
-  public createTask(id: string, subject: string, blockedBy: string[] = []): Task {
-    if (this.tasks.has(id)) throw new Error(`Task ID ${id} already exists.`)
+  replaceTasks(tasks: Task[], scope: TaskScope | null = this.activeScope): Task[] {
+    const state = this.state(scope)
+    const normalized = tasks.map(task => normalizeTask(task))
+    this.assertNoCycle(normalized)
+    state.tasks = new Map(normalized.map(task => [task.id, task]))
+    this.persist(state)
+    this.emit(state)
+    return this.getTasks(scope)
+  }
 
-    const newTask: Task = {
+  createTask(id: string, subject: string, blockedBy: string[] = [], scope: TaskScope | null = this.activeScope): Task {
+    const state = this.state(scope)
+    if (state.tasks.has(id)) throw new Error(`Task ID ${id} already exists.`)
+    const now = Date.now()
+    const task: Task = {
       id,
-      subject,
-      status: "pending",
-      blockedBy,
-      context: ""
+      subject: subject.trim(),
+      status: blockedBy.length > 0 ? "pending" : "ready",
+      blockedBy: [...blockedBy],
+      dependencies: [...blockedBy],
+      context: "",
+      attempts: 0,
+      evidence: [],
+      createdAt: now,
+      updatedAt: now,
     }
-
-    // Geçici bir kopya üzerinde cycle kontrolü yap
-    const tempTasks = [...this.getTasks(), newTask]
-    if (this.hasCycle(tempTasks)) {
-      throw new Error(`Circular dependency detected! Adding task ${id} blocked by [${blockedBy.join(", ")}] creates a deadlock.`)
-    }
-
-    this.tasks.set(id, newTask)
-    this.emit()
-    return newTask
+    this.assertNoCycle([...state.tasks.values(), task])
+    state.tasks.set(id, task)
+    this.record(state, "created", task)
+    return cloneTask(task)
   }
 
-  /**
-   * Görevi günceller ve bağımlılıkları kontrol eder.
-   */
-  public updateTask(id: string, updates: Partial<Task>): Task {
-    const task = this.tasks.get(id)
-    if (!task) throw new Error(`Task ${id} not found.`)
-
-    if (updates.blockedBy) {
-      const tempTask = { ...task, blockedBy: updates.blockedBy }
-      const tempTasks = this.getTasks().map(t => t.id === id ? tempTask : t)
-      if (this.hasCycle(tempTasks)) {
-         throw new Error(`Circular dependency detected! Updating task ${id} blocked by [${updates.blockedBy.join(", ")}] creates a deadlock.`)
-      }
+  updateTask(id: string, updates: Partial<Task>, scope: TaskScope | null = this.activeScope): Task {
+    const state = this.state(scope)
+    const current = state.tasks.get(id)
+    if (!current) throw new Error(`Task ${id} not found.`)
+    const next = normalizeTask({ ...current, ...updates, id, updatedAt: Date.now() })
+    if (updates.blockedBy) next.dependencies = [...updates.blockedBy]
+    this.assertNoCycle([...state.tasks.values()].map(task => task.id === id ? next : task))
+    if (next.status === "in_progress" && current.status !== "in_progress") {
+      next.startedAt = Date.now()
+      next.attempts = (current.attempts ?? 0) + 1
     }
-
-    if (updates.status === "in_progress" && task.status !== "in_progress") {
-      task.startedAt = Date.now()
-    }
-
-    Object.assign(task, updates)
-    this.emit()
-    return task
+    state.tasks.set(id, next)
+    this.record(state, "updated", next)
+    return cloneTask(next)
   }
 
-  /**
-   * Görevi bitirir ve ona bağlı olan görevlere (dependent tasks) sonucu iletir (Context Passing)
-   */
-  public completeTask(id: string, result: string) {
-    const task = this.tasks.get(id)
+  completeTask(id: string, result: string, scope: TaskScope | null = this.activeScope): Task {
+    const state = this.state(scope)
+    const task = state.tasks.get(id)
     if (!task) throw new Error(`Task ${id} not found.`)
-
     task.status = "done"
     task.result = result
-    
-    // Bu görevi bekleyen (blockedBy'sında bu id olan) görevleri bul
-    for (const t of this.getTasks()) {
-      if (t.blockedBy.includes(id)) {
-        // Context Passing: Başarılı olan veriyi beklemedeki görevin bağlamına enjekte et
-        t.context = t.context 
-          ? `${t.context}\n[Context from ${id}]: ${result}`
+    task.updatedAt = Date.now()
+    for (const dependent of state.tasks.values()) {
+      if (!dependent.blockedBy.includes(id)) continue
+      if (result) {
+        dependent.context = dependent.context
+          ? `${dependent.context}\n[Context from ${id}]: ${result}`
           : `[Context from ${id}]: ${result}`
-          
-        // Blocker listesinden çıkar (artık beklemese de olur)
-        t.blockedBy = t.blockedBy.filter(b => b !== id)
       }
+      dependent.blockedBy = dependent.blockedBy.filter(blocker => blocker !== id)
+      if (dependent.blockedBy.length === 0 && dependent.status === "pending") dependent.status = "ready"
+      dependent.updatedAt = Date.now()
     }
-
-    this.emit()
+    this.record(state, "completed", task)
+    return cloneTask(task)
   }
 
-  public failTask(id: string, error: string) {
-    const task = this.tasks.get(id)
+  failTask(id: string, error: string, scope: TaskScope | null = this.activeScope): Task {
+    const state = this.state(scope)
+    const task = state.tasks.get(id)
     if (!task) throw new Error(`Task ${id} not found.`)
-
     task.status = "error"
     task.error = error
-    this.emit()
+    task.updatedAt = Date.now()
+    this.record(state, "failed", task)
+    return cloneTask(task)
   }
+
+  private state(scope: TaskScope | null): ScopeState {
+    const key = scope ? `${scope.workdir}\0${scope.sessionId}` : "memory:default"
+    let state = this.states.get(key)
+    if (!state) {
+      state = { scope, tasks: new Map(), events: [], sequence: 0, loaded: false }
+      this.states.set(key, state)
+    }
+    if (!state.loaded) this.load(state)
+    return state
+  }
+
+  private load(state: ScopeState): void {
+    state.loaded = true
+    if (!state.scope) return
+    const path = storePath(state.scope)
+    if (!existsSync(path)) return
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as PersistedTaskState
+    if (parsed.version !== 1 || parsed.sessionId !== state.scope.sessionId || !Array.isArray(parsed.tasks)) {
+      throw new Error(`Invalid task state: ${path}`)
+    }
+    const tasks = parsed.tasks.map(normalizeTask)
+    this.assertNoCycle(tasks)
+    state.tasks = new Map(tasks.map(task => [task.id, task]))
+    state.events = Array.isArray(parsed.events) ? parsed.events.slice(-500) : []
+    state.sequence = Number.isInteger(parsed.sequence) ? parsed.sequence : state.events.length
+  }
+
+  private persist(state: ScopeState): void {
+    if (!state.scope) return
+    const path = storePath(state.scope)
+    mkdirSync(dirname(path), { recursive: true })
+    const temporary = `${path}.${process.pid}.tmp`
+    const payload: PersistedTaskState = {
+      version: 1,
+      sessionId: state.scope.sessionId,
+      sequence: state.sequence,
+      tasks: [...state.tasks.values()].map(cloneTask),
+      events: state.events.slice(-500),
+    }
+    writeFileSync(temporary, JSON.stringify(payload, null, 2), "utf8")
+    renameSync(temporary, path)
+  }
+
+  private record(state: ScopeState, type: TaskEvent["type"], task: Task): void {
+    state.events.push({ sequence: ++state.sequence, type, taskId: task.id, task: cloneTask(task), at: Date.now() })
+    state.events = state.events.slice(-500)
+    this.persist(state)
+    this.emit(state)
+  }
+
+  private emit(state: ScopeState): void {
+    const tasks = [...state.tasks.values()].map(cloneTask)
+    for (const listener of this.listeners) listener(tasks, state.scope)
+  }
+
+  private assertNoCycle(tasks: Task[]): void {
+    const dependencies = new Map(tasks.map(task => [task.id, task.dependencies ?? task.blockedBy]))
+    const visiting = new Set<string>()
+    const visited = new Set<string>()
+    const visit = (id: string): void => {
+      if (visiting.has(id)) throw new Error(`Circular dependency detected at task ${id}.`)
+      if (visited.has(id)) return
+      visiting.add(id)
+      for (const dependency of dependencies.get(id) ?? []) if (dependencies.has(dependency)) visit(dependency)
+      visiting.delete(id)
+      visited.add(id)
+    }
+    for (const id of dependencies.keys()) visit(id)
+  }
+}
+
+function normalizeTask(task: Task): Task {
+  if (!task.id || !task.subject) throw new Error("Task id and subject are required")
+  return {
+    ...task,
+    subject: task.subject.trim(),
+    blockedBy: [...(task.blockedBy ?? [])],
+    dependencies: [...(task.dependencies ?? task.blockedBy ?? [])],
+    evidence: [...(task.evidence ?? [])],
+  }
+}
+
+function cloneTask(task: Task): Task {
+  return {
+    ...task,
+    blockedBy: [...task.blockedBy],
+    ...(task.dependencies ? { dependencies: [...task.dependencies] } : {}),
+    ...(task.evidence ? { evidence: [...task.evidence] } : {}),
+  }
+}
+
+function storePath(scope: TaskScope): string {
+  const safeSessionId = scope.sessionId.replace(/[^a-zA-Z0-9_.:-]/g, "_")
+  return join(scope.workdir, ".aurict", "session-state", `${safeSessionId}.tasks.json`)
 }
 
 export const taskManager = new TaskManagerImpl()

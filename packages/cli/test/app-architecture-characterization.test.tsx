@@ -20,11 +20,13 @@ afterEach(() => cleanup());
 
 const EMPTY_FOCUS: FocusState = {
   permission: false,
+  projectAuto: false,
   question: false,
   picker: false,
   prompt: false,
   keyboardShortcuts: false,
   subagent: false,
+  transcriptSearch: false,
   historySearch: false,
   quickSearch: false,
   commandPalette: false,
@@ -76,6 +78,12 @@ describe("App focus characterization", () => {
       Object.keys(EMPTY_FOCUS).map((key) => [key, true]),
     ) as unknown as FocusState;
     expect(resolveFocusLayer(allOpen)).toBe("permission");
+  });
+
+  test("blocks composer input while the startup Project Auto choice is open", () => {
+    expect(resolveFocusLayer({ ...EMPTY_FOCUS, projectAuto: true })).toBe("projectAuto");
+    expect(keybindingContextForFocusLayer("projectAuto")).toBe("modal");
+    expect(isBlockingOverlayLayer("projectAuto")).toBe(false);
   });
 
   test("keeps modal, task, and streaming keybinding contexts distinct", () => {
@@ -165,6 +173,7 @@ describe("overlay state characterization", () => {
       activeLayer: "attach" as const,
       keyboardShortcuts: { onClose: () => {} },
       historySearch: null,
+      transcriptSearch: null,
       quickSearch: null,
       commandPalette: null,
       settings: null,

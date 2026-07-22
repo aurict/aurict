@@ -9,6 +9,7 @@ import {
   agentPool,
   depSentinel,
   detectUndercoverRepo,
+  evaluateProjectAutoRequest,
   getSkillsForProject,
   questionService,
   setMCPLogHandler,
@@ -36,6 +37,7 @@ interface Params {
   autopilotRef: MutableRefObject<boolean>;
   inputRef: MutableRefObject<string>;
   loadingRef: MutableRefObject<boolean>;
+  mainSessionId: MutableRefObject<string>;
   remoteRuntimeRef: MutableRefObject<CliRemoteRuntime | null>;
   setTermCols: Dispatch<SetStateAction<number>>;
   setTermRows: Dispatch<SetStateAction<number>>;
@@ -56,6 +58,11 @@ interface Params {
 
 export function useAppLifecycle(params: Params): void {
   const mcpFailuresRef = useRef(new Set<string>());
+  const currentWorkdirRef = useRef(params.workdir);
+
+  useEffect(() => {
+    currentWorkdirRef.current = params.workdir;
+  }, [params.workdir]);
 
   useLayoutEffect(() => {
     const handler = () => {
@@ -87,24 +94,46 @@ export function useAppLifecycle(params: Params): void {
   useEffect(
     () => ExecutorEvents.on((event) => {
       if (event.type !== "permission_ask") return;
-      if (params.autopilotRef.current) {
-        PermissionGate.respond(event.request.id, "allow");
+      const showPermission = () => {
+        params.setPermissionQueue((queue) =>
+          queue.some((request) => request.id === event.request.id)
+            ? queue
+            : [...queue, event.request],
+        );
+        params.remoteRuntimeRef.current
+          ?.publish(RemoteEventTypes.permissionRequest, {
+            id: event.request.id,
+            tool: event.request.tool,
+            pattern: event.request.pattern,
+            ...(event.request.level ? { level: event.request.level } : {}),
+            ...(event.request.reason ? { reason: event.request.reason } : {}),
+            ...(event.request.summary ? { summary: event.request.summary } : {}),
+          })
+          .catch((error) => {
+            params.addSystemMsg(
+              `⚠ Remote permission sync failed: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          });
+      };
+
+      if (!params.autopilotRef.current) {
+        showPermission();
         return;
       }
-      params.setPermissionQueue((queue) => [...queue, event.request]);
-      params.remoteRuntimeRef.current
-        ?.publish(RemoteEventTypes.permissionRequest, {
-          id: event.request.id,
-          tool: event.request.tool,
-          pattern: event.request.pattern,
-          ...(event.request.level ? { level: event.request.level } : {}),
-          ...(event.request.reason ? { reason: event.request.reason } : {}),
-          ...(event.request.summary ? { summary: event.request.summary } : {}),
+
+      void evaluateProjectAutoRequest(event.request, currentWorkdirRef.current)
+        .then((verdict) => {
+          if (params.autopilotRef.current && verdict.allow) {
+            PermissionGate.respond(event.request.id, "allow_once");
+            return;
+          }
+          showPermission();
         })
         .catch((error) => {
           params.addSystemMsg(
-            `⚠ Remote permission sync failed: ${error instanceof Error ? error.message : String(error)}`,
+            `⚠ Project Auto check failed: ${error instanceof Error ? error.message : String(error)}`,
           );
+          showPermission();
         });
     }),
     [],
@@ -118,10 +147,11 @@ export function useAppLifecycle(params: Params): void {
         );
       });
   }, [params.workdir]);
-  useEffect(
-    () => taskManager.onUpdate(() => params.setTasks([...taskManager.getTasks()])),
-    [],
-  );
+  useEffect(() => {
+    taskManager.configureScope(params.workdir, params.mainSessionId.current);
+    params.setTasks(taskManager.getTasks());
+    return taskManager.onUpdate(() => params.setTasks(taskManager.getTasks()));
+  }, [params.workdir, params.mainSessionId, params.setTasks]);
   useEffect(() => PlanGate.onRequest(params.setPlanRequest), []);
   useEffect(() => {
     params.inputRef.current = params.input;

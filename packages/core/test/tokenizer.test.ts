@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test"
-import { countTokens, estimateMessages } from "../src/provider/tokenizer.js"
+import { clearTokenCache, countMessageTokens, countTokens, estimateMessages, tokenCacheStats, tokenizableMessageText } from "../src/provider/tokenizer.js"
+import type { CoreMessage } from "ai"
 
 describe("countTokens", () => {
   it("empty string returns 0", () => {
@@ -69,5 +70,23 @@ describe("estimateMessages", () => {
     const direct  = countTokens(content)
     const est     = estimateMessages(msgs)
     expect(est).toBe(direct + 4) // 4 overhead per message
+  })
+})
+
+describe("semantic message tokenization", () => {
+  it("does not tokenize base64 image bytes as text", () => {
+    const message = {
+      role: "user",
+      content: [{ type: "image", image: "A".repeat(200_000), mimeType: "image/png" }],
+    } as CoreMessage
+    expect(tokenizableMessageText(message)).toBe("[image attachment]")
+    expect(countMessageTokens(message)).toBeLessThan(2_000)
+  })
+
+  it("memoizes repeated tokenization by content hash", () => {
+    clearTokenCache()
+    countTokens("repeat me", "gpt-4o")
+    countTokens("repeat me", "gpt-4o")
+    expect(tokenCacheStats()).toMatchObject({ hits: 1, misses: 1, entries: 1 })
   })
 })

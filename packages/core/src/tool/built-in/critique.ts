@@ -4,6 +4,8 @@ import { AGENT_TYPE_TOOLS } from "../../agent/protocol.js"
 import { ProviderRegistry } from "../../provider/registry.js"
 import { loadConfig } from "../../config/config.js"
 import { resolveCritiqueRequired } from "../../agent/working-set.js"
+import { countTokens } from "../../provider/tokenizer.js"
+import { calculateCostUsd } from "../../provider/costs.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
 // Faz 4.2: düşman/adversarial reviewer persona — critique.adversarial açıkken
@@ -222,11 +224,31 @@ export const critiqueTool: ToolDef = {
     ].join("\n\n")
     const criticPrompt = [criticInstructions, contentBlock].join("\n\n")
 
-    const provider = ctx.provider ?? (process.env["ANTHROPIC_API_KEY"] ? "anthropic" : "opencode")
+    const primaryProvider = ctx.provider ?? (process.env["ANTHROPIC_API_KEY"] ? "anthropic" : "opencode")
+    const primaryModel = ctx.model ?? ProviderRegistry.get(primaryProvider).defaultModel()
+    const critiqueConfig = loadConfig(ctx.workdir).critique ?? {}
+    const provider = critiqueConfig.provider ?? primaryProvider
+    if (!ProviderRegistry.has(provider)) return { output: "", error: `Critique provider is not registered: ${provider}` }
     // BYOK: ctx.model verilmemişse provider'ın kendi varsayılan modelini kullan
     // (hardcoded Anthropic model id, Anthropic dışı provider'da 400/404 alırdı).
-    const model = ctx.model ?? ProviderRegistry.get(provider).defaultModel()
-    const adversarial = loadConfig(ctx.workdir).critique?.adversarial === true
+    const model = critiqueConfig.model ?? (provider === primaryProvider ? primaryModel : ProviderRegistry.get(provider).defaultModel())
+    const adversarial = critiqueConfig.adversarial === true
+    const independentReviewer = provider !== primaryProvider || model !== primaryModel
+    const identity = critiqueConfig.showReviewerIdentity !== false
+      ? `[reviewer ${provider}/${model}${independentReviewer ? " · independent" : " · primary"}]\n\n`
+      : ""
+    if (critiqueConfig.maxEstimatedCostUsd !== undefined) {
+      const estimatedCost = calculateCostUsd(model, {
+        input: countTokens(criticPrompt, model), output: 4_000,
+        cacheRead: 0, cacheWrite: 0, reasoning: 0,
+      })
+      if (estimatedCost === 0 && provider !== "ollama") {
+        return { output: "", error: `Cannot enforce critique.maxEstimatedCostUsd because pricing is unknown for ${provider}/${model}.` }
+      }
+      if (estimatedCost > critiqueConfig.maxEstimatedCostUsd) {
+        return { output: "", error: `Estimated reviewer cost $${estimatedCost.toFixed(4)} exceeds critique.maxEstimatedCostUsd $${critiqueConfig.maxEstimatedCostUsd.toFixed(4)}.` }
+      }
+    }
 
     try {
       const primaryResult = await agentPool.spawn({
@@ -244,7 +266,7 @@ export const critiqueTool: ToolDef = {
       })
 
       if (!adversarial) {
-        return { output: `[critique:${target}]\n\n${primaryResult}` }
+        return { output: `${identity}[critique:${target}]\n\n${primaryResult}` }
       }
 
       // Faz 4.2c: ikinci, bağımsız ve düşman bir persona ile aynı modeli tekrar
@@ -265,13 +287,33 @@ export const critiqueTool: ToolDef = {
       })
 
       return {
-        output: `[critique:${target}]\n\n${primaryResult}\n\n---\n\n[critique:${target}:adversarial]\n\n${adversarialResult}`,
+        output: `${identity}[critique:${target}]\n\n${primaryResult}\n\n---\n\n[critique:${target}:adversarial]\n\n${adversarialResult}`,
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
+      if (independentReviewer && critiqueConfig.fallbackToPrimary === true) {
+        try {
+          const fallbackResult = await agentPool.spawn({
+            id: `critic-fallback-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            agentType: "critic",
+            desc: `Critic [${target}] (primary fallback)`,
+            prompt: criticPrompt,
+            provider: primaryProvider,
+            model: primaryModel,
+            workdir: ctx.workdir,
+            sessionId: sid,
+            workerSessionId: `critic-fallback-${sid.slice(0, 8)}-${Date.now()}`,
+            allowedTools: AGENT_TYPE_TOOLS["critic"],
+            ...(ctx.backendAccessToken !== undefined ? { backendAccessToken: ctx.backendAccessToken } : {}),
+          })
+          return { output: `[reviewer fallback ${provider}/${model} → ${primaryProvider}/${primaryModel}; reason: ${msg}]\n\n[critique:${target}]\n\n${fallbackResult}` }
+        } catch (fallbackError) {
+          return { output: `[critique:${target}] Reviewer and configured primary fallback failed (${msg}; ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}).` }
+        }
+      }
       // Critic başarısız → main flow devam etsin, engel olmasın
       return {
-        output: `[critique:${target}] Critic agent failed (${msg}). Proceeding without critique.`,
+        output: `${identity}[critique:${target}] Critic agent failed (${msg}). Proceeding without critique.`,
       }
     }
   },

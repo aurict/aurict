@@ -3,6 +3,7 @@ import { execSync } from "child_process"
 import { readFileSync } from "fs"
 import { resolve, relative } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
+import { executeGitHistoryAction, type GitHistoryAction } from "../git/history-actions.js"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -300,15 +301,44 @@ EXAMPLE:
   { files: ["src/auth/middleware.ts"], since: "1 year ago" }`,
 
   parameters: z.object({
-    files: z.array(z.string()).min(1).max(8)
+    action: z.enum(["context", "pickaxe", "regex_history", "blame_range", "show_at_ref", "compare_history"]).default("context"),
+    files: z.array(z.string()).max(8).default([])
       .describe("Files you are about to modify (relative or absolute paths)"),
     since: z.string().optional().default("6 months ago")
       .describe("How far back to look. Examples: '3 months ago', '1 year ago', '2024-01-01'"),
+    query: z.string().optional().describe("Exact string for pickaxe or regex for regex_history"),
+    ref: z.string().optional().describe("Git ref for show_at_ref (default HEAD)"),
+    base_ref: z.string().optional().describe("Base ref for compare_history"),
+    head_ref: z.string().optional().describe("Head ref for compare_history"),
+    start_line: z.number().int().positive().optional(),
+    end_line: z.number().int().positive().optional(),
+    max_count: z.number().int().min(1).max(100).default(30),
   }),
 
   async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
     const files = (args["files"] as string[])
     const since = String(args["since"] ?? "6 months ago")
+    const action = String(args["action"] ?? "context")
+
+    if (action !== "context") {
+      if (!isGitRepo(ctx.workdir)) return { output: "", error: "Not a git repository" }
+      try {
+        return { output: executeGitHistoryAction(ctx.workdir, {
+          action: action as GitHistoryAction,
+          files,
+          maxCount: Number(args["max_count"] ?? 30),
+          ...(args["query"] ? { query: String(args["query"]) } : {}),
+          ...(args["ref"] ? { ref: String(args["ref"]) } : {}),
+          ...(args["base_ref"] ? { baseRef: String(args["base_ref"]) } : {}),
+          ...(args["head_ref"] ? { headRef: String(args["head_ref"]) } : {}),
+          ...(args["start_line"] !== undefined ? { startLine: Number(args["start_line"]) } : {}),
+          ...(args["end_line"] !== undefined ? { endLine: Number(args["end_line"]) } : {}),
+        }) }
+      } catch (error) {
+        return { output: "", error: error instanceof Error ? error.message : String(error) }
+      }
+    }
+    if (!files.length) return { output: "", error: "files is required for context" }
 
     if (!isGitRepo(ctx.workdir)) {
       // Not a git repo — still extract annotations

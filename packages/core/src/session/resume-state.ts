@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { ActiveSkillPolicy } from "../skill/runtime-policy.js"
 import type { ContinuationDecision } from "../agent/continuation.js"
@@ -9,6 +9,7 @@ import type { LongTaskContinuationDecision } from "../agent/continuation-control
 import type { TaskLedger } from "../agent/task-ledger.js"
 import type { CompletionProof } from "../agent/completion-proof.js"
 import type { WorkingSetSnapshot } from "../agent/working-set.js"
+import type { TaskContext } from "../context/types.js"
 
 export interface SessionResumeState {
   sessionId: string
@@ -23,6 +24,8 @@ export interface SessionResumeState {
   continuation?: ContinuationDecision | undefined
   longTask?: LongTaskContinuationDecision | undefined
   taskLedger?: TaskLedger | undefined
+  taskContext?: TaskContext | undefined
+  activeToolIds?: string[] | undefined
   completionProof?: CompletionProof | undefined
   finishReason?: string | undefined
   tokens?: TokenBreakdown | undefined
@@ -34,6 +37,7 @@ export interface SessionVerificationSnapshot {
   status: "passed" | "failed" | "skipped" | "timeout" | "unknown"
   source: "tool_metadata" | "text"
   summary: string
+  workspaceRevision?: string
 }
 
 const TRUSTED_VERIFICATION_TOOLS = new Set([
@@ -58,7 +62,16 @@ export async function readSessionResumeState(workdir: string, sessionId: string)
 export async function writeSessionResumeState(state: SessionResumeState): Promise<void> {
   const dir = resumeStateDir(state.workdir)
   await mkdir(dir, { recursive: true })
-  await writeFile(resumeStatePath(state.workdir, state.sessionId), JSON.stringify(state, null, 2), "utf8")
+  const target = resumeStatePath(state.workdir, state.sessionId)
+  const temporary = `${target}.${process.pid}.${crypto.randomUUID()}.tmp`
+  let replaced = false
+  try {
+    await writeFile(temporary, JSON.stringify(state, null, 2), "utf8")
+    await rename(temporary, target)
+    replaced = true
+  } finally {
+    if (!replaced) await rm(temporary, { force: true })
+  }
 }
 
 export function extractVerificationSnapshot(text: string): SessionVerificationSnapshot | undefined {
@@ -94,6 +107,7 @@ export function extractWorkingSetVerificationSnapshot(
     status,
     source: "tool_metadata",
     summary: `${latest.source}: ${latest.label}`.slice(0, 1_500),
+    ...(latest.workspaceRevision ? { workspaceRevision: latest.workspaceRevision } : {}),
   }
 }
 

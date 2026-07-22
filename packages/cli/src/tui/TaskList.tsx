@@ -11,8 +11,8 @@ export function TaskList({ tasks }: Props) {
   const semantic = useSemanticTheme()
   if (tasks.length === 0) return null
 
-  const doneCount    = tasks.filter(t => t.status === "done").length
-  const runningCount = tasks.filter(t => t.status === "in_progress").length
+  const doneCount    = tasks.filter(t => t.status === "done" || t.status === "cancelled").length
+  const runningCount = tasks.filter(t => t.status === "in_progress" || t.status === "verifying").length
   const errorCount   = tasks.filter(t => t.status === "error").length
 
   return (
@@ -29,10 +29,10 @@ export function TaskList({ tasks }: Props) {
         </Text>
       </Box>
       {tasks.map((task) => {
-        const isCompleted  = task.status === "done"
-        const isInProgress = task.status === "in_progress"
+        const isCompleted  = task.status === "done" || task.status === "cancelled"
+        const isInProgress = task.status === "in_progress" || task.status === "verifying"
         const isError      = task.status === "error"
-        const isPending    = task.status === "pending"
+        const isPending    = task.status === "pending" || task.status === "ready" || task.status === "blocked"
 
         const icon  = isCompleted ? "✔" : isError ? "✗" : isPending ? "▫" : "▪"
         const color = isCompleted

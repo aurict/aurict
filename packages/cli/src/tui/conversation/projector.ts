@@ -1,43 +1,30 @@
 import { glyph, terminalText } from "../terminal-glyphs.js";
 import { activityLabel, type RunActivity } from "../run-status.js";
-import { wrapLine } from "../event-system/wrap-line.js";
 import type { TranscriptMessage, TranscriptBlock } from "./types.js";
-import { parseToolArtifact } from "./tool-artifact.js";
-import { toolRowModel } from "./tool-row-model.js";
-import { toolOutputSummary } from "./tool-output-summary.js";
-import { activityClusterModel } from "./activity-cluster.js";
 import { coalesceInterruptedAssistantBlocks } from "./block-flow.js";
 import { resolveLivePresentation } from "./live-state.js";
 import { groupAdjacentToolBlocks } from "./tool-grouping.js";
 import { isMarkdownHeading, isMarkdownListItem, proseLayout, standaloneSectionTitle } from "./readability.js";
+import { terminalHyperlink } from "../terminal-text/hyperlink.js";
+import { truncateDisplayWidth } from "../terminal-text/display-width.js";
+import type { TranscriptLine, TranscriptRow, TranscriptSegment, TranscriptTone } from "./row-model.js";
+import {
+  cleanTranscriptText as clean,
+  isBlankRow,
+  pushGap,
+  pushText,
+  pushWrapped,
+  wrapTranscriptText,
+} from "./row-builder.js";
+import {
+  projectToolBlock,
+  projectToolGroup,
+  toolGroupKey,
+  toolSectionKind,
+} from "./tool-block-projector.js";
 
-export type TranscriptTone =
-  | "user" | "assistant" | "tool" | "error" | "muted"
-  | "heading" | "code" | "quote" | "thinking" | "success" | "bullet";
-
-export interface TranscriptSegment {
-  text: string;
-  tone?: TranscriptTone;
-  bold?: boolean;
-  italic?: boolean;
-  dim?: boolean;
-}
-
-export interface TranscriptRow {
-  id: string;
-  segments: TranscriptSegment[];
-  detailId?: string;
-  surface?: "user";
-}
-
-export interface TranscriptLine {
-  id: string;
-  text: string;
-  tone: TranscriptTone;
-  bold?: boolean;
-  italic?: boolean;
-  detailId?: string;
-}
+export type { TranscriptLine, TranscriptRow, TranscriptSegment, TranscriptTone } from "./row-model.js";
+export { wrapTranscriptText } from "./row-builder.js";
 
 export interface ProjectOptions {
   messages: TranscriptMessage[];
@@ -55,87 +42,26 @@ export type LiveTranscriptOptions = Omit<ProjectOptions, "messages"> & {
   hasAssistantHeader?: boolean;
 };
 
-const ANSI = /\x1B\[[0-?]*[ -/]*[@-~]/g;
-
-function clean(text: string): string {
-  return text.replace(ANSI, "").replace(/\r/g, "").replace(/\t/g, "    ");
-}
-
-export function wrapTranscriptText(text: string, width: number): string[] {
-  const output: string[] = [];
-  for (const line of clean(text).split("\n")) output.push(...wrapLine(line, Math.max(12, width)));
-  return output.length > 0 ? output : [""];
-}
-
 function inlineSegments(text: string, tone: TranscriptTone): TranscriptSegment[] {
   const segments: TranscriptSegment[] = [];
-  const pattern = /(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`)/g;
+  const pattern = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|`[^`]+`|\*[^*\n]+\*|_[^_\n]+_)/g;
   let cursor = 0;
   for (const match of text.matchAll(pattern)) {
     const index = match.index ?? 0;
     if (index > cursor) segments.push({ text: text.slice(cursor, index), tone });
     const token = match[0];
-    if (token.startsWith("`")) segments.push({ text: token.slice(1, -1), tone: "code" });
-    else segments.push({ text: token.slice(2, -2), tone, bold: true });
+    const link = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (link) {
+      segments.push({ text: terminalHyperlink(link[1]!, link[2]!), tone, underline: true });
+      segments.push({ text: ` (${truncateDisplayWidth(link[2]!, 40)})`, tone: "muted" });
+    } else if (token.startsWith("`")) segments.push({ text: token.slice(1, -1), tone: "code" });
+    else if (token.startsWith("**") || token.startsWith("__")) segments.push({ text: token.slice(2, -2), tone, bold: true });
+    else if (token.startsWith("~~")) segments.push({ text: token.slice(2, -2), tone, strikethrough: true });
+    else segments.push({ text: token.slice(1, -1), tone, italic: true });
     cursor = index + token.length;
   }
   if (cursor < text.length) segments.push({ text: text.slice(cursor), tone });
   return segments.length > 0 ? segments : [{ text: "", tone }];
-}
-
-function wrapSegments(segments: TranscriptSegment[], width: number): TranscriptSegment[][] {
-  const max = Math.max(12, width);
-  const rows: TranscriptSegment[][] = [[]];
-  let used = 0;
-  for (const segment of segments) {
-    let rest = segment.text;
-    while (rest.length > 0) {
-      const room = max - used;
-      if (room === 0) {
-        rows.push([]);
-        used = 0;
-        continue;
-      }
-      let take = Math.min(room, rest.length);
-      if (take < rest.length) {
-        const breakAt = rest.slice(0, take + 1).lastIndexOf(" ");
-        if (breakAt > 0) take = breakAt;
-      }
-      const part = rest.slice(0, take);
-      rows[rows.length - 1]!.push({ ...segment, text: part });
-      used += part.length;
-      rest = rest.slice(take);
-      if (rest.startsWith(" ")) rest = rest.slice(1);
-      if (rest.length > 0) {
-        rows.push([]);
-        used = 0;
-      }
-    }
-  }
-  return rows;
-}
-
-function pushWrapped(rows: TranscriptRow[], id: string, segments: TranscriptSegment[], width: number, detailId?: string): void {
-  wrapSegments(segments, width).forEach((line, index) => rows.push({
-    id: `${id}:${index}`,
-    segments: line,
-    ...(detailId ? { detailId } : {}),
-  }));
-}
-
-function pushText(rows: TranscriptRow[], id: string, text: string, tone: TranscriptTone, width: number, detailId?: string): void {
-  for (const [lineIndex, line] of clean(text).split("\n").entries())
-    pushWrapped(rows, `${id}:${lineIndex}`, [{ text: line, tone }], width, detailId);
-}
-
-function isBlankRow(row: TranscriptRow | undefined): boolean {
-  return Boolean(row) && row!.segments.every((segment) => segment.text === "");
-}
-
-function pushGap(rows: TranscriptRow[], id: string): void {
-  if (rows.length === 0) return;
-  if (!isBlankRow(rows[rows.length - 1]))
-    rows.push({ id, segments: [{ text: "", tone: "muted" }] });
 }
 
 function markdownSegments(line: string, tone: TranscriptTone, inCode: boolean): { segments: TranscriptSegment[]; toggleCode: boolean } {
@@ -207,79 +133,6 @@ function thinkingSummary(content: string): string {
   return `${glyph("thinking")} ${stage} · Ctrl+O inspect`;
 }
 
-function pushTool(rows: TranscriptRow[], id: string, block: Extract<TranscriptBlock, { type: "tool" }>, width: number): void {
-  const artifact = parseToolArtifact(block.tool, block.args, block.resultContent, block.artifact);
-  const failed = !block.pending && artifact.kind === "error";
-  const presentation = toolRowModel(block.tool, artifact, width, block.durationMs);
-  const statusTone = failed ? "error" : block.pending ? "thinking" : "tool";
-  pushWrapped(rows, `${id}:summary`, [
-    { text: `${block.pending ? glyph("working") : failed ? glyph("error") : glyph("tool")} `, tone: statusTone },
-    { text: presentation.action, tone: statusTone, bold: true },
-    ...(presentation.subject ? [{ text: presentation.subject, tone: "assistant" as const }] : []),
-    ...(presentation.metadata ? [{ text: presentation.spacer, tone: "muted" as const }, { text: presentation.metadata, tone: "muted" as const }] : []),
-  ], width, id);
-  if (block.pending) return;
-  if (artifact.kind === "diff") {
-    const target = artifact.files && artifact.files.length > 1
-      ? `${artifact.files.length} files · ${artifact.files.join(", ")}`
-      : artifact.filePath ?? "file";
-    pushText(rows, `${id}:result`, `  ${glyph("close")} ${target} · +${artifact.additions ?? 0} −${artifact.deletions ?? 0} · ctrl+o`, "muted", width, id);
-  } else if (artifact.kind === "write") {
-    pushText(rows, `${id}:result`, `  ${glyph("close")} ${artifact.totalLines ?? 0} lines · preview · ctrl+o`, "muted", width, id);
-  } else if (artifact.kind === "patch") {
-    pushWrapped(rows, `${id}:result`, [
-      { text: `  ${glyph("close")} +${artifact.additions ?? 0} −${artifact.deletions ?? 0} · ctrl+o`, tone: "muted" },
-    ], width, id);
-  } else if (artifact.kind === "error") {
-    pushText(rows, `${id}:error`, `  ${glyph("close")} ${artifact.output.split("\n")[0] ?? "tool failed"} · ctrl+o`, "error", width, id);
-  } else if (artifact.result && (artifact.kind === "shell" || !["read", "grep", "glob", "websearch", "webfetch"].includes(block.tool))) {
-    const summary = toolOutputSummary(artifact);
-    if (summary) pushText(rows, `${id}:result`, `  ${glyph("close")} ${summary} · ctrl+o`, "muted", width, id);
-  }
-}
-
-function toolGroupKey(block: Extract<TranscriptBlock, { type: "tool" }>): string | undefined {
-  if (block.pending) return undefined;
-  const artifact = parseToolArtifact(block.tool, block.args, block.resultContent, block.artifact);
-  return artifact.kind === "error" ? undefined : "activity";
-}
-
-function pushToolGroup(
-  rows: TranscriptRow[],
-  messageId: string,
-  entries: Array<{ block: Extract<TranscriptBlock, { type: "tool" }>; sourceIndex: number }>,
-  width: number,
-): void {
-  const firstSourceIndex = entries[0]!.sourceIndex;
-  const cluster = activityClusterModel(entries.map(({ block, sourceIndex }) => ({
-    tool: block.tool,
-    artifact: parseToolArtifact(block.tool, block.args, block.resultContent, block.artifact),
-    sourceIndex,
-    ...(block.durationMs !== undefined ? { durationMs: block.durationMs } : {}),
-  })), width);
-
-  pushWrapped(rows, `${messageId}:activity:${firstSourceIndex}:header`, [
-    { text: `${glyph("open")} `, tone: "tool" },
-    { text: "activity", tone: "tool", bold: true },
-  ], width);
-  cluster.rows.forEach((presentation) => {
-    const detailId = `${messageId}:tool:${presentation.detailSourceIndex}`;
-    pushWrapped(rows, `${messageId}:activity:${firstSourceIndex}:${presentation.key}`, [
-      { text: `${glyph("quote")} `, tone: "muted" },
-      { text: presentation.action, tone: "tool", bold: true },
-      { text: presentation.subject, tone: "assistant" },
-    ], width, detailId);
-  });
-  pushWrapped(rows, `${messageId}:activity:${firstSourceIndex}:completed`, [
-    { text: `${glyph("close")} `, tone: "muted" },
-    { text: cluster.completed.action, tone: "success", bold: true },
-    ...(cluster.completed.metadata ? [
-      { text: cluster.completed.spacer, tone: "muted" as const },
-      { text: cluster.completed.metadata, tone: "muted" as const },
-    ] : []),
-  ], width);
-}
-
 function timestamp(timestamp: number | undefined): string {
   if (timestamp === undefined) return "";
   const date = new Date(timestamp);
@@ -302,7 +155,7 @@ function projectMessage(rows: TranscriptRow[], message: TranscriptMessage, index
   }
   if (message.role === "tool_result") return;
   if (message.role === "tool_call") {
-    pushTool(rows, `${id}:tool`, { type: "tool", id, tool: message.tool ?? "tool", args: message.content, pending: Boolean(message.pending), ...(message.resultContent !== undefined ? { resultContent: message.resultContent } : {}) }, width);
+    projectToolBlock(rows, `${id}:tool`, { type: "tool", id, tool: message.tool ?? "tool", args: message.content, pending: Boolean(message.pending), ...(message.resultContent !== undefined ? { resultContent: message.resultContent } : {}), ...(message.artifact !== undefined ? { artifact: message.artifact } : {}) }, width);
     return;
   }
   const tone = message.role === "user" ? "user" : "assistant";
@@ -322,20 +175,23 @@ function projectMessage(rows: TranscriptRow[], message: TranscriptMessage, index
       ? coalesceInterruptedAssistantBlocks(message.blocks)
       : message.blocks.map((block, sourceIndex) => ({ block, sourceIndex }));
     const groupedBlocks = groupAdjacentToolBlocks(displayBlocks, toolGroupKey);
-    let previousKind: TranscriptBlock["type"] | undefined;
+    let previousKind: TranscriptBlock["type"] | "error" | undefined;
     for (const item of groupedBlocks) {
       const { block, sourceIndex } = item.kind === "single" ? item.entry : item.entries[0]!;
       const kind = item.kind === "tool-group" ? "tool" : block.type;
-      if (previousKind && previousKind !== kind)
+      const sectionKind = item.kind === "single" && block.type === "tool"
+        ? toolSectionKind(block)
+        : kind;
+      if (previousKind && previousKind !== sectionKind)
         pushGap(rows, `${id}:flow:${sourceIndex}:gap`);
       if (item.kind === "tool-group") {
-        pushToolGroup(rows, id, item.entries, width);
-      } else if (block.type === "tool") pushTool(rows, `${id}:tool:${sourceIndex}`, block, width);
+        projectToolGroup(rows, id, item.entries, width);
+      } else if (block.type === "tool") projectToolBlock(rows, `${id}:tool:${sourceIndex}`, block, width);
       else {
         if (block.reasoningContent) rows.push({ id: `${id}:text:${sourceIndex}:thinking`, segments: [{ text: thinkingSummary(block.reasoningContent), tone: "thinking", italic: true }], detailId: `${id}:text:${sourceIndex}:thinking` });
         pushMarkdown(rows, `${id}:text:${sourceIndex}`, block.content, tone, width);
       }
-      previousKind = kind;
+      previousKind = sectionKind;
     }
   } else pushMarkdown(rows, `${id}:body`, message.resultContent ?? message.content, tone, width);
   pushGap(rows, `${id}:gap`);
@@ -349,13 +205,22 @@ function projectMessage(rows: TranscriptRow[], message: TranscriptMessage, index
 
 export function projectStableTranscript(messages: TranscriptMessage[], width: number): TranscriptRow[] {
   const rows: TranscriptRow[] = [];
-  const contentWidth = Math.max(12, width - 2);
   messages.forEach((message, index) => {
-    projectMessage(rows, message, index, contentWidth);
+    rows.push(...projectStableMessage(message, index, width));
     if (message.role !== "tool_call") return;
     const nextVisible = messages.slice(index + 1).find((candidate) => candidate.role !== "tool_result");
     if (nextVisible?.role !== "tool_call") pushGap(rows, `${message.id ?? `message-${index}`}:tool-gap`);
   });
+  return rows;
+}
+
+export function projectStableMessage(
+  message: TranscriptMessage,
+  index: number,
+  width: number,
+): TranscriptRow[] {
+  const rows: TranscriptRow[] = [];
+  projectMessage(rows, message, index, Math.max(12, width - 2));
   return normalizeTerminalRows(rows);
 }
 

@@ -89,6 +89,7 @@ export interface CommandContext {
   openDesign:        (brief?: string) => void
   /** Prints an intermediate progress message for long-running commands (adds a system message to the transcript). */
   addSystemMsg:      (content: string) => void
+  copyText:          (content: string) => void
   /** Starts/stops the WebRTC remote-control session for phone pairing. */
   startRemoteSession: () => void
   stopRemoteSession:  () => void

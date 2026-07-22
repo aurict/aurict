@@ -7,7 +7,11 @@ const STATUS_ICON: Record<Task["status"], string> = {
   done:        "✓",
   error:       "✗",
   pending:     "○",
+  ready:       "◉",
   in_progress: "●",
+  verifying:   "◆",
+  blocked:     "◇",
+  cancelled:   "−",
 }
 
 const PAGE_SIZE = 12
@@ -26,7 +30,11 @@ export function TaskFloatingPanel({ tasks, onClose }: Props) {
     done:        theme.success,
     error:       theme.error,
     pending:     theme.textDim,
+    ready:       theme.accent,
     in_progress: theme.accent,
+    verifying:   theme.accent,
+    blocked:     theme.warning,
+    cancelled:   theme.textDim,
   }
 
   useInput((input, key) => {
@@ -40,10 +48,10 @@ export function TaskFloatingPanel({ tasks, onClose }: Props) {
   const shown    = tasks.slice(offset, offset + PAGE_SIZE)
   const above    = offset
   const below    = Math.max(0, tasks.length - offset - PAGE_SIZE)
-  const allDone  = tasks.length > 0 && tasks.every(t => t.status === "done" || t.status === "error")
+  const allDone  = tasks.length > 0 && tasks.every(t => t.status === "done" || t.status === "error" || t.status === "cancelled")
   const counts = {
-    pending:     tasks.filter(t => t.status === "pending").length,
-    inProgress:  tasks.filter(t => t.status === "in_progress").length,
+    pending:     tasks.filter(t => t.status === "pending" || t.status === "ready" || t.status === "blocked").length,
+    inProgress:  tasks.filter(t => t.status === "in_progress" || t.status === "verifying").length,
     done:        tasks.filter(t => t.status === "done").length,
     error:       tasks.filter(t => t.status === "error").length,
   }

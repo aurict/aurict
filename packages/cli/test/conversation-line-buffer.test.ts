@@ -22,6 +22,22 @@ describe("conversation line buffer", () => {
     expect(wrapTranscriptText("\u001b[31mfailed\u001b[0m", 20)).toEqual(["failed"])
   })
 
+  it("projects inline emphasis and safe links without raw markdown syntax", () => {
+    const rows = projectStableTranscript([{
+      id: "inline-markdown",
+      role: "assistant",
+      content: "Use *care* and ~~legacy~~; read [docs](https://example.com/guide).",
+    }], 100)
+    const segments = rows.flatMap((row) => row.segments)
+    const visible = segments.map((segment) => segment.text).join("")
+
+    expect(segments).toContainEqual(expect.objectContaining({ text: "care", italic: true }))
+    expect(segments).toContainEqual(expect.objectContaining({ text: "legacy", strikethrough: true }))
+    expect(segments.some((segment) => segment.text.includes("\x1b]8;;https://example.com/guide"))).toBe(true)
+    expect(visible).not.toContain("*care*")
+    expect(visible).not.toContain("~~legacy~~")
+  })
+
   it("keeps ordered assistant text and tool output as individual visual rows", () => {
     const messages: DisplayMessage[] = [
       { id: "user", role: "user", content: "write a report" },
@@ -50,12 +66,13 @@ describe("conversation line buffer", () => {
       "write a report",
       "◇ Aurict",
       "I will prepare it.",
-      expect.stringMatching(/› change\s+report\.md/),
-      "  └ saved report.md · ctrl+o",
+      "› change",
+      "    report.md",
+      expect.stringMatching(/  └ saved report\.md\s+\^O/),
       "The report is ready.",
     ]))
     expect(lines.findIndex((line) => line.text === "I will prepare it."))
-      .toBeLessThan(lines.findIndex((line) => /› change\s+report\.md/.test(line.text)))
+      .toBeLessThan(lines.findIndex((line) => line.text === "› change"))
   })
 
   it("adds one breathing row at prose and tool boundaries", () => {
@@ -97,6 +114,32 @@ describe("conversation line buffer", () => {
     expect(lines[tool]?.detailId).toBe("tool-cluster:tool:1")
     expect(visible.some((line) => /› git\s+status/.test(line))).toBe(false)
     expect(visible.some((line) => /› git\s+diff/.test(line))).toBe(false)
+  })
+
+  it("adds breathing room around consecutive tool failures", () => {
+    const rows = projectStableTranscript([{
+      id: "error-spacing",
+      role: "assistant",
+      content: "",
+      blocks: [
+        { type: "tool", id: "read-a", tool: "read", args: "a.ts", pending: false, resultContent: "a" },
+        { type: "tool", id: "read-b", tool: "read", args: "b.ts", pending: false, resultContent: "b" },
+        { type: "tool", id: "fail-a", tool: "bash", args: "first", pending: false,
+          artifact: { kind: "error", output: "first failure", outputLines: 1 } },
+        { type: "tool", id: "fail-b", tool: "bash", args: "second", pending: false,
+          artifact: { kind: "error", output: "second failure", outputLines: 1 } },
+        { type: "tool", id: "grep-a", tool: "grep", args: "one", pending: false, resultContent: "one" },
+        { type: "tool", id: "grep-b", tool: "grep", args: "two", pending: false, resultContent: "two" },
+      ],
+    }], 80)
+    const visible = rows.map((row) => row.segments.map((segment) => segment.text).join(""))
+    const firstError = rows.findIndex((row) => row.id.startsWith("error-spacing:tool:2:summary"))
+    const secondError = rows.findIndex((row) => row.id.startsWith("error-spacing:tool:3:summary"))
+    const followingActivity = rows.findIndex((row) => row.id.startsWith("error-spacing:activity:4:header"))
+
+    expect(visible[firstError - 1]).toBe("")
+    expect(visible[secondError - 1]).toContain("first failure")
+    expect(visible[followingActivity - 1]).toBe("")
   })
 
   it("marks user rows for a quiet raised transcript surface", () => {
@@ -374,7 +417,9 @@ describe("conversation line buffer", () => {
     ], 80, null, null, null)
 
     expect(lines).toEqual(expect.arrayContaining([
-      expect.objectContaining({ text: "  └ src/file.ts · +1 −1 · ctrl+o", detailId: "change:tool:0" }),
+      expect.objectContaining({ text: "  ◆ src/file.ts  +1 −1  · details ^O", detailId: "change:tool:0" }),
+      expect.objectContaining({ text: "   1      − old", tone: "diff-remove", detailId: "change:tool:0" }),
+      expect.objectContaining({ text: "        1 + new", tone: "diff-add", detailId: "change:tool:0" }),
     ]))
   })
 })

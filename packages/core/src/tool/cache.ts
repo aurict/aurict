@@ -1,5 +1,8 @@
 import { LRUCache } from "../util/lru-cache.js"
 import { hashArgs } from "../util/hash.js"
+import { statSync } from "node:fs"
+import { isAbsolute, resolve } from "node:path"
+import { isAgentFeatureEnabled } from "../agent/runtime-features.js"
 
 /**
  * Tool Result Cache — tekrarlı tool çağrılarını cache'ler.
@@ -27,6 +30,7 @@ interface CacheEntry {
   result:    string
   error?:    string
   timestamp: number
+  sourceStamp?: string
 }
 
 class ToolResultCacheImpl {
@@ -38,13 +42,26 @@ class ToolResultCacheImpl {
    * Tool sonucunu cache'den al.
    * Cacheable değilse veya cache miss ise null döner.
    */
-  get(toolId: string, args: Record<string, unknown>, scope = "global"): { result: string; error?: string } | null {
+  get(
+    toolId: string,
+    args: Record<string, unknown>,
+    scope = "global",
+    validateSource = isAgentFeatureEnabled("mtime_tool_cache", {}, scope),
+  ): { result: string; error?: string } | null {
     if (!CACHEABLE_TOOLS.has(toolId)) return null
 
     const key = this.makeKey(toolId, args, scope)
     const entry = this.cache.get(key)
 
     if (entry) {
+      const currentStamp = validateSource
+        ? sourceStamp(toolId, args, scope)
+        : entry.sourceStamp
+      if (entry.sourceStamp !== undefined && currentStamp !== entry.sourceStamp) {
+        this.cache.delete(key)
+        this.misses++
+        return null
+      }
       this.hits++
       return { result: entry.result, ...(entry.error !== undefined ? { error: entry.error } : {}) }
     }
@@ -57,17 +74,28 @@ class ToolResultCacheImpl {
    * Tool sonucunu cache'e yaz.
    * Cacheable değilse hiçbir şey yapmaz.
    */
-  set(toolId: string, args: Record<string, unknown>, result: string, error?: string, scope = "global"): void {
+  set(
+    toolId: string,
+    args: Record<string, unknown>,
+    result: string,
+    error?: string,
+    scope = "global",
+    validateSource = isAgentFeatureEnabled("mtime_tool_cache", {}, scope),
+  ): void {
     if (!CACHEABLE_TOOLS.has(toolId)) return
 
     const key = this.makeKey(toolId, args, scope)
+    const stamp = validateSource
+      ? sourceStamp(toolId, args, scope)
+      : undefined
     const entry: CacheEntry = {
       result,
       ...(error !== undefined ? { error } : {}),
       timestamp: Date.now(),
+      ...(stamp !== undefined ? { sourceStamp: stamp } : {}),
     }
 
-    this.cache.set(key, entry, TOOL_TTL[toolId])
+    this.cache.set(key, entry, toolId === "read" && entry.sourceStamp ? 0 : TOOL_TTL[toolId])
   }
 
   /**
@@ -125,6 +153,20 @@ class ToolResultCacheImpl {
 
   private makeKey(toolId: string, args: Record<string, unknown>, scope: string): string {
     return `${toolId}:${hashArgs({ scope, args })}`
+  }
+}
+
+function sourceStamp(toolId: string, args: Record<string, unknown>, scope: string): string | undefined {
+  if (toolId !== "read" && toolId !== "file_stat" && toolId !== "symbols") return undefined
+  const rawPath = args["path"]
+  if (typeof rawPath !== "string" || !rawPath.trim()) return undefined
+  const workdir = scope.split("\0", 1)[0] || process.cwd()
+  const path = isAbsolute(rawPath) ? rawPath : resolve(workdir, rawPath)
+  try {
+    const stat = statSync(path, { bigint: true })
+    return `${stat.mtimeNs}:${stat.size}:${stat.ino}`
+  } catch {
+    return "missing"
   }
 }
 

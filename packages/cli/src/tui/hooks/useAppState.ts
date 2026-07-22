@@ -96,6 +96,7 @@ export function useAppState(options: AppStateOptions) {
   const [activeAgentCount, setActiveAgentCount] = useState(() => agentPool.active.length);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [autopilotMode, setAutopilotMode] = useState(false);
+  const [projectAutoPromptOpen, setProjectAutoPromptOpen] = useState(true);
   const [recentCmds, setRecentCmds] = useState<string[]>([]);
   const [designInitialBrief, setDesignInitialBrief] = useState<string>();
   const [watchedPaths, setWatchedPaths] = useState<WatchedPath[]>([]);
@@ -164,7 +165,8 @@ export function useAppState(options: AppStateOptions) {
     contextUsage, setContextUsage, completionProof, setCompletionProof,
     promptDiagnostics, setPromptDiagnostics,
     promptCacheHealth, setPromptCacheHealth, activeAgentCount, setActiveAgentCount,
-    updateInfo, autopilotMode, setAutopilotMode, recentCmds, setRecentCmds,
+    updateInfo, autopilotMode, setAutopilotMode, projectAutoPromptOpen,
+    setProjectAutoPromptOpen, recentCmds, setRecentCmds,
     designInitialBrief, setDesignInitialBrief, watchedPaths, setWatchedPaths,
     checkpoints, setCheckpoints, branches, setBranches, activeBranchIdx,
     setActiveBranchIdx, remoteStatus, setRemoteStatus,

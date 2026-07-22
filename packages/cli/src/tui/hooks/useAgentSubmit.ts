@@ -87,6 +87,7 @@ export function useAgentSubmit(params: AgentSubmitParams) {
 
     try {
       const agent = getSessionAgent(params.activeAgent, params.workdir);
+      const taskScope = taskManager.configureScope(params.workdir, params.mainSessionId.current);
       const effectiveSystem = [agent.system || null, params.system]
         .filter(Boolean)
         .join("\n\n---\n\n");
@@ -105,7 +106,7 @@ export function useAgentSubmit(params: AgentSubmitParams) {
         signal: controller.signal,
         ...(turnAttachments.length > 0 ? { attachments: turnAttachments } : {}),
         continuation: {
-          getTasks: () => taskManager.getTasks(),
+          getTasks: () => taskManager.getTasks(taskScope),
           previousContinuations: params.autoContinueRef.current.count,
           maxContinuations: continuationDefaults.maxContinuations ?? 5,
           maxTaskContinuations: continuationDefaults.maxTaskContinuations ?? 15,

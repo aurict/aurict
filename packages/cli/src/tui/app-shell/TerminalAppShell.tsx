@@ -22,11 +22,12 @@ interface Props {
   bottom: React.ReactNode;
   sidePanel?: React.ReactNode;
   onTranscriptHeight: (rows: number) => void;
+  exitTranscript?: string | undefined;
 }
 
 export function TerminalAppShell(props: Props) {
   return (
-    <AlternateScreen>
+    <AlternateScreen exitTranscript={props.exitTranscript}>
       <TerminalSizeContext.Provider value={{ columns: props.columns, rows: props.rows }}>
         <ThemeContext.Provider value={props.theme}>
           <KeybindingsProvider initialContext={props.keybindingContext}>

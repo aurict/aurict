@@ -4,9 +4,16 @@ import type { FailureCooldownEntry } from "../agent/failure-cooldown.js"
 import type { SecurityDistillation } from "../security/distiller.js"
 import type { VerificationCheck, VerificationCheckResult } from "../verification/pipeline.js"
 import type { GlobalTruncationConfig } from "./truncation.js"
+import type { ToolOutcome } from "../runtime/contracts.js"
+import type { TaskContext } from "../context/types.js"
+import type { WorkspaceTransactionRecord } from "../transaction/workspace-transaction.js"
 
 export type ToolCategory = "read" | "write" | "execute" | "network" | "system"
 export type RiskLevel    = "low" | "medium" | "high" | "critical"
+
+export type ToolResultContentPart =
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mimeType?: string }
 
 export interface ToolSpec {
   category:              ToolCategory
@@ -22,6 +29,8 @@ export interface ToolContext {
   signal:       AbortSignal
   provider?:    string
   model?:       string
+  contextWindow?: number
+  supportsVision?: boolean
   truncation?:  GlobalTruncationConfig
   /** Aurict backend access token (varsa) — bkz. AgentRunOptions.backendAccessToken.
    *  Aynı süreçte çalışan subagent worker'larına yalnızca ToolContext üzerinden aktarılır. */
@@ -39,11 +48,15 @@ export interface ToolContext {
    * "deny" (örn. .aurict/*, .git/*) her zaman bloke eder.
    */
   isSubagent?: boolean
+  taskContext?: TaskContext
 }
 
 export interface ExecuteResult {
   output: string
+  /** Optional model-facing multipart result. `output` remains the human-readable transcript. */
+  content?: ToolResultContentPart[]
   error?: string
+  outcome?: ToolOutcome
   metadata?: {
     changedFiles?: string[]
     distilled?: DistilledToolResult
@@ -60,6 +73,11 @@ export interface ExecuteResult {
       added: number
       removed: number
     }
+    /** Complete user-facing artifact, kept separate from model-output truncation. */
+    uiArtifact?: {
+      rawDiff: string
+    }
+    transaction?: WorkspaceTransactionRecord
   }
 }
 

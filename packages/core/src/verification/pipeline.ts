@@ -8,6 +8,8 @@ export interface VerificationCheckResult {
   status: VerificationStatus
   reason?: string
   output?: string
+  workspaceRevision?: string
+  baseRevision?: string
 }
 
 export function withVerification(

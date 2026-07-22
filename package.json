@@ -1,6 +1,6 @@
 {
   "name": "aurict",
-  "version": "1.2.8",
+  "version": "1.2.13",
   "private": true,
   "license": "AGPL-3.0-only",
   "workspaces": [
@@ -24,6 +24,8 @@
     "publish:all": "bun run scripts/publish.ts",
     "publish:dry": "bun run scripts/publish.ts --dry-run",
     "eval": "bun run scripts/eval.ts",
+    "eval:policy": "bun run scripts/eval-agent-policy.ts",
+    "eval:agent": "AURICT_EVAL_COMMAND='./dist/aurict run-agent --workdir {workdir} --instruction {prompt_json} --yes --result /tmp/aurict-eval-{task}.json' bun run scripts/eval.ts",
     "test": "bun test packages/core/test/*.test.ts packages/cli/test/*.test.tsx",
     "typecheck": "bunx tsc --noEmit -p packages/core/tsconfig.json && bunx tsc --noEmit -p packages/cli/tsconfig.json && bunx tsc --noEmit -p apps/desktop/tsconfig.json",
     "doctor": "bun run packages/cli/src/index.ts doctor",

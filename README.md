@@ -46,6 +46,11 @@ tool layer. Commands are classified as safe, warning, or dangerous before execut
 execution is constrained by a low-overhead policy sandbox: permission gates, protected paths,
 timeouts, output limits, and audit trails. You always know what's happening and why.
 
+At TUI startup, Aurict asks whether to enable **Project Auto** for the current folder. Choosing
+Yes removes repeated prompts for bounded `write`, `edit`, and `apply_patch` operations in that
+project for the current session. Shell commands, secrets, internal state, paths outside the
+project, dangerous operations, and broad deletions still require direct approval.
+
 **It thinks in parallel, not in sequence.**
 Long tasks — refactoring a module, writing a test suite, auditing security — are broken into
 subtasks and distributed across a pool of specialized worker agents: code, review, test, docs,
@@ -266,7 +271,7 @@ Full reference: [docs/slash-commands.md](docs/slash-commands.md)
 | `/providers` | Show configured providers |
 | `/agent` | Switch active session agent (Omni, Plan, Review, or custom) |
 | `/coordinator` | Toggle multi-agent coordinator mode |
-| `/autopilot` | Toggle auto-approve all permission prompts |
+| `/auto`, `/autopilot` | Toggle Project Auto for bounded file changes in the current project |
 | `/agents` | List custom agents in `.aurict/agents/` |
 | `/background` | Run, inspect, or cancel an independent background task |
 

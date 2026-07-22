@@ -1,12 +1,9 @@
-import { streamText, generateText, tool } from "ai"
+import { streamText, generateText } from "ai"
 import type { CoreMessage, ToolSet } from "ai"
-import { resolve } from "path"
 import { ProviderRegistry } from "../provider/registry.js"
 import { resolveModelInfo } from "../provider/models-fetch.js"
-import { ToolRegistry } from "../tool/registry.js"
-import { executeTool } from "../tool/executor.js"
 import { SessionManager } from "../session/manager.js"
-import { isOverflow, isOverflowByMessages, compact, DEFAULT_TAIL_TURNS, microCompactOldToolResults } from "../session/compaction.js"
+import { isOverflow, isOverflowByMessages, compact, DEFAULT_TAIL_TURNS, estimateEffectiveContextTokens, microCompactOldToolResults } from "../session/compaction.js"
 import { buildSystemPromptSections } from "../skill/injector.js"
 import { attachmentToAIContent } from "../util/attachments.js"
 import { createThinkTagFilter } from "../util/think-tag-filter.js"
@@ -15,7 +12,7 @@ import { loadConfig, resolveLongTaskRuntimeConfig } from "../config/config.js"
 import { calculateCostUsd } from "../provider/costs.js"
 import { extractAndStoreMemories, extractPerTurnMemories } from "../memory/extractor.js"
 import { buildGitSection, buildProactiveFileSection, buildIntentSkillSection, getSkillsForProject, matchIntentSkills } from "../skill/injector.js"
-import { joinPromptSections, splitPromptSectionsByCache, type ResolvedPromptSection } from "./prompt-sections.js"
+import { joinPromptSections, type ResolvedPromptSection } from "./prompt-sections.js"
 import { skillScoreStore } from "../skill/score-store.js"
 import { ProviderFallback, NonRetryableStreamError } from "../provider/fallback.js"
 import { ModelRouter } from "../provider/router.js"
@@ -25,7 +22,6 @@ import type { AgentRunOptions, AgentFinishResult, TokenBreakdown } from "./types
 import { measureContextUsage } from "./context-usage.js"
 import { analyzePromptSections } from "./prompt-diagnostics.js"
 import { recordPromptCacheHealth } from "./prompt-cache-health.js"
-import { getCachedToolSchema } from "../tool/schema-cache.js"
 import { getPromptCacheControl, isPromptCachingEnabled } from "./prompt-cache-control.js"
 import { clearActiveSkillPolicy, getSkillLifecycleSnapshot, restoreSkillLifecycle } from "../skill/runtime-policy.js"
 import { evaluateContinuation } from "./continuation.js"
@@ -34,13 +30,12 @@ import { restoreWorkingSet, getWorkingSetSnapshot } from "./working-set.js"
 import { restoreFailureCooldown, getFailureCooldownSnapshot } from "./failure-cooldown.js"
 import { failedStrategiesStore } from "./failed-strategies-store.js"
 import { summarizeFragileAreas } from "./fragile-areas.js"
-import { buildAttentionAnchor } from "./attention-anchor.js"
 import { evaluateCompletionGate } from "./completion-gate.js"
 import { recordRunTrace } from "./run-trace.js"
-import { filterToolIdsForSecurityCapability, prepareToolForSecurityCapability } from "../security/capability.js"
+import { filterToolIdsForSecurityCapability } from "../security/capability.js"
 import type { OmniConfig } from "../config/config.js"
 import { evaluateLongTaskContinuation } from "./continuation-controller.js"
-import { buildTaskLedger, formatTaskLedgerAnchor } from "./task-ledger.js"
+import { buildTaskLedger } from "./task-ledger.js"
 import { applyCompletionProofGate, buildCompletionProof, writeCompletionProof } from "./completion-proof.js"
 import { isTaskContinuationTurn } from "./turn-intent.js"
 import { assessComplexity, stepsForComplexity, deriveReasoningEffort } from "./complexity.js"
@@ -48,122 +43,66 @@ import { getCoordinatorSystemPrompt, getCoordinatorContext, shouldInjectCoordina
 import { agentPool } from "./pool.js"
 import { classifyToolResult } from "./tool-result-artifact.js"
 import { providerEnvironmentFromConfig, withProviderEnvironment } from "../provider/credentials.js"
+import { AgentRuntime } from "../runtime/agent-runtime.js"
+import type { ToolOutcome } from "../runtime/contracts.js"
+import { taskManager } from "../task/manager.js"
+import { selectTools } from "../tool/capability-router.js"
+import { adaptedToolResultArtifact, adaptedToolResultPresentation, buildAITools as buildRoutedAITools, formatAdaptedToolResult, listEligibleAIToolIds } from "./tool-adapter.js"
+import { withRetry as runWithRetry } from "./provider-errors.js"
+import { buildTaskContext } from "../context/builder.js"
+import { createFirstResponseDeadline } from "./first-response-deadline.js"
+import { appendAnthropicDynamicContext, buildPromptCacheLayout, withAnthropicHistoryBreakpoint } from "./prompt-cache-layout.js"
+import { mergeStickyToolSelection } from "./sticky-tool-selection.js"
+import { countAttachmentsInMessages, tokenCacheStats } from "../provider/tokenizer.js"
+import { countToolSchemaTokens } from "../tool/schema-cache.js"
+import { getTokenCalibration, recordTokenCalibration } from "../provider/token-calibration.js"
+import { resolveUtilityModel } from "../provider/utility-model.js"
+import { formatCanonicalAgentState } from "../context/canonical-agent-state.js"
+import { createTurnStatusFilter, extractTurnStatus, stripTurnStatusFromMessages, type TurnStatus } from "./turn-status.js"
+import { applyPromptTier, formatAvailableToolPolicy } from "./prompt-tier.js"
+import { selectEquivalentFallbackModel } from "../provider/equivalent-model.js"
+import { getPostEditVerificationJobs } from "../verification/post-edit-scheduler.js"
+import { isAgentFeatureEnabled } from "./runtime-features.js"
+
+export { withRetry, parseProviderError } from "./provider-errors.js"
 
 const PROVIDER_FIRST_RESPONSE_TIMEOUT_MS = 45_000
 
-// AI SDK tool() fonksiyonunun dönüş tipiyle exactOptionalPropertyTypes çakışıyor
-// — ToolSet cast'i kullanıyoruz
-function buildAITools(
-  workdir: string,
-  sessionId: string,
-  provider: string,
-  model: string,
-  cfg: OmniConfig,
-  signal?: AbortSignal,
-  onChunk?: (chunk: string) => void,
-  failureTracker?: Map<string, number>,
-  recentReads?: Map<string, number>,
-  toolCallIndexRef?: { current: number },
-  backendAccessToken?: string,
-  backendAccessTokenResolver?: (signal: AbortSignal) => Promise<string | undefined>,
-  onToolExecution?: () => void,
-): ToolSet {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result: Record<string, any> = {}
-  for (const def of ToolRegistry.list()) {
-    // Faz 3B: orchestrate tool sadece orchestration.enabled true iken modele görünür —
-    // kapalıyken model onu bir seçenek olarak bile görmemeli.
-    if (def.id === "orchestrate" && cfg.orchestration?.enabled !== true) continue
-    const filteredDef = prepareToolForSecurityCapability(def, cfg)
-    if (!filteredDef) continue
-    const captured = filteredDef
-    const schema = getCachedToolSchema(filteredDef)
-    const sanitizedId = schema.sanitizedId
-    result[sanitizedId] = tool({
-      description: schema.description,
-      parameters:  schema.parameters as never,
-      execute: async (args: Record<string, unknown>) => {
-        onToolExecution?.()
-        if (toolCallIndexRef) toolCallIndexRef.current++
-        const currentIdx = toolCallIndexRef?.current ?? 0
-
-        // B: Re-read gating — if file not read in last 10 calls, inject current content
-        if (recentReads && captured.id === "edit") {
-          const rawPath = String(args["path"] ?? "")
-          if (rawPath) {
-            const absPath   = resolve(workdir, rawPath)
-            const lastRead  = recentReads.get(absPath)
-            const isFresh   = lastRead !== undefined && (currentIdx - lastRead) <= 10
-            if (!isFresh) {
-              try {
-                // 2s timeout — yavaş FS'de re-read gate'in tool çağrısını bloklamasını önler
-                const readP = Bun.file(absPath).text()
-                const timeoutP = new Promise<string>((_, rej) =>
-                  setTimeout(() => rej(new Error("timeout")), 2_000))
-                const content = await Promise.race([readP, timeoutP])
-                const excerpt = content.slice(0, 6_000)
-                const trunc   = content.length > 6_000 ? "\n... [truncated]" : ""
-                const staleness = lastRead !== undefined
-                  ? `${currentIdx - lastRead} tool calls ago`
-                  : "never in this turn"
-                return `[Re-read gate] '${rawPath}' was last read ${staleness}. Current content:\n\`\`\`\n${excerpt}${trunc}\n\`\`\`\n\nReview the actual content above, then re-issue your edit with an exact verbatim match from what you see.`
-              } catch {
-                // Can't read file — let edit run and fail with its own error
-              }
-            }
-          }
-        }
-
-        // ctx.signal, loop'un signal'ine bağlı: Ctrl+C veya dışarıdan iptal
-        // tool'a kadar ulaşır; executor da timeout'ta bu signal'i abort eder.
-        const ctx = {
-          sessionId, workdir,
-          signal: signal ?? new AbortController().signal,
-          provider, model,
-          truncation: cfg.truncation ?? {},
-          ...(onChunk !== undefined ? { onChunk } : {}),
-          ...(backendAccessToken !== undefined ? { backendAccessToken } : {}),
-          ...(backendAccessTokenResolver !== undefined ? { backendAccessTokenResolver } : {}),
-        }
-        const res = await executeTool(captured, args, ctx)
-
-        // Track file reads and writes so re-read gate stays accurate
-        if (recentReads && !res.error && (captured.id === "read" || captured.id === "write")) {
-          const rawPath = String(args["path"] ?? "")
-          if (rawPath) recentReads.set(resolve(workdir, rawPath), currentIdx)
-        }
-
-        let out = res.error ? `ERROR: ${res.error}\n${res.output}` : res.output
-
-        if (res.error && failureTracker) {
-          const fingerprint = `${captured.id}:${String(res.error).slice(0, 80)}`
-          const count = (failureTracker.get(fingerprint) ?? 0) + 1
-          failureTracker.set(fingerprint, count)
-          if (count >= 2) {
-            out += `\n\n[SYSTEM: You have hit this exact error ${count} times in a row. DO NOT retry the same approach. Stop, identify the root cause, and try a fundamentally different solution.]`
-          }
-        }
-
-        return out
-      },
-    })
-  }
-  return result as ToolSet
-}
-
-export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult> {
+async function runAgentEngine(opts: AgentRunOptions): Promise<AgentFinishResult> {
   const workdir = opts.workdir ?? process.cwd()
   const cfg = loadConfig(workdir)
   return withProviderEnvironment(providerEnvironmentFromConfig(cfg), () => runAgentScoped(opts, cfg))
 }
 
+const defaultAgentRuntime = new AgentRuntime(runAgentEngine)
+
+export async function runAgent(opts: AgentRunOptions): Promise<AgentFinishResult> {
+  const workdir = opts.workdir ?? process.cwd()
+  const longTask = resolveLongTaskRuntimeConfig(loadConfig(workdir))
+  return defaultAgentRuntime.run({
+    ...opts,
+    runtime: {
+      ...opts.runtime,
+      budget: {
+        verificationRuns: longTask.maxVerificationRuns,
+        ...opts.runtime?.budget,
+      },
+    },
+  })
+}
+
 async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<AgentFinishResult> {
-  let providerName = opts.provider ?? "anthropic"
+  const tokenCacheBefore = tokenCacheStats()
+  const pinnedSelection = opts.modelSelection?.mode === "pinned" ? opts.modelSelection : undefined
+  let providerName = pinnedSelection?.provider ?? opts.provider ?? "anthropic"
   let plugin       = ProviderRegistry.get(providerName)
-  let modelId      = opts.model ?? plugin.defaultModel()
+  let modelId      = pinnedSelection?.model ?? opts.model ?? plugin.defaultModel()
   const workdir      = opts.workdir ?? process.cwd()
   const sessionId    = opts.sessionId
   const stateSessionId = sessionId ?? `anonymous:${crypto.randomUUID()}`
+  const featureEnabled = (feature: Parameters<typeof isAgentFeatureEnabled>[0]) =>
+    isAgentFeatureEnabled(feature, cfg, stateSessionId)
+  const taskScope = sessionId ? taskManager.configureScope(workdir, sessionId) : null
   opts.onPhase?.("preparing_context")
   const resumedState = sessionId ? await readSessionResumeState(workdir, sessionId) : null
   if (sessionId && resumedState) {
@@ -198,10 +137,14 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
 
   // Explicit provider/model choices always win. Automatic routing only applies
   // when the caller delegated both decisions to core.
-  if (cfg.routing?.enabled && opts.provider === undefined && opts.model === undefined) {
+  const automaticModelSelection = opts.modelSelection?.mode === "auto"
+    || (opts.modelSelection === undefined && opts.provider === undefined && opts.model === undefined)
+  if (cfg.routing?.enabled && automaticModelSelection) {
     const routingMessage = [...messages].reverse().find((message) => message.role === "user")
+    const routingObjective = opts.taskContext?.objective || resumedState?.taskContext?.objective
     const routingComplexity = assessComplexity({
       text: routingMessage ? extractText(routingMessage) : "",
+      ...(routingObjective ? { objective: routingObjective } : {}),
       hasAttachments: !!opts.attachments?.length,
     })
     const router = new ModelRouter({
@@ -217,6 +160,11 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
       modelId = decision.model
     }
   }
+  opts.onModelSelected?.({
+    provider: providerName,
+    model: modelId,
+    mode: automaticModelSelection ? "auto" : "pinned",
+  })
 
   const fallbackRuntime = new ProviderFallback({
     enabled: cfg.fallback?.enabled ?? false,
@@ -238,6 +186,12 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   // varsayımı yerine gerçek ya da bilgiye dayalı bir context/output tahmini var.
   opts.onPhase?.("resolving_model")
   const modelInfo = await resolveModelInfo(plugin, providerName, modelId)
+  const utilityModel = featureEnabled("utility_model")
+    ? resolveUtilityModel(cfg, providerName, modelId)
+    : {
+        provider: providerName, model: modelId, maxInputTokens: 24_000,
+        maxOutputTokens: 1_200, source: "primary-visible-fallback" as const,
+      }
   const tokenizerEncoding = plugin.tokenizerEncoding(modelId)
   const compCfgFull = {
     contextLimit:          modelInfo.contextWindow,
@@ -246,12 +200,17 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     strategy,
     provider:              providerName,
     model:                 modelId,
+    utilityProvider:       utilityModel.provider,
+    utilityModel:          utilityModel.model,
+    utilityMaxInputTokens: utilityModel.maxInputTokens,
+    utilityMaxOutputTokens: utilityModel.maxOutputTokens,
     tokenizerEncoding,
     workdir,
     ...(sessionId !== undefined ? { sessionId } : {}),
     ...(msgThreshold !== undefined ? { messageCountThreshold: msgThreshold } : {}),
   }
   const baseContextUsageInput = {
+    providerId: providerName,
     modelId,
     ...(tokenizerEncoding !== undefined ? { tokenizerEncoding } : {}),
     contextWindow: modelInfo.contextWindow,
@@ -279,7 +238,8 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   const exceedsMessageLimit = isOverflowByMessages(messages, compCfgFull)
   if (exceedsHistoryLimit || exceedsMessageLimit) {
     // Extract memories from messages about to be lost to compaction (fire-and-forget)
-    extractAndStoreMemories(providerName, modelId, messages, workdir).catch(() => metrics.recordError("memory_extract"))
+    extractAndStoreMemories(providerName, modelId, messages, workdir, utilityModel)
+      .catch(() => metrics.recordError("memory_extract"))
     const before = measureContextUsage(messages, baseContextUsageInput)
     const compacted = await compact(messages, compCfgFull)
     messages  = compacted
@@ -291,30 +251,60 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   const failureTracker   = new Map<string, number>()
   const recentReads      = new Map<string, number>()
   const toolCallIndexRef = { current: 0 }
-  const rawTools = hasToolSupport
-    ? buildAITools(workdir, stateSessionId, providerName, modelId, cfg, opts.signal, opts.onChunk, failureTracker, recentReads, toolCallIndexRef, opts.backendAccessToken, opts.backendAccessTokenResolver)
-    : ({} as ToolSet)
+  const resumedTaskContext = opts.taskContext ?? resumedState?.taskContext
+  const availableToolIds = hasToolSupport
+    ? listEligibleAIToolIds({
+        config: cfg,
+        sessionId: stateSessionId,
+        supportsVision: modelInfo.supportsVision,
+      })
+    : []
 
   // toolsOverride: session agent kısıtlaması — sadece izin verilen tool'lar
   const toolsOverride = opts.toolsOverride
-    ? filterToolIdsForSecurityCapability(opts.toolsOverride, cfg)
+    ? filterToolIdsForSecurityCapability(opts.toolsOverride, cfg).map(id => id.replace(/:/g, "_"))
     : undefined
-  const aiTools: ToolSet = opts.toolsOverride
-    ? Object.fromEntries(
-        Object.entries(rawTools).filter(([id]) => toolsOverride!.includes(id))
-      ) as ToolSet
-    : rawTools
-
-  // --- Proactive file injection: dosya adları user mesajında geçiyorsa önceden inject et ---
   const lastUserMsg = [...messages].reverse().find(m => m.role === "user")
   const lastUserText = lastUserMsg
     ? (typeof lastUserMsg.content === "string" ? lastUserMsg.content : "")
     : ""
+  const toolSelection = selectTools({
+    text: lastUserText,
+    ...(featureEnabled("persistent_tool_routing") && resumedTaskContext?.objective
+      ? { objective: resumedTaskContext.objective }
+      : {}),
+    ...(featureEnabled("persistent_tool_routing") && resumedTaskContext?.requestedCapabilities
+      ? { requestedCapabilities: resumedTaskContext.requestedCapabilities }
+      : {}),
+    availableToolIds,
+    ...(toolsOverride ? { allowedToolIds: toolsOverride } : {}),
+    maxVisible: cfg.toolRouting?.maxVisible ?? 32,
+    ...(opts.runtime?.profile ? { profile: opts.runtime.profile } : {}),
+  })
+  const dynamicToolRouting = cfg.toolRouting?.enabled ?? true
+  const routedToolIds = dynamicToolRouting
+    ? toolSelection.selectedToolIds
+    : toolsOverride ?? availableToolIds
+  const selectedToolIds = mergeStickyToolSelection({
+    current: routedToolIds,
+    ...(resumedState?.activeToolIds ? { previous: resumedState.activeToolIds } : {}),
+    available: availableToolIds,
+    ...(toolsOverride ? { allowed: toolsOverride } : {}),
+    maxVisible: cfg.toolRouting?.maxVisible ?? 32,
+  })
+  opts.onToolSelection?.({
+    toolIds: selectedToolIds,
+    capabilities: dynamicToolRouting ? toolSelection.capabilities : ["all"],
+    omittedCount: availableToolIds.length - selectedToolIds.length,
+    reason: dynamicToolRouting ? toolSelection.reason : "dynamic tool routing disabled",
+  })
+
+  // --- Proactive file injection: dosya adları user mesajında geçiyorsa önceden inject et ---
   const taskContinuationTurn = isTaskContinuationTurn(lastUserText)
 
   // --- Skill injection (otomatik proje tespiti) ---
   // Git context buildSystemPrompt dışında tutulur — Anthropic'te ayrı uncached blok olarak inject edilir
-  const baseSystemSections = await buildSystemPromptSections(workdir, opts.system, false, undefined, lastUserText)
+  const baseSystemSections = await buildSystemPromptSections(workdir, opts.system, false, opts.runtime?.agentType, lastUserText)
   const projectSkills   = await getSkillsForProject(workdir).catch(() => [])
   const projectSkillIds = new Set(projectSkills.map((s) => s.id))
   const activatedSkills = matchIntentSkills(lastUserText, workdir, projectSkillIds)
@@ -335,9 +325,25 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     runtimeSystemSections.push({ name: "undercover", cache: "dynamic", content: `---\n\n${getUndercoverInstructions()}` })
   }
 
+  runtimeSystemSections.push({
+    name: "available_tools_policy",
+    cache: "dynamic",
+    content: formatAvailableToolPolicy(
+      selectedToolIds,
+      availableToolIds.length - selectedToolIds.length,
+    ),
+  })
+
   const workingSet = getWorkingSetSnapshot(stateSessionId)
   const failureCooldown = getFailureCooldownSnapshot(stateSessionId)
-
+  const previousTaskContext = opts.taskContext ?? resumedState?.taskContext
+  const initialTaskContext = buildTaskContext({
+    objective: opts.taskContext?.objective || resumedState?.taskContext?.objective || lastUserText,
+    tasks: taskManager.getTasks(taskScope),
+    workingSet,
+    ...(resumedState?.lastVerification ? { verification: resumedState.lastVerification } : {}),
+    ...(previousTaskContext ? { previous: previousTaskContext } : {}),
+  })
   // ─── Faz 2: Karmaşıklık değerlendirmesi — adaptif step limit + reasoning effort
   // aynı skordan türetilir (tek kaynak: agent/complexity.ts). Coordinator injection
   // kararı (Faz 3A) da bu skordan yararlanır, bu yüzden runtimeSystemSections
@@ -347,34 +353,37 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   ).length
   const complexity = assessComplexity({
     text: lastUserMsg ? extractText(lastUserMsg) : "",
+    objective: initialTaskContext.objective,
     hasAttachments: !!opts.attachments,
     priorToolCalls: workingSet.items.length,
     changedFiles: changedFilesCount,
     priorFailures: failureCooldown.active.length,
   })
-  const maxSteps = stepsForComplexity(complexity.level)
+  const maxSteps = opts.runtime?.maxSteps ?? stepsForComplexity(complexity.level)
 
-  const attentionAnchor = buildAttentionAnchor({
-    objective: lastUserText,
-    activeSkill: getSkillLifecycleSnapshot(stateSessionId).active,
+  const initialLedger = buildTaskLedger({
+    objective: initialTaskContext.objective,
     workingSet,
-    verification: resumedState?.lastVerification,
-    cooldown: failureCooldown,
-    // Faz 5.1b: bu session'a özel değil — projede geçmiş session'larda da
-    // tekrarlanmış (strategyShiftRequired) başarısız stratejiler.
-    knownDeadEnds: failedStrategiesStore.recent(workdir),
-    // Faz 6.3: run-trace geçmişinden (tool_result_distilled olayları) çıkarılan
-    // "bu projede en çok hata veren tool'lar" özeti — 5dk cache'li, session'a özel değil.
-    fragileAreas: await summarizeFragileAreas(workdir).catch(() => []),
+    ...(resumedState?.lastVerification ? { verification: resumedState.lastVerification } : {}),
+    tasks: initialTaskContext.tasks,
+    ...(resumedState?.taskLedger ? { previous: resumedState.taskLedger } : {}),
   })
-  if (attentionAnchor) {
-    runtimeSystemSections.push({ name: "attention_anchor", cache: "dynamic", content: attentionAnchor })
-  }
-  if (longTaskConfig.enabled && resumedState?.taskLedger && taskContinuationTurn) {
+  if (featureEnabled("canonical_state") && (initialTaskContext.objective || initialTaskContext.tasks.length > 0)) {
     runtimeSystemSections.push({
-      name: "task_ledger",
+      name: "canonical_agent_state",
       cache: "dynamic",
-      content: formatTaskLedgerAnchor(resumedState.taskLedger),
+      content: formatCanonicalAgentState({
+        context: initialTaskContext,
+        ledger: initialLedger,
+        activeSkill: getSkillLifecycleSnapshot(stateSessionId).active,
+        cooldown: failureCooldown,
+        knownDeadEnds: failedStrategiesStore.recent(workdir),
+        fragileAreas: await summarizeFragileAreas(workdir).catch(() => []),
+        backgroundVerification: featureEnabled("background_verification")
+          ? getPostEditVerificationJobs(stateSessionId)
+          : [],
+        includeStatusProtocol: featureEnabled("structured_status"),
+      }),
     })
   }
 
@@ -407,23 +416,29 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     }
   }
 
-  const system = joinPromptSections(runtimeSystemSections)
-  opts.onPromptDiagnostics?.(analyzePromptSections(runtimeSystemSections, modelId, tokenizerEncoding))
+  const promptTier = featureEnabled("prompt_tiering")
+    ? applyPromptTier(runtimeSystemSections, modelInfo.contextWindow)
+    : { tier: "full" as const, sections: runtimeSystemSections }
+  const tieredSystemSections = promptTier.sections
+  const system = joinPromptSections(tieredSystemSections)
+  opts.onPromptDiagnostics?.(analyzePromptSections(tieredSystemSections, modelId, tokenizerEncoding))
   const cacheHealth = recordPromptCacheHealth({
     key: `${workdir}:${providerName}`,
     model: modelId,
-    sections: runtimeSystemSections,
-    toolIds: Object.keys(aiTools),
+    sections: tieredSystemSections,
+    toolIds: selectedToolIds,
   })
   opts.onPromptCacheHealth?.(cacheHealth)
   if (sessionId) {
     recordRunTrace(workdir, sessionId, "prompt_sections", {
-      sections: runtimeSystemSections.map(section => ({ name: section.name, cache: section.cache, chars: section.content.length })),
+      tier: promptTier.tier,
+      sections: tieredSystemSections.map(section => ({ name: section.name, cache: section.cache, chars: section.content.length })),
       cacheHealth,
     }).catch(() => {})
-    if (attentionAnchor) {
-      recordRunTrace(workdir, sessionId, "attention_anchor", {
-        chars: attentionAnchor.length,
+    const canonicalState = tieredSystemSections.find(section => section.name === "canonical_agent_state")
+    if (canonicalState) {
+      recordRunTrace(workdir, sessionId, "canonical_agent_state", {
+        chars: canonicalState.content.length,
         workingSetItems: workingSet.items.length,
         activeSkill: getSkillLifecycleSnapshot(sessionId).active?.skillId ?? null,
       }).catch(() => {})
@@ -436,8 +451,11 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   // History tek başına yeterli bir bütçe değildir: system/git blokları, tool
   // şemaları ve ekler de sağlayıcıya gider. Bu rezervi düşerek gerekirse ikinci
   // bir compaction yap; aksi hâlde ikinci turda görünmeyen context overflow olur.
-  const toolSchemaReserveTokens = Object.keys(aiTools).length * 160
-  const attachmentReserveTokens = (opts.attachments?.length ?? 0) * 1_200
+  const toolSchemaReserveTokens = await countToolSchemaTokens(selectedToolIds, modelId, tokenizerEncoding)
+  const attachmentReserveTokens = Math.max(
+    0,
+    (opts.attachments?.length ?? 0) - countAttachmentsInMessages(messages),
+  ) * 1_200
   const contextUsageInput = {
     ...baseContextUsageInput,
     systemPrompt: [system, gitSection].filter(Boolean).join("\n\n"),
@@ -466,6 +484,7 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     newMessages:  CoreMessage[]
     providerId:   string
     modelId:      string
+    turnStatus?:  TurnStatus
   }
 
   // attemptIndex>0 olan her çağrı bir retry veya fallback denemesidir — önceki
@@ -488,7 +507,9 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     // Fallback farklı bir provider'a geçtiyse orijinal model id o provider'da
     // muhtemelen geçersizdir (provider-specific id) — o provider'ın varsayılan
     // modelini kullan.
-    const attemptModelId = attemptProviderId === providerName ? modelId : attemptPlugin.defaultModel()
+    const attemptModelId = attemptProviderId === providerName
+      ? modelId
+      : selectEquivalentFallbackModel(modelInfo, attemptPlugin).model
     const attemptModel   = attemptPlugin.getModel(attemptModelId)
 
     const attemptModelInfo = attemptProviderId === providerName
@@ -496,14 +517,38 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
       : await resolveModelInfo(attemptPlugin, attemptProviderId, attemptModelId)
     const attemptHasToolSupport = attemptModelInfo?.supportsTools !== false
     let attemptToolCallHappened = false
-    const attemptRawTools = attemptHasToolSupport
-      ? buildAITools(workdir, stateSessionId, attemptProviderId, attemptModelId, cfg, opts.signal, opts.onChunk, failureTracker, recentReads, toolCallIndexRef, opts.backendAccessToken, opts.backendAccessTokenResolver, () => { attemptToolCallHappened = true })
+    const attemptOutcomes = new Map<string, ToolOutcome[]>()
+    const completedAttemptOutcomes: ToolOutcome[] = []
+    const attemptAiTools = attemptHasToolSupport
+      ? buildRoutedAITools({
+          workdir, sessionId: stateSessionId, provider: attemptProviderId, model: attemptModelId, contextWindow: attemptModelInfo.contextWindow, config: cfg,
+          ...(opts.signal ? { signal: opts.signal } : {}),
+          ...(opts.onChunk ? { onChunk: opts.onChunk } : {}),
+          failureTracker, recentReads, toolCallIndexRef,
+          ...(opts.backendAccessToken ? { backendAccessToken: opts.backendAccessToken } : {}),
+          ...(opts.backendAccessTokenResolver ? { backendAccessTokenResolver: opts.backendAccessTokenResolver } : {}),
+          onToolExecution: () => { attemptToolCallHappened = true },
+          outcomeQueue: attemptOutcomes,
+          ...(opts.runtime ? { runtime: opts.runtime } : {}),
+          taskContext: initialTaskContext,
+          supportsVision: attemptModelInfo.supportsVision,
+          selectedToolIds,
+        })
       : ({} as ToolSet)
-    const attemptAiTools: ToolSet = toolsOverride
-      ? Object.fromEntries(
-          Object.entries(attemptRawTools).filter(([id]) => toolsOverride!.includes(id))
-        ) as ToolSet
-      : attemptRawTools
+    const attemptToolIds = Object.keys(attemptAiTools)
+    const attemptSystemSections = attemptToolIds.length === selectedToolIds.length
+      && selectedToolIds.every(id => attemptToolIds.includes(id))
+      ? tieredSystemSections
+      : tieredSystemSections.map(section => section.name === "available_tools_policy"
+          ? {
+              ...section,
+              content: formatAvailableToolPolicy(
+                attemptToolIds,
+                Math.max(0, availableToolIds.length - attemptToolIds.length),
+              ),
+            }
+          : section)
+    const attemptSystem = joinPromptSections(attemptSystemSections)
 
     // Anthropic prompt caching: static/session sections cache'lenir, dynamic/git
     // cache dışı kalır. Dış kapsamdaki `messages` hiç mutasyona uğramaz — her
@@ -511,15 +556,23 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     let attemptConversationMessages: CoreMessage[] = messages
     if (attemptProviderId !== providerName) {
       const fallbackUsageInput = {
+        providerId: attemptProviderId,
         modelId: attemptModelId,
         ...(attemptPlugin.tokenizerEncoding(attemptModelId) !== undefined
           ? { tokenizerEncoding: attemptPlugin.tokenizerEncoding(attemptModelId) }
           : {}),
         contextWindow: attemptModelInfo.contextWindow,
         maxOutputTokens: attemptModelInfo.maxOutput,
-        systemPrompt: [system, gitSection].filter(Boolean).join("\n\n"),
-        toolSchemaReserveTokens: Object.keys(attemptAiTools).length * 160,
-        attachmentReserveTokens: (opts.attachments?.length ?? 0) * 1_200,
+        systemPrompt: [attemptSystem, gitSection].filter(Boolean).join("\n\n"),
+        toolSchemaReserveTokens: await countToolSchemaTokens(
+          Object.keys(attemptAiTools),
+          attemptModelId,
+          attemptPlugin.tokenizerEncoding(attemptModelId),
+        ),
+        attachmentReserveTokens: Math.max(
+          0,
+          (opts.attachments?.length ?? 0) - countAttachmentsInMessages(attemptConversationMessages),
+        ) * 1_200,
       }
       const fallbackUsage = measureContextUsage(attemptConversationMessages, fallbackUsageInput)
       if (fallbackUsage.effectiveTokens >= fallbackUsage.compactionThreshold) {
@@ -540,7 +593,7 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
       }
     }
     let attemptMessages: CoreMessage[] = attemptConversationMessages
-    let attemptSystemParam: string | undefined = system || undefined
+    let attemptSystemParam: string | undefined = attemptSystem || undefined
     if (attemptPlugin.sdkType === "anthropic") {
       // @ai-sdk/anthropic's convertToAnthropicMessagesPrompt groups CONSECUTIVE
       // system-role CoreMessages back into Anthropic's array-of-cached-blocks
@@ -551,34 +604,39 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
       // section, each carrying its own experimental_providerMetadata — the
       // provider's own grouping reassembles them into the cached blocks.
       const systemMessages: CoreMessage[] = []
-      const splitSystem = splitPromptSectionsByCache(runtimeSystemSections)
+      const layout = buildPromptCacheLayout(attemptSystemSections)
       const promptCachingEnabled = isPromptCachingEnabled(attemptProviderId, attemptModelId)
-      if (splitSystem.cacheable) {
+      const pushSystemBlock = (content: string, cache: boolean) => {
+        if (!content) return
         systemMessages.push({
           role: "system",
-          content: splitSystem.cacheable,
-          // PromptCacheControl is a plain JSON-safe object, but its named
-          // (non-indexed) shape doesn't structurally satisfy the provider
-          // metadata's `Record<string, JSONValue>` signature under
-          // exactOptionalPropertyTypes — same cast the previous code applied.
-          ...(promptCachingEnabled
+          content,
+          ...(cache && promptCachingEnabled
             ? { experimental_providerMetadata: { anthropic: { cacheControl: getPromptCacheControl() } } as never }
             : {}),
         })
       }
-      if (splitSystem.dynamic) {
-        systemMessages.push({ role: "system", content: splitSystem.dynamic })
-      }
-      if (gitSection) {
-        systemMessages.push({ role: "system", content: gitSection })
-      }
+      // Anthropic allows four explicit breakpoints. Reserve the fourth for the
+      // moving conversation boundary below.
+      pushSystemBlock(layout.static, true)
+      pushSystemBlock(layout.session, true)
+      pushSystemBlock(layout.skills, true)
       if (systemMessages.length > 0) {
-        attemptMessages = [...systemMessages, ...attemptConversationMessages]
+        const cachedHistory = withAnthropicHistoryBreakpoint(
+          attemptConversationMessages,
+          promptCachingEnabled,
+          true,
+        )
+        const dynamicContext = [layout.dynamic, gitSection].filter(Boolean).join("\n\n")
+        attemptMessages = [
+          ...systemMessages,
+          ...appendAnthropicDynamicContext(cachedHistory, dynamicContext),
+        ]
         attemptSystemParam = undefined
       }
-    } else if (system || gitSection) {
+    } else if (attemptSystem || gitSection) {
       // Non-Anthropic: git context dahil tek string
-      const fullSystem = [system, gitSection].filter(Boolean).join("\n\n")
+      const fullSystem = [attemptSystem, gitSection].filter(Boolean).join("\n\n")
       attemptSystemParam = fullSystem || undefined
     }
 
@@ -592,20 +650,15 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
         : undefined
     )
 
-    const firstResponseController = new AbortController()
-    const firstResponseTimer = setTimeout(
-      () => firstResponseController.abort(new Error("Provider did not start responding in time.")),
-      PROVIDER_FIRST_RESPONSE_TIMEOUT_MS,
-    )
-    const attemptSignal = opts.signal
-      ? AbortSignal.any([opts.signal, firstResponseController.signal])
-      : firstResponseController.signal
-    let receivedProviderEvent = false
-    const noteProviderEvent = () => {
-      if (receivedProviderEvent) return
-      receivedProviderEvent = true
-      clearTimeout(firstResponseTimer)
-    }
+    // Non-streaming providers expose no first-event signal: their promise only
+    // resolves when the full generation is complete. Applying a TTFT timeout to
+    // that promise incorrectly aborts valid long-thinking responses.
+    const useStreamAttempt = opts.stream !== false && attemptPlugin.supportsStreaming
+    const responseDeadline = createFirstResponseDeadline({
+      enabled: useStreamAttempt,
+      timeoutMs: PROVIDER_FIRST_RESPONSE_TIMEOUT_MS,
+      ...(opts.signal ? { parentSignal: opts.signal } : {}),
+    })
     opts.onPhase?.("waiting_for_provider")
     const attemptShared = {
       model:    attemptModel,
@@ -614,21 +667,38 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
       maxSteps,
       experimental_continueSteps: true,
       ...(attemptSystemParam ? { system: attemptSystemParam } : {}),
-      abortSignal: attemptSignal,
+      abortSignal: responseDeadline.signal,
       ...(effectiveEffort ? (() => {
         const thinkOpts = attemptPlugin.buildThinkingOptions(attemptModelId, effectiveEffort)
         return thinkOpts ? { providerOptions: thinkOpts } : {}
       })() : {})
     }
 
+    // Calibrate only against single-step/no-tool requests below. Tool-driven
+    // multi-step usage is cumulative and is not comparable to this first prompt.
+    const estimatedAttemptInput = estimateEffectiveContextTokens(attemptMessages, {
+      modelId: attemptModelId,
+      ...(attemptPlugin.tokenizerEncoding(attemptModelId) !== undefined
+        ? { tokenizerEncoding: attemptPlugin.tokenizerEncoding(attemptModelId) }
+        : {}),
+      ...(attemptSystemParam ? { systemPrompt: attemptSystemParam } : {}),
+      toolSchemaReserveTokens: await countToolSchemaTokens(
+        Object.keys(attemptAiTools),
+        attemptModelId,
+        attemptPlugin.tokenizerEncoding(attemptModelId),
+      ),
+      attachmentReserveTokens: Math.max(
+        0,
+        (opts.attachments?.length ?? 0) - countAttachmentsInMessages(attemptMessages),
+      ) * 1_200,
+      safetyMargin: 1,
+    })
+
     let fullText = ""
     let breakdown: TokenBreakdown = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 }
     let finishReason: string | undefined
     let newMessages: CoreMessage[] = []
-
-    // opts.stream=false → pipe/non-interactive mod, kesinlikle generate
-    // opts.stream=true veya undefined → provider'ın streaming desteğine bak
-    const useStreamAttempt = opts.stream !== false && attemptPlugin.supportsStreaming
+    let turnStatus: TurnStatus | undefined
 
     if (useStreamAttempt) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -639,6 +709,7 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
       // Embedded <think>...</think> tag'lerini text stream'den ayıran filter
       // (DeepSeek-R1, Qwen, Ollama modeller)
       const thinkFilter = createThinkTagFilter()
+      const statusFilter = createTurnStatusFilter()
       // En az bir tool call bu attempt'te çalıştı mı? Çalıştıysa gerçek yan
       // etkiler oluşmuştur (dosya yazıldı, komut çalıştı) — sonraki bir hata
       // bu attempt'i retry/fallback ile baştan tekrarlatmamalı.
@@ -646,11 +717,12 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
 
       try {
         for await (const part of result.fullStream) {
-          noteProviderEvent()
+          responseDeadline.markResponse()
         if (part.type === "text-delta") {
           const raw = (part.textDelta as string) || ""
           if (!raw) continue
-          const { text, thinking } = thinkFilter.feed(raw)
+          const visibleRaw = statusFilter.feed(raw)
+          const { text, thinking } = thinkFilter.feed(visibleRaw)
           if (thinking) opts.onText?.(thinking, true)
           if (text) {
             fullText += text
@@ -675,7 +747,7 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
           const original = rawErr instanceof Error
             ? rawErr
             : new Error(typeof rawErr === "string" ? rawErr : JSON.stringify(rawErr))
-          if (toolCallHappened) {
+          if (toolCallHappened && !isRetrySafeAfterTools(completedAttemptOutcomes, toolCallNames.size)) {
             const nonRetryable = new NonRetryableStreamError(original.message)
             Object.assign(nonRetryable, original)
             nonRetryable.message = `${original.message}\n\n[Tool calls already ran this turn — not auto-retried to avoid duplicate side effects. Review the results above.]`
@@ -696,8 +768,18 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
             const toolName = toolCallNames.get(part.toolCallId) ?? "tool"
             toolCallNames.delete(part.toolCallId)
             // @ts-ignore: part.result
-            const output = String(part.result)
-            opts.onToolResult?.({ id: part.toolCallId, tool: toolName, result: output, durationMs, artifact: classifyToolResult(toolName, output) })
+            const output = formatAdaptedToolResult(part.result)
+            const outcome = attemptOutcomes.get(toolName)?.shift()
+            if (outcome) completedAttemptOutcomes.push(outcome)
+            opts.onToolResult?.({
+              id: part.toolCallId,
+              tool: toolName,
+              result: output,
+              durationMs,
+              artifact: adaptedToolResultArtifact(part.result)
+                ?? classifyToolResult(toolName, output, adaptedToolResultPresentation(part.result)),
+              ...(outcome ? { outcome } : {}),
+            })
           }
         } else if (part.type === "step-finish") {
           // Yalnızca step tamamlama sinyali — tool result emission yok (race condition önleme)
@@ -706,6 +788,10 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
         }
 
         // Stream bitti — buffer'da kalan fragmentleri boşalt
+        const statusTail = statusFilter.flush()
+        const beforeTail = thinkFilter.feed(statusTail)
+        if (beforeTail.thinking) opts.onText?.(beforeTail.thinking, true)
+        if (beforeTail.text) { fullText += beforeTail.text; opts.onText?.(beforeTail.text, false) }
         const tail = thinkFilter.flush()
         if (tail.thinking) opts.onText?.(tail.thinking, true)
         if (tail.text) { fullText += tail.text; opts.onText?.(tail.text, false) }
@@ -716,21 +802,25 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
         finishReason = String(await (result as any).finishReason ?? "")
 
         const finalResponse = await result.response
-        newMessages = finalResponse.messages
+        newMessages = stripTurnStatusFromMessages(finalResponse.messages)
+        turnStatus = statusFilter.status()
       } catch (error) {
-        if ((toolCallHappened || attemptToolCallHappened) && !(error instanceof NonRetryableStreamError)) {
+        if ((toolCallHappened || attemptToolCallHappened)
+          && !isRetrySafeAfterTools(completedAttemptOutcomes, toolCallNames.size)
+          && !(error instanceof NonRetryableStreamError)) {
           throw new NonRetryableStreamError(`${error instanceof Error ? error.message : String(error)}\n\n[Tool calls already ran this turn — not auto-retried to avoid duplicate side effects.]`)
         }
         throw error
       } finally {
-        clearTimeout(firstResponseTimer)
+        responseDeadline.dispose()
       }
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       try {
         const result = await generateText(attemptShared as any)
-        noteProviderEvent()
-        fullText      = result.text
+        const parsedStatus = extractTurnStatus(result.text)
+        fullText      = parsedStatus.text
+        turnStatus    = parsedStatus.status
         opts.onText?.(fullText)
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -742,8 +832,18 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
           }
           for (const tr of step.toolResults ?? []) {
             const toolName = toolNames.get(tr.toolCallId) ?? tr.toolName ?? "tool"
-            const output = String(tr.result)
-            opts.onToolResult?.({ id: tr.toolCallId, tool: toolName, result: output, durationMs: 0, artifact: classifyToolResult(toolName, output) })
+            const output = formatAdaptedToolResult(tr.result)
+            const outcome = attemptOutcomes.get(toolName)?.shift()
+            if (outcome) completedAttemptOutcomes.push(outcome)
+            opts.onToolResult?.({
+              id: tr.toolCallId,
+              tool: toolName,
+              result: output,
+              durationMs: 0,
+              artifact: adaptedToolResultArtifact(tr.result)
+                ?? classifyToolResult(toolName, output, adaptedToolResultPresentation(tr.result)),
+              ...(outcome ? { outcome } : {}),
+            })
           }
         }
 
@@ -751,18 +851,33 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
         const meta = (result as any).experimental_providerMetadata as Record<string, unknown> | undefined
         breakdown  = extractTokenBreakdown(u, meta)
         finishReason = String((result as any).finishReason ?? "")
-        newMessages = result.response.messages
+        newMessages = stripTurnStatusFromMessages(result.response.messages)
       } catch (error) {
-        if (attemptToolCallHappened && !(error instanceof NonRetryableStreamError)) {
+        const queuedOutcomes = [...attemptOutcomes.values()].flat()
+        if (attemptToolCallHappened
+          && !isRetrySafeAfterTools([...completedAttemptOutcomes, ...queuedOutcomes], 0)
+          && !(error instanceof NonRetryableStreamError)) {
           throw new NonRetryableStreamError(`${error instanceof Error ? error.message : String(error)}\n\n[Tool calls already ran this turn — not auto-retried to avoid duplicate side effects.]`)
         }
         throw error
       } finally {
-        clearTimeout(firstResponseTimer)
+        responseDeadline.dispose()
       }
     }
 
-    return { fullText, breakdown, finishReason, newMessages, providerId: attemptProviderId, modelId: attemptModelId }
+    if (!attemptToolCallHappened) {
+      recordTokenCalibration({
+        provider: attemptProviderId,
+        model: attemptModelId,
+        estimatedInput: estimatedAttemptInput,
+        actualInput: breakdown.input + breakdown.cacheRead + breakdown.cacheWrite,
+      })
+    }
+    return {
+      fullText, breakdown, finishReason, newMessages,
+      providerId: attemptProviderId, modelId: attemptModelId,
+      ...(turnStatus ? { turnStatus } : {}),
+    }
   }
 
   // --- Fallback zinciri sadece cfg.fallback.enabled + provider listesi varsa devrede ---
@@ -774,17 +889,22 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     const { result, provider: resolvedProvider, switchedFrom } =
       await fallbackRuntime.execute(providerName, (attemptPlugin) => runOneAttempt(attemptPlugin.id))
     attemptResult = result
-    if (switchedFrom) opts.onProviderFallback?.(switchedFrom, resolvedProvider)
+    if (switchedFrom) {
+      opts.onProviderFallback?.(switchedFrom, resolvedProvider, {
+        fromModel: modelId,
+        toModel: attemptResult.modelId,
+      })
+    }
   } else {
-    attemptResult = await withRetry(() => runOneAttempt(providerName))
+    attemptResult = await runWithRetry(() => runOneAttempt(providerName))
   }
 
-  const { fullText, breakdown, finishReason, newMessages, providerId: usedProviderName, modelId: usedModelId } = attemptResult
+  const { fullText, breakdown, finishReason, newMessages, turnStatus, providerId: usedProviderName, modelId: usedModelId } = attemptResult
 
   if (sessionId !== undefined && fullText) {
     // usedProviderName/usedModelId: fallback devredeyse gerçekten çalışan provider/model
     // — birincisi değil (billing ve session geçmişi doğru kaynağı yansıtmalı).
-    SessionManager.ensureExists(sessionId, { provider: usedProviderName, model: usedModelId })
+    SessionManager.ensureExists(sessionId, { provider: usedProviderName, model: usedModelId, workdir })
     SessionManager.addPart({ sessionId, role: "assistant", type: "text", content: fullText, tokens: breakdown.output })
     SessionManager.recordTurn(sessionId, {
       inputTokens:  breakdown.input,
@@ -793,14 +913,28 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
       costUsd:      calculateCostUsd(usedModelId, breakdown),
       model:        usedModelId,
     })
+    const tokenCacheAfter = tokenCacheStats()
+    recordRunTrace(workdir, sessionId, "token_accounting", {
+      estimatedContextTokens: effectiveContextUsage.effectiveTokens,
+      toolSchemaTokens: toolSchemaReserveTokens,
+      actualInputTokens: breakdown.input,
+      cacheReadTokens: breakdown.cacheRead,
+      cacheWriteTokens: breakdown.cacheWrite,
+      tokenizerCacheHits: tokenCacheAfter.hits - tokenCacheBefore.hits,
+      tokenizerCacheMisses: tokenCacheAfter.misses - tokenCacheBefore.misses,
+      calibration: getTokenCalibration(usedProviderName, usedModelId),
+    }).catch(() => metrics.recordError("token_accounting_trace"))
   }
 
-  const continuationTasks = taskContinuationTurn ? opts.continuation?.getTasks?.() ?? [] : []
+  const continuationTasks = taskScope
+    ? taskManager.getTasks(taskScope)
+    : opts.continuation?.getTasks?.() ?? []
   const continuation = evaluateContinuation({
     text: fullText,
     finishReason,
     newMessageCount: newMessages.length,
     tasks: continuationTasks,
+    ...(turnStatus ? { structuredStatus: turnStatus.state } : {}),
   }, {
     previousContinuations: opts.continuation?.previousContinuations ?? resumedState?.continuation?.nextContinuationCount,
     maxContinuations: opts.continuation?.maxContinuations,
@@ -815,7 +949,7 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     continuation,
     workingSet: finalWorkingSet,
     verification: lastVerification,
-    allowTaskAutoContinue: taskContinuationTurn,
+    allowTaskAutoContinue: taskContinuationTurn || continuationTasks.some(task => ["pending", "ready", "in_progress", "verifying"].includes(task.status)),
   })
   const taskLedger = buildTaskLedger({
     objective: taskContinuationTurn && resumedState?.taskLedger
@@ -889,6 +1023,13 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   }
 
   const contextUsage = measureContextUsage([...messages, ...newMessages], contextUsageInput)
+  const taskContext = buildTaskContext({
+    objective: taskLedger.objective,
+    tasks: taskScope ? taskManager.getTasks(taskScope) : [],
+    workingSet: finalWorkingSet,
+    ...(lastVerification ? { verification: lastVerification } : {}),
+    previous: initialTaskContext,
+  })
   const finish: AgentFinishResult = {
     text:      fullText,
     tokens:    breakdown,
@@ -899,32 +1040,39 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     longTask,
     taskLedger,
     completionProof,
+    taskContext,
+    ...(turnStatus ? { turnStatus } : {}),
     ...(finishReason ? { finishReason } : {}),
     ...(sessionId !== undefined ? { sessionId } : {}),
   }
 
-  opts.onFinish?.(finish)
-
   if (sessionId !== undefined) {
-    writeSessionResumeState({
-      sessionId,
-      workdir,
-      provider: usedProviderName,
-      model: usedModelId,
-      updatedAt: Date.now(),
-      activeSkills: getSkillLifecycleSnapshot(sessionId).stack,
-      workingSet: finalWorkingSet,
-      failureCooldown: getFailureCooldownSnapshot(sessionId),
-      completionGate,
-      continuation,
-      longTask,
-      taskLedger,
-      completionProof,
-      ...(finishReason ? { finishReason } : {}),
-      tokens: breakdown,
-      ...(lastVerification ? { lastVerification } : {}),
-      ...(fullText ? { lastTextPreview: fullText.slice(-1_500) } : {}),
-    }).catch(() => {})
+    try {
+      await writeSessionResumeState({
+        sessionId,
+        workdir,
+        provider: usedProviderName,
+        model: usedModelId,
+        updatedAt: Date.now(),
+        activeSkills: getSkillLifecycleSnapshot(sessionId).stack,
+        workingSet: finalWorkingSet,
+        failureCooldown: getFailureCooldownSnapshot(sessionId),
+        completionGate,
+        continuation,
+        longTask,
+        taskLedger,
+        taskContext,
+        activeToolIds: selectedToolIds,
+        completionProof,
+        ...(finishReason ? { finishReason } : {}),
+        tokens: breakdown,
+        ...(lastVerification ? { lastVerification } : {}),
+        ...(fullText ? { lastTextPreview: fullText.slice(-1_500) } : {}),
+      })
+    } catch (error) {
+      metrics.recordError("resume_state_write")
+      throw new Error(`Failed to persist session resume state '${sessionId}'.`, { cause: error })
+    }
     recordRunTrace(workdir, sessionId, "completion_gate", completionGate as unknown as Record<string, unknown>).catch(() => {})
     recordRunTrace(workdir, sessionId, "long_task", {
       decision: longTask,
@@ -941,6 +1089,8 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
     }).catch(() => {})
   }
 
+  opts.onFinish?.(finish)
+
   // Agent başarıyla tamamlandı — aktif skill'lerin success skorunu artır (fire-and-forget)
   if (fullText && projectSkills.length > 0) {
     try { skillScoreStore.recordSuccess(workdir, projectSkills.map((s) => s.id)) } catch { /* optional */ }
@@ -950,7 +1100,13 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   // Her turn sonunda memory extraction yap (fire-and-forget)
   // Compaction'dan daha sık çalışır, sadece son birkaç mesaja bakar
   if (fullText && messages.length >= 2) {
-    extractPerTurnMemories(usedProviderName, usedModelId, messages, workdir).catch(() => metrics.recordError("memory_extract"))
+    extractPerTurnMemories(
+      usedProviderName,
+      usedModelId,
+      [...messages, ...newMessages],
+      workdir,
+      utilityModel,
+    ).catch(() => metrics.recordError("memory_extract"))
   }
 
   return finish
@@ -975,75 +1131,10 @@ function extractTokenBreakdown(
   return { input, output, cacheRead, cacheWrite, reasoning }
 }
 
-// 429 için basit retry — Retry-After header'ı yoksa 15s bekle, max 2 deneme
-// NonRetryableStreamError: attempt sırasında tool call zaten çalıştı — asla retry etme
-export async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
-  let attempt = 0
-  while (true) {
-    try {
-      return await fn()
-    } catch (err) {
-      if (err instanceof NonRetryableStreamError) throw err
-      const msg = err instanceof Error ? err.message : String(err)
-      const isRateLimit = /429|rate.?limit|too.many/i.test(msg)
-      if (!isRateLimit || attempt >= maxRetries) throw err
-      attempt++
-      const waitMs = parseRetryAfter(msg) ?? 15_000
-      await new Promise(r => setTimeout(r, waitMs))
-    }
-  }
-}
-
-// Provider fallback ile retry — fallback aktifse provider değiştirir.
-// fn provider ID string'i alır (plugin'i kendi çözer); NonRetryableStreamError
-// providerFallback.execute içinde isFallbackTrigger tarafından asla trigger sayılmaz.
-export async function withFallback<T>(
-  primaryProvider: string,
-  fn: (provider: string) => Promise<T>,
-): Promise<{ result: T; provider: string; switchedFrom?: string }> {
-  const { providerFallback } = await import("../provider/fallback.js")
-  return providerFallback.execute(primaryProvider, async (plugin) => fn(plugin.id))
-}
-
-function parseRetryAfter(msg: string): number | undefined {
-  const m = msg.match(/retry.{0,10}after[:\s]+(\d+)/i)
-  return m ? Number(m[1]) * 1000 : undefined
-}
-
-export function parseProviderError(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err)
-
-  // AI SDK APICallError: statusCode + url + responseBody taşır — "Bad Request"
-  // gibi çıplak mesajlar yerine asıl nedeni göster.
-  const api = err as { statusCode?: number; url?: string; responseBody?: unknown }
-  const status = typeof api?.statusCode === "number" ? api.statusCode : undefined
-  const body = typeof api?.responseBody === "string"
-    ? api.responseBody.slice(0, 600)
-    : api?.responseBody !== undefined ? JSON.stringify(api.responseBody).slice(0, 600) : ""
-  const detail = [
-    status !== undefined ? `HTTP ${status}` : null,
-    api?.url ? `endpoint: ${api.url}` : null,
-    body ? `response: ${body}` : null,
-  ].filter(Boolean).join("\n")
-
-  if (status === 400 || /\b400\b|bad request/i.test(raw)) {
-    return [
-      `Provider rejected the request (400 Bad Request).`,
-      detail,
-      `Common causes: model id not available on this provider (/models to pick from the live list), unsupported parameter, or tool/schema rejected by the model.`,
-    ].filter(Boolean).join("\n")
-  }
-  if (status === 404 || /\b404\b|not found/i.test(raw))
-    return [`Model or endpoint not found (404).`, detail, `Pick a model from /models — the id may be stale.`].filter(Boolean).join("\n")
-  if (status === 401 || /\b401\b|unauthorized|invalid.{0,20}key/i.test(raw))
-    return [`Invalid API key — update with /config set <provider> <key>`, detail].filter(Boolean).join("\n")
-  if (status === 403 || /\b403\b|forbidden/i.test(raw))
-    return [`Access forbidden (403) — key may lack access to this model.`, detail].filter(Boolean).join("\n")
-  if (status === 429 || /\b429\b|rate.?limit|too.many/i.test(raw))
-    return `Rate limited — wait a moment or switch provider (/providers)`
-  if (/503|502|overload|unavailable/i.test(raw))
-    return `Provider unavailable — try again or switch with /providers`
-  if (/ECONNREFUSED|ENOTFOUND|network|timeout/i.test(raw))
-    return `Network error — check your internet connection`
-  return detail ? `${raw}\n${detail}` : raw
+function isRetrySafeAfterTools(outcomes: ToolOutcome[], pendingToolCalls: number): boolean {
+  if (pendingToolCalls > 0 || outcomes.length === 0) return false
+  return outcomes.every(outcome =>
+    outcome.retry.safety === "pure"
+    || (outcome.retry.safety === "idempotent" && !outcome.retry.effectCommitted)
+  )
 }

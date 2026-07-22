@@ -19,10 +19,12 @@ const plugins = new Map<string, ProviderPlugin>()
 // known env vars). Anything registered later via ProviderRegistry.register()
 // (JS plugin loader, user-added custom providers) is NOT in this set and is
 // surfaced dynamically by available() below instead.
-const BUILT_IN_IDS = new Set([
+export const BUILT_IN_PROVIDER_IDS = [
   "anthropic", "openai", "openrouter", "google", "opencode",
   "ollama", "xai", "azure", "bedrock", "nvidia", "zai", "alibaba",
-])
+] as const
+
+const builtInIds = new Set<string>(BUILT_IN_PROVIDER_IDS)
 
 plugins.set("anthropic",  new AnthropicPlugin())
 plugins.set("openai",     new OpenAIPlugin())
@@ -100,7 +102,7 @@ export const ProviderRegistry = {
     // providers) but not in the static list above — it was only ever
     // registered once it already had a working key, so hasKey is always true.
     const dynamic = [...plugins.entries()]
-      .filter(([id]) => !BUILT_IN_IDS.has(id))
+      .filter(([id]) => !builtInIds.has(id))
       .map(([id, plugin]) => ({ id, name: plugin.name, hasKey: true }))
     return [...builtIn, ...dynamic]
   },

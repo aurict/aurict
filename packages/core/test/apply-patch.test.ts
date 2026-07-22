@@ -110,6 +110,9 @@ describe("apply_patch transaction safety", () => {
 
     expect(result.error).toBeUndefined()
     expect(result.output).toContain("Changed files: src.txt")
+    expect(result.output).toContain("__UNIFIED_DIFF__")
+    expect(result.output).toContain("-one")
+    expect(result.output).toContain("+two")
     expect(result.metadata?.changedFiles).toEqual(["src.txt"])
     expect(result.metadata?.patch?.added).toBe(1)
     expect(result.metadata?.patch?.removed).toBe(1)

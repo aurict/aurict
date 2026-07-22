@@ -310,6 +310,7 @@ function updateToolResult(
       pending: false,
       resultContent: displayResult,
       durationMs: toolResult.durationMs,
+      artifact: toolResult.artifact,
     };
     params.latestToolCallRef.current = {
       id: toolResult.id,

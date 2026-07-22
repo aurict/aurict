@@ -1,25 +1,12 @@
 import { z } from "zod"
-import { decomposeTask, flattenTaskTree, type TaskNode } from "../../agent/decomposition.js"
+import { decomposeTask, flattenTaskTree } from "../../agent/decomposition.js"
 import { DAGOrchestrator, type DAGNode } from "../../agent/dag-orchestrator.js"
+import { buildExplicitDAG, buildPlannerDAG, type PlannedTask } from "../../agent/planner-dag.js"
 import { ProviderRegistry } from "../../provider/registry.js"
 import { loadConfig } from "../../config/config.js"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 
-/**
- * Faz 3B — decomposeTask + DAGOrchestrator'ı gerçek bir tool olarak bağlar.
- * Bu ikisi önceden 0 çağırana sahip ölü koddu (bkz. plan dosyası, Faz 3 girişi).
- *
- * Tasarım notu (plandan sapma): plan "dependency = decomposition parent sırası"
- * diyordu. flattenTaskTree SADECE yaprakları döner; decomposeTask'ın "moderate"
- * dalında yapraklar (domain'ler) TAM OLARAK "security, performance, architecture"
- * gibi PARALEL çalışması gereken boyutlardır — bunları sıralı zincirlemek
- * coordinator promptunun kendi felsefesiyle ("spawn ALL subagents at once") ve bu
- * özelliğin asıl değer önermesiyle çelişirdi. Bu yüzden v1'de TÜM yapraklar
- * bağımsız/paralel — DAGOrchestrator'ın kendisi yine de anlamlı değer katıyor:
- * (a) bir node fail olunca bekleyenleri iptal eden yapısal hata yayılımı
- *     (düz Promise.all tabanlı subagent çağrılarında bu yok),
- * (b) tek, birleşik <orchestration-result> sentezi.
- */
+/** Runs an explicit or inferred dependency graph through the shared worker pool. */
 
 const DEPTH_BY_COMPLEXITY = { simple: 1, moderate: 2, complex: 3 } as const
 type OrchestrationComplexity = keyof typeof DEPTH_BY_COMPLEXITY
@@ -35,16 +22,6 @@ function capComplexityToDepth(requested: OrchestrationComplexity, maxDepth: numb
   if (maxDepth <= 1) return "simple"
   if (maxDepth === 2) return "moderate"
   return "complex"
-}
-
-function buildNodePrompt(node: TaskNode, objective: string): string {
-  return [
-    "## Orchestrated Sub-task",
-    `Parent objective: ${objective}`,
-    `Your specific focus: ${node.description}`,
-    `Scope: ${node.scope}`,
-    "Report findings/results clearly and concisely — your output will be merged with other parallel sub-tasks into one final report.",
-  ].join("\n\n")
 }
 
 async function listProjectFiles(workdir: string, limit = 500): Promise<string[]> {
@@ -88,6 +65,15 @@ Returns a merged <orchestration-result> containing each sub-task's output and an
     objective: z.string().describe("The overall objective to decompose and execute"),
     complexity: z.enum(["simple", "moderate", "complex"]).default("moderate")
       .describe("How many independent sub-tasks to decompose into — simple: 1 worker, moderate: 2-3 parallel dimensions, complex: full project-wide hierarchy"),
+    plan: z.array(z.object({
+      id: z.string().min(1),
+      description: z.string().min(1),
+      agentType: z.enum(["explore", "code", "review", "test", "docs", "performance", "security", "debug", "refactor", "devops", "design", "data", "critic"]),
+      dependencies: z.array(z.string()).optional(),
+      fileScopes: z.array(z.string()).optional(),
+      maxAttempts: z.number().int().min(1).max(4).optional(),
+    })).max(MAX_LEAF_NODES).optional()
+      .describe("Optional explicit dependency graph. Use dependencies for ordering and fileScopes to prevent conflicting parallel edits."),
   }),
 
   async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
@@ -110,31 +96,27 @@ Returns a merged <orchestration-result> containing each sub-task's output and an
 
     const projectStructure = complexity === "complex" ? await listProjectFiles(ctx.workdir) : undefined
 
-    const root = decomposeTask({
+    const explicitPlan = args["plan"] as PlannedTask[] | undefined
+    const root = explicitPlan ? undefined : decomposeTask({
       task: objective,
       complexity,
       ...(projectStructure ? { projectStructure } : {}),
     })
-    const leaves = flattenTaskTree(root)
+    const leaves = root ? flattenTaskTree(root) : []
 
-    if (leaves.length === 0) {
+    if (!explicitPlan?.length && leaves.length === 0) {
       return { output: "", error: "Decomposition produced no executable sub-tasks." }
     }
-    if (leaves.length > MAX_LEAF_NODES) {
+    if ((explicitPlan?.length ?? leaves.length) > MAX_LEAF_NODES) {
       return {
         output: "",
-        error: `Decomposition produced ${leaves.length} sub-tasks, exceeding the safety cap of ${MAX_LEAF_NODES}. Narrow the objective or use complexity="simple"/"moderate".`,
+        error: `Plan exceeds the safety cap of ${MAX_LEAF_NODES} sub-tasks. Narrow the objective or use complexity="simple"/"moderate".`,
       }
     }
 
-    const dagNodes: DAGNode[] = leaves.map((leaf) => ({
-      id: leaf.id,
-      agentType: leaf.agentType ?? "code",
-      desc: leaf.description,
-      prompt: buildNodePrompt(leaf, objective),
-      dependencies: [], // bkz. dosya başındaki tasarım notu — v1'de tüm yapraklar paralel
-      status: "pending",
-    }))
+    const dagNodes: DAGNode[] = explicitPlan?.length
+      ? buildExplicitDAG(explicitPlan, objective)
+      : buildPlannerDAG(leaves, objective)
 
     const provider = ctx.provider ?? (process.env["ANTHROPIC_API_KEY"] ? "anthropic" : "opencode")
     const model = ctx.model ?? ProviderRegistry.get(provider).defaultModel()
@@ -148,18 +130,18 @@ Returns a merged <orchestration-result> containing each sub-task's output and an
         workdir: ctx.workdir,
       })
 
-      const sections = leaves.map((leaf) => {
-        const output = outputs[leaf.id]
-        const error = errors[leaf.id]
-        return `<subtask id="${leaf.id}" type="${leaf.agentType ?? "code"}" desc="${escapeAttr(leaf.description)}">\n${
+      const sections = dagNodes.map((node) => {
+        const output = outputs[node.id]
+        const error = errors[node.id]
+        return `<subtask id="${node.id}" type="${node.agentType}" desc="${escapeAttr(node.desc)}">\n${
           error ? `ERROR: ${error}` : (output ?? "(no output)")
         }\n</subtask>`
       })
 
       const errorCount = Object.keys(errors).length
-      const resultXml = `<orchestration-result objective="${escapeAttr(objective)}" total="${leaves.length}" failed="${errorCount}">\n${sections.join("\n\n")}\n</orchestration-result>`
+      const resultXml = `<orchestration-result objective="${escapeAttr(objective)}" total="${dagNodes.length}" failed="${errorCount}">\n${sections.join("\n\n")}\n</orchestration-result>`
 
-      if (errorCount === leaves.length) {
+      if (errorCount === dagNodes.length) {
         return { output: resultXml, error: "All orchestrated sub-tasks failed." }
       }
       return { output: resultXml }

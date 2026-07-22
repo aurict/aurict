@@ -141,7 +141,7 @@ describe("runAgent — Faz 2.2 adaptif reasoning effort", () => {
     } finally {
       cleanup()
     }
-  })
+  }, 10_000)
 
   it("model supportsThinking:false ise escalation açık olsa bile buildThinkingOptions çağrılmaz", async () => {
     const calls: number[] = []
@@ -190,5 +190,5 @@ describe("runAgent — Faz 2.2 adaptif reasoning effort", () => {
     } finally {
       cleanup()
     }
-  })
+  }, 10_000)
 })

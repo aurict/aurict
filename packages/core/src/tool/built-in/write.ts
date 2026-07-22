@@ -1,28 +1,10 @@
 import { z } from "zod"
-import { writeFile, mkdir, readFile, stat } from "fs/promises"
+import { writeFile, mkdir, readFile } from "fs/promises"
 import { resolve, dirname, relative } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { snapshotManager } from "../../snapshot/snapshot.js"
-import { computeDiff } from "../../util/diff.js"
-import type { DiffHunk } from "../../util/diff.js"
 import { resolveWithinWorkspace } from "../../security/path-boundary.js"
-
-const MAX_DIFF_BYTES = 500_000
-const MAX_PREVIEW_LINES = 50
-
-function hunksToUnifiedDiff(hunks: DiffHunk[], relPath: string): string {
-  const out: string[] = [`--- a/${relPath}`, `+++ b/${relPath}`]
-  for (const hunk of hunks) {
-    const oldCount = hunk.lines.filter(l => l.type !== "add").length
-    const newCount = hunk.lines.filter(l => l.type !== "remove").length
-    out.push(`@@ -${hunk.oldStart},${oldCount} +${hunk.newStart},${newCount} @@`)
-    for (const line of hunk.lines) {
-      const s = line.type === "add" ? "+" : line.type === "remove" ? "-" : " "
-      out.push(`${s}${line.content}`)
-    }
-  }
-  return out.join("\n")
-}
+import { createUnifiedFileDiff } from "../file-diff.js"
 
 async function takeSnapshotBestEffort(filePath: string, scope: string): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -52,13 +34,10 @@ export const writeTool: ToolDef = {
     }
     const content  = String(args["content"] ?? "")
     await takeSnapshotBestEffort(filePath, `${ctx.workdir}\0${ctx.sessionId}`)
-    // Eski içeriği oku (diff için) — sadece dosya varsa ve küçükse
+    // Eski içeriği oku; kullanıcıya yazılan içeriğin tamamını diff olarak göstereceğiz.
     let oldContent: string | null = null
     try {
-      const info = await stat(filePath)
-      if (info.size <= MAX_DIFF_BYTES) {
-        oldContent = await readFile(filePath, "utf8")
-      }
+      oldContent = await readFile(filePath, "utf8")
     } catch { /* dosya yok = yeni dosya */ }
 
     try {
@@ -68,18 +47,17 @@ export const writeTool: ToolDef = {
       const relPath = relative(ctx.workdir, filePath)
 
       if (oldContent !== null) {
-        // Üzerine yazma: diff göster
-        const hunks = computeDiff(oldContent, content)
-        if (hunks.length > 0) {
-          return { output: `Updated ${relPath}\n__UNIFIED_DIFF__\n${hunksToUnifiedDiff(hunks, relPath)}` }
+        const diff = createUnifiedFileDiff({ beforePath: relPath, afterPath: relPath, beforeContent: oldContent, afterContent: content })
+        if (diff) return {
+          output: `Updated ${relPath}\n__UNIFIED_DIFF__\n${diff}`,
+          metadata: { changedFiles: [relPath], uiArtifact: { rawDiff: diff } },
         }
         return { output: `Updated ${relPath} (no changes)` }
-      } else {
-        // Yeni dosya: içerik önizlemesi
-        const allLines  = content.split("\n")
-        const lineCount = allLines.length
-        const preview   = allLines.slice(0, MAX_PREVIEW_LINES).join("\n")
-        return { output: `Created ${relPath}\n__WRITE_CREATE__\n${lineCount}\n${preview}` }
+      }
+      const diff = createUnifiedFileDiff({ afterPath: relPath, beforeContent: "", afterContent: content })
+      return {
+        output: `Created ${relPath}\n__UNIFIED_DIFF__\n${diff}`,
+        metadata: { changedFiles: [relPath], uiArtifact: { rawDiff: diff } },
       }
     } catch (err) {
       return { output: "", error: `Cannot write file: ${err}` }

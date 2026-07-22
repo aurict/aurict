@@ -7,6 +7,7 @@ import type { WorkerRequest, WorkerMessage, WorkerControl, AgentType } from "./p
 import { AGENT_TYPE_TOOLS } from "./protocol.js"
 import { agentLearner }   from "./learning.js"
 import { providerEnvironmentFromConfig } from "../provider/credentials.js"
+import type { TaskContext } from "../context/types.js"
 
 export class PoolFullError extends Error {
   constructor(max: number) {
@@ -122,14 +123,16 @@ class AgentPool {
     for (const l of this.listeners) l(list)
   }
 
-  private flushText(entry: PoolEntry) {
+  private flushText(entry: PoolEntry, persist = true) {
     if (!entry.textBuffer) return
-    SessionManager.addPart({
-      sessionId: entry.info.sessionId,
-      role:      "assistant",
-      type:      "text",
-      content:   entry.textBuffer,
-    })
+    if (persist) {
+      SessionManager.addPart({
+        sessionId: entry.info.sessionId,
+        role:      "assistant",
+        type:      "text",
+        content:   entry.textBuffer,
+      })
+    }
     entry.textBuffer = ""
   }
 
@@ -203,6 +206,7 @@ class AgentPool {
     allowedTools?:   string[]
     onText?:         (delta: string) => void
     parentContext?:  string
+    taskContext?:    TaskContext
   }): Promise<string> {
     const agentsCfg  = loadConfig(opts.workdir).agents ?? {}
     const maxWorkers = agentsCfg.maxWorkers ?? DEFAULT_MAX_WORKERS
@@ -285,6 +289,7 @@ class AgentPool {
         ...(opts.backendAccessToken !== undefined ? { backendAccessToken: opts.backendAccessToken } : {}),
         envVars:       collectEnvVars(opts.workdir),
         ...(opts.parentContext ? { parentContext: opts.parentContext } : {}),
+        ...(opts.taskContext ? { taskContext: opts.taskContext } : {}),
       }
       worker.postMessage(req)
     })
@@ -326,7 +331,7 @@ class AgentPool {
       }
 
       case "tool_call": {
-        this.flushText(entry)
+        this.flushText(entry, false)
         SessionManager.addPart({
           sessionId,
           role:    "assistant",
@@ -357,7 +362,7 @@ class AgentPool {
 
       case "done": {
         clearTimeout(entry.timer)
-        this.flushText(entry)
+        this.flushText(entry, false)
         entry.info.status = "done"
         entry.info.result = msg.result
         if (msg.result && !entry.receivedText) {
