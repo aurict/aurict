@@ -93,7 +93,11 @@ button:disabled { cursor: not-allowed; }
 .aur-titlebar-status { justify-content: flex-end; gap: 14px; }
 .aur-titlebar-nav { display: flex; align-items: center; gap: 2px; max-width: min(56vw, 760px); overflow: hidden; background: var(--control-bg); border-radius: 7px; padding: 3px; }
 .aur-titlebar-nav button { flex: 0 0 auto; }
-.aur-onboarding { height: 100vh; display: flex; align-items: flex-start; overflow-y: auto; justify-content: center; padding: 32px; background: radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--accent) 14%, transparent), var(--bg) 46%); }
+/* height (not min-height) + overflow-y so overflowing content scrolls within
+   this container instead of being silently clipped by html/body's
+   overflow:hidden. Top padding accounts for the fixed WindowChrome bar
+   above (44px) so content doesn't render underneath it. */
+.aur-onboarding { height: 100vh; display: flex; align-items: flex-start; overflow-y: auto; justify-content: center; padding: 76px 32px 32px; background: radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--accent) 14%, transparent), var(--bg) 46%); }
 .aur-state-screen { height: 100vh; display: grid; place-items: center; padding: 24px; overflow-y: auto; background: radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--accent) 16%, transparent), var(--bg) 50%); }
 .aur-state-card { width: min(480px, 100%); padding: 32px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 20px 60px oklch(0 0 0 / .2); text-align: center; }
 .aur-state-brand { color: var(--titlebar-text); font-family: var(--font-serif); font-weight: 600; font-size: 18px; letter-spacing: -.02em; }
@@ -205,9 +209,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* Height-based responsive breakpoints: shrink spacing/text before the
    overflow-y:auto fallback above kicks in. !important is needed here
    because the choice-grid button sizes are set via inline styles. */
-@media (max-height: 800px) { .aur-onboarding { padding: 16px 32px; } .aur-choice-grid button { min-height: 72px !important; padding: 12px !important; } }
-@media (max-height: 650px) { .aur-onboarding { padding: 12px 24px; } .aur-choice-grid button { min-height: 52px !important; padding: 8px !important; } .aur-onboarding h1 { font-size: 22px !important; } }
+@media (max-height: 800px) { .aur-onboarding { padding: 60px 32px 16px; } .aur-choice-grid button { min-height: 72px !important; padding: 12px !important; } }
+@media (max-height: 650px) { .aur-onboarding { padding: 56px 24px 12px; } .aur-choice-grid button { min-height: 52px !important; padding: 8px !important; } .aur-onboarding h1 { font-size: 22px !important; } }
 /* Same shrink-then-scroll pattern for the loading/error state card. 
   No !important needed — nothing here is set inline. */
 @media (max-height: 700px) { .aur-state-screen { padding: 16px; } .aur-state-card { padding: 20px; } .aur-state-card h1 { font-size: 22px; margin: 14px 0 6px; } }
 @media (max-height: 550px) { .aur-state-card { padding: 14px; } .aur-state-card h1 { font-size: 18px; margin: 10px 0 5px; } .aur-state-brand { font-size: 15px; } .aur-state-actions { margin-top: 14px; } }
+/* Fixed so it stays visible when onboarding/state-screen content scrolls.
+   Matches .aur-titlebar's height/background/border exactly (see below) for
+   visual consistency with the main app — see WindowChrome.tsx. */
+.aur-window-chrome { position: fixed; top: 0; left: 0; right: 0; height: 44px; display: flex; align-items: center; padding: 0 14px; background: var(--bg-deep); border-bottom: 1px solid var(--border-subtle); z-index: 50; }

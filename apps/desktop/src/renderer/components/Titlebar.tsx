@@ -108,7 +108,10 @@ export function Titlebar({ screen, onNavigate, workdir, onChooseWorkdir, userTyp
 
 function navButtonStyle(active: boolean): React.CSSProperties { return { fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 600, padding: '6px 14px', border: 'none', borderRadius: 5, cursor: 'pointer', background: active ? 'var(--bg-card)' : 'transparent', color: active ? 'var(--text)' : 'var(--titlebar-muted)' }; }
 
-function TrafficDot({ label, color, hoverColor, onClick }: { label: string; color: string; hoverColor: string; onClick: () => void }) {
+/* Exported so WindowChrome.tsx can reuse the same close/minimize/maximize
+  buttons on screens that render before this Titlebar mounts (onboarding,
+  loading, and error states — see WindowChrome.tsx). */
+export function TrafficDot({ label, color, hoverColor, onClick }: { label: string; color: string; hoverColor: string; onClick: () => void }) {
   const [hover, setHover] = React.useState(false);
   return (
     <button

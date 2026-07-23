@@ -3,6 +3,7 @@ import type { ColorMode, ExperienceLayout, FontPair, ExperienceTheme, UserProfil
 import { createProfile, FONT_OPTIONS, layoutOptions, THEME_OPTIONS, USER_TYPE_OPTIONS } from '../experience/registry.js';
 import { resolveColorMode } from '../experience/appearance.js';
 import { OnboardingModelStep, type ProviderModelPreference } from '../components/OnboardingModelStep.js';
+import { WindowChrome } from '../components/WindowChrome.js';
 
 const STEPS = ['Your focus', 'Your surface', 'AI defaults', 'Appearance', 'Typography'] as const;
 
@@ -54,6 +55,7 @@ export function OnboardingScreen({ onComplete }: Props) {
 
   return (
     <main className="aur-experience aur-onboarding" data-theme={theme} data-font-pair={fontPair} data-color-mode={resolvedColorMode}>
+      <WindowChrome />
       <div style={{ width: 860, maxWidth: '100%' }}>
         <ol aria-label="Onboarding progress" style={{ display: 'flex', justifyContent: 'center', gap: 8, margin: '0 0 26px', padding: 0, listStyle: 'none' }}>
           {STEPS.map((label, index) => <li aria-current={index === step ? 'step' : undefined} key={label} style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: index === step ? 'var(--accent)' : index < step ? 'var(--safe)' : 'var(--text-disabled)' }}>{index + 1}. {label}</li>)}
