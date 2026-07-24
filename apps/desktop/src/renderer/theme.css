@@ -209,6 +209,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* Height-based responsive breakpoints: shrink spacing/text before the
    overflow-y:auto fallback above kicks in. !important is needed here
    because the choice-grid button sizes are set via inline styles. */
+
 @media (max-height: 800px) { .aur-onboarding { padding: 60px 32px 16px; } .aur-choice-grid button { min-height: 72px !important; padding: 12px !important; } }
 @media (max-height: 650px) { .aur-onboarding { padding: 56px 24px 12px; } .aur-choice-grid button { min-height: 52px !important; padding: 8px !important; } .aur-onboarding h1 { font-size: 22px !important; } }
 /* Same shrink-then-scroll pattern for the loading/error state card. 

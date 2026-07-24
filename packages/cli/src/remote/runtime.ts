@@ -17,7 +17,7 @@
 
 import { backendRequest, RemoteApiError } from "./backend-client.js"
 import { ensureAccessToken } from "./auth.js"
-import { ensureDeviceIdentity, signWithStoredIdentity } from "./identity.js"
+import { ensureDeviceIdentity, signWithStoredIdentity, type DeviceIdentity } from "./identity.js"
 import { type CliRemoteTransport, type SignalEnvelope, type IceServer, MockCliRemoteTransport } from "./transport.js"
 import { RemoteEventLedger, type RemoteEvent } from "./event-codec.js"
 
@@ -69,6 +69,13 @@ export interface StartOptions {
   pollIntervalMs?: number
 }
 
+export interface CliRemoteIdentity {
+  ensureDeviceIdentity(): Promise<DeviceIdentity>
+  signWithStoredIdentity(payload: string): Promise<string>
+}
+
+const defaultIdentity: CliRemoteIdentity = { ensureDeviceIdentity, signWithStoredIdentity }
+
 const DEFAULT_TTL_SECONDS      = 300
 const DEFAULT_POLL_INTERVAL_MS = 3000
 const HEARTBEAT_INTERVAL_MS    = 20_000
@@ -83,6 +90,7 @@ function isSessionExpired(session: RemoteSessionPublic): boolean {
 
 export class CliRemoteRuntime {
   private readonly transport: CliRemoteTransport
+  private readonly identity: CliRemoteIdentity
   private status: CliRemoteStatus = "signedOut"
   private session: RemoteSessionPublic | null = null
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
@@ -95,8 +103,9 @@ export class CliRemoteRuntime {
   private deviceId: string | null = null
   private readonly eventListeners = new Set<(event: RemoteEvent) => void>()
 
-  constructor(opts?: { transport?: CliRemoteTransport }) {
+  constructor(opts?: { transport?: CliRemoteTransport; identity?: CliRemoteIdentity }) {
     this.transport = opts?.transport ?? new MockCliRemoteTransport()
+    this.identity = opts?.identity ?? defaultIdentity
     this.transport.onMessage((raw) => this.handleRawMessage(raw))
   }
 
@@ -145,7 +154,7 @@ export class CliRemoteRuntime {
       senderDeviceId: this.deviceId,
       type,
       payload,
-      sign: (p) => signWithStoredIdentity(p),
+      sign: (p) => this.identity.signWithStoredIdentity(p),
     })
     this.transport.send(JSON.stringify(event))
   }
@@ -158,7 +167,7 @@ export class CliRemoteRuntime {
   async start(opts: StartOptions = {}): Promise<RemoteSessionPublic> {
     this.cancelled = false
     this.setStatus("registeringDevice")
-    const identity = await ensureDeviceIdentity()
+    const identity = await this.identity.ensureDeviceIdentity()
     this.deviceId = identity.deviceId
 
     const iceServers = await this.preflightTurn(identity.deviceId)
@@ -166,7 +175,7 @@ export class CliRemoteRuntime {
     this.setStatus("creatingSession")
     const offer = await this.transport.createOffer({
       signingKeyFingerprint: identity.signingKeyFingerprint,
-      sign: (payload) => signWithStoredIdentity(payload),
+      sign: (payload) => this.identity.signWithStoredIdentity(payload),
       ...(iceServers ? { iceServers } : {}),
     })
 

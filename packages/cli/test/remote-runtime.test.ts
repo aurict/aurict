@@ -5,27 +5,16 @@
  * (mock offer generation), runtime (session creation → poll → answer → connected,
  * timeout/close, heartbeat, TURN preflight fallback, cancellation).
  *
- * `identity.js` is mocked — device registration/crypto is already thoroughly
+ * A test identity is injected — device registration/crypto is already thoroughly
  * tested in remote-identity.test.ts; here only the runtime's OWN state machine is isolated.
  */
 import { describe, it, expect, afterEach, beforeEach, mock } from "bun:test"
 
 mock.module("../src/remote/browser.js", () => ({ openInBrowser: () => {} }))
-mock.module("../src/remote/identity.js", () => ({
-  ensureDeviceIdentity: async () => ({
-    deviceId:              "dev_cli_1",
-    signingPublicKey:      "{}",
-    encryptionPublicKey:   "{}",
-    signingKeyFingerprint: "fp_test_cli",
-    verified:              true,
-  }),
-  signWithStoredIdentity: async (payload: string) => `sig(${payload.length})`,
-}))
-
 import { writeStoredTokens, clearStoredTokens } from "../src/remote/session-store.js"
-import { RemoteEventLedger, signingPayload, RemoteEventTypes } from "../src/remote/event-codec.js"
+import { RemoteEventLedger, signingPayload, RemoteEventTypes, type RemoteEvent } from "../src/remote/event-codec.js"
 import { MockCliRemoteTransport, type CliRemoteTransport, type SignalEnvelope, type IceServer } from "../src/remote/transport.js"
-import { CliRemoteRuntime, type RemoteSessionPublic, type CliRemoteStatus } from "../src/remote/runtime.js"
+import { CliRemoteRuntime, type CliRemoteIdentity, type RemoteSessionPublic, type CliRemoteStatus } from "../src/remote/runtime.js"
 import { RemoteApiError } from "../src/remote/backend-client.js"
 
 // ── Test helpers ──────────────────────────────────────────────────────────────
@@ -56,6 +45,21 @@ class SpyTransport implements CliRemoteTransport {
   simulateOpen(): void { for (const h of this.openHandlers) h() }
   simulateMessage(data: string): void { for (const h of this.messageHandlers) h(data) }
   async close(): Promise<void> { this.closed = true }
+}
+
+const testIdentity: CliRemoteIdentity = {
+  ensureDeviceIdentity: async () => ({
+    deviceId:              "dev_cli_1",
+    signingPublicKey:      "{}",
+    encryptionPublicKey:   "{}",
+    signingKeyFingerprint: "fp_test_cli",
+    verified:              true,
+  }),
+  signWithStoredIdentity: async (payload: string) => `sig(${payload.length})`,
+}
+
+function createRuntime(transport: CliRemoteTransport): CliRemoteRuntime {
+  return new CliRemoteRuntime({ transport, identity: testIdentity })
 }
 
 function fakeAnswer(): SignalEnvelope {
@@ -207,7 +211,7 @@ describe("CliRemoteRuntime.start", () => {
       },
     })
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     const statuses: CliRemoteStatus[] = []
     runtime.onStatusChange((s) => statuses.push(s))
 
@@ -236,7 +240,7 @@ describe("CliRemoteRuntime.start", () => {
       },
     })
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     try {
       const session = await runtime.start({ pollIntervalMs: 5 })
       expect(session.status).toBe("accepted")
@@ -270,7 +274,7 @@ describe("CliRemoteRuntime.start", () => {
       },
     })
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     try {
       await runtime.start({ pollIntervalMs: 5 })
       expect(transport.receivedIceServers).toEqual([
@@ -289,7 +293,7 @@ describe("CliRemoteRuntime.start", () => {
       createSession: () => ({ status: 201, body: { ok: true, session: baseSession({ expiresAt: new Date(Date.now() - 1000).toISOString() }) } }),
       getSession: () => ({ status: 200, body: { ok: true, session: baseSession({ status: "available", expiresAt: new Date(Date.now() - 1000).toISOString() }) } }),
     })
-    const runtime = new CliRemoteRuntime({ transport: new SpyTransport() })
+    const runtime = createRuntime(new SpyTransport())
     try {
       await expect(runtime.start({ pollIntervalMs: 5 })).rejects.toThrow(RemoteApiError)
       expect(runtime.getStatus()).toBe("expired")
@@ -301,7 +305,7 @@ describe("CliRemoteRuntime.start", () => {
       createSession: () => ({ status: 201, body: { ok: true, session: baseSession() } }),
       getSession: () => ({ status: 200, body: { ok: true, session: baseSession({ status: "closed" }) } }),
     })
-    const runtime = new CliRemoteRuntime({ transport: new SpyTransport() })
+    const runtime = createRuntime(new SpyTransport())
     try {
       await expect(runtime.start({ pollIntervalMs: 5 })).rejects.toThrow(RemoteApiError)
       expect(runtime.getStatus()).toBe("closed")
@@ -313,7 +317,7 @@ describe("CliRemoteRuntime.start", () => {
       createSession: () => ({ status: 201, body: { ok: true, session: baseSession() } }),
       getSession: () => ({ status: 200, body: { ok: true, session: baseSession({ status: "available" }) } }),
     })
-    const runtime = new CliRemoteRuntime({ transport: new SpyTransport() })
+    const runtime = createRuntime(new SpyTransport())
     const startPromise = runtime.start({ pollIntervalMs: 5 })
     setTimeout(() => runtime.cancelWaiting(), 20)
     try {
@@ -324,7 +328,7 @@ describe("CliRemoteRuntime.start", () => {
 
 describe("CliRemoteRuntime.heartbeat / close", () => {
   it("heartbeat updates the local session snapshot", async () => {
-    const runtime = new CliRemoteRuntime({ transport: new SpyTransport() })
+    const runtime = createRuntime(new SpyTransport())
     ;(runtime as any).session = baseSession({ status: "accepted", lastSequence: 3 })
     const restore = installRemoteBackendMock({
       createSession: () => { throw new Error("not used") },
@@ -342,7 +346,7 @@ describe("CliRemoteRuntime.heartbeat / close", () => {
   })
 
   it("heartbeat transitions to expired on remote_idle_timeout", async () => {
-    const runtime = new CliRemoteRuntime({ transport: new SpyTransport() })
+    const runtime = createRuntime(new SpyTransport())
     ;(runtime as any).session = baseSession({ status: "accepted" })
     const restore = installRemoteBackendMock({
       createSession: () => { throw new Error("not used") },
@@ -357,7 +361,7 @@ describe("CliRemoteRuntime.heartbeat / close", () => {
 
   it("close() posts to /close, closes the transport, and clears the session", async () => {
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     ;(runtime as any).session = baseSession({ id: "rmt_close_me" })
     let closeCalled = false
     const restore = installRemoteBackendMock({
@@ -376,7 +380,7 @@ describe("CliRemoteRuntime.heartbeat / close", () => {
 
   it("close() still tears down locally when the backend call fails", async () => {
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     ;(runtime as any).session = baseSession({ id: "rmt_offline" })
     const original = globalThis.fetch
     globalThis.fetch = (async () => { throw new Error("offline") }) as typeof fetch
@@ -392,14 +396,14 @@ describe("CliRemoteRuntime.heartbeat / close", () => {
 describe("CliRemoteRuntime — agent event bridge (publish/onEvent)", () => {
   it("publish() is a no-op when not connected (no session/deviceId yet)", async () => {
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     await runtime.publish("terminal.output", { text: "hi" })
     expect(transport.sent.length).toBe(0)
   })
 
   it("publish() sends a signed, sequenced event once connected", async () => {
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     ;(runtime as any).deviceId = "dev_cli_1"
     ;(runtime as any).status = "connected"
     ;(runtime as any).session = baseSession({ id: "rmt_evt", status: "accepted" })
@@ -421,7 +425,7 @@ describe("CliRemoteRuntime — agent event bridge (publish/onEvent)", () => {
 
   it("onEvent() delivers incoming transport messages and rejects replayed sequences", () => {
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     const received: Array<{ type: string }> = []
     runtime.onEvent((e) => received.push(e))
 
@@ -442,7 +446,7 @@ describe("CliRemoteRuntime — agent event bridge (publish/onEvent)", () => {
 
   it("the unsubscribe function returned by onEvent() stops further delivery", () => {
     const transport = new SpyTransport()
-    const runtime = new CliRemoteRuntime({ transport })
+    const runtime = createRuntime(transport)
     const received: unknown[] = []
     const unsubscribe = runtime.onEvent((e) => received.push(e))
     unsubscribe()
