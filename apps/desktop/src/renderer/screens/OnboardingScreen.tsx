@@ -82,8 +82,27 @@ export function OnboardingScreen({ onComplete }: Props) {
         {step === 4 && <><ChoiceGrid items={FONT_OPTIONS} selected={fontPair} onSelect={setFontPair} /><ExperiencePreview layout={layout} typography /></>}
 
         {error && <div role="alert" className="aur-inline-error">{error}</div>}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-          <button onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, padding: '9px 13px', color: step === 0 ? 'var(--text-disabled)' : 'var(--text)', background: 'transparent', border: '1px solid var(--border-strong)', borderRadius: 7, cursor: step === 0 ? 'default' : 'pointer' }}>← back</button>
+        <div style={{ display: 'flex', justifyContent: step === 0 ? 'flex-end' : 'space-between', marginTop: 20 }}>
+          {/**On step 0 there's nowhere to go back to, so the back button isn't
+           * rendered at all (rather than disabled) — a disabled-but-visible button
+           * caused "a brief visible flash" when navigating back to step 0, even in
+           * the packaged production build. justifyContent switches to flex-end
+           * when the button is absent so the continue button doesn't jump position
+           * (no back button = no second flex child to space-between against).*/}
+          {step > 0 && (
+            <button
+              onClick={() => setStep((current) => Math.max(0, current - 1))}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                padding: '9px 13px',
+                color: 'var(--text)',
+                background: 'transparent',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 7,
+                cursor: 'pointer' 
+              }}>← back</button>
+          )}
           {step < STEPS.length - 1 ? <button onClick={() => setStep((current) => current + 1)} disabled={step === 2 && (!modelPreference.providerId || !modelPreference.modelId)} style={primaryButton}>continue →</button> : <button onClick={() => { void finish(); }} disabled={saving} style={primaryButton}>{saving ? 'saving…' : 'enter Aurict →'}</button>}
         </div>
       </div>
