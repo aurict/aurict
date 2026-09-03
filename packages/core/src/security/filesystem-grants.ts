@@ -1,6 +1,7 @@
 import { lstat, realpath } from "node:fs/promises"
 import { dirname, isAbsolute, relative, resolve } from "node:path"
 import { resolveWithinWorkspace } from "./path-boundary.js"
+import { toPosix } from "../util/paths.js"
 
 export type FilesystemGrantScope = "path" | "directory"
 
@@ -97,7 +98,7 @@ async function nearestExisting(path: string): Promise<string> {
 }
 
 function assertNotSensitive(path: string): void {
-  if (/\/(?:\.ssh|\.gnupg|\.aws|\.kube|\.azure)(?:\/|$)|\/(?:etc\/(?:shadow|gshadow)|proc|dev|sys|boot)(?:\/|$)/.test(path)) {
+  if (/\/(?:\.ssh|\.gnupg|\.aws|\.kube|\.azure)(?:\/|$)|\/(?:etc\/(?:shadow|gshadow)|proc|dev|sys|boot)(?:\/|$)/.test(toPosix(path))) {
     throw new Error(`Sensitive filesystem path cannot be granted: ${path}`)
   }
 }

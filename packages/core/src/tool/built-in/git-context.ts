@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { execSync } from "child_process"
 import { readFileSync } from "fs"
-import { resolve, relative } from "path"
+import { resolve, relative, basename } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { executeGitHistoryAction, type GitHistoryAction } from "../git/history-actions.js"
 
@@ -112,7 +112,7 @@ function extractAnnotations(absFile: string): Annotation[] {
 // ── Test file finder ──────────────────────────────────────────────────────────
 
 function findTestFiles(workdir: string, absFile: string): string[] {
-  const base = absFile.replace(/\.(tsx?)$/, "").split("/").pop() ?? ""
+  const base = basename(absFile).replace(/\.(tsx?)$/, "")
   if (!base) return []
 
   const tracked = git(workdir, "ls-files")

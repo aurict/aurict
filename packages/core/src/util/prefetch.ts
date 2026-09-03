@@ -10,6 +10,7 @@
 import { readFile } from "fs/promises"
 import { resolve } from "path"
 import { LRUCache } from "./lru-cache.js"
+import { toPosix } from "./paths.js"
 
 export type PrefetchHint = "file-read" | "grep-result" | "glob-result" | "edit-target"
 
@@ -72,7 +73,7 @@ export class PrefetchManager {
    * Prefetch edilmiş dosyayı al.
    */
   getPrefetched(path: string): PrefetchResult | null {
-    const result = this.cache.get(path)
+    const result = this.cache.get(toPosix(resolve(path)))
     if (result) {
       this.hitCount++
     }
@@ -102,7 +103,7 @@ export class PrefetchManager {
   private async prefetchFile(filePath: string, workdir: string): Promise<void> {
     if (!filePath) return
 
-    const absPath = resolve(workdir, filePath)
+    const absPath = toPosix(resolve(workdir, filePath))
 
     // Zaten cache'de varsa skip
     if (this.cache.has(absPath)) return

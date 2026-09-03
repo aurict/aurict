@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { coreAssetDir, coreStateDir, coreStatePath, ensureCoreStateDir } from '../src/storage/paths.js'
 import { loadDesignPrefs, saveDesignPrefs } from '../src/design/prefs.js'
 
@@ -49,7 +49,7 @@ describe('core state paths', () => {
   it('uses the dedicated asset directory before the legacy alias', () => {
     process.env.AURICT_ASSET_DIR = '/tmp/aurict-assets'
     process.env.AURICT_DATA_DIR = '/tmp/aurict-legacy-assets'
-    expect(coreAssetDir()).toBe('/tmp/aurict-assets')
+    expect(coreAssetDir()).toBe(resolve('/tmp/aurict-assets'))
   })
 
   it('persists preferences in the configured state directory and rejects corrupt data', () => {

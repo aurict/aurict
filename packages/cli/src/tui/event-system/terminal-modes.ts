@@ -89,9 +89,10 @@ export function reassertActiveModes(): void {
 export function __resetForTest(): void {
   activeModes.clear()
   signalsRegistered = false
-  process.off("exit", restoreAll)
-  process.off("SIGINT", restoreAll)
-  process.off("SIGTERM", restoreAll)
+  const emitter = process as NodeJS.EventEmitter
+  emitter.off("exit", restoreAll)
+  emitter.off("SIGINT", restoreAll)
+  emitter.off("SIGTERM", restoreAll)
 }
 
 /** Test-only: triggers restoreAll without sending a real signal. */

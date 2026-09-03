@@ -5,6 +5,21 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createArtifactStore } from '../src/main/artifact-store.js';
 
+/** Windows refuses symlink creation without Developer Mode or admin rights.
+ *  Probe once so the symlink-escape case skips visibly instead of passing green
+ *  without ever exercising the boundary it asserts. */
+const CAN_SYMLINK = (() => {
+  const probe = mkdtempSync(path.join(tmpdir(), 'aurict-symlink-probe-'));
+  try {
+    symlinkSync(probe, path.join(probe, 'link'), 'dir');
+    return true;
+  } catch {
+    return false;
+  } finally {
+    rmSync(probe, { recursive: true, force: true });
+  }
+})();
+
 const created: string[] = [];
 afterEach(() => { for (const dir of created.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 
@@ -31,7 +46,7 @@ describe('desktop artifact store', () => {
   // The following three tests cover the Sprint 02 artifact-security
   // scenarios: symlink escape, prefix-lookalike roots, and missing/
   // directory artifacts — see within()'s realpath fix in artifact-store.ts.
-  it('rejects a symlink inside the root that points outside it', () => {
+  it.skipIf(!CAN_SYMLINK)('rejects a symlink inside the root that points outside it', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'aurict-artifact-'));
     const outsideRoot = mkdtempSync(path.join(tmpdir(), 'aurict-artifact-outside-'));
     created.push(root, outsideRoot);

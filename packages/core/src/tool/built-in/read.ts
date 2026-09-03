@@ -5,6 +5,7 @@ import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { semanticCache } from "../semantic-cache.js"
 import { resolveAuthorizedFilesystemPath } from "../../security/filesystem-grants.js"
 import { observeBackground } from "../../util/background-task.js"
+import { toPosix } from "../../util/paths.js"
 
 const MAX_CHARS = 100_000
 
@@ -33,11 +34,13 @@ const SENSITIVE_OUTSIDE_WORKDIR: RegExp[] = [
 ]
 
 function checkSensitivePath(filePath: string, workdir: string): string | null {
-  const norm = workdir.endsWith("/") ? workdir : workdir + "/"
+  const normFile = toPosix(filePath)
+  const normWorkdir = toPosix(workdir)
+  const norm = normWorkdir.endsWith("/") ? normWorkdir : normWorkdir + "/"
   // Proje içindeyse her zaman serbest
-  if (filePath.startsWith(norm) || filePath === workdir) return null
+  if (normFile.startsWith(norm) || normFile === normWorkdir) return null
   for (const re of SENSITIVE_OUTSIDE_WORKDIR) {
-    if (re.test(filePath)) {
+    if (re.test(normFile)) {
       return `Security: '${filePath}' okuma engellendi — proje dizini dışında hassas dosya`
     }
   }

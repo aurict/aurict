@@ -50,6 +50,7 @@ describe("deterministic review workflow", () => {
   })
 
   it("keeps unusual git paths intact and detects stale workspace scopes", () => {
+    if (process.platform === "win32") return
     const root = repository()
     const unusual = "space\tname.ts"
     writeFileSync(join(root, unusual), "export const unusual = true\n", "utf8")

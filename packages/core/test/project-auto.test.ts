@@ -5,6 +5,21 @@ import { join } from "node:path"
 import { evaluateProjectAutoRequest } from "../src/permission/project-auto.js"
 import type { PermissionRequest } from "../src/permission/types.js"
 
+/** Windows refuses symlink creation without Developer Mode or admin rights.
+ *  Probe once so the symlink-escape cases skip visibly instead of passing green
+ *  without ever exercising the boundary they assert. */
+const CAN_SYMLINK = (() => {
+  const probe = mkdtempSync(join(tmpdir(), "aurict-symlink-probe-"))
+  try {
+    symlinkSync(probe, join(probe, "link"), "dir")
+    return true
+  } catch {
+    return false
+  } finally {
+    rmSync(probe, { recursive: true, force: true })
+  }
+})()
+
 const temporaryRoots: string[] = []
 
 function workspace(): string {
@@ -60,12 +75,13 @@ describe("Project Auto permission policy", () => {
     expect(verdict.reason).toContain("typed file")
   })
 
-  it("rejects paths outside the project and symlink escapes", async () => {
+  it.skipIf(!CAN_SYMLINK)("rejects paths outside the project and symlink escapes", async () => {
     const root = workspace()
     const outside = workspace()
-    symlinkSync(outside, join(root, "linked"), "dir")
 
     expect((await evaluateProjectAutoRequest(request({ pattern: "../outside.ts" }), root)).allow).toBe(false)
+
+    symlinkSync(outside, join(root, "linked"), "dir")
     expect((await evaluateProjectAutoRequest(request({ pattern: "linked/escape.ts" }), root)).allow).toBe(false)
   })
 

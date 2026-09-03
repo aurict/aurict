@@ -30,6 +30,7 @@ import { join } from "node:path"
 import { homedir } from "node:os"
 import { readdirSync, existsSync, readFileSync } from "node:fs"
 import type { LoadedSkill, SkillDef } from "./types.js"
+import { toPosix } from "../util/paths.js"
 
 export interface ActivatedSkillInfo {
   id: string
@@ -454,7 +455,9 @@ export async function buildProactiveFileSection(userText: string, workdir: strin
       if (file.size > MAX_FILE_SIZE_BYTES) continue
       const content = await file.text()
       const excerpt = content.slice(0, MAX_SINGLE_FILE_CHARS)
-      const relative = resolved.startsWith(workdir + "/") ? resolved.slice(workdir.length + 1) : resolved
+      const normResolved = toPosix(resolved)
+      const normWorkdir  = toPosix(workdir)
+      const relative = normResolved.startsWith(normWorkdir + "/") ? normResolved.slice(normWorkdir.length + 1) : normResolved
       const truncNote = content.length > MAX_SINGLE_FILE_CHARS ? "\n... [truncated]" : ""
       const ext = relative.split(".").pop() ?? ""
       sections.push(`### ${relative}\n\`\`\`${ext}\n${excerpt}${truncNote}\n\`\`\``)

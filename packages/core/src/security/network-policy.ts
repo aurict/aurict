@@ -51,12 +51,40 @@ export async function assertSafeRemoteUrl(input: string): Promise<URL> {
   return url
 }
 
+function abortError(): Error {
+  return Object.assign(new Error("The operation was aborted"), { name: "AbortError" })
+}
+
+/**
+ * dns.promises.lookup() takes no AbortSignal, so a stuck resolver would outlive
+ * the caller's timeout or cancellation and hang the whole request. Race the
+ * policy check against the signal so callers always get a prompt AbortError.
+ * The lookup itself keeps running detached; it holds no caller-visible state.
+ */
+export async function withAbort<T>(signal: AbortSignal | null | undefined, run: () => Promise<T>): Promise<T> {
+  if (!signal) return run()
+  if (signal.aborted) throw abortError()
+  let onAbort: () => void = () => {}
+  try {
+    return await Promise.race([
+      run(),
+      new Promise<never>((_resolve, reject) => {
+        onAbort = () => reject(abortError())
+        signal.addEventListener("abort", onAbort, { once: true })
+      }),
+    ])
+  } finally {
+    signal.removeEventListener("abort", onAbort)
+  }
+}
+
 export async function fetchWithUrlPolicy(
   input: string,
   init: RequestInit,
   opts: { followRedirects?: boolean; maxRedirects?: number } = {},
 ): Promise<Response> {
-  let url = await assertSafeRemoteUrl(input)
+  const signal = init.signal
+  let url = await withAbort(signal, () => assertSafeRemoteUrl(input))
   let request: RequestInit = { ...init, redirect: "manual" }
   const followRedirects = opts.followRedirects ?? true
   const maxRedirects = opts.maxRedirects ?? 5
@@ -68,7 +96,7 @@ export async function fetchWithUrlPolicy(
     const location = response.headers.get("location")
     if (!location) return response
 
-    const nextUrl = await assertSafeRemoteUrl(new URL(location, url).toString())
+    const nextUrl = await withAbort(signal, () => assertSafeRemoteUrl(new URL(location, url).toString()))
     const headers = new Headers(request.headers)
     if (nextUrl.origin !== url.origin) {
       for (const name of SENSITIVE_REDIRECT_HEADERS) headers.delete(name)

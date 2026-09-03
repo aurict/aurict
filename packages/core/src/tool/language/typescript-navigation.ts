@@ -1,6 +1,6 @@
 import ts from "typescript"
 import { readFile, writeFile } from "node:fs/promises"
-import { dirname, relative, resolve } from "node:path"
+import { dirname, relative, resolve, sep } from "node:path"
 import { gateGuard } from "../../permission/gateguard.js"
 import { WorkspaceTransaction } from "../../transaction/workspace-transaction.js"
 import type { ExecuteResult, ToolContext } from "../types.js"
@@ -239,7 +239,7 @@ async function rename(
 function resolveInside(workdir: string, path: string): string {
   const root = resolve(workdir)
   const absolute = resolve(root, path)
-  if (absolute !== root && !absolute.startsWith(root + "/")) throw new Error(`Path is outside workspace: ${path}`)
+  if (absolute !== root && !absolute.startsWith(root + sep)) throw new Error(`Path is outside workspace: ${path}`)
   return absolute
 }
 

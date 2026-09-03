@@ -15,6 +15,21 @@ import { jsonSchemaToZod } from "../src/mcp/bridge.js"
 import { providerEnv, withProviderEnvironment } from "../src/provider/credentials.js"
 import { httpRequestTool } from "../src/tool/built-in/http-request.js"
 
+/** Windows refuses symlink creation without Developer Mode or admin rights.
+ *  Probe once so the symlink-escape cases skip visibly instead of passing green
+ *  without ever exercising the boundary they assert. */
+const CAN_SYMLINK = (() => {
+  const probe = mkdtempSync(join(tmpdir(), "aurict-symlink-probe-"))
+  try {
+    symlinkSync(probe, join(probe, "link"), "dir")
+    return true
+  } catch {
+    return false
+  } finally {
+    rmSync(probe, { recursive: true, force: true })
+  }
+})()
+
 const tempDirs: string[] = []
 
 afterEach(() => {
@@ -77,7 +92,7 @@ describe("history integrity", () => {
 })
 
 describe("security boundaries", () => {
-  it("rejects workspace symlink escapes", async () => {
+  it.skipIf(!CAN_SYMLINK)("rejects workspace symlink escapes", async () => {
     const root = mkdtempSync(join(tmpdir(), "aurict-boundary-root-"))
     const outside = mkdtempSync(join(tmpdir(), "aurict-boundary-outside-"))
     tempDirs.push(root, outside)

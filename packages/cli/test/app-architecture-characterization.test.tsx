@@ -219,7 +219,7 @@ describe("renderer boundary", () => {
           continue;
         }
         if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx")) continue;
-        const sourcePath = relative(root, path);
+        const sourcePath = relative(root, path).split("\\").join("/");
         if (sourcePath.startsWith("design-system/") || allowed.has(sourcePath)) continue;
         if (/from ["']ink["']/.test(readFileSync(path, "utf8"))) violations.push(sourcePath);
       }

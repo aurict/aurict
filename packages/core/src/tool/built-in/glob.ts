@@ -3,6 +3,7 @@ import { resolve, join, relative } from "path"
 import { readdir }                 from "node:fs/promises"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { resolveAuthorizedFilesystemPath } from "../../security/filesystem-grants.js"
+import { toPosix } from "../../util/paths.js"
 
 const MAX_FILES  = 2_000
 const TIMEOUT_MS = 15_000
@@ -41,7 +42,7 @@ async function* walkFiles(
         yield* walkFiles(join(dir, entry.name), root, signal)
       }
     } else if (entry.isFile()) {
-      yield relative(root, join(dir, entry.name))
+      yield toPosix(relative(root, join(dir, entry.name)))
     }
   }
 }

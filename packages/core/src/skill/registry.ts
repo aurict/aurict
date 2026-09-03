@@ -1,12 +1,13 @@
 import { readdirSync, readFileSync, statSync } from "fs"
 import { join } from "path"
 import { homedir } from "os"
+import { fileURLToPath } from "url"
 import { parseFrontmatter } from "./frontmatter.js"
 import type { SkillDef, SkillDetector } from "./types.js"
 
 const USER_SKILLS_DIR = join(homedir(), ".aurict", "skills")
 
-const LIBRARY = new URL("./library", import.meta.url).pathname
+const LIBRARY = fileURLToPath(new URL("./library", import.meta.url))
 
 // ─── Öncelik tablosu ─────────────────────────────────────────────────────────
 const PRIORITY_OVERRIDES: Record<string, number> = {

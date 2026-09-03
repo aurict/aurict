@@ -58,7 +58,10 @@ export const PermissionStore = {
     for (const candidate of candidates) {
       if (candidate.approved.has(key(tool, pattern))) return true
       for (const dir of candidate.approvedDirs) {
-        const [dirTool, dirPath] = dir.split(":", 2)
+        const idx = dir.indexOf(":")
+        if (idx < 0) continue
+        const dirTool = dir.slice(0, idx)
+        const dirPath = dir.slice(idx + 1)
         if (dirTool === tool && dirPath && isInsideDir(pattern, dirPath)) return true
       }
     }

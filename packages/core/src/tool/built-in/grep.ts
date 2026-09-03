@@ -3,6 +3,7 @@ import { resolve, join, relative, basename } from "path"
 import { readdir, stat } from "node:fs/promises"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { resolveAuthorizedFilesystemPath } from "../../security/filesystem-grants.js"
+import { toPosix } from "../../util/paths.js"
 
 const MAX_MATCHES   = 200
 const MAX_FILE_SIZE = 2_000_000   // 2MB - buyuk/uretilmis dosyalari atla
@@ -40,7 +41,7 @@ async function* walkFiles(
         yield* walkFiles(join(dir, entry.name), root, signal)
       }
     } else if (entry.isFile()) {
-      yield relative(root, join(dir, entry.name))
+      yield toPosix(relative(root, join(dir, entry.name)))
     }
   }
 }

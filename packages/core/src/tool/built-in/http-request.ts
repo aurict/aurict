@@ -1,5 +1,5 @@
 import { z } from "zod"
-import type { ToolDef, ExecuteResult } from "../types.js"
+import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { fetchWithUrlPolicy, readResponseTextLimited } from "../../security/network-policy.js"
 
 const MAX_RESPONSE_BYTES = 2_000_000
@@ -40,7 +40,7 @@ RETURNS: status code, response headers, body (auto-parsed JSON), timing.`,
     follow_redirects: z.boolean().default(true),
   }),
 
-  async execute(args): Promise<ExecuteResult> {
+  async execute(args, ctx: ToolContext): Promise<ExecuteResult> {
     const url    = String(args["url"])
     const method = String(args["method"] ?? "GET").toUpperCase()
     const timeout = Number(args["timeout"] ?? 30000)
@@ -72,11 +72,17 @@ RETURNS: status code, response headers, body (auto-parsed JSON), timing.`,
       }
     }
 
+    // Already cancelled — short-circuit before arming a timer or a listener that
+    // would only be torn down again, and before any request is started.
+    if (ctx.signal.aborted) return { output: "", error: "Request cancelled" }
+
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeout)
+    let timedOut = false
+    const onParentAbort = () => controller.abort()
+    ctx.signal.addEventListener("abort", onParentAbort, { once: true })
+    const timer = setTimeout(() => { timedOut = true; controller.abort() }, timeout)
 
     const start = Date.now()
-    let res: Response
     try {
       const request: RequestInit = {
         method,
@@ -85,38 +91,41 @@ RETURNS: status code, response headers, body (auto-parsed JSON), timing.`,
         redirect: (args["follow_redirects"] as boolean ?? true) ? "follow" : "manual",
         ...(bodyStr === undefined ? {} : { body: bodyStr }),
       }
-      res = await fetchWithUrlPolicy(url, request, {
+      const res = await fetchWithUrlPolicy(url, request, {
         followRedirects: (args["follow_redirects"] as boolean | undefined) ?? true,
       })
+
+      const resHeaders: Record<string, string> = {}
+      res.headers.forEach((v, k) => { resHeaders[k] = v })
+
+      const { text: raw, truncated } = await readResponseTextLimited(res, MAX_RESPONSE_BYTES)
+      let body: unknown = raw
+      const ct = res.headers.get("content-type") ?? ""
+      if (ct.includes("application/json") || (raw.trimStart().startsWith("{") || raw.trimStart().startsWith("["))) {
+        try { body = JSON.parse(raw) } catch { body = raw }
+      }
+
+      const elapsed = Date.now() - start
+      const out: Record<string, unknown> = {
+        status:     res.status,
+        statusText: res.statusText,
+        ok:         res.ok,
+        timing_ms:  elapsed,
+        headers:    resHeaders,
+        body,
+        ...(truncated ? { truncated: true } : {}),
+      }
+
+      return { output: JSON.stringify(out, null, 2) }
     } catch (err: unknown) {
-      clearTimeout(timer)
+      const isAbort = err instanceof Error && err.name === "AbortError"
+      if (isAbort && timedOut) return { output: "", error: `Request timed out after ${timeout}ms` }
+      if (isAbort && ctx.signal.aborted) return { output: "", error: "Request cancelled" }
       const msg = err instanceof Error ? err.message : String(err)
       return { output: "", error: `Request failed: ${msg}` }
     } finally {
       clearTimeout(timer)
+      ctx.signal.removeEventListener("abort", onParentAbort)
     }
-
-    const elapsed = Date.now() - start
-    const resHeaders: Record<string, string> = {}
-    res.headers.forEach((v, k) => { resHeaders[k] = v })
-
-    const { text: raw, truncated } = await readResponseTextLimited(res, MAX_RESPONSE_BYTES)
-    let body: unknown = raw
-    const ct = res.headers.get("content-type") ?? ""
-    if (ct.includes("application/json") || (raw.trimStart().startsWith("{") || raw.trimStart().startsWith("["))) {
-      try { body = JSON.parse(raw) } catch { body = raw }
-    }
-
-    const out: Record<string, unknown> = {
-      status:     res.status,
-      statusText: res.statusText,
-      ok:         res.ok,
-      timing_ms:  elapsed,
-      headers:    resHeaders,
-      body,
-      ...(truncated ? { truncated: true } : {}),
-    }
-
-    return { output: JSON.stringify(out, null, 2) }
   },
 }

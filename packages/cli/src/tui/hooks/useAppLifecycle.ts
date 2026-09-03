@@ -81,7 +81,7 @@ export function useAppLifecycle(params: Params): void {
     return () => {
       clearTimeout(timer);
       process.stdout.off("resize", handler);
-      process.off("SIGWINCH", handler);
+      (process as NodeJS.EventEmitter).off("SIGWINCH", handler);
     };
   }, []);
 

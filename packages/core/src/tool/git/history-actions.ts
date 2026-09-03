@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process"
-import { relative, resolve } from "node:path"
+import { relative, resolve, sep } from "node:path"
 
 export type GitHistoryAction = "pickaxe" | "regex_history" | "blame_range" | "show_at_ref" | "compare_history"
 
@@ -97,7 +97,7 @@ function git(workdir: string, args: string[]): string {
 function repoPath(workdir: string, file: string): string {
   const root = resolve(workdir)
   const absolute = resolve(root, file)
-  if (absolute !== root && !absolute.startsWith(root + "/")) throw new Error(`Path is outside repository: ${file}`)
+  if (absolute !== root && !absolute.startsWith(root + sep)) throw new Error(`Path is outside repository: ${file}`)
   return relative(root, absolute).replaceAll("\\", "/")
 }
 
