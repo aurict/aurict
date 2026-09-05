@@ -13,7 +13,7 @@ The installer selects the matching x64 or arm64 release binary, verifies its SHA
 Install a specific release or change the destination by passing variables to `bash`:
 
 ```bash
-curl -fsSL https://aurict.com/install.sh | AURICT_INSTALL_VERSION=1.2.22 AURICT_INSTALL_DIR=/path/to/bin bash
+curl -fsSL https://aurict.com/install.sh | AURICT_INSTALL_VERSION=1.2.23 AURICT_INSTALL_DIR=/path/to/bin bash
 ```
 
 ### From source

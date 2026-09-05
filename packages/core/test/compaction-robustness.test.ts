@@ -16,6 +16,7 @@ let generateTextCalls = 0
 let generateTextArgs: any[] = []
 
 mock.module("ai", () => ({
+  wrapLanguageModel: ({ model }: { model: unknown }) => model,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   generateText: async (args: any) => {
     generateTextArgs.push(args)

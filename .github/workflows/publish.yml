@@ -110,6 +110,7 @@ jobs:
 
       - name: Populate platform packages
         run: |
+          chmod 755 dist/aurict-linux-x64 dist/aurict-linux-arm64 dist/aurict-darwin-x64 dist/aurict-darwin-arm64
           for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64; do
             mkdir -p "packages/cli-$target/bin"
             cp "dist/aurict-$target" "packages/cli-$target/bin/aurict"

@@ -14,7 +14,7 @@
     },
     "apps/desktop": {
       "name": "hoprel",
-      "version": "1.2.22",
+      "version": "1.2.23",
       "dependencies": {
         "@codemirror/autocomplete": "^6.20.3",
         "@codemirror/commands": "^6.8.0",
@@ -92,7 +92,7 @@
     },
     "apps/web": {
       "name": "web",
-      "version": "1.2.22",
+      "version": "1.2.23",
       "dependencies": {
         "lucide-react": "^1.17.0",
         "next": "16.2.7",
@@ -113,21 +113,21 @@
     },
     "packages/aurict": {
       "name": "aurict",
-      "version": "1.2.22",
+      "version": "1.2.23",
       "bin": {
         "aurict": "./bin/aurict",
       },
       "optionalDependencies": {
-        "@aurict/cli-darwin-arm64": "1.2.22",
-        "@aurict/cli-darwin-x64": "1.2.22",
-        "@aurict/cli-linux-arm64": "1.2.22",
-        "@aurict/cli-linux-x64": "1.2.22",
-        "@aurict/cli-win32-x64": "1.2.22",
+        "@aurict/cli-darwin-arm64": "1.2.23",
+        "@aurict/cli-darwin-x64": "1.2.23",
+        "@aurict/cli-linux-arm64": "1.2.23",
+        "@aurict/cli-linux-x64": "1.2.23",
+        "@aurict/cli-win32-x64": "1.2.23",
       },
     },
     "packages/cli": {
       "name": "@aurict/cli",
-      "version": "1.2.22",
+      "version": "1.2.23",
       "bin": {
         "aurict": "./bin/aurict",
       },
@@ -145,36 +145,36 @@
         "wrap-ansi": "^9.0.2",
       },
       "optionalDependencies": {
-        "@aurict/cli-darwin-arm64": "1.2.22",
-        "@aurict/cli-darwin-x64": "1.2.22",
-        "@aurict/cli-linux-arm64": "1.2.22",
-        "@aurict/cli-linux-x64": "1.2.22",
-        "@aurict/cli-win32-x64": "1.2.22",
+        "@aurict/cli-darwin-arm64": "1.2.23",
+        "@aurict/cli-darwin-x64": "1.2.23",
+        "@aurict/cli-linux-arm64": "1.2.23",
+        "@aurict/cli-linux-x64": "1.2.23",
+        "@aurict/cli-win32-x64": "1.2.23",
       },
     },
     "packages/cli-darwin-arm64": {
       "name": "@aurict/cli-darwin-arm64",
-      "version": "1.2.22",
+      "version": "1.2.23",
     },
     "packages/cli-darwin-x64": {
       "name": "@aurict/cli-darwin-x64",
-      "version": "1.2.22",
+      "version": "1.2.23",
     },
     "packages/cli-linux-arm64": {
       "name": "@aurict/cli-linux-arm64",
-      "version": "1.2.22",
+      "version": "1.2.23",
     },
     "packages/cli-linux-x64": {
       "name": "@aurict/cli-linux-x64",
-      "version": "1.2.22",
+      "version": "1.2.23",
     },
     "packages/cli-win32-x64": {
       "name": "@aurict/cli-win32-x64",
-      "version": "1.2.22",
+      "version": "1.2.23",
     },
     "packages/core": {
       "name": "@aurict/core",
-      "version": "1.2.22",
+      "version": "1.2.23",
       "dependencies": {
         "@ai-sdk/amazon-bedrock": "^4.0.113",
         "@ai-sdk/anthropic": "^1.1.5",

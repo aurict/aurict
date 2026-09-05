@@ -17,6 +17,7 @@ let streamCallCount = 0
 
 mock.module("ai", () => ({
   tool: (def: unknown) => def,
+  wrapLanguageModel: ({ model }: { model: unknown }) => model,
   streamText: () => {
     streamCallCount++
     return {

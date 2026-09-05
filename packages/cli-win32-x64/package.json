@@ -1,6 +1,6 @@
 {
   "name": "@aurict/cli-win32-x64",
-  "version": "1.2.22",
+  "version": "1.2.23",
   "description": "Aurict CLI binary for Windows x64",
   "license": "AGPL-3.0-only",
   "repository": {

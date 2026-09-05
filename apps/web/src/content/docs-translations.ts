@@ -65,7 +65,7 @@ const DOCS_SECTIONS_EN = [
       {
         heading: "Versioned, custom-directory, and removal options",
         body: "The one-line installer accepts a release version and an installation directory through environment variables. It installs only the Aurict binary; removing that binary removes this installation method. npm users can uninstall with npm.",
-        code: "# Install a specific version into a custom user directory\nAURICT_INSTALL_VERSION=1.2.22 AURICT_INSTALL_DIR=~/.local/bin curl -fsSL https://aurict.com/install.sh | bash\n\n# Remove the curl-installer binary\nrm ~/.local/bin/aurict\n\n# Remove the npm package\nnpm uninstall -g aurict",
+        code: "# Install a specific version into a custom user directory\nAURICT_INSTALL_VERSION=1.2.23 AURICT_INSTALL_DIR=~/.local/bin curl -fsSL https://aurict.com/install.sh | bash\n\n# Remove the curl-installer binary\nrm ~/.local/bin/aurict\n\n# Remove the npm package\nnpm uninstall -g aurict",
       },
       {
         heading: "First run",
@@ -336,7 +336,7 @@ const DOCS_SECTIONS_TR = [
       {
         heading: "Sürümlemeli, özel dizinli ve kaldırma seçenekleri",
         body: "Tek satırlık yükleyici, ortam değişkenleri aracılığıyla bir yayın sürümü ve kurulum dizini kabul eder. Yalnızca Aurict ikili dosyasını kurar; bu ikili dosyayı kaldırmak bu kurulum yöntemini kaldırır. npm kullanıcıları npm ile kaldırabilir.",
-        code: "# Install a specific version into a custom user directory\nAURICT_INSTALL_VERSION=1.2.22 AURICT_INSTALL_DIR=~/.local/bin curl -fsSL https://aurict.com/install.sh | bash\n\n# Remove the curl-installer binary\nrm ~/.local/bin/aurict\n\n# Remove the npm package\nnpm uninstall -g aurict",
+        code: "# Install a specific version into a custom user directory\nAURICT_INSTALL_VERSION=1.2.23 AURICT_INSTALL_DIR=~/.local/bin curl -fsSL https://aurict.com/install.sh | bash\n\n# Remove the curl-installer binary\nrm ~/.local/bin/aurict\n\n# Remove the npm package\nnpm uninstall -g aurict",
       },
       {
         heading: "İlk çalıştırma",

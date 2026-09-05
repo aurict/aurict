@@ -1,6 +1,10 @@
-import { describe, expect, it, afterEach } from "bun:test"
+import { describe, expect, it, beforeEach, afterEach } from "bun:test"
 import { analyzePromptSections } from "../src/agent/prompt-diagnostics.js"
 import { clearPromptCacheHealth, promptCacheHealthStats, recordPromptCacheHealth } from "../src/agent/prompt-cache-health.js"
+
+beforeEach(() => {
+  clearPromptCacheHealth()
+})
 
 afterEach(() => {
   clearPromptCacheHealth()

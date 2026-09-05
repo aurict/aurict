@@ -29,6 +29,7 @@ let streamSpecs: StreamSpec[] = []
 
 mock.module("ai", () => ({
   tool: (def: unknown) => def,
+  wrapLanguageModel: ({ model }: { model: unknown }) => model,
   streamText: (args: { model: unknown }) => {
     const spec = streamSpecs[streamCallCount] ?? streamSpecs[streamSpecs.length - 1]!
     // Mock model'ler kendi id'lerini taşır (bkz. createMockProvider) — hangi
