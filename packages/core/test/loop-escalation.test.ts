@@ -4,7 +4,8 @@
  * buildThinkingOptions karmaşıklık skorundan türetilmiş bir bütçeyle çağrılır;
  * escalation kapalıyken (varsayılan) hiç çağrılmaz (opts.effort verilmemişse).
  */
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, afterEach, afterAll, mock } from "bun:test"
+import * as actualAI from "ai"
 import { ProviderRegistry } from "../src/provider/registry.js"
 import { createMockProvider, createTempDir } from "./helpers.js"
 import { clearPromptSectionCache } from "../src/agent/prompt-sections.js"
@@ -21,8 +22,8 @@ let streamSpecs: StreamSpec[] = []
 let streamCallCount = 0
 
 mock.module("ai", () => ({
+  ...actualAI,
   tool: (def: unknown) => def,
-  wrapLanguageModel: ({ model }: { model: unknown }) => model,
   streamText: () => {
     const spec = streamSpecs[streamCallCount] ?? streamSpecs[streamSpecs.length - 1]!
     streamCallCount++
@@ -41,6 +42,8 @@ mock.module("ai", () => ({
     throw new Error("generateText should not be called in this streaming test")
   },
 }))
+
+afterAll(() => mock.restore())
 
 const { runAgent } = await import("../src/agent/loop.js")
 

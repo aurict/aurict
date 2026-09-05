@@ -9,7 +9,8 @@
  * çağırdığını, (3) tool call sonrası hatada retry/fallback YAPMADIĞINI
  * (NonRetryableStreamError) uçtan uca kanıtlar.
  */
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, afterEach, afterAll, mock } from "bun:test"
+import * as actualAI from "ai"
 import { ProviderRegistry } from "../src/provider/registry.js"
 import { createMockProvider, createTempDir } from "./helpers.js"
 import { clearPromptSectionCache } from "../src/agent/prompt-sections.js"
@@ -28,8 +29,8 @@ let streamCallProviders: string[] = []
 let streamSpecs: StreamSpec[] = []
 
 mock.module("ai", () => ({
+  ...actualAI,
   tool: (def: unknown) => def,
-  wrapLanguageModel: ({ model }: { model: unknown }) => model,
   streamText: (args: { model: unknown }) => {
     const spec = streamSpecs[streamCallCount] ?? streamSpecs[streamSpecs.length - 1]!
     // Mock model'ler kendi id'lerini taşır (bkz. createMockProvider) — hangi
@@ -51,6 +52,8 @@ mock.module("ai", () => ({
     throw new Error("generateText should not be called in this streaming test")
   },
 }))
+
+afterAll(() => mock.restore())
 
 const { runAgent, withRetry } = await import("../src/agent/loop.js")
 const { NonRetryableStreamError } = await import("../src/provider/fallback.js")

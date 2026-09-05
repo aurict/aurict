@@ -7,7 +7,8 @@
  * transient hatalarda yeniden deneme yapılır, iptal anında fırlatılır, özet zorunlu
  * bölümleri içermiyorsa tek hedefli retry istenir.
  */
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, afterEach, afterAll, mock } from "bun:test"
+import * as actualAI from "ai"
 
 // --- `ai` mock: generateText'i bir kuyruktan döndür/throwla ----------------
 let generateTextQueue: Array<{ text?: string; error?: Error }> = []
@@ -16,7 +17,7 @@ let generateTextCalls = 0
 let generateTextArgs: any[] = []
 
 mock.module("ai", () => ({
-  wrapLanguageModel: ({ model }: { model: unknown }) => model,
+  ...actualAI,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   generateText: async (args: any) => {
     generateTextArgs.push(args)
@@ -27,6 +28,8 @@ mock.module("ai", () => ({
     return { text: resp?.text ?? "" }
   },
 }))
+
+afterAll(() => mock.restore())
 
 const {
   runSummaryWithRetry,

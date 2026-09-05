@@ -3,7 +3,8 @@
  * uçtan uca doğrular (onPromptDiagnostics callback'i üzerinden section adlarını
  * gözlemleyerek — runtimeSystemSections doğrudan dışa açık değil).
  */
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, afterEach, afterAll, mock } from "bun:test"
+import * as actualAI from "ai"
 import { ProviderRegistry } from "../src/provider/registry.js"
 import { createMockProvider, createTempDir } from "./helpers.js"
 import { clearPromptSectionCache } from "../src/agent/prompt-sections.js"
@@ -16,8 +17,8 @@ afterEach(() => clearPromptSectionCache())
 let streamCallCount = 0
 
 mock.module("ai", () => ({
+  ...actualAI,
   tool: (def: unknown) => def,
-  wrapLanguageModel: ({ model }: { model: unknown }) => model,
   streamText: () => {
     streamCallCount++
     return {
@@ -35,6 +36,8 @@ mock.module("ai", () => ({
     throw new Error("generateText should not be called in this streaming test")
   },
 }))
+
+afterAll(() => mock.restore())
 
 const { runAgent } = await import("../src/agent/loop.js")
 
