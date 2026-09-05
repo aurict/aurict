@@ -165,7 +165,7 @@ curl -fsSL https://aurict.com/install.sh | bash
 Install a specific release or choose another directory by passing variables to `bash`:
 
 ```bash
-curl -fsSL https://aurict.com/install.sh | AURICT_INSTALL_VERSION=1.2.21 AURICT_INSTALL_DIR=/path/to/bin bash
+curl -fsSL https://aurict.com/install.sh | AURICT_INSTALL_VERSION=1.2.22 AURICT_INSTALL_DIR=/path/to/bin bash
 ```
 
 ### Compile from source

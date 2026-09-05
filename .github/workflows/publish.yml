@@ -12,8 +12,83 @@ on:
         default: "1.0.3"
 
 jobs:
-  build-and-publish:
-    name: Build & Publish
+  build-non-macos:
+    name: Build non-macOS binaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build non-macOS binaries
+        run: |
+          bun run scripts/build-all.ts linux-x64
+          bun run scripts/build-all.ts linux-arm64
+          bun run scripts/build-all.ts win32-x64
+
+      - name: Smoke test (linux-x64)
+        run: ./dist/aurict-linux-x64 --version
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-non-macos
+          path: |
+            dist/aurict-linux-x64
+            dist/aurict-linux-arm64
+            dist/aurict-win32-x64.exe
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-x64
+            runner: macos-15-intel
+          - target: darwin-arm64
+            runner: macos-14
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build native binary
+        run: bun run scripts/build-all.ts ${{ matrix.target }}
+
+      - name: Sign and verify binary
+        run: |
+          binary="dist/aurict-${{ matrix.target }}"
+          codesign --force --sign - "$binary"
+          codesign --verify --strict --verbose=2 "$binary"
+          "$binary" --version
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/aurict-${{ matrix.target }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish verified binaries
+    needs: [build-non-macos, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,16 +99,24 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.12
+          bun-version: 1.3.14
 
-      - name: Install dependencies
-        run: bun install
+      - name: Download verified binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
 
-      - name: Build all platform binaries
-        run: bun run scripts/build-all.ts
-
-      - name: Smoke test (linux-x64)
-        run: ./dist/aurict-linux-x64 --version
+      - name: Populate platform packages
+        run: |
+          for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64; do
+            mkdir -p "packages/cli-$target/bin"
+            cp "dist/aurict-$target" "packages/cli-$target/bin/aurict"
+            chmod 755 "packages/cli-$target/bin/aurict"
+          done
+          mkdir -p packages/cli-win32-x64/bin
+          cp dist/aurict-win32-x64.exe packages/cli-win32-x64/bin/aurict.exe
 
       - name: Create release checksum manifest
         run: |
@@ -65,6 +148,9 @@ jobs:
               })
             "
           done
+
+      - name: Verify release version contract
+        run: bun run check:version -- --binary dist/aurict-linux-x64
 
       - name: Publish platform packages
         run: |

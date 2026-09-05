@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict"
 
-const { execFileSync } = require("node:child_process")
+const { spawnSync } = require("node:child_process")
 const path = require("node:path")
 const os   = require("node:os")
 
@@ -38,8 +38,13 @@ try {
   process.exit(1)
 }
 
-try {
-  execFileSync(binPath, process.argv.slice(2), { stdio: "inherit" })
-} catch (err) {
-  process.exit(err.status ?? 1)
+const result = spawnSync(binPath, process.argv.slice(2), { stdio: "inherit" })
+if (result.error) {
+  console.error(`aurict: failed to execute platform binary: ${result.error.message}`)
+  process.exit(1)
 }
+if (result.signal) {
+  console.error(`aurict: platform binary terminated by ${result.signal}`)
+  process.exit(1)
+}
+process.exit(result.status ?? 1)
