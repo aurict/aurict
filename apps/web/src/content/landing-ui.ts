@@ -75,7 +75,7 @@ const copy = {
     sections: {
       ecosystem: ["the aurict ecosystem", "Choose the surface. Keep the context.", "Each product has a distinct job. The same Aurict identity, providers, and work travel with you."],
       desktopWorkspace: "desktop workspace", hoprelBody: "A local-first AI workspace for conversations, files, artifacts, Design Studio, Finance Desk, and remote control.", downloadHoprel: "download Hoprel",
-      nativeRuntime: "native runtime", terminalBody: "The open-source runtime for agentic coding, multi-agent execution, MCP, local context, scoped Project Auto, and explicit approvals.", installShell: "install in your shell",
+      nativeRuntime: "native runtime", terminalBody: "The open-source runtime for agentic coding, multi-agent execution, MCP, local context, scoped Project Auto, and explicit approvals.", installShell: "explore the open-source terminal agent",
       companion: "companion", mobileCardBody: "BYOK chat, research, document generation, and live remote control when your desktop work needs your attention.", visitMobile: "visit Aurict Mobile",
       subProduct: "aurict sub-product", bondleyBody: "Bonds, yields, and spreads in one research workspace, turning market data into clear, comparable analysis.", exploreBondley: "explore Bondley",
       why: ["why aurict", "Designed to understand the work before it answers the prompt.", "Aurict does not replace one chat window with another. It makes your project, risk, and the shape of the work visible."],

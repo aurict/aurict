@@ -2,6 +2,8 @@
 
 The public Aurict website is a Next.js 16 application. It contains the product landing page, AI-coding-agent and terminal-agent search hubs, documentation, comparisons, use cases, release notes, downloads, legal pages, and account flows.
 
+The root layout loads Source Serif 4 and IBM Plex Mono through `next/font` so the production build serves the fonts from the same origin. Keep those font declarations in the root layout rather than adding runtime Google Fonts stylesheets to individual pages.
+
 ## Development
 
 ```bash

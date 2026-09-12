@@ -17,7 +17,7 @@ const BILINGUAL_LOCALES: readonly AppLocale[] = ["en", "tr"]
 
 const staticRoutes: SitemapRoute[] = [
   { path: "/", lastModified: "2026-09-02", changeFrequency: "weekly", priority: 1, locales: SUPPORTED_LOCALES },
-  { path: "/terminal-agent", lastModified: "2026-09-02", changeFrequency: "weekly", priority: 0.95, locales: SUPPORTED_LOCALES },
+  { path: "/terminal-agent", lastModified: "2026-09-11", changeFrequency: "weekly", priority: 0.95, locales: SUPPORTED_LOCALES },
   { path: "/ai-coding-agent", lastModified: "2026-09-02", changeFrequency: "weekly", priority: 0.95 },
   { path: "/docs", lastModified: "2026-07-22", changeFrequency: "weekly", priority: 0.9 },
   { path: "/about", lastModified: "2026-07-03", changeFrequency: "monthly", priority: 0.8 },

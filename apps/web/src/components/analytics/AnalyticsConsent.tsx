@@ -8,7 +8,9 @@ import type { AppLocale } from "@/i18n/config"
 const measurementId = "G-FJ9YLY6NMX"
 const consentStorageKey = "aurict:analytics-consent"
 const consentChangeEvent = "aurict:analytics-consent-change"
+const analyticsReadyEvent = "aurict:analytics-ready"
 const googleTagId = "aurict-google-tag"
+const analyticsDelayMs = 4_000
 
 type Consent = "granted" | "denied"
 type AnalyticsEventParameters = Record<string, string | number | boolean>
@@ -144,17 +146,31 @@ export function AnalyticsConsent() {
   const t = copy[locale]
 
   useEffect(() => {
-    bootstrapGoogleTag()
+    // Analytics is non-critical for rendering. Starting it after the initial
+    // content window keeps the third-party script off the LCP path on mobile.
+    const timeoutId = window.setTimeout(() => {
+      bootstrapGoogleTag()
+      window.dispatchEvent(new Event(analyticsReadyEvent))
+    }, analyticsDelayMs)
+
+    return () => window.clearTimeout(timeoutId)
   }, [])
 
   useEffect(() => {
-    if (!hydrated || !pathname || !window.gtag) return
+    if (!hydrated || !pathname) return
 
-    window.gtag("event", "page_view", {
-      page_location: window.location.href,
-      page_path: pathname,
-      page_title: document.title,
-    })
+    const sendPageView = () => {
+      window.gtag?.("event", "page_view", {
+        page_location: window.location.href,
+        page_path: pathname,
+        page_title: document.title,
+      })
+    }
+
+    if (window.gtag) sendPageView()
+    else window.addEventListener(analyticsReadyEvent, sendPageView, { once: true })
+
+    return () => window.removeEventListener(analyticsReadyEvent, sendPageView)
   }, [hydrated, pathname])
 
   function choose(nextConsent: Consent) {
