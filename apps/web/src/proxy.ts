@@ -7,11 +7,9 @@ function preferredLocale(request: NextRequest): AppLocale {
   const savedLocale = request.cookies.get(localeCookie)?.value
   if (isAppLocale(savedLocale)) return savedLocale
 
-  const acceptedLanguages = request.headers.get("accept-language")
-    ?.split(",")
-    .map((entry) => entry.trim().split(";")[0].toLowerCase().split("-")[0])
-
-  return acceptedLanguages?.find(isAppLocale) ?? DEFAULT_LOCALE
+  // Keep the unprefixed URL stable and crawlable as English. A visitor's
+  // explicit choice in the locale switcher is persisted by the cookie above.
+  return DEFAULT_LOCALE
 }
 
 function pathLocale(pathname: string): AppLocale | undefined {

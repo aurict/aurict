@@ -92,6 +92,46 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+.evidenceGrid {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.evidenceCard {
+  background: var(--bg-card);
+  color: inherit;
+  min-height: 210px;
+  padding: 26px;
+  text-decoration: none;
+  transition: background-color .2s ease;
+}
+
+.evidenceCard:hover {
+  background: color-mix(in oklch, var(--accent) 7%, var(--bg-card));
+}
+
+.evidenceCard h3 {
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 21px;
+  margin: 0 0 12px;
+}
+
+.evidenceCard p {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.evidenceCard span {
+  color: var(--accent);
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-top: 22px;
+}
+
 .card {
   background: var(--bg-card);
   min-height: 190px;
@@ -226,6 +266,7 @@
 @media (max-width: 820px) {
   .proof,
   .cardGrid,
+  .evidenceGrid,
   .workflow {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -248,6 +289,7 @@
 @media (max-width: 560px) {
   .proof,
   .cardGrid,
+  .evidenceGrid,
   .workflow,
   .useCases,
   .faq {

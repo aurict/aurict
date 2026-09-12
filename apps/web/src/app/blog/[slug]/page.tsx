@@ -71,6 +71,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               return <ul key={index} className="marketing-list">{block.items?.map((item) => <li key={item}>{item}</li>)}</ul>
             })}
           </div>
+          {!tr && (
+            <aside className="marketing-card" style={{ marginTop: 48, padding: "26px 28px" }}>
+              <p className="marketing-eyebrow" style={{ marginBottom: 10 }}>open-source terminal agent</p>
+              <h2 style={{ color: "var(--text)", fontFamily: "var(--font-serif)", fontSize: 25, marginBottom: 10 }}>Run the workflow in your own terminal.</h2>
+              <p className="marketing-copy" style={{ marginBottom: 18 }}>Explore how Aurict combines repository context, specialist agents, model-provider choice, explicit approvals, and verification in an inspectable terminal runtime.</p>
+              <Link href="/terminal-agent" style={{ color: "var(--accent)", fontFamily: "var(--font-mono)", fontSize: 13, textDecoration: "none" }}>Explore the open-source terminal agent →</Link>
+            </aside>
+          )}
           <div style={{ marginTop: 64, paddingTop: 32, borderTop: "1px solid var(--border)" }}><Link href="/blog" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontFamily: "var(--font-mono)", color: "var(--accent)", textDecoration: "none" }}>← {tr ? "Blog'a dön" : "Back to Blog"}</Link></div>
         </article>
       </main>

@@ -35,6 +35,8 @@ function structuredData(locale: AppLocale) {
         name: copy.metadata.title,
         description: copy.metadata.description,
         inLanguage: locale,
+        dateModified: "2026-09-11",
+        keywords: copy.metadata.keywords.join(", "),
         isPartOf: { "@id": "https://aurict.com/#website" },
         mainEntity: { "@id": "https://aurict.com/#software" },
       },
@@ -52,6 +54,8 @@ function structuredData(locale: AppLocale) {
         installUrl: "https://aurict.com/install.sh",
         codeRepository: "https://github.com/aurict/aurict",
         license: "https://www.gnu.org/licenses/agpl-3.0.html",
+        isAccessibleForFree: true,
+        sameAs: ["https://github.com/aurict/aurict", "https://www.npmjs.com/package/aurict"],
         featureList: copy.capabilities.items.map((item) => item.title),
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
         author: { "@type": "Organization", name: "Aurict", url: "https://aurict.com" },
@@ -103,6 +107,20 @@ export default async function TerminalAgentPage() {
           <h2 className="marketing-section-title">{copy.definition.title}</h2>
           {copy.definition.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
         </section>
+
+        {copy.evidence && (
+          <section className={styles.section}>
+            <SectionHeader eyebrow={copy.evidence.eyebrow} intro={copy.evidence.intro} title={copy.evidence.title} />
+            <div className={`marketing-grid-line ${styles.evidenceGrid}`}>
+              {copy.evidence.items.map((item) => {
+                const content = <><h3>{item.title}</h3><p>{item.body}</p><span>{item.label} →</span></>
+                return item.external
+                  ? <a className={styles.evidenceCard} href={item.href} key={item.title} rel="noopener noreferrer" target="_blank">{content}</a>
+                  : <Link className={styles.evidenceCard} href={item.href} key={item.title}>{content}</Link>
+              })}
+            </div>
+          </section>
+        )}
 
         <section className={styles.section}>
           <SectionHeader eyebrow={copy.capabilities.eyebrow} intro={copy.capabilities.intro} title={copy.capabilities.title} />

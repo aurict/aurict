@@ -24,8 +24,6 @@
   --error: oklch(0.68 0.17 25);
   --shadow-soft: 0 24px 80px oklch(0 0 0 / 0.36);
   --shadow-hard: 0 40px 120px oklch(0 0 0 / 0.52);
-  --font-serif: "Source Serif 4";
-  --font-mono: "IBM Plex Mono";
   --font-geist-mono: var(--font-mono);
   --font-geist-sans: var(--font-serif);
 }

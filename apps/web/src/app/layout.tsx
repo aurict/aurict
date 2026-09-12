@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { IBM_Plex_Mono, Source_Serif_4 } from "next/font/google"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
 import { ScrollProgress } from "@/components/ui/ScrollProgress"
@@ -9,6 +10,19 @@ import { AnalyticsConsent } from "@/components/analytics/AnalyticsConsent"
 import "./globals.css"
 
 const BASE_URL = "https://aurict.com"
+
+const sourceSerif = Source_Serif_4({
+  display: "swap",
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-serif",
+})
+
+const ibmPlexMono = IBM_Plex_Mono({
+  display: "swap",
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-mono",
+  weight: ["400", "500", "600", "700"],
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -116,13 +130,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [locale, messages] = await Promise.all([getLocale(), getMessages()])
 
   return (
-    <html lang={locale}>
+    <html className={`${sourceSerif.variable} ${ibmPlexMono.variable}`} lang={locale}>
       <head>
-        {/* Preconnect — reduce latency for external origins */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font -- next/font fetches Google Fonts during build; runtime link keeps offline builds stable. */}
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link rel="dns-prefetch" href="https://github.com" />
         <link rel="dns-prefetch" href="https://registry.npmjs.org" />
         <link rel="icon" href="/aurict-logo-v5.svg" type="image/svg+xml" />
