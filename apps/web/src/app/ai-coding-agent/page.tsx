@@ -6,12 +6,10 @@ import { Footer } from "@/components/sections/Footer"
 import { JsonLd } from "@/components/seo/JsonLd"
 import { Breadcrumb } from "@/components/ui/Breadcrumb"
 import { localizeAiCodingAgent } from "@/content/ai-coding-agent"
-import type { AppLocale } from "@/i18n/config"
+import { SUPPORTED_LOCALES, type AppLocale } from "@/i18n/config"
 import { localizedMetadata, localizedUrl } from "@/i18n/metadata"
 import { Link } from "@/i18n/navigation"
 import styles from "../terminal-agent/TerminalAgentPage.module.css"
-
-const TRANSLATED_LOCALES = ["en", "tr"] as const
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale() as AppLocale
@@ -19,38 +17,37 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return localizedMetadata(locale, "/ai-coding-agent", metadata.title, metadata.description, {
     keywords: metadata.keywords,
-    translatedLocales: TRANSLATED_LOCALES,
+    translatedLocales: SUPPORTED_LOCALES,
   })
 }
 
 function structuredData(locale: AppLocale) {
   const copy = localizeAiCodingAgent(locale)
-  const contentLocale = locale === "tr" ? "tr" : "en"
-  const url = localizedUrl("/ai-coding-agent", contentLocale)
+  const url = localizedUrl("/ai-coding-agent", locale)
 
   return {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "WebPage", "@id": `${url}#webpage`, url, name: copy.metadata.title,
-        description: copy.metadata.description, inLanguage: contentLocale,
+        description: copy.metadata.description, inLanguage: locale,
         isPartOf: { "@id": "https://aurict.com/#website" }, mainEntity: { "@id": "https://aurict.com/#software" },
       },
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Aurict", item: localizedUrl("/", contentLocale) },
+          { "@type": "ListItem", position: 1, name: "Aurict", item: localizedUrl("/", locale) },
           { "@type": "ListItem", position: 2, name: copy.breadcrumb, item: url },
         ],
       },
       {
         "@type": "ItemList", name: copy.alternatives.title,
         itemListElement: copy.alternatives.links.map((item, index) => ({
-          "@type": "ListItem", position: index + 1, name: item.label, url: localizedUrl(item.href, contentLocale),
+          "@type": "ListItem", position: index + 1, name: item.label, url: localizedUrl(item.href, locale),
         })),
       },
       {
-        "@type": "FAQPage", inLanguage: contentLocale,
+        "@type": "FAQPage", inLanguage: locale,
         mainEntity: copy.faq.items.map((item) => ({
           "@type": "Question", name: item.question,
           acceptedAnswer: { "@type": "Answer", text: item.answer },

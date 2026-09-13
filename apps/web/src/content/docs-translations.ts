@@ -1,4 +1,6 @@
 import type { AppLocale } from "@/i18n/routing"
+import { localizedUrl } from "@/i18n/metadata"
+import { localizeEnglish, localizeEnglishContent } from "@/i18n/content"
 import { productFacts, providerCount } from "@/content/product-facts"
 
 const providerCode = productFacts.providers
@@ -548,27 +550,33 @@ const DOCS_SECTIONS_TR = [
 ]
 
 export function localizeDocsSections(locale: AppLocale) {
-  return locale === "tr" ? DOCS_SECTIONS_TR : DOCS_SECTIONS_EN
+  if (locale === "tr") return DOCS_SECTIONS_TR
+  return localizeEnglishContent(locale, DOCS_SECTIONS_EN)
 }
 
 export function localizeDocsBreadcrumbJsonLd(locale: AppLocale) {
+  const contentLocale = locale
   return {
     "@context": "https://schema.org",
     "@type":    "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": locale === "tr" ? "Ana Sayfa" : "Home", "item": "https://aurict.com" },
-      { "@type": "ListItem", "position": 2, "name": locale === "tr" ? "Belgeler" : "Documentation", "item": "https://aurict.com/docs" },
+      { "@type": "ListItem", "position": 1, "name": contentLocale === "tr" ? "Ana Sayfa" : localizeEnglish(locale, "Home"), "item": localizedUrl("/", contentLocale) },
+      { "@type": "ListItem", "position": 2, "name": contentLocale === "tr" ? "Belgeler" : localizeEnglish(locale, "Documentation"), "item": localizedUrl("/docs", contentLocale) },
     ],
   }
 }
 
 export function localizeDocsArticleJsonLd(locale: AppLocale) {
+  const contentLocale = locale
+  const url = localizedUrl("/docs", contentLocale)
   return {
     "@context":    "https://schema.org",
     "@type":       "TechArticle",
-    "headline":    locale === "tr" ? "Aurict Belgeleri — Başlangıç" : "Aurict Documentation — Getting Started",
-    "description": locale === "tr" ? "Aurict terminal yapay zeka kodlama asistanı için eksiksiz kurulum, yapılandırma ve genişletme rehberi." : "Complete installation, configuration, and extension guide for Aurict terminal AI coding assistant.",
-    "url":         "https://aurict.com/docs",
+    "headline":    contentLocale === "tr" ? "Aurict Belgeleri — Başlangıç" : localizeEnglish(locale, "Aurict Documentation — Getting Started"),
+    "description": contentLocale === "tr" ? "Aurict terminal yapay zeka kodlama asistanı için eksiksiz kurulum, yapılandırma ve genişletme rehberi." : localizeEnglish(locale, "Complete installation, configuration, and extension guide for Aurict terminal AI coding assistant."),
+    "inLanguage":  contentLocale,
+    "url":         url,
+    "mainEntityOfPage": { "@type": "WebPage", "@id": `${url}#webpage` },
     "author": { "@type": "Organization", "name": "aurict", "url": "https://github.com/aurict" },
     "publisher": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.com" },
     "datePublished": "2026-06-07",

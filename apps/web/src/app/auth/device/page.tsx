@@ -4,16 +4,17 @@ import { getLocale } from "next-intl/server"
 import { localizedMetadata } from "@/i18n/metadata"
 import type { AppLocale } from "@/i18n/routing"
 import { DeviceLogin } from "@/components/auth/DeviceLogin"
+import { localizeEnglish } from "@/i18n/content"
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = (await getLocale()) as AppLocale
   const base = localizedMetadata(
     locale,
     "/auth/device",
-    locale === "tr" ? "CLI tarayıcı girişi" : "CLI browser login",
+    locale === "tr" ? "CLI tarayıcı girişi" : localizeEnglish(locale, "CLI browser login"),
     locale === "tr"
       ? "Bir Aurict CLI tarayıcı giriş isteğini yetkilendir."
-      : "Authorize an Aurict CLI browser login request.",
+      : localizeEnglish(locale, "Authorize an Aurict CLI browser login request."),
   )
   return { ...base, robots: { index: false, follow: false } }
 }

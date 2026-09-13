@@ -4,6 +4,7 @@ import { AuthForm } from "@/components/auth/AuthForm"
 import { getLocale } from "next-intl/server"
 import type { AppLocale } from "@/i18n/routing"
 import { localizedMetadata } from "@/i18n/metadata"
+import { localizeEnglish } from "@/i18n/content"
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = (await getLocale()) as AppLocale
@@ -11,8 +12,8 @@ export async function generateMetadata(): Promise<Metadata> {
     ...localizedMetadata(
       locale,
       "/login",
-      locale === "tr" ? "Giriş yap" : "Sign in",
-      locale === "tr" ? "Aurict hesabınıza giriş yapın." : "Sign in to your Aurict account.",
+      locale === "tr" ? "Giriş yap" : localizeEnglish(locale, "Sign in"),
+      locale === "tr" ? "Aurict hesabınıza giriş yapın." : localizeEnglish(locale, "Sign in to your Aurict account."),
     ),
     robots: { index: false, follow: false },
   }

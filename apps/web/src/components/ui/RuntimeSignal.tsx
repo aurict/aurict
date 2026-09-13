@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useLocale } from "next-intl"
+import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglish } from "@/i18n/client-content"
 
 const route = `/${String.fromCharCode(99, 117, 114, 115, 111, 114)}`
 const storageKey = [97, 49, 49, 121, 58, 109, 111, 116, 105, 111, 110, 58, 114, 111, 117, 116, 101]
@@ -11,7 +13,9 @@ const sequence = [97, 117, 114, 105, 99, 116]
 const maxGapMs = 1700
 
 export function RuntimeSignal() {
-  const tr = useLocale() === "tr"
+  const locale = useLocale() as AppLocale
+  const tr = locale === "tr"
+  const t = (source: string) => localizeEnglish(locale, source)
   const [active, setActive] = useState(false)
   const indexRef = useRef(0)
   const lastAtRef = useRef(0)
@@ -61,9 +65,9 @@ export function RuntimeSignal() {
     <div className="runtime-signal" role="status" aria-live="polite">
       <div className="runtime-signal-panel mono">
         <div>{String.fromCharCode(...sequence)}<span className="aur-cursor">█</span></div>
-        <div>{tr ? "dizi kabul edildi" : "sequence accepted"}</div>
-        <div>{tr ? "imleç eşitlendi" : "cursor synchronized"}</div>
-        <div>{tr ? "yükseliş kanalı açılıyor" : "opening ascent channel"}</div>
+        <div>{tr ? "dizi kabul edildi" : t("sequence accepted")}</div>
+        <div>{tr ? "imleç eşitlendi" : t("cursor synchronized")}</div>
+        <div>{tr ? "yükseliş kanalı açılıyor" : t("opening ascent channel")}</div>
       </div>
     </div>
   )

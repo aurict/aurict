@@ -1,27 +1,28 @@
 import { ImageResponse } from "next/og"
 import { getLocale } from "next-intl/server"
+import type { AppLocale } from "@/i18n/config"
 
 export const runtime     = "edge"
 export const alt         = "Aurict — Terminal AI Coding Assistant"
 export const size        = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
-export default async function OgImage() {
-  let tr = false
-  try {
-    tr = (await getLocale()) === "tr"
-  } catch {
-    tr = false
-  }
+const copy: Record<AppLocale, { badge: string; headline: string; tagline: string; stats: [string, string, string] }> = {
+  en: { badge: "Latest release · Open Source", headline: "Coding Assistant", tagline: "Open-source · Multi-agent · Provider choice · No IDE required", stats: ["specialist agents", "contextual skills", "native platforms"] },
+  tr: { badge: "En son sürüm · Açık Kaynak", headline: "Kodlama Asistanı", tagline: "Açık kaynak · Çoklu ajan · Sağlayıcı seçimi · IDE gerekmez", stats: ["uzman ajan", "bağlamsal yetenek", "yerel platform"] },
+  de: { badge: "Neueste Version · Open Source", headline: "Coding-Assistent", tagline: "Open Source · Multi-Agent · Anbieterwahl · Keine IDE erforderlich", stats: ["Spezialagenten", "kontextbezogene Skills", "native Plattformen"] },
+  fr: { badge: "Dernière version · Open source", headline: "Assistant de code", tagline: "Open source · Multi-agent · Choix du fournisseur · Aucun IDE requis", stats: ["agents spécialisés", "compétences contextuelles", "plateformes natives"] },
+  es: { badge: "Última versión · Código abierto", headline: "Asistente de código", tagline: "Código abierto · Multiagente · Elección de proveedor · Sin IDE", stats: ["agentes especialistas", "habilidades contextuales", "plataformas nativas"] },
+}
 
-  const badge     = tr ? "En son sürüm · Açık Kaynak" : "Latest release · Open Source"
-  const headline2 = tr ? "Kodlama Asistanı" : "Coding Assistant"
-  const tagline   = tr
-    ? "Açık kaynak · Çoklu ajan · Sağlayıcı seçimi · IDE gerekmez"
-    : "Open-source · Multi-agent · Provider choice · No IDE required"
-  const statLabels = tr
-    ? ["uzman ajan", "bağlamsal yetenek", "yerel platform"]
-    : ["specialist agents", "contextual skills", "native platforms"]
+export default async function OgImage() {
+  let locale: AppLocale = "en"
+  try {
+    locale = await getLocale() as AppLocale
+  } catch {
+    locale = "en"
+  }
+  const { badge, headline: headline2, tagline, stats: statLabels } = copy[locale]
 
   return new ImageResponse(
     (

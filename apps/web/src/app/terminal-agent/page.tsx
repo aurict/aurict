@@ -108,19 +108,17 @@ export default async function TerminalAgentPage() {
           {copy.definition.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
         </section>
 
-        {copy.evidence && (
-          <section className={styles.section}>
-            <SectionHeader eyebrow={copy.evidence.eyebrow} intro={copy.evidence.intro} title={copy.evidence.title} />
-            <div className={`marketing-grid-line ${styles.evidenceGrid}`}>
-              {copy.evidence.items.map((item) => {
-                const content = <><h3>{item.title}</h3><p>{item.body}</p><span>{item.label} →</span></>
-                return item.external
-                  ? <a className={styles.evidenceCard} href={item.href} key={item.title} rel="noopener noreferrer" target="_blank">{content}</a>
-                  : <Link className={styles.evidenceCard} href={item.href} key={item.title}>{content}</Link>
-              })}
-            </div>
-          </section>
-        )}
+        <section className={styles.section}>
+          <SectionHeader eyebrow={copy.evidence.eyebrow} intro={copy.evidence.intro} title={copy.evidence.title} />
+          <div className={`marketing-grid-line ${styles.evidenceGrid}`}>
+            {copy.evidence.items.map((item) => {
+              const content = <><h3>{item.title}</h3><p>{item.body}</p><span>{item.label} →</span></>
+              return item.external
+                ? <a className={styles.evidenceCard} href={item.href} key={item.title} rel="noopener noreferrer" target="_blank">{content}</a>
+                : <Link className={styles.evidenceCard} href={item.href} key={item.title}>{content}</Link>
+            })}
+          </div>
+        </section>
 
         <section className={styles.section}>
           <SectionHeader eyebrow={copy.capabilities.eyebrow} intro={copy.capabilities.intro} title={copy.capabilities.title} />

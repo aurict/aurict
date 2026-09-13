@@ -1,4 +1,5 @@
 import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglishContent } from "@/i18n/client-content"
 
 export interface CommandItem {
   label: string
@@ -77,5 +78,6 @@ export const COMMANDS_TR: CommandItem[] = [
 ]
 
 export function localizeCommands(locale: AppLocale | string): CommandItem[] {
-  return locale === "tr" ? COMMANDS_TR : COMMANDS_EN
+  if (locale === "tr") return COMMANDS_TR
+  return localizeEnglishContent(locale as AppLocale, COMMANDS_EN)
 }

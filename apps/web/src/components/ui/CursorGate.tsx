@@ -4,6 +4,8 @@ import type { CSSProperties } from "react"
 import { useEffect, useState } from "react"
 import { useLocale } from "next-intl"
 import { Link } from "@/i18n/navigation"
+import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglish } from "@/i18n/client-content"
 
 const storageKey = [97, 49, 49, 121, 58, 109, 111, 116, 105, 111, 110, 58, 114, 111, 117, 116, 101]
   .map((code) => String.fromCharCode(code))
@@ -23,8 +25,24 @@ const manifesto = [
   "aurict█ ready to execute",
 ]
 
+const manifestoTr = [
+  "Aurict, boşa harcanan zekâya verilmiş bir yanıttır.",
+  "Bolluktan doğmadı. Kısıtların içinde inşa edildi.",
+  "Özel küme yok. Sonsuz sermaye yok. Devlerden izin yok.",
+  "En büyük modeller henüz eğitilemiyorsa, var olanlar daha disiplinli yönlendirilmelidir.",
+  "Bağlam gürültüden korunmalı. Her token yerini hak etmelidir.",
+  "Kendi anahtarını getir. Kendi modelini getir. Kontrol sende kalsın.",
+  "Aurict, API'nin arkasındaki modele tapmaz. Onu orkestre eder.",
+  "İmleç bir süs değildir. Eylemden önceki duraksamadır.",
+  "Yükseliş otomatik değildir. Orkestre edilir.",
+  "aurict█ yürütmeye hazır",
+]
+
 export function CursorGate() {
-  const tr = useLocale() === "tr"
+  const locale = useLocale() as AppLocale
+  const tr = locale === "tr"
+  const t = (source: string) => localizeEnglish(locale, source)
+  const localizedManifesto = tr ? manifestoTr : manifesto.map(t)
   const [state, setState] = useState<"checking" | "closed" | "open">("checking")
 
   useEffect(() => {
@@ -49,8 +67,8 @@ export function CursorGate() {
     return (
       <main className="cursor-page cursor-page-empty">
         <div className="cursor-no-signal mono">
-          <span>{tr ? "sinyal yok" : "no signal"}</span>
-          <Link href="/">{tr ? "ana sayfaya dön" : "return to surface"}</Link>
+          <span>{tr ? "sinyal yok" : t("no signal")}</span>
+          <Link href="/">{tr ? "ana sayfaya dön" : t("return to surface")}</Link>
         </div>
       </main>
     )
@@ -65,14 +83,14 @@ export function CursorGate() {
         <div className="cursor-gate-line" />
       </div>
       <div className="cursor-channel mono" aria-hidden="true">
-        <span>{tr ? "dizi kabul edildi" : "sequence accepted"}</span>
-        <span>{tr ? "yükseliş kanalı açılıyor" : "opening ascent channel"}</span>
+        <span>{tr ? "dizi kabul edildi" : t("sequence accepted")}</span>
+        <span>{tr ? "yükseliş kanalı açılıyor" : t("opening ascent channel")}</span>
       </div>
       <section className="cursor-manifesto-stage" aria-label="Aurict manifesto">
         <div className="cursor-manifesto-shell">
           <p className="cursor-mark mono">aurict<span className="aur-cursor">█</span></p>
           <div className="cursor-manifesto-sequence">
-            {manifesto.map((line, index) => (
+            {localizedManifesto.map((line, index) => (
               <p
                 className="cursor-manifesto-line"
                 key={line}
@@ -84,7 +102,7 @@ export function CursorGate() {
           </div>
         </div>
       </section>
-      <Link className="cursor-return mono" href="/">{tr ? "ana sayfaya dön" : "return to surface"}</Link>
+      <Link className="cursor-return mono" href="/">{tr ? "ana sayfaya dön" : t("return to surface")}</Link>
     </main>
   )
 }

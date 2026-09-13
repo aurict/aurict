@@ -1,18 +1,21 @@
 "use client"
 
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Link } from "@/i18n/navigation"
+import type { AppLocale } from "@/i18n/config"
 import styles from "./Footer.module.css"
 
 export function Footer() {
   const t = useTranslations("Footer")
+  const locale = useLocale() as AppLocale
+  const license = { en: "License", tr: "Lisans", de: "Lizenz", fr: "Licence", es: "Licencia" }[locale]
 
   return (
     <footer className={styles.footer}>
       <div className={styles.frame}>
         <div className={styles.identity}>
           <span>aurict<span>▊</span></span>
-          <p>AGPLv3 License · © 2026 aurict</p>
+          <p>AGPLv3 {license} · © 2026 aurict</p>
         </div>
         <div className={styles.columns}>
           <FooterColumn title={t("product")} links={[[t("aiCodingAgent"), "/ai-coding-agent"], [t("terminalAgent"), "/terminal-agent"], [t("capabilities"), "/#capabilities"], ["Bondley.one", "https://bondley.one"], [t("roadmap"), "/roadmap"], [t("compare"), "/compare"], [t("docs"), "/docs"], [t("changelog"), "/changelog"]]} />

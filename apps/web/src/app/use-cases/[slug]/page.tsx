@@ -10,6 +10,15 @@ import { localizeUseCase } from "@/content/use-case-translations"
 import type { AppLocale } from "@/i18n/routing"
 import { localizedMetadata, localizedUrl } from "@/i18n/metadata"
 import { Link } from "@/i18n/navigation"
+import { localizeEnglish } from "@/i18n/content"
+
+const tryAgentCopy: Record<AppLocale, (agent: string) => string> = {
+  en: (agent) => `Install Aurict and see the ${agent.toLowerCase()} in action.`,
+  tr: (agent) => `Aurict'i kurun ve ${agent.toLowerCase()} çalışırken görün.`,
+  de: (agent) => `Installieren Sie Aurict und erleben Sie ${agent} in Aktion.`,
+  fr: (agent) => `Installez Aurict et découvrez ${agent} en action.`,
+  es: (agent) => `Instala Aurict y descubre ${agent} en acción.`,
+}
 
 interface UseCase {
   slug: string
@@ -166,23 +175,23 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
   const { slug } = await params
   const locale = await getLocale() as AppLocale
   const tr = locale === "tr"
+  const t = (source: string) => localizeEnglish(locale, source)
   const sourceUseCase = USE_CASES.find((u) => u.slug === slug)
 
   if (!sourceUseCase) notFound()
   const uc = localizeUseCase(sourceUseCase, locale)
-  const contentLocale = locale === "tr" ? "tr" : "en"
 
   const howToJsonLd = {
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": uc.title,
     "description": uc.description,
-    "inLanguage": contentLocale,
-    "url": localizedUrl(`/use-cases/${slug}`, contentLocale),
+    "inLanguage": locale,
+    "url": localizedUrl(`/use-cases/${slug}`, locale),
     "step": uc.steps.map((step, i) => ({
       "@type": "HowToStep",
       "position": i + 1,
-      "name": `Step ${i + 1}`,
+      "name": `${tr ? "Adım" : t("Step")} ${i + 1}`,
       "text": step,
     })),
   }
@@ -196,8 +205,8 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
       <main className="marketing-main marketing-main-narrow">
         <Breadcrumb
           items={[
-            { label: tr ? "Ana sayfa" : "Home", href: "/" },
-            { label: tr ? "Kullanım alanları" : "Use Cases", href: "/use-cases" },
+            { label: tr ? "Ana sayfa" : t("Home"), href: "/" },
+            { label: tr ? "Kullanım alanları" : t("Use Cases"), href: "/use-cases" },
             { label: uc.title, href: `/use-cases/${slug}` },
           ]}
         />
@@ -249,7 +258,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
             }}
           >
             <span style={{ color: "var(--error)" }}>✕</span>
-            {tr ? "Sorun" : "The Problem"}
+            {tr ? "Sorun" : t("The Problem")}
           </h2>
           <p style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.8 }}>
             {uc.problem}
@@ -270,7 +279,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
             }}
           >
             <span style={{ color: "var(--success)" }}>✓</span>
-            {tr ? "Aurict bunu nasıl çözer?" : "How Aurict Solves It"}
+            {tr ? "Aurict bunu nasıl çözer?" : t("How Aurict Solves It")}
           </h2>
           <p style={{ fontSize: 15, color: "var(--text-dim)", lineHeight: 1.8 }}>
             {uc.solution}
@@ -287,7 +296,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
               marginBottom: 20,
             }}
           >
-            {tr ? "Nasıl çalışır?" : "How It Works"}
+            {tr ? "Nasıl çalışır?" : t("How It Works")}
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {uc.steps.map((step, i) => (
@@ -333,18 +342,18 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
                 marginBottom: 20,
               }}
             >
-            {tr ? "Önce ve sonra" : "Before & After"}
+            {tr ? "Önce ve sonra" : t("Before & After")}
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8, fontFamily: "var(--font-geist-mono)" }}>
-                  {tr ? "ÖNCE" : "BEFORE"}
+                  {tr ? "ÖNCE" : t("BEFORE")}
                 </p>
                 <CodeBlock code={uc.beforeCode} language="typescript" />
               </div>
               <div>
                 <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8, fontFamily: "var(--font-geist-mono)" }}>
-                  {tr ? "SONRA" : "AFTER"}
+                  {tr ? "SONRA" : t("AFTER")}
                 </p>
                 <CodeBlock code={uc.afterCode} language="typescript" />
               </div>
@@ -362,7 +371,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
               marginBottom: 20,
             }}
           >
-            {tr ? "Faydalar" : "Benefits"}
+            {tr ? "Faydalar" : t("Benefits")}
           </h2>
           <div
             style={{
@@ -403,10 +412,10 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
           }}
         >
           <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>
-            {tr ? "Kendiniz deneyin" : "Try it yourself"}
+            {tr ? "Kendiniz deneyin" : t("Try it yourself")}
           </h2>
           <p style={{ fontSize: 14, color: "var(--text-dim)", marginBottom: 24 }}>
-            {tr ? <>Aurict&apos;i kurun ve {uc.agent.toLowerCase()} çalışırken görün.</> : <>Install Aurict and see the {uc.agent.toLowerCase()} in action.</>}
+            {tryAgentCopy[locale](uc.agent)}
           </p>
           <div
             style={{
@@ -430,7 +439,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
         {/* Other Use Cases */}
         <section>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>
-            {tr ? "Diğer kullanım alanları" : "Other Use Cases"}
+            {tr ? "Diğer kullanım alanları" : t("Other Use Cases")}
           </h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {otherUseCases.map((u) => (

@@ -3,6 +3,7 @@ import { CursorGate } from "@/components/ui/CursorGate"
 import { getLocale } from "next-intl/server"
 import type { AppLocale } from "@/i18n/routing"
 import { localizedMetadata } from "@/i18n/metadata"
+import { localizeEnglish } from "@/i18n/content"
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = (await getLocale()) as AppLocale
@@ -13,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
       locale === "tr" ? "Cursor" : "Cursor",
       locale === "tr"
         ? "Aurict'i Cursor içinden kullanın."
-        : "Use Aurict from inside Cursor.",
+        : localizeEnglish(locale, "Use Aurict from inside Cursor."),
     ),
     robots: { index: false, follow: false },
   }

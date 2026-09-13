@@ -9,22 +9,25 @@ import {
 } from "@/content/docs-translations"
 import { localizedMetadata } from "@/i18n/metadata"
 import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglish } from "@/i18n/content"
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale() as AppLocale
+  const t = (source: string) => localizeEnglish(locale, source)
   return localizedMetadata(
     locale,
     "/docs",
-    locale === "tr" ? "Dokümantasyon — Başlangıç" : "Documentation — Getting Started",
+    locale === "tr" ? "Dokümantasyon — Başlangıç" : t("Documentation — Getting Started"),
     locale === "tr"
       ? "Aurict'i kurun, sağlayıcıları ve API anahtarlarını yapılandırın, Project Auto'yu anlayın, MCP sunucularını bağlayın ve kanıtla tamamlayın."
-      : "Install Aurict, configure providers and API keys, understand Project Auto, connect MCP servers, and finish with durable verification evidence.",
+      : t("Install Aurict, configure providers and API keys, understand Project Auto, connect MCP servers, and finish with durable verification evidence."),
   )
 }
 
 export default async function DocsPage() {
   const locale = await getLocale() as AppLocale
   const tr = locale === "tr"
+  const t = (source: string) => localizeEnglish(locale, source)
   const sections = localizeDocsSections(locale)
   const breadcrumbJsonLd = localizeDocsBreadcrumbJsonLd(locale)
   const articleJsonLd = localizeDocsArticleJsonLd(locale)
@@ -36,17 +39,17 @@ export default async function DocsPage() {
       <Nav />
       <main className="marketing-main docs-main">
         <div className="marketing-hero">
-          <p className="marketing-eyebrow">{tr ? "Dokümantasyon" : "Documentation"}</p>
-          <h1 className="marketing-title">{tr ? "Başlangıç" : "Getting started"}</h1>
+          <p className="marketing-eyebrow">{tr ? "Dokümantasyon" : t("Documentation")}</p>
+          <h1 className="marketing-title">{tr ? "Başlangıç" : t("Getting started")}</h1>
           <p className="marketing-lede">
-            {tr ? "Aurict'i kurmak, yapılandırmak ve güvenle genişletmek için gereken her şey." : "Everything you need to install, configure, and safely extend Aurict."}
+            {tr ? "Aurict'i kurmak, yapılandırmak ve güvenle genişletmek için gereken her şey." : t("Everything you need to install, configure, and safely extend Aurict.")}
           </p>
         </div>
 
         <div className="resp-docs" style={{ gap: 64 }}>
           <nav className="resp-docs-sidebar" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
             <p className="mono" style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14 }}>
-              {tr ? "Bu sayfada" : "On this page"}
+              {tr ? "Bu sayfada" : t("On this page")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {sections.map((section) => <a key={section.anchor} href={`#${section.anchor}`} className="docs-sidebar-link">{section.title}</a>)}

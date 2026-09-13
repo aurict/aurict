@@ -57,7 +57,7 @@ function WorkThread({ copy }: { copy: ReturnType<typeof localizeLandingUi>["hero
   return (
     <div aria-label={copy.threadAria} className={styles.thread}>
       <div className={styles.threadTopline}>
-        <span>aurict / work thread</span>
+        <span>{copy.threadLabel}</span>
         <span className={styles.live}><i /> {copy.liveContext}</span>
       </div>
       <div className={styles.threadPrompt}>

@@ -31,7 +31,7 @@ export function LandingSections() {
           <SectionIntro eyebrow={t.ecosystem[0]} title={t.ecosystem[1]} body={t.ecosystem[2]} />
           <div className={styles.surfaceGrid}>
             <article className={`${styles.surfaceCard} ${styles.hoprel}`}>
-              <div className={styles.surfaceHead}><Image alt="Hoprel icon" height={44} src="/hoprel-icon.svg" width={44} /><div><span>{t.desktopWorkspace}</span><h3>Hoprel <em>by Aurict</em></h3></div></div>
+              <div className={styles.surfaceHead}><Image alt="" height={44} src="/hoprel-icon.svg" width={44} /><div><span>{t.desktopWorkspace}</span><h3>Hoprel <em>{t.byAurict}</em></h3></div></div>
               <p>{t.hoprelBody}</p>
               <Link href="/downloads">{t.downloadHoprel} <span>→</span></Link>
             </article>
@@ -116,5 +116,5 @@ function SurfaceCard({ body, className, eyebrow, external = false, href, link, t
 }
 
 function MobileFrame({ copy }: { copy: ReturnType<typeof localizeLandingUi>["phone"] }) {
-  return <div className={styles.phone}><div className={styles.phoneNotch} /><div className={styles.phoneScreen}><header><span>aurict mobile</span><b><i />BYOK</b></header><div className={styles.bubble}>{copy.request}</div><div className={`${styles.bubble} ${styles.assistant}`}>{copy.answer}</div><article><span>{copy.scan}<b>{copy.running}</b></span><small>12 sources · competitor notes · citations</small></article><article><span>CLI session<b>{copy.approval}</b></span><small>{copy.approvalBody}</small><div className={styles.phoneActions}><span>{copy.approve}</span><span>{copy.deny}</span></div></article></div></div>
+  return <div className={styles.phone}><div className={styles.phoneNotch} /><div className={styles.phoneScreen}><header><span>aurict mobile</span><b><i />BYOK</b></header><div className={styles.bubble}>{copy.request}</div><div className={`${styles.bubble} ${styles.assistant}`}>{copy.answer}</div><article><span>{copy.scan}<b>{copy.running}</b></span><small>{copy.sourcesSummary}</small></article><article><span>{copy.cliSession}<b>{copy.approval}</b></span><small>{copy.approvalBody}</small><div className={styles.phoneActions}><span>{copy.approve}</span><span>{copy.deny}</span></div></article></div></div>
 }

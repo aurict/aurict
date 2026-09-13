@@ -1,4 +1,5 @@
 import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglishContent } from "@/i18n/content"
 
 export type LegalSection = {
   title: string
@@ -80,6 +81,7 @@ const terms: Record<"en" | "tr", LegalPage> = {
 }
 
 export function getLegalPage(page: "privacy" | "terms", locale: AppLocale): LegalPage {
-  const legalLocale = locale === "tr" ? "tr" : "en"
-  return page === "privacy" ? privacy[legalLocale] : terms[legalLocale]
+  if (locale === "tr") return page === "privacy" ? privacy.tr : terms.tr
+  const source = page === "privacy" ? privacy.en : terms.en
+  return localizeEnglishContent(locale, source)
 }

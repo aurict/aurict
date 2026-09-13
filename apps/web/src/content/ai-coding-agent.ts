@@ -153,8 +153,215 @@ const content = {
     },
     final: { title: "Bir ajanı gerçek ve sınırlı bir görevde deneyin.", body: "Açık kaynak CLI'ı kurun, sağlayıcı seçin, mevcut bir projeyi açın ve sonucu diff ile doğrulama kanıtına göre değerlendirin.", docs: "dokümantasyonu oku", install: "kurulum komutunu kopyala" },
   },
-} satisfies Record<"en" | "tr", AiCodingAgentCopy>
+  de: {
+    metadata: {
+      title: "KI-Coding-Agent — Open Source und Terminal-nativ",
+      description: "Aurict ist ein Open-Source-KI-Coding-Agent mit Projektkontext, Spezialagenten, eigenen Anbietern, MCP, Freigaben und Prüfnachweisen.",
+      keywords: ["KI Coding Agent", "Coding Agent", "Open Source KI Agent", "agentisches Coding", "CLI Coding Agent", "KI Softwareentwicklung", "Claude Code Alternative", "Multi-Agent Coding"],
+    },
+    breadcrumb: "KI-Coding-Agent",
+    hero: {
+      eyebrow: "Open-Source-KI-Coding-Agent", title: "Ein KI-Coding-Agent für Aufgaben jenseits der Autovervollständigung.",
+      lede: "Aurict untersucht Repositories, koordiniert Spezialagenten, bearbeitet Projektdateien mit typisierten Werkzeugen, führt Prüfungen aus und bewahrt Nachweise auf. Sie wählen den Modellanbieter; das Terminal bleibt die Kontrolloberfläche.",
+      install: "Aurict installieren", compare: "Coding-Agenten vergleichen", proof: ["9 Spezialagenten", "12 integrierte Anbieter", "MCP-kompatible Werkzeuge", "macOS · Linux · Windows"],
+    },
+    definition: {
+      title: "Was ist ein KI-Coding-Agent?",
+      paragraphs: [
+        "Ein KI-Coding-Agent kann eine Entwicklungsanfrage in konkrete Aktionen in einer Codebasis übersetzen. Er geht über Zeilenvorschläge hinaus: Er untersucht Dateien, bewertet Abhängigkeiten, nutzt Entwicklungswerkzeuge, nimmt begrenzte Änderungen vor, führt Prüfungen aus und erklärt das Ergebnis.",
+        "Ein Coding-Assistent wartet meist auf eine eng formulierte Anfrage oder bietet Inline-Vorschläge. Ein Agent kann längere Abläufe koordinieren, doch diese Autonomie braucht Grenzen. Gute Systeme machen Berechtigungen, Projektumfang, Werkzeugaktivität, Verifikation und offene Arbeit sichtbar.",
+        "Aurict setzt dieses Muster als offene Terminal-Laufzeit um. Spezialrollen trennen Analyse, Implementierung, Review, Tests, Dokumentation, Sicherheit, Debugging, Performance und Analytics, während eine koordinierte Aufgabe alle Nachweise verbindet.",
+      ],
+    },
+    differences: {
+      eyebrow: "Agent oder Assistent", title: "Der Unterschied liegt im Ablauf, nicht im Namen.", intro: "Bewerten Sie, was ein Werkzeug nach Erhalt einer Aufgabe tatsächlich tun kann.",
+      items: [
+        { title: "Repository-Kontext", body: "Ein Agent erfasst relevante Dateien, Abhängigkeiten, Konventionen und Risiken, bevor er Code ändert." },
+        { title: "Werkzeugnutzung", body: "Er kann klar definierte Werkzeuge für Suche, Dateiänderungen, Dokumentation, Browserprüfungen, Tests und Evaluation nutzen." },
+        { title: "Begrenztes Handeln", body: "Berechtigungen und Projektumfang bestimmen, was direkt ausgeführt werden darf und was Ihre Freigabe benötigt." },
+        { title: "Verifikation", body: "Ein Abschlussnachweis trennt ausgeführte Prüfungen von Annahmen, Ausnahmen und offener Arbeit." },
+      ],
+    },
+    evaluation: {
+      eyebrow: "Auswahlcheckliste", title: "So wählen Sie einen KI-Coding-Agenten.", intro: "Vergleichen Sie Produkte anhand Ihrer echten Repositories und Betriebsanforderungen.",
+      items: [
+        { title: "Anbieter- und Modellwahl", body: "Prüfen Sie, ob Ihre bevorzugten Cloud- oder lokalen Modelle unterstützt werden und Sie die Zugangsdaten kontrollieren." },
+        { title: "Berechtigungsmodell", body: "Achten Sie auf klare Grenzen für Shell-Befehle, Dateiänderungen, externe Dienste, Geheimnisse und destruktive Aktionen." },
+        { title: "Kontextqualität", body: "Prüfen Sie, wie Architektur, Abhängigkeiten, Projektanweisungen und relevante Quellen ohne unnötigen Modellkontext gefunden werden." },
+        { title: "Abschlussnachweise", body: "Verlangen Sie Angaben zu geänderten Dateien, ausgeführten Prüfungen, Fehlern, übersprungener Arbeit und offenen Risiken." },
+        { title: "Erweiterbarkeit", body: "Bewerten Sie MCP, eigene Werkzeuge, wiederverwendbare Skills und die Prüfbarkeit von Integrationen." },
+        { title: "Workflow-Eignung", body: "Testen Sie Terminal, IDE, Remote-Server, Betriebssystem, Latenz und Kosten mit einer repräsentativen Aufgabe." },
+      ],
+    },
+    workflows: {
+      eyebrow: "Einsatzbereiche", title: "Eine Laufzeit für den gesamten Engineering-Zyklus.", intro: "Beginnen Sie mit einer begrenzten Aufgabe und erweitern Sie den Umfang erst, wenn der Agent die Projektregeln zuverlässig wahrt.",
+      items: [
+        { title: "Repository-Analyse", body: "Architektur, Abhängigkeiten, Zuständigkeiten und relevante Dateien einer Änderung erfassen.", href: "/terminal-agent" },
+        { title: "Refactoring", body: "Änderungen über mehrere Dateien planen, öffentliche Verträge erhalten und betroffenes Verhalten prüfen.", href: "/use-cases/refactoring" },
+        { title: "Code-Review", body: "Diffs auf Korrektheit, Sicherheit, Performance, Wartbarkeit und fehlende Tests prüfen.", href: "/use-cases/code-review" },
+        { title: "Tests und Dokumentation", body: "Aussagekräftige Tests ergänzen und Dokumentation aus den tatsächlich geänderten Pfaden aktualisieren.", href: "/use-cases/testing" },
+      ],
+    },
+    alternatives: {
+      eyebrow: "Alternativen", title: "KI-Coding-Agenten nach belegbaren Kriterien vergleichen.", body: "Aurict überschneidet sich mit Terminal-Agenten und KI-Entwicklungsumgebungen, doch jedes Produkt setzt andere Schwerpunkte. Prüfen Sie offizielle Quellen und testen Sie dieselbe Aufgabe.",
+      links: [
+        { label: "Claude-Code-Alternative", href: "/compare/claude-code" }, { label: "Cursor-Alternative", href: "/compare/cursor" },
+        { label: "Aider-Alternative", href: "/compare/aider" }, { label: "GitHub-Copilot-CLI-Alternative", href: "/compare/github-copilot" },
+        { label: "OpenCode-Alternative", href: "/compare/opencode" },
+      ],
+    },
+    faq: {
+      eyebrow: "FAQ zu Coding-Agenten", title: "Fragen vor dem Einsatz eines Agenten.",
+      items: [
+        { question: "Ist Aurict ein KI-Coding-Agent oder Autovervollständigung?", answer: "Aurict ist eine Terminal-native Agentenlaufzeit. Sie untersucht Projekte, koordiniert Werkzeuge und Spezialrollen, nimmt begrenzte Änderungen vor, prüft sie und berichtet Nachweise, statt nur Inline-Code vorherzusagen." },
+        { question: "Ist Aurict eine Alternative zu Claude Code?", answer: "Ja, wenn Sie Terminal-Coding-Abläufe vergleichen. Aurict betont Anbieterwahl, Spezialagenten, begrenztes Project Auto und dauerhafte Nachweise; Claude Code bietet Anthropic's offiziellen Ablauf. Testen Sie beide an derselben Aufgabe." },
+        { question: "Kann ich den Modellanbieter wählen?", answer: "Ja. Aurict enthält Adapter für unterstützte Cloud- und lokale Anbieter. Sie hinterlegen die Zugangsdaten und wählen ein verfügbares Modell." },
+        { question: "Kann der Agent Terminalbefehle ausführen?", answer: "Aurict klassifiziert Befehle und prüft Berechtigungen. Gefährliche oder nicht abgedeckte Aktionen benötigen direkte Zustimmung." },
+        { question: "Ersetzt ein Coding-Agent Code-Review und Tests?", answer: "Nein. Ergebnisse brauchen weiterhin angemessene menschliche Prüfung und ausführbare Verifikation. Der Nachweis zeigt, was geprüft wurde und was offen bleibt." },
+      ],
+    },
+    final: { title: "Testen Sie einen Agenten an einer echten, begrenzten Aufgabe.", body: "Installieren Sie die Open-Source-CLI, wählen Sie einen Anbieter, öffnen Sie ein Projekt und bewerten Sie Diff und Prüfnachweise.", docs: "Dokumentation lesen", install: "Installationsbefehl kopieren" },
+  },
+  fr: {
+    metadata: {
+      title: "Agent de code IA — Open source et natif du terminal",
+      description: "Aurict est un agent de code IA open source avec contexte projet, agents spécialisés, fournisseurs BYOK, MCP, approbations et preuves de vérification.",
+      keywords: ["agent de code IA", "agent de programmation", "agent IA open source", "code agentique", "agent CLI", "ingénierie logicielle IA", "alternative Claude Code", "code multi-agent"],
+    },
+    breadcrumb: "Agent de code IA",
+    hero: {
+      eyebrow: "agent de code IA open source", title: "Un agent de code IA pour aller au-delà de l’autocomplétion.",
+      lede: "Aurict explore un dépôt, coordonne des agents spécialisés, modifie les fichiers avec des outils typés, lance les vérifications et conserve les preuves. Vous choisissez le fournisseur de modèles et gardez le terminal comme interface de contrôle.",
+      install: "installer Aurict", compare: "comparer les agents", proof: ["9 agents spécialisés", "12 fournisseurs intégrés", "outils compatibles MCP", "macOS · Linux · Windows"],
+    },
+    definition: {
+      title: "Qu’est-ce qu’un agent de code IA ?",
+      paragraphs: [
+        "Un agent de code IA transforme une demande de développement en actions dans une base de code. Au-delà de la ligne suivante, il explore les fichiers, raisonne sur les dépendances, utilise des outils, effectue des changements ciblés, lance des vérifications et explique le résultat.",
+        "Un assistant attend généralement une demande étroite ou propose du code en ligne. Un agent coordonne un workflow plus long, mais cette autonomie exige des limites. Les systèmes utiles rendent visibles les permissions, le périmètre, les outils, les vérifications et le travail inachevé.",
+        "Aurict applique ce modèle dans un runtime de terminal open source. Des rôles spécialisés séparent exploration, implémentation, revue, tests, documentation, sécurité, débogage, performance et analyse tout en reliant les preuves à un objectif commun.",
+      ],
+    },
+    differences: {
+      eyebrow: "agent ou assistant", title: "La différence tient au workflow, pas au nom.", intro: "Évaluez ce que l’outil fait réellement après avoir reçu une tâche.",
+      items: [
+        { title: "Contexte du dépôt", body: "Un agent cartographie fichiers, dépendances, conventions et risques avant de modifier le code." },
+        { title: "Utilisation d’outils", body: "Il appelle des outils explicites pour la recherche, les fichiers, la documentation, le navigateur, les tests et l’évaluation." },
+        { title: "Action limitée", body: "Les permissions et le périmètre déterminent ce qui peut avancer et ce qui exige votre approbation." },
+        { title: "Vérification", body: "Une preuve de livraison distingue les contrôles exécutés des hypothèses, dérogations et travaux ouverts." },
+      ],
+    },
+    evaluation: {
+      eyebrow: "critères de choix", title: "Comment choisir un agent de code IA.", intro: "Comparez les produits sur vos vrais dépôts et vos contraintes d’exploitation.",
+      items: [
+        { title: "Choix du fournisseur", body: "Vérifiez la prise en charge de vos modèles cloud ou locaux et votre contrôle des identifiants." },
+        { title: "Modèle d’autorisation", body: "Cherchez des limites claires pour le shell, les fichiers, les services externes, les secrets et les actions destructrices." },
+        { title: "Qualité du contexte", body: "Contrôlez comment l’agent découvre architecture, dépendances, consignes et sources pertinentes sans saturer le modèle." },
+        { title: "Preuves de livraison", body: "Exigez le détail des fichiers modifiés, contrôles exécutés, échecs, travaux ignorés et risques ouverts." },
+        { title: "Extensibilité", body: "Évaluez MCP, les outils personnalisés, les compétences réutilisables et l’inspectabilité des intégrations." },
+        { title: "Adéquation au workflow", body: "Testez terminal, IDE, serveur distant, système, latence et coût sur une tâche représentative." },
+      ],
+    },
+    workflows: {
+      eyebrow: "cas d’usage", title: "Le même runtime pour tout le cycle d’ingénierie.", intro: "Commencez par une tâche limitée, puis élargissez le périmètre quand l’agent prouve qu’il respecte les contraintes du projet.",
+      items: [
+        { title: "Exploration du dépôt", body: "Cartographier architecture, dépendances, responsabilités et fichiers liés à un changement.", href: "/terminal-agent" },
+        { title: "Refactorisation", body: "Planifier les changements multi-fichiers, préserver les contrats publics et vérifier le comportement.", href: "/use-cases/refactoring" },
+        { title: "Revue de code", body: "Examiner un diff pour l’exactitude, la sécurité, la performance, la maintenance et les tests manquants.", href: "/use-cases/code-review" },
+        { title: "Tests et documentation", body: "Ajouter une couverture utile et actualiser la documentation depuis les parcours réellement modifiés.", href: "/use-cases/testing" },
+      ],
+    },
+    alternatives: {
+      eyebrow: "alternatives", title: "Comparez les agents avec des critères documentés.", body: "Aurict recoupe les agents de terminal et les environnements de développement IA, mais chaque produit fait des compromis différents. Consultez les sources officielles et testez la même tâche.",
+      links: [
+        { label: "alternative à Claude Code", href: "/compare/claude-code" }, { label: "alternative à Cursor", href: "/compare/cursor" },
+        { label: "alternative à Aider", href: "/compare/aider" }, { label: "alternative à GitHub Copilot CLI", href: "/compare/github-copilot" },
+        { label: "alternative à OpenCode", href: "/compare/opencode" },
+      ],
+    },
+    faq: {
+      eyebrow: "FAQ agent de code", title: "Les questions avant d’adopter un agent.",
+      items: [
+        { question: "Aurict est-il un agent de code ou un outil d’autocomplétion ?", answer: "Aurict est un runtime agentique natif du terminal. Il explore les projets, coordonne outils et spécialistes, effectue des changements ciblés, vérifie et rapporte les preuves au lieu de seulement prédire du code." },
+        { question: "Aurict est-il une alternative à Claude Code ?", answer: "Oui pour comparer les workflows de terminal. Aurict privilégie le choix du fournisseur, les spécialistes, Project Auto limité et les preuves durables ; Claude Code propose le workflow officiel d’Anthropic. Testez les deux sur la même tâche." },
+        { question: "Puis-je choisir le fournisseur de modèles ?", answer: "Oui. Aurict propose des adaptateurs cloud et locaux. Vous fournissez les identifiants et choisissez un modèle disponible." },
+        { question: "L’agent peut-il exécuter des commandes ?", answer: "Aurict classe les commandes et applique les permissions avant exécution. Les actions dangereuses ou hors périmètre exigent une approbation directe." },
+        { question: "Un agent remplace-t-il la revue et les tests ?", answer: "Non. Le résultat exige toujours une revue humaine proportionnée et des vérifications exécutables. La preuve indique ce qui a été contrôlé et ce qui reste ouvert." },
+      ],
+    },
+    final: { title: "Testez un agent sur une tâche réelle et limitée.", body: "Installez la CLI open source, choisissez un fournisseur, ouvrez un projet et jugez le diff et les preuves de vérification.", docs: "lire la documentation", install: "copier la commande" },
+  },
+  es: {
+    metadata: {
+      title: "Agente de programación IA — Open source y para terminal",
+      description: "Aurict es un agente de programación IA open source con contexto de proyecto, especialistas, proveedores BYOK, MCP, aprobaciones y pruebas.",
+      keywords: ["agente de programación IA", "agente de código", "agente IA open source", "programación con agentes", "agente CLI", "ingeniería de software IA", "alternativa a Claude Code", "programación multiagente"],
+    },
+    breadcrumb: "Agente de programación IA",
+    hero: {
+      eyebrow: "agente de programación IA open source", title: "Un agente de programación IA para ir más allá del autocompletado.",
+      lede: "Aurict explora repositorios, coordina especialistas, edita archivos mediante herramientas tipadas, ejecuta controles y conserva pruebas. Tú eliges el proveedor de modelos y mantienes la terminal como superficie de control.",
+      install: "instalar Aurict", compare: "comparar agentes", proof: ["9 agentes especialistas", "12 proveedores integrados", "herramientas compatibles con MCP", "macOS · Linux · Windows"],
+    },
+    definition: {
+      title: "¿Qué es un agente de programación IA?",
+      paragraphs: [
+        "Un agente de programación IA convierte una petición de desarrollo en acciones dentro del código. Va más allá de sugerir la siguiente línea: explora archivos, razona sobre dependencias, usa herramientas, hace cambios acotados, verifica y explica el resultado.",
+        "Un asistente suele esperar una petición estrecha u ofrecer sugerencias en línea. Un agente coordina un flujo más largo, pero esa autonomía necesita límites. Los sistemas útiles muestran permisos, alcance, actividad de herramientas, verificación y trabajo pendiente.",
+        "Aurict implementa este patrón como runtime de terminal open source. Los roles especialistas separan exploración, implementación, revisión, pruebas, documentación, seguridad, depuración, rendimiento y analítica, conectados por una tarea coordinada.",
+      ],
+    },
+    differences: {
+      eyebrow: "agente o asistente", title: "La diferencia está en el flujo, no en la etiqueta.", intro: "Evalúa lo que la herramienta puede hacer realmente después de recibir una tarea.",
+      items: [
+        { title: "Contexto del repositorio", body: "Un agente identifica archivos, dependencias, convenciones y riesgos antes de modificar el código." },
+        { title: "Uso de herramientas", body: "Puede invocar herramientas explícitas para búsqueda, archivos, documentación, navegador, pruebas y evaluación." },
+        { title: "Acción acotada", body: "Los permisos y el alcance determinan qué acciones avanzan y cuáles requieren tu aprobación." },
+        { title: "Verificación", body: "El registro final separa los controles ejecutados de suposiciones, excepciones y trabajo pendiente." },
+      ],
+    },
+    evaluation: {
+      eyebrow: "lista de selección", title: "Cómo elegir un agente de programación IA.", intro: "Compara los productos con repositorios reales y tus restricciones operativas.",
+      items: [
+        { title: "Proveedor y modelo", body: "Comprueba si admite tus modelos alojados o locales y si tú controlas las credenciales." },
+        { title: "Modelo de permisos", body: "Busca límites claros para comandos, archivos, servicios externos, secretos y acciones destructivas." },
+        { title: "Calidad del contexto", body: "Confirma cómo descubre arquitectura, dependencias, instrucciones y fuentes relevantes sin saturar el modelo." },
+        { title: "Pruebas de finalización", body: "Exige un informe de archivos cambiados, controles ejecutados, fallos, trabajo omitido y riesgos abiertos." },
+        { title: "Extensibilidad", body: "Evalúa MCP, herramientas propias, habilidades reutilizables y si las integraciones son inspeccionables." },
+        { title: "Encaje del flujo", body: "Prueba terminal, IDE, servidor remoto, sistema operativo, latencia y coste con una tarea representativa." },
+      ],
+    },
+    workflows: {
+      eyebrow: "casos de uso", title: "El mismo runtime durante todo el ciclo de ingeniería.", intro: "Empieza con una tarea acotada y amplía el alcance cuando el agente demuestre que conserva las restricciones del proyecto.",
+      items: [
+        { title: "Exploración del repositorio", body: "Mapear arquitectura, dependencias, responsables y archivos relacionados con un cambio.", href: "/terminal-agent" },
+        { title: "Refactorización", body: "Planificar cambios en varios archivos, conservar contratos públicos y verificar el comportamiento.", href: "/use-cases/refactoring" },
+        { title: "Revisión de código", body: "Examinar un diff por corrección, seguridad, rendimiento, mantenibilidad y pruebas ausentes.", href: "/use-cases/code-review" },
+        { title: "Pruebas y documentación", body: "Añadir cobertura útil y actualizar la documentación desde las rutas realmente modificadas.", href: "/use-cases/testing" },
+      ],
+    },
+    alternatives: {
+      eyebrow: "alternativas", title: "Compara agentes con criterios documentados.", body: "Aurict coincide con agentes de terminal y entornos de desarrollo IA, pero cada producto prioriza aspectos distintos. Consulta fuentes oficiales y prueba la misma tarea.",
+      links: [
+        { label: "alternativa a Claude Code", href: "/compare/claude-code" }, { label: "alternativa a Cursor", href: "/compare/cursor" },
+        { label: "alternativa a Aider", href: "/compare/aider" }, { label: "alternativa a GitHub Copilot CLI", href: "/compare/github-copilot" },
+        { label: "alternativa a OpenCode", href: "/compare/opencode" },
+      ],
+    },
+    faq: {
+      eyebrow: "preguntas sobre agentes", title: "Lo que se pregunta antes de adoptar un agente.",
+      items: [
+        { question: "¿Aurict es un agente de programación o autocompletado?", answer: "Aurict es un runtime de agentes nativo de terminal. Explora proyectos, coordina herramientas y especialistas, hace cambios acotados, verifica e informa pruebas en lugar de limitarse a predecir código." },
+        { question: "¿Aurict es una alternativa a Claude Code?", answer: "Sí para comparar flujos de terminal. Aurict prioriza proveedores, especialistas, Project Auto acotado y pruebas duraderas; Claude Code ofrece el flujo oficial de Anthropic. Prueba ambos con la misma tarea." },
+        { question: "¿Puedo elegir el proveedor de modelos?", answer: "Sí. Aurict incluye adaptadores para proveedores cloud y locales. Tú aportas las credenciales y eliges un modelo disponible." },
+        { question: "¿Puede el agente ejecutar comandos?", answer: "Aurict clasifica los comandos y aplica permisos antes de ejecutarlos. Las acciones peligrosas o fuera de alcance exigen aprobación directa." },
+        { question: "¿Sustituye un agente la revisión y las pruebas?", answer: "No. El resultado aún requiere revisión humana y verificación ejecutable. El registro muestra qué se comprobó y qué queda pendiente." },
+      ],
+    },
+    final: { title: "Prueba un agente con una tarea real y acotada.", body: "Instala la CLI open source, elige un proveedor, abre un proyecto y evalúa el diff y las pruebas de verificación.", docs: "leer la documentación", install: "copiar comando" },
+  },
+} satisfies Record<AppLocale, AiCodingAgentCopy>
 
 export function localizeAiCodingAgent(locale: AppLocale): AiCodingAgentCopy {
-  return content[locale === "tr" ? "tr" : "en"]
+  return content[locale]
 }

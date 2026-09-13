@@ -3,10 +3,13 @@ import { useState, useEffect, useRef } from "react"
 import { Link, useRouter } from "@/i18n/navigation"
 import { useLocale } from "next-intl"
 import { localizeCommands, type CommandItem } from "@/content/command-translations"
+import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglish } from "@/i18n/client-content"
 
 export function CommandPalette() {
-  const locale = useLocale()
+  const locale = useLocale() as AppLocale
   const tr = locale === "tr"
+  const t = (source: string) => localizeEnglish(locale, source)
   const COMMANDS = localizeCommands(locale)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -136,7 +139,7 @@ export function CommandPalette() {
           <input
             ref={inputRef}
             type="text"
-            placeholder={tr ? "Sayfaları, bölümleri, komutları ara..." : "Search pages, sections, commands..."}
+            placeholder={tr ? "Sayfaları, bölümleri, komutları ara..." : t("Search pages, sections, commands...")}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -240,7 +243,7 @@ export function CommandPalette() {
                 fontSize: 14,
               }}
             >
-              {tr ? "Sonuç bulunamadı" : "No results found"}
+              {tr ? "Sonuç bulunamadı" : t("No results found")}
             </div>
           )}
         </div>
@@ -259,10 +262,10 @@ export function CommandPalette() {
           }}
         >
           <span>
-             <kbd style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px" }}>↑↓</kbd> {tr ? "gezin" : "navigate"}
+             <kbd style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px" }}>↑↓</kbd> {tr ? "gezin" : t("navigate")}
           </span>
           <span>
-             <kbd style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px" }}>↵</kbd> {tr ? "seç" : "select"}
+             <kbd style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px" }}>↵</kbd> {tr ? "seç" : t("select")}
           </span>
         </div>
       </div>

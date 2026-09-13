@@ -5,7 +5,7 @@ export type TerminalAgentCopy = {
   breadcrumb: string
   hero: { eyebrow: string; title: string; lede: string; install: string; github: string; proof: string[] }
   definition: { title: string; paragraphs: string[] }
-  evidence?: {
+  evidence: {
     eyebrow: string
     title: string
     intro: string
@@ -23,7 +23,7 @@ const content = {
   en: {
     metadata: {
       title: "Open-Source Terminal Agent for AI Coding",
-      description: "Aurict is an open-source terminal agent for AI coding. Inspect repositories, delegate to specialist agents, run tools with approvals, and use your own model provider.",
+      description: "Aurict is an open-source AI coding agent for the terminal. Inspect repositories, delegate to specialists, run approved tools, and use your own model provider.",
       keywords: ["open source terminal agent", "open source AI terminal agent", "open source terminal coding agent", "terminal agent", "AI terminal agent", "terminal coding agent", "CLI AI agent", "terminal AI coding assistant", "multi-agent coding", "BYOK coding agent", "MCP terminal agent"],
     },
     breadcrumb: "Terminal Agent",
@@ -113,22 +113,32 @@ const content = {
   },
   tr: {
     metadata: {
-      title: "Terminal Ajanı ile Yapay Zekâ Kodlama — Açık Kaynak",
-      description: "Aurict; çoklu ajan orkestrasyonu, MCP, yerel proje bağlamı, BYOK sağlayıcılar ve açık komut onayları sunan açık kaynak terminal ajanıdır.",
-      keywords: ["terminal ajanı", "yapay zekâ terminal ajanı", "terminal kodlama ajanı", "açık kaynak terminal ajanı", "CLI yapay zekâ ajanı", "terminal yapay zekâ kodlama asistanı", "çoklu ajan kodlama"],
+      title: "Yapay Zekâ Kodlama için Açık Kaynak Terminal Ajanı",
+      description: "Aurict, terminalde çalışan açık kaynak bir yapay zekâ kodlama ajanıdır. Depoları inceleyin, uzmanlara görev verin, araçları onayla çalıştırın ve sağlayıcınızı seçin.",
+      keywords: ["açık kaynak terminal ajanı", "açık kaynak yapay zekâ terminal ajanı", "terminal ajanı", "yapay zekâ terminal ajanı", "terminal kodlama ajanı", "CLI yapay zekâ ajanı", "terminal yapay zekâ kodlama asistanı", "çoklu ajan kodlama", "BYOK kodlama ajanı", "MCP terminal ajanı"],
     },
     breadcrumb: "Terminal Ajanı",
     hero: {
-      eyebrow: "açık kaynak terminal ajanı", title: "Terminal için geliştirilmiş bir yapay zekâ kodlama ajanı.",
-      lede: "Aurict projenizi okur, işi uzman ajanlara dağıtır, tipli araçlar kullanır ve hassas eylemlerden önce onay ister. Kendi model sağlayıcınızı kullanın; iş akışını mevcut kabuğunuzda tutun.",
+      eyebrow: "açık kaynak terminal ajanı", title: "Yapay zekâ kodlama için açık kaynak terminal ajanı.",
+      lede: "Aurict; projenizi okuyan, işi uzmanlara dağıtan, tipli araçlar kullanan ve hassas eylemlerden önce onay isteyen terminal odaklı bir yapay zekâ kodlama ajanıdır. Kendi model sağlayıcınızı kullanın; iş akışını mevcut kabuğunuzda tutun.",
       install: "Aurict'i kur", github: "kaynak kodu gör", proof: ["9 uzman ajan", "218+ bağlamsal beceri", "12 yerleşik sağlayıcı", "macOS · Linux · Windows"],
     },
     definition: {
-      title: "Terminal ajanı nedir?",
+      title: "Açık kaynak terminal ajanı nedir?",
       paragraphs: [
-        "Terminal ajanı, komut satırı ortamında çalışan bir yapay zekâ asistanıdır. Yalnızca otomatik tamamlamadan farklı olarak bir depoyu inceleyebilir, görevi planlayabilir, geliştirme araçlarını çağırabilir, dosyaları düzenleyebilir, doğrulama komutları çalıştırabilir ve değişenleri raporlayabilir.",
+        "Açık kaynak terminal ajanı, komut satırı ortamında çalışan ve uygulaması incelenebilen bir yapay zekâ asistanıdır. Yalnızca otomatik tamamlamadan farklı olarak bir depoyu inceleyebilir, görevi planlayabilir, geliştirme araçlarını çağırabilir, dosyaları düzenleyebilir, doğrulama komutları çalıştırabilir ve değişenleri raporlayabilir.",
         "Aurict bu yaklaşımı denetimli bir çalışma zamanına dönüştürür. Uzman ajanlar keşif, uygulama, inceleme, test, dokümantasyon, güvenlik, hata ayıklama, performans ve analitiği ele alırken koordinatör görev ile kanıtı bir arada tutar.",
         "Terminal kontrol yüzeyi olarak kalır: proje bağlamı görünürdür, kabuk komutları sınıflandırma ve onay kurallarından geçer, model sağlayıcısını kod tabanını başka bir IDE'ye taşımadan değiştirebilirsiniz.",
+      ],
+    },
+    evidence: {
+      eyebrow: "açık kaynak, incelenebilir, doğrulanabilir",
+      title: "Güvenmeden önce çalışma zamanını inceleyin.",
+      intro: "Aurict'in kaynak kodu, paketi, lisansı ve çalışma modeli herkese açıktır. Kapalı bir ürün iddiasına güvenmek yerine uygulamayı ve güvenlik sınırlarını inceleyin.",
+      items: [
+        { title: "Kaynak kodu ve lisans", body: "Herkese açık depoda terminal çalışma zamanını, izin yollarını, ajan orkestrasyonunu, testleri ve AGPLv3 lisansını inceleyin.", href: "https://github.com/aurict/aurict", label: "kaynak kodu GitHub'da incele", external: true },
+        { title: "Yayımlanmış CLI paketi", body: "Herkese açık npm paketini inceleyin ve platformunuza uygun Aurict CLI'ı tek komutla kurun.", href: "https://www.npmjs.com/package/aurict", label: "npm paketini incele", external: true },
+        { title: "Belgelenmiş denetimler", body: "Sağlayıcıların, onayların, MCP bağlantılarının, oturumların, hook'ların, becerilerin ve worktree'lerin nasıl yapılandırıldığını okuyun.", href: "/docs", label: "teknik dokümantasyonu oku" },
       ],
     },
     capabilities: {
@@ -165,6 +175,7 @@ const content = {
       eyebrow: "terminal ajanı SSS", title: "Terminaldeki yapay zekâ ajanları hakkında sık sorulanlar.",
       items: [
         { question: "Aurict bir terminal ajanı mı, IDE eklentisi mi?", answer: "Aurict terminal odaklı bir çalışma zamanıdır. Mevcut kabuğunuzda çalışır ve projeyi belirli bir editöre taşımanızı gerektirmez." },
+        { question: "Aurict ücretsiz ve açık kaynak mı?", answer: "Evet. Aurict AGPLv3 lisansıyla yayımlanır, kaynak kodu GitHub'da herkese açıktır ve CLI ücretsiz kurulabilir. Kullanmayı seçtiğiniz ücretli model sağlayıcısının kimlik bilgilerini siz sağlarsınız." },
         { question: "Aurict terminal ajanı hangi işletim sistemlerini destekler?", answer: "Aurict macOS, Linux ve Windows x64 için derlenmiş ikililer sunar. npm paketi platformunuza uygun ikiliyi seçer." },
         { question: "Yapay zekâ model sağlayıcısını seçebilir miyim?", answer: "Evet. Aurict, desteklenen bulut ve yerel sağlayıcılar için yerleşik adaptörlerle kendi anahtarını getir modelini kullanır." },
         { question: "Ajan terminal komutlarını otomatik çalıştırabilir mi?", answer: "Komutlar sınıflandırma ve izin denetiminden geçer. Tehlikeli veya kapsam dışı eylemler açık onay gerektirir." },
@@ -175,22 +186,32 @@ const content = {
   },
   de: {
     metadata: {
-      title: "Terminal-Agent für KI-Coding — Open Source & Multi-Agent",
-      description: "Aurict ist ein Open-Source-Terminal-Agent für KI-Coding mit Multi-Agent-Orchestrierung, MCP, lokalem Projektkontext, eigenen API-Schlüsseln und expliziten Freigaben.",
-      keywords: ["Terminal Agent", "KI Terminal Agent", "Coding Agent Terminal", "Open Source Terminal Agent", "CLI KI Agent", "KI Coding Assistent", "Multi-Agent Coding"],
+      title: "Open-Source-Terminal-Agent für KI-Coding",
+      description: "Aurict ist ein Open-Source-KI-Agent im Terminal. Analysieren Sie Repositories, delegieren Sie an Spezialisten, genehmigen Sie Tools und wählen Sie Ihren Anbieter.",
+      keywords: ["Open Source Terminal Agent", "Open Source KI Terminal Agent", "Open Source Coding Agent", "Terminal Agent", "KI Terminal Agent", "Coding Agent Terminal", "CLI KI Agent", "KI Coding Assistent", "Multi-Agent Coding", "BYOK Coding Agent", "MCP Terminal Agent"],
     },
     breadcrumb: "Terminal-Agent",
     hero: {
-      eyebrow: "Open-Source-Terminal-Agent", title: "Ein KI-Coding-Agent für das Terminal.",
-      lede: "Aurict liest Ihr Projekt, verteilt Arbeit an spezialisierte Agenten, nutzt typisierte Werkzeuge und fragt vor sensiblen Aktionen. Verwenden Sie Ihren eigenen Modellanbieter und bleiben Sie in Ihrer gewohnten Shell.",
+      eyebrow: "Open-Source-Terminal-Agent", title: "Ein Open-Source-Terminal-Agent für KI-Coding.",
+      lede: "Aurict ist ein Terminal-nativer KI-Coding-Agent, der Ihr Projekt liest, Arbeit an Spezialisten delegiert, typisierte Werkzeuge nutzt und vor sensiblen Aktionen nachfragt. Verwenden Sie Ihren eigenen Modellanbieter und bleiben Sie in Ihrer gewohnten Shell.",
       install: "Aurict installieren", github: "Quellcode ansehen", proof: ["9 Spezialagenten", "218+ Kontext-Skills", "12 integrierte Anbieter", "macOS · Linux · Windows"],
     },
     definition: {
-      title: "Was ist ein Terminal-Agent?",
+      title: "Was ist ein Open-Source-Terminal-Agent?",
       paragraphs: [
-        "Ein Terminal-Agent ist ein KI-Assistent in der Kommandozeile. Anders als reine Autovervollständigung kann er Repositories untersuchen, Aufgaben planen, Entwicklungswerkzeuge aufrufen, Dateien bearbeiten, Prüfungen ausführen und Änderungen erklären.",
+        "Ein Open-Source-Terminal-Agent ist ein KI-Assistent in der Kommandozeile, dessen Implementierung öffentlich einsehbar ist. Anders als reine Autovervollständigung kann er Repositories untersuchen, Aufgaben planen, Entwicklungswerkzeuge aufrufen, Dateien bearbeiten, Prüfungen ausführen und Änderungen erklären.",
         "Aurict macht daraus eine kontrollierte Laufzeit. Fachagenten übernehmen Analyse, Implementierung, Review, Tests, Dokumentation, Sicherheit, Debugging, Performance und Analytics; der Koordinator verbindet Aufgabe und Nachweise.",
         "Das Terminal bleibt die Kontrolloberfläche: Projektkontext ist sichtbar, Shell-Befehle durchlaufen Klassifikation und Freigaben, und Modellanbieter lassen sich ohne Wechsel in eine proprietäre IDE austauschen.",
+      ],
+    },
+    evidence: {
+      eyebrow: "Open Source, einsehbar, überprüfbar",
+      title: "Prüfen Sie die Laufzeit, bevor Sie ihr vertrauen.",
+      intro: "Quellcode, Paket, Lizenz und Arbeitsweise von Aurict sind öffentlich. Prüfen Sie Implementierung und Sicherheitsgrenzen, statt sich auf das Versprechen eines geschlossenen Produkts zu verlassen.",
+      items: [
+        { title: "Quellcode und Lizenz", body: "Prüfen Sie Terminal-Laufzeit, Berechtigungspfade, Agenten-Orchestrierung, Tests und AGPLv3-Lizenz im öffentlichen Repository.", href: "https://github.com/aurict/aurict", label: "Quellcode auf GitHub prüfen", external: true },
+        { title: "Veröffentlichtes CLI-Paket", body: "Prüfen Sie das öffentliche npm-Paket und installieren Sie die passende Aurict-CLI mit einem Befehl.", href: "https://www.npmjs.com/package/aurict", label: "npm-Paket ansehen", external: true },
+        { title: "Dokumentierte Kontrollen", body: "Lesen Sie, wie Anbieter, Freigaben, MCP-Verbindungen, Sitzungen, Hooks, Skills und Worktrees konfiguriert werden.", href: "/docs", label: "technische Dokumentation lesen" },
       ],
     },
     capabilities: {
@@ -227,6 +248,7 @@ const content = {
       eyebrow: "Terminal-Agent FAQ", title: "Häufige Fragen zu KI-Agenten im Terminal.",
       items: [
         { question: "Ist Aurict ein Terminal-Agent oder eine IDE-Erweiterung?", answer: "Aurict ist eine Terminal-native Laufzeit in Ihrer vorhandenen Shell. Eine anbieterspezifische IDE ist nicht erforderlich." },
+        { question: "Ist Aurict kostenlos und Open Source?", answer: "Ja. Aurict steht unter der AGPLv3-Lizenz, der Quellcode ist auf GitHub öffentlich und die CLI kann kostenlos installiert werden. Zugangsdaten für kostenpflichtige Modellanbieter Ihrer Wahl stellen Sie selbst bereit." },
         { question: "Welche Betriebssysteme werden unterstützt?", answer: "Aurict bietet kompilierte Binärdateien für macOS, Linux und Windows x64." },
         { question: "Kann ich den Modellanbieter wählen?", answer: "Ja. Aurict unterstützt eigene API-Schlüssel für integrierte Cloud- und lokale Anbieter." },
         { question: "Kann der Agent Terminalbefehle automatisch ausführen?", answer: "Befehle durchlaufen Klassifikation und Berechtigungen. Gefährliche oder nicht abgedeckte Aktionen benötigen Zustimmung." },
@@ -237,22 +259,32 @@ const content = {
   },
   fr: {
     metadata: {
-      title: "Agent de terminal pour coder avec l’IA — Open Source",
-      description: "Aurict est un agent de terminal open source pour le code assisté par IA, avec orchestration multi-agent, MCP, contexte local, fournisseurs BYOK et approbations explicites.",
-      keywords: ["agent de terminal", "agent IA terminal", "agent de code terminal", "agent terminal open source", "agent IA CLI", "assistant de code IA", "code multi-agent"],
+      title: "Agent de terminal open source pour coder avec l’IA",
+      description: "Aurict est un agent IA open source pour le terminal. Explorez vos dépôts, déléguez aux spécialistes, approuvez les outils et choisissez votre fournisseur de modèles.",
+      keywords: ["agent de terminal open source", "agent IA terminal open source", "agent de code open source", "agent de terminal", "agent IA terminal", "agent de code terminal", "agent IA CLI", "assistant de code IA", "code multi-agent", "agent de code BYOK", "agent terminal MCP"],
     },
     breadcrumb: "Agent de terminal",
     hero: {
-      eyebrow: "agent de terminal open source", title: "Un agent de code IA conçu pour le terminal.",
-      lede: "Aurict lit votre projet, délègue aux agents spécialisés, utilise des outils typés et demande votre accord avant les actions sensibles. Choisissez votre fournisseur de modèle et gardez votre terminal habituel.",
+      eyebrow: "agent de terminal open source", title: "Un agent de terminal open source pour coder avec l’IA.",
+      lede: "Aurict est un agent de code IA natif du terminal : il lit votre projet, délègue aux spécialistes, utilise des outils typés et demande votre accord avant les actions sensibles. Choisissez votre fournisseur de modèles et gardez votre terminal habituel.",
       install: "installer Aurict", github: "voir le code source", proof: ["9 agents spécialisés", "218+ compétences", "12 fournisseurs intégrés", "macOS · Linux · Windows"],
     },
     definition: {
-      title: "Qu’est-ce qu’un agent de terminal ?",
+      title: "Qu’est-ce qu’un agent de terminal open source ?",
       paragraphs: [
-        "Un agent de terminal est un assistant IA qui travaille en ligne de commande. Au-delà de l’autocomplétion, il peut explorer un dépôt, planifier une tâche, utiliser des outils, modifier des fichiers, lancer des vérifications et expliquer ses changements.",
+        "Un agent de terminal open source est un assistant IA qui travaille en ligne de commande et dont l’implémentation peut être inspectée. Au-delà de l’autocomplétion, il peut explorer un dépôt, planifier une tâche, utiliser des outils, modifier des fichiers, lancer des vérifications et expliquer ses changements.",
         "Aurict transforme ce modèle en runtime contrôlé. Des agents spécialisés couvrent exploration, implémentation, revue, tests, documentation, sécurité, débogage, performance et analyse, tandis que le coordinateur relie objectif et preuves.",
         "Le terminal reste l’interface de contrôle : le contexte du projet est visible, les commandes passent par des règles de classification et d’autorisation, et vous changez de fournisseur sans déplacer le code vers un IDE propriétaire.",
+      ],
+    },
+    evidence: {
+      eyebrow: "open source, inspectable, vérifiable",
+      title: "Examinez le runtime avant de lui faire confiance.",
+      intro: "Le code source, le paquet, la licence et le modèle de fonctionnement d’Aurict sont publics. Examinez l’implémentation et ses limites de sécurité plutôt que de vous fier aux promesses d’un produit fermé.",
+      items: [
+        { title: "Code source et licence", body: "Examinez le runtime du terminal, les chemins d’autorisation, l’orchestration des agents, les tests et la licence AGPLv3 dans le dépôt public.", href: "https://github.com/aurict/aurict", label: "examiner le code sur GitHub", external: true },
+        { title: "Paquet CLI publié", body: "Consultez le paquet npm public et installez la CLI Aurict adaptée à votre plateforme en une commande.", href: "https://www.npmjs.com/package/aurict", label: "consulter le paquet npm", external: true },
+        { title: "Contrôles documentés", body: "Découvrez comment configurer les fournisseurs, approbations, connexions MCP, sessions, hooks, compétences et worktrees.", href: "/docs", label: "lire la documentation technique" },
       ],
     },
     capabilities: {
@@ -289,6 +321,7 @@ const content = {
       eyebrow: "FAQ agent de terminal", title: "Questions fréquentes sur les agents IA dans le terminal.",
       items: [
         { question: "Aurict est-il un agent de terminal ou une extension IDE ?", answer: "Aurict est un runtime natif du terminal qui fonctionne dans votre shell. Aucun éditeur propriétaire n’est imposé." },
+        { question: "Aurict est-il gratuit et open source ?", answer: "Oui. Aurict est publié sous licence AGPLv3, son code source est public sur GitHub et la CLI s’installe gratuitement. Vous fournissez les identifiants des fournisseurs de modèles payants que vous choisissez d’utiliser." },
         { question: "Quels systèmes sont compatibles ?", answer: "Aurict fournit des binaires compilés pour macOS, Linux et Windows x64." },
         { question: "Puis-je choisir le fournisseur de modèle ?", answer: "Oui. Aurict accepte vos propres clés pour ses fournisseurs cloud et locaux pris en charge." },
         { question: "L’agent peut-il lancer des commandes automatiquement ?", answer: "Les commandes passent par classification et permissions. Les actions dangereuses ou hors périmètre exigent une approbation." },
@@ -299,22 +332,32 @@ const content = {
   },
   es: {
     metadata: {
-      title: "Agente de terminal para programar con IA — Código abierto",
-      description: "Aurict es un agente de terminal de código abierto para programar con IA, con orquestación multiagente, MCP, contexto local, proveedores BYOK y aprobaciones explícitas.",
-      keywords: ["agente de terminal", "agente IA terminal", "agente de código terminal", "agente terminal código abierto", "agente IA CLI", "asistente de programación IA", "programación multiagente"],
+      title: "Agente terminal open source para programar con IA",
+      description: "Aurict es un agente de IA open source en la terminal. Explora repositorios, delega en especialistas, aprueba herramientas y elige tu proveedor de modelos.",
+      keywords: ["agente de terminal de código abierto", "agente IA terminal de código abierto", "agente de código abierto", "agente de terminal", "agente IA terminal", "agente de código terminal", "agente IA CLI", "asistente de programación IA", "programación multiagente", "agente de código BYOK", "agente terminal MCP"],
     },
     breadcrumb: "Agente de terminal",
     hero: {
-      eyebrow: "agente de terminal de código abierto", title: "Un agente de programación con IA creado para la terminal.",
-      lede: "Aurict lee tu proyecto, delega en agentes especialistas, usa herramientas tipadas y pide aprobación antes de acciones sensibles. Usa tu proveedor de modelos y conserva tu terminal habitual.",
+      eyebrow: "agente de terminal de código abierto", title: "Un agente de terminal de código abierto para programar con IA.",
+      lede: "Aurict es un agente de programación con IA nativo de la terminal que lee tu proyecto, delega en especialistas, usa herramientas tipadas y pide aprobación antes de acciones sensibles. Usa tu propio proveedor de modelos y conserva tu terminal habitual.",
       install: "instalar Aurict", github: "ver código fuente", proof: ["9 agentes especialistas", "218+ habilidades", "12 proveedores integrados", "macOS · Linux · Windows"],
     },
     definition: {
-      title: "¿Qué es un agente de terminal?",
+      title: "¿Qué es un agente de terminal de código abierto?",
       paragraphs: [
-        "Un agente de terminal es un asistente de IA que trabaja en la línea de comandos. Además de autocompletar, puede explorar un repositorio, planificar tareas, utilizar herramientas, editar archivos, ejecutar verificaciones y explicar los cambios.",
+        "Un agente de terminal de código abierto es un asistente de IA que trabaja en la línea de comandos y permite inspeccionar su implementación. Además de autocompletar, puede explorar un repositorio, planificar tareas, utilizar herramientas, editar archivos, ejecutar verificaciones y explicar los cambios.",
         "Aurict convierte ese patrón en un runtime controlado. Agentes especialistas cubren exploración, implementación, revisión, pruebas, documentación, seguridad, depuración, rendimiento y analítica mientras el coordinador conecta objetivo y evidencias.",
         "La terminal sigue siendo la superficie de control: el contexto permanece visible, los comandos pasan por clasificación y permisos, y puedes cambiar de proveedor sin trasladar el código a un IDE propietario.",
+      ],
+    },
+    evidence: {
+      eyebrow: "código abierto, inspeccionable, verificable",
+      title: "Comprueba el runtime antes de confiar en él.",
+      intro: "El código fuente, el paquete, la licencia y el modelo operativo de Aurict son públicos. Revisa la implementación y sus límites de seguridad en lugar de depender de las afirmaciones de un producto cerrado.",
+      items: [
+        { title: "Código fuente y licencia", body: "Inspecciona el runtime de terminal, las rutas de permisos, la orquestación de agentes, las pruebas y la licencia AGPLv3 en el repositorio público.", href: "https://github.com/aurict/aurict", label: "revisar el código en GitHub", external: true },
+        { title: "Paquete CLI publicado", body: "Revisa el paquete npm público e instala la CLI de Aurict para tu plataforma con un solo comando.", href: "https://www.npmjs.com/package/aurict", label: "inspeccionar el paquete npm", external: true },
+        { title: "Controles documentados", body: "Lee cómo se configuran los proveedores, las aprobaciones, las conexiones MCP, las sesiones, los hooks, las habilidades y los worktrees.", href: "/docs", label: "leer la documentación técnica" },
       ],
     },
     capabilities: {
@@ -351,6 +394,7 @@ const content = {
       eyebrow: "preguntas sobre agentes", title: "Preguntas habituales sobre agentes de IA en la terminal.",
       items: [
         { question: "¿Aurict es un agente de terminal o una extensión de IDE?", answer: "Aurict es un runtime nativo de terminal que funciona en tu shell. No exige un editor propietario." },
+        { question: "¿Aurict es gratuito y de código abierto?", answer: "Sí. Aurict se publica bajo la licencia AGPLv3, su código fuente es público en GitHub y la CLI se instala gratis. Tú proporcionas las credenciales de cualquier proveedor de modelos de pago que decidas utilizar." },
         { question: "¿Qué sistemas operativos admite?", answer: "Aurict ofrece binarios compilados para macOS, Linux y Windows x64." },
         { question: "¿Puedo elegir el proveedor de modelos?", answer: "Sí. Aurict admite tus propias claves para proveedores locales y en la nube compatibles." },
         { question: "¿Puede ejecutar comandos automáticamente?", answer: "Los comandos pasan por clasificación y permisos. Las acciones peligrosas o fuera de alcance exigen aprobación." },

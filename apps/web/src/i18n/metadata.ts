@@ -8,7 +8,7 @@ import {
 } from "./config"
 
 const siteUrl = "https://aurict.com"
-const DEFAULT_TRANSLATED_LOCALES: readonly AppLocale[] = ["en", "tr"]
+const DEFAULT_TRANSLATED_LOCALES: readonly AppLocale[] = SUPPORTED_LOCALES
 
 type LocalizedMetadataOptions = {
   keywords?: string[]

@@ -1,11 +1,12 @@
 import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglishContent } from "@/i18n/content"
 
 type Block = { type: "paragraph" | "heading" | "code" | "list"; text?: string; language?: string; items?: string[] }
 type LocalizablePost = { slug: string; title: string; description: string; category: string; readTime: string; content: Block[] }
 
 const tr: Record<string, Omit<LocalizablePost, "slug">> = {
   "how-to-use-ai-coding-assistant": {
-    title: "2026'da Yapay Zekâ Kodlama Asistanı Nasıl Kullanılır?", description: "Yapay zekâ kodlama asistanlarına başlamak için pratik bir rehber. En iyi uygulamaları, yaygın hataları ve terminal tabanlı araçlarla verimliliği artırma yollarını öğrenin.", category: "Rehber", readTime: "8 dk okuma",
+    title: "2026'da Yapay Zekâ Kodlama Asistanı Nasıl Kullanılır?", description: "Yapay zekâ kodlama asistanlarına başlama, yaygın hatalardan kaçınma ve terminal tabanlı araçlarla verimliliği artırma rehberi.", category: "Rehber", readTime: "8 dk okuma",
     content: [
       { type: "heading", text: "Yapay Zekâ Kodlama Asistanlarına Başlamak" },
       { type: "paragraph", text: "Yapay zekâ kodlama asistanları basit otomatik tamamlama araçlarından gelişmiş geliştirme ortaklarına dönüştü. 2026'da Aurict gibi terminal tabanlı asistanlar çoklu ajan orkestrasyonu, bağlamsal beceriler ve kod tabanını derinlemesine anlama sunuyor." },
@@ -38,7 +39,7 @@ const tr: Record<string, Omit<LocalizablePost, "slug">> = {
     ],
   },
   "multi-agent-ai-coding": {
-    title: "Çoklu Ajan Yapay Zekâ Neden Kodlamanın Geleceği?", description: "Çoklu ajan mimarisinin yapay zekâ kodlama asistanlarını nasıl dönüştürdüğünü keşfedin. Uzman ajanların karmaşık görevlerde tek model yaklaşımlarını neden geçtiğini öğrenin.", category: "Mimari", readTime: "7 dk okuma",
+    title: "Çoklu Ajan Yapay Zekâ Neden Kodlamanın Geleceği?", description: "Çoklu ajan mimarisinin kodlama asistanlarını nasıl dönüştürdüğünü ve uzman ajanların karmaşık görevlerde neden öne çıktığını keşfedin.", category: "Mimari", readTime: "7 dk okuma",
     content: [
       { type: "heading", text: "Tek Model Yapay Zekânın Sorunu" }, { type: "paragraph", text: "Yapay zekâ kodlama araçlarının çoğu tüm görevler için tek model kullanır. Bu, basit isteklerde işe yarar ancak karmaşık ve çok adımlı geliştirme işlerinde yetersiz kalır." },
       { type: "heading", text: "Çoklu Ajan Çözümü" }, { type: "paragraph", text: "Çoklu ajan sistemleri, her biri belirli görevler için iyileştirilmiş uzman ajanları kullanır. Aurict dokuz uzman ajan içerir:" }, { type: "list", items: ["Keşif — Kod tabanı analizi ve gezinme", "Kod — Uygulama ve yeniden düzenleme", "İnceleme — Kod inceleme ve iyi uygulamalar", "Test — Test üretimi ve kapsam", "Doküman — Dokümantasyon üretimi", "Güvenlik — Güvenlik açığı taraması", "Hata ayıklama — Kök neden analizi", "Performans — Profilleme ve optimizasyon", "Analitik — Veri analizi ve içgörü"] },
@@ -58,5 +59,6 @@ const tr: Record<string, Omit<LocalizablePost, "slug">> = {
 }
 
 export function localizeBlogPost<T extends LocalizablePost>(post: T, locale: AppLocale): T {
-  return locale === "tr" && tr[post.slug] ? { ...post, ...tr[post.slug] } : post
+  if (locale === "tr" && tr[post.slug]) return { ...post, ...tr[post.slug] }
+  return localizeEnglishContent(locale, post)
 }

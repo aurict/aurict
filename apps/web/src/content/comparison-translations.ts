@@ -1,5 +1,6 @@
 import type { Comparison } from "@/content/comparisons"
 import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglishContent } from "@/i18n/content"
 
 const phrases: Record<string, string> = {
   "Terminal workflow": "Terminal iş akışı",
@@ -24,7 +25,7 @@ type Translation = Pick<Comparison, "title" | "description" | "tagline" | "diffe
 const tr: Record<string, Translation> = {
   "claude-code": {
     title: "Aurict ve Claude Code",
-    description: "İkisi de terminal kodlama ajanıdır. Aurict geniş yerleşik sağlayıcı kataloğuna, sınırlı Project Auto'ya ve kalıcı tamamlanma kanıtına odaklanır; Claude Code ise Anthropic, Bedrock ve Vertex dağıtım yolları sunar.",
+    description: "Doğru terminal kodlama ajanını seçmek için Aurict ile Claude Code'u sağlayıcılar, izinler, MCP, ajan iş akışları ve doğrulama açısından karşılaştırın.",
     tagline: "Sağlayıcı genişliği ve kanıt odaklı teslim",
     differentiator: "Sağlayıcı seçimi + kalıcı kanıt",
     ourStrengths: ["12 yerleşik sağlayıcı adaptörü", "Proje içi sınırlı dosya değişiklikleri için Project Auto", "Doğrulama kanıtı ve açık işleri içeren kalıcı tamamlanma kaydı", "Yerel anlamsal arama, dependency docs, görsel okuma ve doğrulama araçları"],
@@ -32,7 +33,7 @@ const tr: Record<string, Translation> = {
   },
   cursor: {
     title: "Aurict ve Cursor",
-    description: "Cursor bir IDE deneyimini CLI ve model seçimiyle birleştirir. Aurict terminal öncelikli çalışma zamanı, proje kapsamlı otomasyon denetimleri ve kanıta dayalı tamamlanma için tasarlanmıştır.",
+    description: "Aurict ile Cursor'u terminal ve IDE akışları, model seçimi, MCP, otomasyon denetimleri ve kanıta dayalı tamamlanma açısından karşılaştırın.",
     tagline: "Terminal öncelikli çalışma zamanı ve IDE iş akışı",
     differentiator: "Kapsamlı otomasyon + terminal denetimi",
     ourStrengths: ["IDE bağımlılığı olmadan terminal öncelikli çalışma", "Project Auto tek proje oturumuyla sınırlıdır", "Tamamlanma kanıtı, evidence ve açık işleri görünür tutar", "Anlamsal arama, dependency docs, vision ve doğrulama için yerel araç zinciri"],
@@ -40,7 +41,7 @@ const tr: Record<string, Translation> = {
   },
   aider: {
     title: "Aurict ve Aider",
-    description: "İkisi de terminal tabanlı kendi modelini getir iş akışlarını destekler. Aurict, kapsamlı izinler, kalıcı tamamlanma kanıtı ve yerel çalışma alanı zekâsı için daha geniş bir runtime katmanı ekler.",
+    description: "Aurict ile Aider'ı terminal akışları, model seçimi, izinler, Git entegrasyonu, çalışma alanı zekâsı ve doğrulama açısından karşılaştırın.",
     tagline: "Git odaklı eşleşme ve kanıtlı runtime",
     differentiator: "Kapsamlı izin + doğrulama kaydı",
     ourStrengths: ["Project Auto yalnızca sınırlı proje içi düzenlemeleri kapsar", "Kalıcı /proof tamamlanma kaydı", "Anlamsal kaynak araması ve kurulu dependency dokümantasyonu", "Doğrulama için tarayıcı ve eval araçları"],
@@ -48,7 +49,7 @@ const tr: Record<string, Translation> = {
   },
   "github-copilot": {
     title: "Aurict ve GitHub Copilot CLI",
-    description: "İkisi de model seçimi, izinler, MCP ve özelleştirme içeren terminal ajanı iş akışları sunar. Aurict kendi sağlayıcı kataloğu, sınırlı Project Auto ve kalıcı tamamlanma kanıtıyla ayrışır.",
+    description: "Aurict ile GitHub Copilot CLI'ı model seçimi, izinler, MCP, otomasyon kapsamı, ekosistem entegrasyonu ve doğrulama açısından karşılaştırın.",
     tagline: "Açık kapsamlı otomasyon ve yerel kanıt",
     differentiator: "Project Auto + tamamlanma kanıtı",
     ourStrengths: ["12 yerleşik sağlayıcı adaptörü", "Sınırlı düzenlemeler için proje yerelinde otomatik onay", "Değişiklik, kanıt, açık iş ve muafiyet içeren tamamlanma kaydı", "Yerel çalışma alanı zekâsı araçları"],
@@ -56,7 +57,7 @@ const tr: Record<string, Translation> = {
   },
   opencode: {
     title: "Aurict ve OpenCode",
-    description: "İkisi de provider ve izin yapılandırması sunan açık kaynak terminal kodlama ajanlarıdır. Aurict seçilmiş yerleşik sağlayıcı kataloğu, sınırlı Project Auto, tamamlanma kanıtı ve yerel doğrulama araç zincirine odaklanır.",
+    description: "Aurict ile OpenCode'u sağlayıcılar, izinler, MCP, proje otomasyonu, çalışma alanı zekâsı ve doğrulama kanıtı açısından karşılaştırın.",
     tagline: "Seçilmiş runtime denetimleri ve kanıt odaklı teslim",
     differentiator: "Kapsamlı proje otomasyonu + tamamlanma kanıtı",
     ourStrengths: ["12 yerleşik sağlayıcı adaptörü", "Güvenli, tipli dosya değişiklikleri için sınırlı Project Auto", "Kalıcı tamamlanma kanıtı ve doğrulama evidence'ı", "Anlamsal arama, dependency docs, vision, browser ve eval araçları"],
@@ -65,7 +66,7 @@ const tr: Record<string, Translation> = {
 }
 
 export function localizeComparison(comparison: Comparison, locale: AppLocale): Comparison {
-  if (locale !== "tr") return comparison
+  if (locale !== "tr") return localizeEnglishContent(locale, comparison)
   const translation = tr[comparison.slug]
   if (!translation) return comparison
 

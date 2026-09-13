@@ -6,10 +6,11 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb"
 import { getLegalPage } from "@/content/legal"
 import { localizedMetadata } from "@/i18n/metadata"
 import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglish } from "@/i18n/content"
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale() as AppLocale
-  return localizedMetadata(locale, "/terms", locale === "tr" ? "Kullanım Koşulları — Aurict" : "Terms of Use — Aurict", locale === "tr" ? "Aurict kullanım koşulları; açık kaynak yazılım, BYOK sorumlulukları, güvenlik ve politika değişikliklerini kapsar." : "Aurict terms of use covering open-source software, BYOK responsibilities, acceptable use, security workflows, disclaimers, and policy changes.")
+  return localizedMetadata(locale, "/terms", locale === "tr" ? "Kullanım Koşulları" : localizeEnglish(locale, "Terms of Use"), locale === "tr" ? "Aurict kullanım koşulları; açık kaynak yazılım, BYOK sorumlulukları, güvenlik ve politika değişikliklerini kapsar." : localizeEnglish(locale, "Aurict terms of use covering open-source software, BYOK responsibilities, acceptable use, security workflows, disclaimers, and policy changes."))
 }
 
 export default async function TermsPage() {
@@ -19,7 +20,7 @@ export default async function TermsPage() {
     <>
       <Nav />
       <main className="marketing-main marketing-main-narrow">
-        <Breadcrumb items={[{ label: locale === "tr" ? "Ana sayfa" : "Home", href: "/" }, { label: page.breadcrumb, href: "/terms" }]} />
+        <Breadcrumb items={[{ label: locale === "tr" ? "Ana sayfa" : localizeEnglish(locale, "Home"), href: "/" }, { label: page.breadcrumb, href: "/terms" }]} />
         <section className="marketing-hero" style={{ marginTop: 24 }}>
           <p className="marketing-eyebrow">{page.eyebrow}</p>
           <h1 className="marketing-title marketing-title-sm">{page.title}</h1>

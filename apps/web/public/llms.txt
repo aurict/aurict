@@ -47,4 +47,4 @@
 
 ## Languages
 
-The main product overview and terminal-agent guide are available in English, Turkish, German, French, and Spanish. The AI-coding-agent guide, comparisons, editorial content, documentation, and legal pages are available in English and Turkish. Localized URLs use `/tr`, `/de`, `/fr`, and `/es`; English is served without a locale prefix.
+All public product, documentation, comparison, use-case, editorial, download, changelog, and legal pages are available in English, Turkish, German, French, and Spanish. Localized URLs use `/tr`, `/de`, `/fr`, and `/es`; English is served without a locale prefix.

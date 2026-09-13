@@ -23,7 +23,7 @@ bun run build
 
 The site uses `next-intl` and supports English (`en`), Turkish (`tr`), German (`de`), French (`fr`), and Spanish (`es`). English uses unprefixed URLs; the other locales use `/tr`, `/de`, `/fr`, and `/es`.
 
-Locale configuration lives in `src/i18n/config.ts`. Navigation messages live in `src/messages/`. The homepage and `/terminal-agent` are fully localized in all five languages. Long-form editorial, documentation, comparison, use-case, and legal content currently remains English/Turkish; German, French, and Spanish requests receive the English article with an English canonical until an reviewed translation is available. Do not add those fallback pages to localized sitemap entries.
+Locale configuration lives in `src/i18n/config.ts`. Navigation messages live in `src/messages/`. Public product, editorial, documentation, comparison, use-case, download, account, and legal pages are localized in all five languages. Keep every advertised locale complete and do not add untranslated fallback pages to localized sitemap entries.
 
 When adding a fully translated public page:
 

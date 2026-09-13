@@ -47,6 +47,14 @@ const ECOSYSTEM_LINKS = [
   },
 ]
 
+const PRIMARY_NAV_LABEL: Record<AppLocale, string> = {
+  en: "Primary navigation",
+  tr: "Ana gezinme",
+  de: "Hauptnavigation",
+  fr: "Navigation principale",
+  es: "Navegación principal",
+}
+
 type MenuName = "product" | "ecosystem" | null
 
 export function Nav() {
@@ -97,7 +105,7 @@ export function Nav() {
   return (
     <>
       <nav
-        aria-label="Primary navigation"
+        aria-label={PRIMARY_NAV_LABEL[locale]}
         className={`${styles.nav} mono ${scrolled || menuOpen ? styles.navElevated : ""}`}
         ref={navRef}
       >

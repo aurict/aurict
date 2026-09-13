@@ -1,4 +1,5 @@
 import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglishContent } from "@/i18n/content"
 
 type LocalizableUseCase = {
   slug: string
@@ -43,5 +44,6 @@ const tr: Record<string, Omit<LocalizableUseCase, "slug">> = {
 }
 
 export function localizeUseCase<T extends LocalizableUseCase>(useCase: T, locale: AppLocale): T {
-  return locale === "tr" && tr[useCase.slug] ? { ...useCase, ...tr[useCase.slug] } : useCase
+  if (locale === "tr" && tr[useCase.slug]) return { ...useCase, ...tr[useCase.slug] }
+  return localizeEnglishContent(locale, useCase)
 }

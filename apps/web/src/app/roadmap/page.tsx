@@ -4,22 +4,14 @@ import { Link } from "@/i18n/navigation"
 import { Nav } from "@/components/Nav"
 import { Footer } from "@/components/sections/Footer"
 import { Breadcrumb } from "@/components/ui/Breadcrumb"
-import { localizedMetadata } from "@/i18n/metadata"
+import { localizedMetadata, localizedUrl } from "@/i18n/metadata"
 import type { AppLocale } from "@/i18n/routing"
+import { localizeEnglish, localizeEnglishContent } from "@/i18n/content"
 import styles from "./RoadmapPage.module.css"
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale() as AppLocale
-  return localizedMetadata(locale, "/roadmap", locale === "tr" ? "Aurict Yol Haritası — Ürün Yönü" : "Aurict Roadmap — Product Direction", locale === "tr" ? "Terminal ajanı, mobil BYOK asistanı, web platformu ve uzun vadeli yapay zekâ araştırmaları için Aurict yol haritası." : "Aurict roadmap across the terminal agent, mobile BYOK assistant, web platform, MicroTarget.one integration, security vertical, and long-term AI research.")
-}
-
-const breadcrumbJsonLd = {
-  "@context": "https://schema.org",
-  "@type":    "BreadcrumbList",
-  "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Home",    "item": "https://aurict.com" },
-    { "@type": "ListItem", "position": 2, "name": "Roadmap", "item": "https://aurict.com/roadmap" },
-  ],
+  return localizedMetadata(locale, "/roadmap", locale === "tr" ? "Aurict Yol Haritası — Ürün Yönü" : localizeEnglish(locale, "Aurict Roadmap — Product Direction"), locale === "tr" ? "Terminal ajanı, mobil BYOK asistanı, web platformu ve uzun vadeli yapay zekâ araştırmaları için Aurict yol haritası." : localizeEnglish(locale, "Aurict roadmap across the terminal agent, mobile BYOK assistant, web platform, MicroTarget.one integration, security vertical, and long-term AI research."))
 }
 
 type RoadmapStatus = "live" | "active" | "planned" | "research"
@@ -106,29 +98,38 @@ const englishSignals = [
 export default async function RoadmapPage() {
   const locale = await getLocale() as AppLocale
   const tr = locale === "tr"
+  const t = (source: string) => localizeEnglish(locale, source)
   const phases = tr ? [
     { label: "Faz 01", title: "Çalışan çekirdek", status: "live" as const, items: ["Terminal odaklı Aurict CLI", "BYOK sağlayıcı modeli", "Firebase tabanlı web kimlik doğrulaması", "CLI oturumları için tarayıcı tabanlı giriş", "Mobil BYOK sohbeti, araştırma ve PDF üretimi", "GitHub Releases ile otomatik değişiklik günlüğü"] },
     { label: "Faz 02", title: "Ürün sağlamlaştırma", status: "active" as const, items: ["Mobil ve web marka dilinin tam hizalanması", "Gerçek cihaz kimlik doğrulama ve sağlayıcı anahtarı akışları", "CLI uzaktan onay ve oturum yönetimi", "Üretim ortam değişkeni kontrolleri", "Sürüm, değişiklik günlüğü ve yol haritası yayınlama disiplini"] },
     { label: "Faz 03", title: "Ekosistem genişlemesi", status: "planned" as const, items: ["MicroTarget.one dashboard ve süreç yönetimi entegrasyonu", "Yapay zekâ destekli optimizasyon ve karar desteği katmanı", "Tasarım ve arayüz üretim katmanı", "Siber güvenlik dikeyi için bağımsız platform temeli"] },
     { label: "Faz 04", title: "Araştırma hattı", status: "research" as const, items: ["Model orkestrasyonu için alternatif mimari yaklaşımlar", "Daha düşük maliyetli çıkarım ve bağlam stratejileri", "Daha erişilebilir ve daha doğru LLM deneyleri", "Aurict ekosisteminden beslenen uzun vadeli model araştırması"] },
-  ] : englishPhases
-  const signals = tr ? [["Şimdi", "Web, CLI ve mobil tek bir marka sistemi altında yakınsıyor."], ["Sırada", "Mobil kimlik doğrulama, anahtar yönetimi ve tarayıcı giriş akışları sağlamlaştırılıyor."], ["Sonrasında", "MicroTarget.one ve yeni dikeyler Aurict operasyon beynine bağlanıyor."]] : englishSignals
+  ] : localizeEnglishContent(locale, englishPhases)
+  const signals = tr ? [["Şimdi", "Web, CLI ve mobil tek bir marka sistemi altında yakınsıyor."], ["Sırada", "Mobil kimlik doğrulama, anahtar yönetimi ve tarayıcı giriş akışları sağlamlaştırılıyor."], ["Sonrasında", "MicroTarget.one ve yeni dikeyler Aurict operasyon beynine bağlanıyor."]] : localizeEnglishContent(locale, englishSignals)
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": tr ? "Ana sayfa" : t("Home"), "item": localizedUrl("/", locale) },
+      { "@type": "ListItem", "position": 2, "name": tr ? "Yol haritası" : t("Roadmap"), "item": localizedUrl("/roadmap", locale) },
+    ],
+  }
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <Nav />
       <main className={`marketing-main ${styles.roadmap}`}>
-        <Breadcrumb items={[{ label: tr ? "Ana sayfa" : "Home", href: "/" }, { label: tr ? "Yol haritası" : "Roadmap", href: "/roadmap" }]} />
+        <Breadcrumb items={[{ label: tr ? "Ana sayfa" : t("Home"), href: "/" }, { label: tr ? "Yol haritası" : t("Roadmap"), href: "/roadmap" }]} />
 
         <section className="marketing-hero" style={{ marginTop: 24 }}>
-          <p className="marketing-eyebrow">{tr ? "Herkese açık yol haritası" : "Public roadmap"}</p>
-          <h1 className="marketing-title">{tr ? "Ürün rotası, net fazlara ayrılmış halde." : "The product route, organized into clear phases."}</h1>
+          <p className="marketing-eyebrow">{tr ? "Herkese açık yol haritası" : t("Public roadmap")}</p>
+          <h1 className="marketing-title">{tr ? "Ürün rotası, net fazlara ayrılmış halde." : t("The product route, organized into clear phases.")}</h1>
           <p className="marketing-lede">
-            {tr ? "Aurict yol haritası yalnızca bir özellik listesi değildir. Terminal ajanından mobil BYOK asistana, web platformundan MicroTarget.one entegrasyonuna ve oradan uzun vadeli model araştırmasına uzanan kontrollü bir ilerlemedir." : "The Aurict roadmap is not just a feature list. It is a controlled progression from terminal agent to mobile BYOK assistant, from web platform to MicroTarget.one integration, and from there into long-term model research."}
+            {tr ? "Aurict yol haritası yalnızca bir özellik listesi değildir. Terminal ajanından mobil BYOK asistana, web platformundan MicroTarget.one entegrasyonuna ve oradan uzun vadeli model araştırmasına uzanan kontrollü bir ilerlemedir." : t("The Aurict roadmap is not just a feature list. It is a controlled progression from terminal agent to mobile BYOK assistant, from web platform to MicroTarget.one integration, and from there into long-term model research.")}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 30 }}>
-            <Link className="aur-button aur-button-primary" href="/changelog">{tr ? "son değişiklikler" : "latest changes"}</Link>
-            <Link className="aur-button aur-button-secondary" href="/about">{tr ? "manifestoyu oku" : "read manifesto"}</Link>
+            <Link className="aur-button aur-button-primary" href="/changelog">{tr ? "son değişiklikler" : t("latest changes")}</Link>
+            <Link className="aur-button aur-button-secondary" href="/about">{tr ? "manifestoyu oku" : t("read manifesto")}</Link>
           </div>
         </section>
 
@@ -175,16 +176,16 @@ export default async function RoadmapPage() {
 
         <section className={`resp-grid-2 ${styles.policyGrid}`} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 18, alignItems: "stretch" }}>
           <article className={`${styles.policy} marketing-card`} style={{ padding: 28 }}>
-            <p className="marketing-eyebrow" style={{ marginBottom: 12 }}>{tr ? "Yol haritası ilkesi" : "Roadmap policy"}</p>
-            <h2 style={{ color: "var(--text)", fontSize: 30, fontWeight: 600, lineHeight: 1.18, marginBottom: 14 }}>{tr ? "Bu sayfa bir yön haritasıdır, vaat listesi değil." : "This page is a direction map, not a promise list."}</h2>
+            <p className="marketing-eyebrow" style={{ marginBottom: 12 }}>{tr ? "Yol haritası ilkesi" : t("Roadmap policy")}</p>
+            <h2 style={{ color: "var(--text)", fontSize: 30, fontWeight: 600, lineHeight: 1.18, marginBottom: 14 }}>{tr ? "Bu sayfa bir yön haritasıdır, vaat listesi değil." : t("This page is a direction map, not a promise list.")}</h2>
             <p className="marketing-copy">
-              {tr ? "Yol haritası ürünün nereye gittiğini, hangi fazların etkin olduğunu ve sırada hangi stratejik katmanların bulunduğunu gösterir. Tamamlanan işler değişiklik günlüğünde ayrıntılı olarak izlenir." : "The roadmap shows where the product is going, which phases are active, and which strategic layers are waiting next. Completed work is tracked in detail through the changelog."}
+              {tr ? "Yol haritası ürünün nereye gittiğini, hangi fazların etkin olduğunu ve sırada hangi stratejik katmanların bulunduğunu gösterir. Tamamlanan işler değişiklik günlüğünde ayrıntılı olarak izlenir." : t("The roadmap shows where the product is going, which phases are active, and which strategic layers are waiting next. Completed work is tracked in detail through the changelog.")}
             </p>
           </article>
           <article className={`${styles.policy} marketing-card`} style={{ padding: 28, background: "linear-gradient(180deg, color-mix(in oklch, var(--accent) 10%, var(--bg-card)), var(--bg-card))" }}>
-            <p className="mono" style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 20 }}>{tr ? "sürüm doğruluk kaynağı" : "release truth source"}</p>
-            <Link className="aur-button aur-button-secondary" href="/changelog" style={{ width: "100%" }}>{tr ? "değişiklik günlüğü" : "changelog"}</Link>
-            <Link className="aur-button aur-button-primary" href="/docs" style={{ width: "100%" }}>{tr ? "dokümanlar" : "docs"}</Link>
+            <p className="mono" style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 20 }}>{tr ? "sürüm doğruluk kaynağı" : t("release truth source")}</p>
+            <Link className="aur-button aur-button-secondary" href="/changelog" style={{ width: "100%" }}>{tr ? "değişiklik günlüğü" : t("changelog")}</Link>
+            <Link className="aur-button aur-button-primary" href="/docs" style={{ width: "100%" }}>{tr ? "dokümanlar" : t("docs")}</Link>
           </article>
         </section>
       </main>
@@ -195,7 +196,14 @@ export default async function RoadmapPage() {
 
 function Status({ locale, status }: { locale: AppLocale; status: RoadmapStatus }) {
   const style = statusStyle[status]
-  const label = locale === "tr" ? (status === "live" ? "Canlı" : status === "active" ? "Aktif" : status === "planned" ? "Planlandı" : "Araştırma") : (status === "live" ? "Live" : status === "active" ? "Active" : status === "planned" ? "Planned" : "Research")
+  const labels: Record<AppLocale, Record<RoadmapStatus, string>> = {
+    en: { live: "Live", active: "Active", planned: "Planned", research: "Research" },
+    tr: { live: "Canlı", active: "Aktif", planned: "Planlandı", research: "Araştırma" },
+    de: { live: "Live", active: "Aktiv", planned: "Geplant", research: "Forschung" },
+    fr: { live: "En ligne", active: "Actif", planned: "Planifié", research: "Recherche" },
+    es: { live: "Disponible", active: "Activo", planned: "Planificado", research: "Investigación" },
+  }
+  const label = labels[locale][status]
 
   return (
     <span

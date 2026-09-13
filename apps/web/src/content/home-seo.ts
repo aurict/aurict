@@ -26,7 +26,7 @@ const copy: Record<AppLocale, HomeSeoCopy> = {
   },
   tr: {
     title: "Aurict — Açık Kaynak Terminal Ajanı ve Yapay Zekâ Kodlama",
-    description: "Çoklu ajan yapay zekâ kodlama, MCP, yerel proje bağlamı, BYOK model sağlayıcılar, açık onaylar ve doğrulanmış geliştirici iş akışları için açık kaynak terminal ajanı.",
+    description: "Çoklu ajanlı yapay zekâ kodlama, MCP, yerel proje bağlamı, BYOK sağlayıcılar, açık onaylar ve doğrulanmış iş akışları için açık kaynak terminal ajanı.",
     keywords: ["terminal ajanı", "açık kaynak terminal ajanı", "yapay zekâ kodlama ajanı", "terminal yapay zekâ asistanı", "çoklu ajan kodlama", "MCP istemcisi", "CLI kodlama asistanı"],
     howToName: "Aurict terminal ajanı nasıl kurulur?", howToDescription: "Açık kaynak Aurict terminal ajanını üç adımda kurun ve başlatın.", install: "Aurict'i kur", run: "Terminal ajanını başlat", configure: "Model sağlayıcısı seç", installText: "Terminalinizde npm install -g aurict komutunu çalıştırın.", runText: "Bir proje dizini açın ve aurict komutunu çalıştırın.", configureText: "Desteklenen bir sağlayıcı seçin, API anahtarınızı ekleyin ve modeli belirleyin.",
   },
@@ -38,12 +38,12 @@ const copy: Record<AppLocale, HomeSeoCopy> = {
   },
   fr: {
     title: "Aurict — Agent de terminal open source pour coder avec l’IA",
-    description: "Agent de terminal open source pour le code IA multi-agent, MCP, le contexte local du projet, les fournisseurs BYOK, les approbations explicites et les workflows vérifiés.",
+    description: "Agent de terminal open source pour le code IA multi-agent, MCP, le contexte local, les fournisseurs BYOK, les approbations et les workflows vérifiés.",
     keywords: ["agent de terminal", "agent terminal open source", "agent de code IA", "assistant IA terminal", "code multi-agent", "client MCP", "assistant de code CLI"],
     howToName: "Installer l’agent de terminal Aurict", howToDescription: "Installez et lancez l’agent de terminal open source Aurict en trois étapes.", install: "Installer Aurict", run: "Lancer l’agent", configure: "Choisir un fournisseur", installText: "Exécutez npm install -g aurict dans le terminal.", runText: "Ouvrez un dossier de projet et exécutez aurict.", configureText: "Choisissez un fournisseur compatible, ajoutez votre clé API et sélectionnez un modèle.",
   },
   es: {
-    title: "Aurict — Agente de terminal de código abierto para programar con IA",
+    title: "Aurict — Agente terminal open source para código con IA",
     description: "Agente de terminal de código abierto para programación multiagente con IA, MCP, contexto local, proveedores BYOK, aprobaciones explícitas y flujos verificados.",
     keywords: ["agente de terminal", "agente terminal código abierto", "agente de programación IA", "asistente IA terminal", "programación multiagente", "cliente MCP", "asistente de código CLI"],
     howToName: "Instalar el agente de terminal Aurict", howToDescription: "Instala e inicia el agente de terminal de código abierto Aurict en tres pasos.", install: "Instalar Aurict", run: "Iniciar el agente", configure: "Elegir proveedor", installText: "Ejecuta npm install -g aurict en la terminal.", runText: "Abre un directorio de proyecto y ejecuta aurict.", configureText: "Elige un proveedor compatible, añade tu clave API y selecciona un modelo.",
@@ -58,6 +58,7 @@ export function homeStructuredData(locale: AppLocale) {
   const seo = copy[locale]
   const url = localizedUrl("/", locale)
   const faqs = localizeFaqs(locale)
+  const docsLocale = locale
 
   return {
     "@context": "https://schema.org",
@@ -83,7 +84,7 @@ export function homeStructuredData(locale: AppLocale) {
         featureList: localizeCapabilityItems(locale).map(([title]) => title),
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
         author: { "@id": "https://aurict.com/#organization" },
-        softwareHelp: { "@type": "CreativeWork", url: localizedUrl("/docs", locale) },
+        softwareHelp: { "@type": "CreativeWork", url: localizedUrl("/docs", docsLocale), inLanguage: docsLocale },
         softwareRequirements: `${providerCount} built-in model provider adapters; user supplies provider credentials`,
       },
       {
@@ -91,7 +92,7 @@ export function homeStructuredData(locale: AppLocale) {
         step: [
           { "@type": "HowToStep", position: 1, name: seo.install, text: seo.installText, url: `${url}#install` },
           { "@type": "HowToStep", position: 2, name: seo.run, text: seo.runText, url: `${url}#install` },
-          { "@type": "HowToStep", position: 3, name: seo.configure, text: seo.configureText, url: localizedUrl("/docs", locale) },
+          { "@type": "HowToStep", position: 3, name: seo.configure, text: seo.configureText, url: localizedUrl("/docs", docsLocale) },
         ],
       },
       {

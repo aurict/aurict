@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import type { AppLocale } from "@/i18n/config"
+import { localizedUrl } from "@/i18n/metadata"
 
 export const SITE_URL = "https://aurict.com"
 export const SITE_NAME = "Aurict"
@@ -66,7 +68,7 @@ export function buildMetadata({
   }
 }
 
-export function breadcrumbJsonLd(items: Array<{ name: string; path: string }>) {
+export function breadcrumbJsonLd(items: Array<{ name: string; path: string }>, locale: AppLocale = "en") {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -74,7 +76,7 @@ export function breadcrumbJsonLd(items: Array<{ name: string; path: string }>) {
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: absoluteUrl(item.path),
+      item: localizedUrl(item.path, locale),
     })),
   }
 }
@@ -84,24 +86,27 @@ export function collectionJsonLd({
   description,
   path,
   items,
+  locale = "en",
 }: {
   name: string
   description: string
   path: string
   items: Array<{ name: string; path: string; description?: string }>
+  locale?: AppLocale
 }) {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name,
     description,
-    url: absoluteUrl(path),
+    url: localizedUrl(path, locale),
+    inLanguage: locale,
     mainEntity: {
       "@type": "ItemList",
       itemListElement: items.map((item, index) => ({
         "@type": "ListItem",
         position: index + 1,
-        url: absoluteUrl(item.path),
+        url: localizedUrl(item.path, locale),
         name: item.name,
         description: item.description,
       })),
