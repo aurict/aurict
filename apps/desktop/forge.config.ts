@@ -6,9 +6,11 @@ import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { macosSign } from './macos-sign';
 import { windowsSign } from './windows-sign';
 
 const sidecarResource = process.platform === 'win32' ? 'resources/aurict-sidecar.exe' : 'resources/aurict-sidecar';
+const configuredMacosSign = macosSign();
 const configuredWindowsSign = windowsSign();
 const productIcon = process.platform === 'win32'
   ? 'resources/hoprel-icon.ico'
@@ -19,8 +21,12 @@ const productIcon = process.platform === 'win32'
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    appBundleId: 'com.aurict.hoprel',
+    appCategoryType: 'public.app-category.developer-tools',
+    appCopyright: 'Copyright (c) Aurict',
     executableName: 'hoprel',
     icon: productIcon,
+    ...(configuredMacosSign ?? {}),
     ...(configuredWindowsSign ? { windowsSign: configuredWindowsSign as never } : {}),
     extraResource: [
       sidecarResource,

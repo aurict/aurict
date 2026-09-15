@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 if (process.platform !== 'darwin') {
@@ -16,17 +16,17 @@ const output = join(resources, 'hoprel-icon.icns');
 
 if (!existsSync(source)) throw new Error(`Hoprel PNG icon is missing: ${source}`);
 
-const variants: Array<[string, number]> = [
-  ['icon_16x16.png', 16],
-  ['icon_16x16@2x.png', 32],
-  ['icon_32x32.png', 32],
-  ['icon_32x32@2x.png', 64],
-  ['icon_128x128.png', 128],
-  ['icon_128x128@2x.png', 256],
-  ['icon_256x256.png', 256],
-  ['icon_256x256@2x.png', 512],
-  ['icon_512x512.png', 512],
-  ['icon_512x512@2x.png', 1024],
+const variants: Array<[filename: string, pixels: number, icnsType: string]> = [
+  ['icon_16x16.png', 16, 'icp4'],
+  ['icon_16x16@2x.png', 32, 'ic11'],
+  ['icon_32x32.png', 32, 'icp5'],
+  ['icon_32x32@2x.png', 64, 'ic12'],
+  ['icon_128x128.png', 128, 'ic07'],
+  ['icon_128x128@2x.png', 256, 'ic13'],
+  ['icon_256x256.png', 256, 'ic08'],
+  ['icon_256x256@2x.png', 512, 'ic14'],
+  ['icon_512x512.png', 512, 'ic09'],
+  ['icon_512x512@2x.png', 1024, 'ic10'],
 ];
 
 function run(command: string[]): void {
@@ -41,7 +41,23 @@ for (const [filename, pixels] of variants) {
   run(['sips', '-z', String(pixels), String(pixels), source, '--out', join(iconset, filename)]);
 }
 
-run(['iconutil', '-c', 'icns', '-o', output, iconset]);
+// iconutil rejects otherwise valid generated iconsets on some recent macOS
+// runners. ICNS is a small big-endian container; modern entries contain the
+// PNG bytes directly, so build it deterministically instead of depending on
+// iconutil's host-version-specific validation.
+const chunks = variants.map(([filename, , type]) => {
+  const image = readFileSync(join(iconset, filename));
+  const header = Buffer.alloc(8);
+  header.write(type, 0, 4, 'ascii');
+  header.writeUInt32BE(image.length + header.length, 4);
+  return Buffer.concat([header, image]);
+});
+const body = Buffer.concat(chunks);
+const header = Buffer.alloc(8);
+header.write('icns', 0, 4, 'ascii');
+header.writeUInt32BE(body.length + header.length, 4);
+writeFileSync(output, Buffer.concat([header, body]));
+rmSync(iconset, { force: true, recursive: true });
 if (!existsSync(output)) throw new Error(`macOS icon generation did not produce ${output}`);
 
 console.log(`macOS icon prepared: ${output}`);

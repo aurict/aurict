@@ -12,6 +12,9 @@ From the repository root:
 bun run --cwd apps/desktop start
 ```
 
+Electron Forge packaging is pinned to Node.js 20 in CI. Use Node.js 20 for
+local `package` and `make` commands as well.
+
 Use the workspace path in the titlebar to select the project Aurict should
 read and edit. The selection is persisted in Electron's user-data directory;
 the active workspace is also the sidecar's current working directory.
@@ -37,16 +40,29 @@ virtualized session list; keep that setting when updating dependencies.
 Until `electron-installer-redhat` releases its RPM 4.20+ fix, Bun applies the
 tracked upstream patch in `patches/electron-installer-redhat@3.4.0.patch`.
 
-## Windows beta release
+## Desktop beta release
 
-Pushing a `desktop-beta-v*` tag creates a self-signed Windows x64 installer
-an unsigned Debian amd64 `.deb` package, and unsigned macOS ZIPs for Intel
-and Apple Silicon, each with a SHA-256 checksum, in a GitHub prerelease. This
-is a temporary public testing channel, not a trusted-public-signing
-replacement: Windows may show a SmartScreen warning and macOS may show a
-Gatekeeper warning. The ephemeral Windows beta certificate is generated only
-inside the CI run and is never committed or reused. Do not ask users to add it
-to their trusted root store.
+Pushing a `desktop-beta-v*` tag creates a self-signed Windows x64 installer,
+an unsigned Debian amd64 `.deb` package, and Developer ID-signed and notarized
+macOS ZIPs for Intel and Apple Silicon. Each artifact includes a SHA-256
+checksum in a GitHub prerelease. Windows may still show a SmartScreen warning
+because its beta certificate is ephemeral. The macOS workflow fails closed if
+signing or notarization is unavailable and validates the exact archived app
+with `codesign`, `stapler`, and Gatekeeper before upload.
+
+The macOS release job requires these GitHub Actions secrets:
+
+- `MACOS_CERTIFICATE_BASE64`: a base64-encoded `.p12` containing one
+  **Developer ID Application** certificate and its private key.
+- `MACOS_CERTIFICATE_PASSWORD`: the `.p12` export password.
+- `APPLE_ID`: the Apple Developer account used for notarization.
+- `APPLE_APP_SPECIFIC_PASSWORD`: an app-specific password for that Apple ID.
+- `APPLE_TEAM_ID`: the Developer Program team ID that owns the certificate.
+
+The certificate is imported into a temporary keychain on the macOS runner and
+deleted after the job. Secrets and signing files must never be committed. The
+ephemeral Windows beta certificate is likewise generated only inside CI and
+must not be added to a user's trusted root store.
 
 `electron-winstaller` is a direct root development dependency because the
 Windows release workflow needs its host-architecture 7-Zip selector. The
