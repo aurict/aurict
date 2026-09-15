@@ -22,9 +22,17 @@ export class RunBudgetManager {
   constructor(readonly limits: RunBudgetLimits = {}) {}
 
   recordModelTurn(): void {
+    this.assertCanStartModelTurn()
     this.modelTurns++
     this.assert("modelTurns", this.modelTurns)
     this.assertWallTime()
+  }
+
+  assertCanStartModelTurn(): void {
+    this.assertWallTime()
+    this.assertRemaining("inputTokens", this.inputTokens)
+    this.assertRemaining("outputTokens", this.outputTokens)
+    this.assertRemaining("costUsd", this.costUsd)
   }
 
   recordToolCall(): void {
@@ -46,6 +54,9 @@ export class RunBudgetManager {
   }
 
   recordUsage(inputTokens: number, outputTokens: number, costUsd = 0): void {
+    assertUsageValue("inputTokens", inputTokens)
+    assertUsageValue("outputTokens", outputTokens)
+    assertUsageValue("costUsd", costUsd)
     this.inputTokens += inputTokens
     this.outputTokens += outputTokens
     this.costUsd += costUsd
@@ -78,5 +89,16 @@ export class RunBudgetManager {
   private assert(dimension: keyof RunBudgetLimits, actual: number): void {
     const limit = this.limits[dimension]
     if (limit !== undefined && actual > limit) throw new BudgetExceededError(dimension, limit, actual)
+  }
+
+  private assertRemaining(dimension: "inputTokens" | "outputTokens" | "costUsd", actual: number): void {
+    const limit = this.limits[dimension]
+    if (limit !== undefined && actual >= limit) throw new BudgetExceededError(dimension, limit, actual)
+  }
+}
+
+function assertUsageValue(dimension: "inputTokens" | "outputTokens" | "costUsd", value: number): void {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new RangeError(`Invalid ${dimension} usage: ${value}`)
   }
 }

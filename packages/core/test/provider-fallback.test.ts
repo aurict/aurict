@@ -255,6 +255,25 @@ describe("ProviderFallback", () => {
   })
 
   describe("retry delay", () => {
+    it("cancels a pending retry without starting another provider call", async () => {
+      const fallback = new ProviderFallback({
+        enabled: false,
+        maxRetries: 2,
+        retryDelayMs: 10_000,
+      })
+      const controller = new AbortController()
+      let calls = 0
+
+      const execution = fallback.execute("anthropic", async () => {
+        calls++
+        throw new Error("429 rate limit")
+      }, controller.signal)
+      setTimeout(() => controller.abort(new Error("retry cancelled by test")), 10)
+
+      await expect(execution).rejects.toThrow("retry cancelled by test")
+      expect(calls).toBe(1)
+    })
+
     it("respects Retry-After header", async () => {
       const fallback = new ProviderFallback({
         enabled: true,

@@ -81,4 +81,17 @@ describe("run budgets", () => {
       source: "native",
     })).toThrow("mutationCalls")
   })
+
+  it("does not start another model turn after token budget is exhausted", () => {
+    const budget = new RunBudgetManager({ inputTokens: 10 })
+    budget.recordModelTurn()
+    budget.recordUsage(10, 0)
+    expect(() => budget.recordModelTurn()).toThrow("inputTokens")
+  })
+
+  it("rejects malformed provider usage instead of poisoning budget state", () => {
+    const budget = new RunBudgetManager({ inputTokens: 10 })
+    expect(() => budget.recordUsage(Number.NaN, 0)).toThrow("Invalid inputTokens")
+    expect(budget.snapshot().usage.inputTokens).toBe(0)
+  })
 })

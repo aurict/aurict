@@ -1,4 +1,7 @@
 import { describe, it, expect, afterEach } from "bun:test"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { gateGuard } from "../src/permission/gateguard.js"
 
 afterEach(() => {
@@ -167,5 +170,29 @@ describe("gateGuard.listRules", () => {
     const rules = gateGuard.listRules()
     rules.push({ pattern: "injected.txt", action: "deny" })
     expect(gateGuard.listRules()).toHaveLength(8) // unchanged
+  })
+})
+
+describe("gateGuard.audit", () => {
+  it("fails loudly when the audit trail cannot be written", () => {
+    const project = mkdtempSync(join(tmpdir(), "aurict-gateguard-audit-"))
+    writeFileSync(join(project, ".aurict"), "not a directory")
+    try {
+      expect(() => gateGuard.audit({ ts: Date.now(), tool: "write", path: "a.ts", action: "deny", allowed: false }, project))
+        .toThrow("Failed to write GateGuard audit log")
+    } finally {
+      rmSync(project, { recursive: true, force: true })
+    }
+  })
+
+  it("writes a durable audit entry on success", () => {
+    const project = mkdtempSync(join(tmpdir(), "aurict-gateguard-audit-"))
+    mkdirSync(join(project, ".aurict"))
+    try {
+      gateGuard.audit({ ts: 1, tool: "write", path: "a.ts", action: "ask", allowed: true }, project)
+      expect(Bun.file(join(project, ".aurict", "audit.log")).size).toBeGreaterThan(0)
+    } finally {
+      rmSync(project, { recursive: true, force: true })
+    }
   })
 })

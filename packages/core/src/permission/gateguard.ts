@@ -119,7 +119,9 @@ class GateGuard {
     try {
       mkdirSync(dir, { recursive: true })
       appendFileSync(join(dir, "audit.log"), JSON.stringify(entry) + "\n", "utf8")
-    } catch { /* ignore audit failures */ }
+    } catch (error) {
+      throw new Error(`Failed to write GateGuard audit log at ${dir}`, { cause: error })
+    }
   }
 }
 

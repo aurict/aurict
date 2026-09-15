@@ -89,6 +89,9 @@ export interface AgentRunOptions {
   /** Bash tool çalışırken gelen canlı stdout/stderr chunk'ları */
   onChunk?:       (chunk: string) => void
   onStepFinish?:  () => void
+  /** Exact provider usage reported after each model step. Runtime budgets use
+   * this boundary to stop multi-step runs before another paid request starts. */
+  onModelUsage?:  (usage: AgentModelUsage) => void
   onCompaction?:  (event: CompactionEvent) => void
   /** Provider fallback zinciri farklı bir provider'a geçtiğinde bir kez tetiklenir. */
   onProviderFallback?: (
@@ -122,6 +125,13 @@ export interface TokenBreakdown {
   cacheRead:  number  // cached prompt reads  (cheap)
   cacheWrite: number  // cache creation tokens
   reasoning:  number  // extended thinking tokens
+}
+
+export interface AgentModelUsage {
+  provider: string
+  model: string
+  tokens: TokenBreakdown
+  costUsd: number
 }
 
 export interface AgentFinishResult {

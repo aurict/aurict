@@ -12,6 +12,10 @@ are sent to the model, and the dynamic prompt describes only tools visible in th
   synonyms. The in-memory index invalidates when file mtimes or sizes change.
 - `ast_edit`: structural TypeScript/JavaScript edits for call callees, property access, and
   import sources. Apply requires an unexpired preview from the same session and unchanged files.
+- `blast_radius`: resolves references and simulates a proposed signature change against the actual
+  workspace `tsconfig.json` projects. It reports the analyzed config/file scope, compares whole-project
+  diagnostics before and after the change, follows project references/path mappings, and runs in a
+  cancellable Worker so large analysis does not block the agent loop.
 
 ## Visual and runtime verification
 
@@ -34,7 +38,11 @@ are sent to the model, and the dynamic prompt describes only tools visible in th
 ## Safety invariants
 
 - Workspace paths are resolved and checked before reads or mutations.
+- Proactive file context accepts only regular files inside the workspace, rejects traversal and
+  symlink escapes, and never implicitly injects environment or credential configuration.
 - Structural and semantic multi-file mutations use preview/revision checks and transactions.
 - Tool results preserve a short text representation for the terminal while allowing multipart
   model content for images.
+- Best-effort verification failures are appended to tool output as visible structured diagnostics;
+  permission audit persistence failures propagate instead of being silently ignored.
 - Optional tool instructions are generated from the actual selected tool set.

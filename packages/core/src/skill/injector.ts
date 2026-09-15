@@ -30,7 +30,8 @@ import { join } from "node:path"
 import { homedir } from "node:os"
 import { readdirSync, existsSync, readFileSync } from "node:fs"
 import type { LoadedSkill, SkillDef } from "./types.js"
-import { toPosix } from "../util/paths.js"
+
+export { buildProactiveFileSection } from "./proactive-files.js"
 
 export interface ActivatedSkillInfo {
   id: string
@@ -153,8 +154,9 @@ function buildCodegraphSection(workdir: string): string {
   let summary
   try {
     summary = loadGraphSummary(workdir)
-  } catch {
-    return ""  // DB read failed → silently skip, never block prompt build
+  } catch (error) {
+    console.warn(`[aurict] codegraph summary read failed for ${workdir}`, error)
+    return ""
   }
   if (!summary.ready) {
     // Don't nag: once codegraph is set up elsewhere the section auto-appears.
@@ -215,7 +217,9 @@ function readProjectInstructions(workdir: string): string {
         content = content.slice(0, MAX_PROJECT_INSTRUCTIONS) + "\n\n[... truncated — file exceeds 8 000 chars]"
       }
       sections.push(`# Project Instructions (${label})\n\n${content}`)
-    } catch { /* unreadable — skip silently */ }
+    } catch (error) {
+      console.warn(`[aurict] project instructions could not be read from ${path}`, error)
+    }
   }
 
   return sections.join("\n\n---\n\n")
@@ -418,79 +422,6 @@ function resolveSkillDeps(skills: SkillDef[], depth = 0): SkillDef[] {
 export function clearSkillCache(): void {
   cache.clear()
   defCache.clear()
-}
-
-// ─── Proactive file injection ─────────────────────────────────────────────────
-
-const PROACTIVE_FILE_RE = /(?:^|[\s`'"(,])([./\w-]+\.(?:ts|tsx|js|jsx|mts|mjs|py|go|rs|md|json|yaml|yml|css|html|sh|toml|env))(?=$|[\s`'"),\]])/gm
-const MAX_PROACTIVE_FILES  = 3
-const MAX_PROACTIVE_CHARS  = 6_000
-const MAX_SINGLE_FILE_CHARS = 3_000
-const MAX_FILE_SIZE_BYTES   = 50_000
-
-export async function buildProactiveFileSection(userText: string, workdir: string): Promise<string> {
-  if (!userText.trim()) return ""
-
-  const mentioned = new Set<string>()
-  let m: RegExpExecArray | null
-  const re = new RegExp(PROACTIVE_FILE_RE.source, PROACTIVE_FILE_RE.flags)
-  while ((m = re.exec(userText)) !== null) {
-    const raw = (m[1] ?? "").trim()
-    if (raw && raw.length > 3) mentioned.add(raw)
-  }
-  if (mentioned.size === 0) return ""
-
-  const sections: string[] = []
-  let totalChars = 0
-
-  for (const mention of [...mentioned].slice(0, MAX_PROACTIVE_FILES * 2)) {
-    if (sections.length >= MAX_PROACTIVE_FILES || totalChars >= MAX_PROACTIVE_CHARS) break
-
-    // Try direct path first, then glob fallback for filename-only mentions
-    const resolved = await resolveFileMention(mention, workdir)
-    if (!resolved) continue
-
-    try {
-      const file = Bun.file(resolved)
-      if (file.size > MAX_FILE_SIZE_BYTES) continue
-      const content = await file.text()
-      const excerpt = content.slice(0, MAX_SINGLE_FILE_CHARS)
-      const normResolved = toPosix(resolved)
-      const normWorkdir  = toPosix(workdir)
-      const relative = normResolved.startsWith(normWorkdir + "/") ? normResolved.slice(normWorkdir.length + 1) : normResolved
-      const truncNote = content.length > MAX_SINGLE_FILE_CHARS ? "\n... [truncated]" : ""
-      const ext = relative.split(".").pop() ?? ""
-      sections.push(`### ${relative}\n\`\`\`${ext}\n${excerpt}${truncNote}\n\`\`\``)
-      totalChars += excerpt.length
-    } catch (error) {
-      console.warn(`[aurict] failed to read referenced file '${resolved}'`, error)
-      continue
-    }
-  }
-
-  if (sections.length === 0) return ""
-  return `## Files Referenced in Your Request\n\n${sections.join("\n\n")}`
-}
-
-async function resolveFileMention(mention: string, workdir: string): Promise<string | null> {
-  // 1. Absolute path
-  if (mention.startsWith("/")) {
-    if (await Bun.file(mention).exists()) return mention
-    return null
-  }
-
-  // 2. Relative path directly under workdir
-  const direct = join(workdir, mention)
-  if (await Bun.file(direct).exists()) return direct
-
-  // 3. Glob fallback — find by filename anywhere in project
-  const filename = mention.split("/").pop() ?? mention
-  const glob = new Bun.Glob("**/" + filename)
-  for await (const found of glob.scan({ cwd: workdir, absolute: true })) {
-    return found  // first match
-  }
-
-  return null
 }
 
 // ─── Intent-based per-message skill injection ────────────────────────────────

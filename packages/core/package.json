@@ -25,7 +25,7 @@
     "./storage/persisted-json": "./src/storage/persisted-json.ts"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+    "build": "bun build ./src/index.ts ./src/tool/built-in/blast-radius-worker.ts --outdir ./dist --target bun",
     "test": "bun test ../../packages/core/test/"
   },
   "dependencies": {

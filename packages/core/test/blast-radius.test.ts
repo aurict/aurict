@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test"
-import { mkdirSync, writeFileSync, rmSync } from "fs"
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "fs"
 import { join } from "path"
 import { tmpdir } from "os"
 
@@ -33,6 +33,11 @@ import { greet } from "./lib"
 
 export const helper = () => greet("util")
 `.trim())
+
+  writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({
+    compilerOptions: { strict: true, module: "ESNext", moduleResolution: "Bundler", noEmit: true },
+    include: ["*.ts"],
+  }))
 })
 
 afterAll(() => {
@@ -101,5 +106,72 @@ describe("blast_radius", () => {
     const { blastRadiusTool } = await import("../src/tool/built-in/blast-radius.js")
     const res = await blastRadiusTool.execute({ symbol: "" }, ctx())
     expect(res.error).toBeDefined()
+  })
+
+  it("simulates breaks with the project's real tsconfig and reports its bounded scope", async () => {
+    const { blastRadiusTool } = await import("../src/tool/built-in/blast-radius.js")
+    const res = await blastRadiusTool.execute({
+      symbol: "greet",
+      file: "lib.ts",
+      mode: "breaks",
+      from: "name: string",
+      to: "name: number",
+      json: true,
+    }, ctx())
+
+    expect(res.error).toBeUndefined()
+    const parsed = JSON.parse(res.output) as {
+      breaks: { clean: boolean; applied: boolean; breaks: Array<{ file: string }>; scope: { configFiles: string[] } }
+    }
+    expect(parsed.breaks.applied).toBe(true)
+    expect(parsed.breaks.clean).toBe(false)
+    expect(parsed.breaks.breaks.some(site => site.file === "app.ts")).toBe(true)
+    expect(parsed.breaks.scope.configFiles).toContain("tsconfig.json")
+  })
+
+  it("rejects declaration hints outside the workspace", async () => {
+    const { blastRadiusTool } = await import("../src/tool/built-in/blast-radius.js")
+    const res = await blastRadiusTool.execute({ symbol: "greet", file: "../outside.ts" }, ctx())
+    expect(res.error).toContain("escapes working directory")
+  })
+
+  it("honors an already-aborted analysis signal", async () => {
+    const { blastRadiusTool } = await import("../src/tool/built-in/blast-radius.js")
+    const controller = new AbortController()
+    controller.abort()
+    const res = await blastRadiusTool.execute({ symbol: "greet", file: "lib.ts" }, { ...ctx(), signal: controller.signal })
+    expect(res.error).toContain("cancelled")
+  })
+
+  it("follows project references and path mappings across packages", async () => {
+    const root = mkdtempSync(join(tmpdir(), "blast-radius-project-refs-"))
+    const lib = join(root, "packages", "lib")
+    const app = join(root, "packages", "app")
+    mkdirSync(join(lib, "src"), { recursive: true })
+    mkdirSync(join(app, "src"), { recursive: true })
+    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ files: [], references: [{ path: "./packages/lib/tsconfig.lib.json" }, { path: "./packages/app" }] }))
+    writeFileSync(join(lib, "tsconfig.lib.json"), JSON.stringify({ compilerOptions: { composite: true, strict: true }, include: ["src/**/*.ts"] }))
+    writeFileSync(join(app, "tsconfig.json"), JSON.stringify({
+      compilerOptions: { composite: true, strict: true, baseUrl: ".", paths: { "@fixture/lib": ["../lib/src/index.ts"] } },
+      references: [{ path: "../lib" }],
+      include: ["src/**/*.ts"],
+    }))
+    writeFileSync(join(lib, "src", "index.ts"), "export function shared(value: string) { return value.length }")
+    writeFileSync(join(app, "src", "index.ts"), "import { shared } from '@fixture/lib'\nexport const size = shared('value')")
+
+    try {
+      const { blastRadiusTool } = await import("../src/tool/built-in/blast-radius.js")
+      const res = await blastRadiusTool.execute({ symbol: "shared", file: "packages/lib/src/index.ts", json: true }, {
+        workdir: root,
+        sessionId: "project-refs",
+        signal: new AbortController().signal,
+      })
+      expect(res.error).toBeUndefined()
+      const parsed = JSON.parse(res.output) as { refs: Array<{ file: string }>; scope: { configFiles: string[] } }
+      expect(parsed.refs.some(ref => ref.file === "packages/app/src/index.ts")).toBe(true)
+      expect(parsed.scope.configFiles).toEqual(expect.arrayContaining(["packages/lib/tsconfig.lib.json", "packages/app/tsconfig.json"]))
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

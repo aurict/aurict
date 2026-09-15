@@ -50,6 +50,7 @@ import type { ToolDef, ToolContext, ExecuteResult } from "./types.js";
 import { toolOutcomeFromExecuteResult } from "../runtime/tool-outcome.js";
 import { WorkspaceTransaction, mutationPathsForTool } from "../transaction/workspace-transaction.js";
 import { fingerprintWorkspaceRevision } from "../transaction/workspace-revision.js";
+import { appendToolDiagnostic, diagnosticMessage } from "./diagnostics.js";
 import {
   affectedPatchPaths,
   analyzeToolError,
@@ -111,10 +112,21 @@ export async function executeTool(
 ): Promise<ExecuteResult> {
   const permissionScope = `${resolve(ctx.workdir)}\0${ctx.sessionId || "anonymous"}`;
   // --- v1.tool.before hook ---
-  const before = await withTimeout(
-    hooks.emit("v1.tool.before", { tool: def.id, args: rawArgs }),
-    HOOK_TIMEOUT_MS,
-  ).catch(() => ({ tool: def.id, args: rawArgs }));
+  let before: { tool: string; args: Record<string, unknown> };
+  try {
+    before = await withTimeout(
+      hooks.emit("v1.tool.before", { tool: def.id, args: rawArgs }),
+      HOOK_TIMEOUT_MS,
+    );
+  } catch (error) {
+    return {
+      output: "",
+      error: `[${def.id}] v1.tool.before hook failed: ${diagnosticMessage(error)}`,
+      metadata: {
+        diagnostics: [{ source: "hook", severity: "error", message: diagnosticMessage(error) }],
+      },
+    };
+  }
 
   // --- Zod runtime validation (defense in depth) ---
   const parseResult = def.parameters.safeParse(
@@ -869,8 +881,12 @@ export async function executeTool(
           const warnings = formatHallucinationWarnings(hallucinations);
           result = { ...result, output: result.output + warnings };
         }
-      } catch {
-        // Hallucination detection hatası tool sonucunu engellemez
+      } catch (error) {
+        result = appendToolDiagnostic(result, {
+          source: "hallucination_check",
+          severity: "warning",
+          message: `Post-edit hallucination analysis failed: ${diagnosticMessage(error)}`,
+        });
       }
     } else {
       // Faz 4.1: dile-agnostik doğrulama — TSC'nin TS/JS için yaptığının Python/
@@ -927,8 +943,12 @@ export async function executeTool(
             };
           }
         }
-      } catch {
-        // Dile-agnostik doğrulama hatası tool sonucunu asla engellemez
+      } catch (error) {
+        result = appendToolDiagnostic(result, {
+          source: "language_verification",
+          severity: "warning",
+          message: `Post-edit language verification failed: ${diagnosticMessage(error)}`,
+        });
       }
     }
   }
@@ -950,12 +970,16 @@ export async function executeTool(
         const discoveryAC = new AbortController();
         const onParentAbort = () => discoveryAC.abort();
         execAC.signal.addEventListener("abort", onParentAbort, { once: true });
-        const related = await withTimeout(
-          findRelatedTests(absFilePath, ctx.workdir, discoveryAC.signal),
-          POST_EDIT_TEST_DISCOVERY_TIMEOUT_MS,
-          () => discoveryAC.abort(),
-        ).catch(() => [] as string[]);
-        execAC.signal.removeEventListener("abort", onParentAbort);
+        let related: string[];
+        try {
+          related = await withTimeout(
+            findRelatedTests(absFilePath, ctx.workdir, discoveryAC.signal),
+            POST_EDIT_TEST_DISCOVERY_TIMEOUT_MS,
+            () => discoveryAC.abort(),
+          );
+        } finally {
+          execAC.signal.removeEventListener("abort", onParentAbort);
+        }
         if (related.length > 0) {
           const rel = related.map((f) =>
             f.startsWith(ctx.workdir + "/")
@@ -970,8 +994,12 @@ export async function executeTool(
           };
         }
       }
-    } catch {
-      /* detector failure never blocks tool result */
+    } catch (error) {
+      result = appendToolDiagnostic(result, {
+        source: "test_discovery",
+        severity: "warning",
+        message: `Related-test discovery failed: ${diagnosticMessage(error)}`,
+      });
     }
   }
 

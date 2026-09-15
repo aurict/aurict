@@ -7,7 +7,7 @@
 import { join } from "node:path"
 import { mkdirSync, existsSync } from "node:fs"
 import { buildDefineArgs, resolveBuildMetadata } from "./build-metadata.js"
-import { cliBuildEntrypoints, verifyAgentWorkerBundled } from "./agent-build-entrypoints.js"
+import { cliBuildEntrypoints, verifyAgentWorkerBundled, verifyBlastRadiusWorkerBundled } from "./agent-build-entrypoints.js"
 
 const ROOT    = join(import.meta.dir, "..")
 const ENTRIES = cliBuildEntrypoints(ROOT)
@@ -39,6 +39,7 @@ if (result.exitCode !== 0) {
 }
 
 await verifyAgentWorkerBundled(OUTFILE)
+await verifyBlastRadiusWorkerBundled(OUTFILE)
 
 // Make executable
 Bun.spawnSync(["chmod", "+x", OUTFILE])

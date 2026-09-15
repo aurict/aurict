@@ -1,8 +1,10 @@
 import { NonRetryableStreamError } from "../provider/fallback.js"
+import { throwIfProviderRetryAborted, waitForProviderRetry } from "../provider/retry-delay.js"
 
-export async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, signal?: AbortSignal): Promise<T> {
   let attempt = 0
   while (true) {
+    throwIfProviderRetryAborted(signal)
     try {
       return await fn()
     } catch (error) {
@@ -10,7 +12,7 @@ export async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promis
       const message = error instanceof Error ? error.message : String(error)
       if (!/429|rate.?limit|too.many/i.test(message) || attempt >= maxRetries) throw error
       attempt++
-      await new Promise(resolveWait => setTimeout(resolveWait, parseRetryAfter(message) ?? 15_000))
+      await waitForProviderRetry(parseRetryAfter(message) ?? 15_000, signal)
     }
   }
 }

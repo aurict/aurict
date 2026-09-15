@@ -157,7 +157,9 @@ class HookEmitter {
 
       try {
         await reg.handler(payload, { outcome, durationMs })
-      } catch { /* outcome handler hataları ana akışı kesmez */ }
+      } catch (error) {
+        console.warn(`[aurict] outcome hook '${name}' failed`, error)
+      }
     }
   }
 }

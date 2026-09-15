@@ -3,7 +3,7 @@
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildDefineArgs, resolveBuildMetadata } from './build-metadata.js';
-import { desktopSidecarBuildEntrypoints, verifyAgentWorkerBundled } from './agent-build-entrypoints.js';
+import { desktopSidecarBuildEntrypoints, verifyAgentWorkerBundled, verifyBlastRadiusWorkerBundled } from './agent-build-entrypoints.js';
 
 const root = join(import.meta.dir, '..');
 const desktopRoot = join(root, 'apps', 'desktop');
@@ -32,6 +32,7 @@ const command = [
 const build = Bun.spawnSync(command, { cwd: root, stdout: 'inherit', stderr: 'inherit' });
 if (build.exitCode !== 0) process.exit(build.exitCode);
 await verifyAgentWorkerBundled(output);
+await verifyBlastRadiusWorkerBundled(output);
 
 const sourceData = join(root, 'packages', 'cli', 'data');
 if (!existsSync(sourceData)) throw new Error(`Desktop sidecar data directory is missing: ${sourceData}`);

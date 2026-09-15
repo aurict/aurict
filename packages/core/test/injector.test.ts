@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "bun:test"
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs"
 import { execSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -203,6 +203,32 @@ describe("buildProactiveFileSection — file exists", () => {
     const r = await buildProactiveFileSection("check huge.ts", tmpDir)
     // Should be empty because file is too large
     expect(r).toBe("")
+  })
+})
+
+describe("buildProactiveFileSection — workspace boundary", () => {
+  it("rejects traversal, absolute paths, and symlink escapes", async () => {
+    const boundaryRoot = mkdtempSync(join(tmpdir(), "aurict-inject-boundary-"))
+    const workspace = join(boundaryRoot, "workspace")
+    const outside = join(boundaryRoot, "outside.ts")
+    mkdirSync(workspace)
+    writeFileSync(outside, "AURICT_BOUNDARY_SENTINEL")
+    symlinkSync(outside, join(workspace, "linked.ts"))
+
+    try {
+      expect(await buildProactiveFileSection("inspect ../outside.ts", workspace)).toBe("")
+      expect(await buildProactiveFileSection(`inspect ${outside}`, workspace)).toBe("")
+      expect(await buildProactiveFileSection("inspect linked.ts", workspace)).toBe("")
+    } finally {
+      rmSync(boundaryRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("does not implicitly inject environment or credential configuration", async () => {
+    writeFileSync(join(tmpDir, "local.env"), "AURICT_ENV_SENTINEL")
+    writeFileSync(join(tmpDir, "credentials.json"), "AURICT_CREDENTIAL_SENTINEL")
+
+    expect(await buildProactiveFileSection("inspect local.env credentials.json", tmpDir)).toBe("")
   })
 })
 

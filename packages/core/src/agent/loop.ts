@@ -15,7 +15,8 @@ import { getUndercoverInstructions } from "./undercover.js"
 import { loadConfig, resolveLongTaskRuntimeConfig } from "../config/config.js"
 import { calculateCostUsd } from "../provider/costs.js"
 import { extractAndStoreMemories, extractPerTurnMemories } from "../memory/extractor.js"
-import { buildGitSection, buildProactiveFileSection, buildIntentSkillSection, getSkillsForProject, matchIntentSkills } from "../skill/injector.js"
+import { buildGitSection, buildIntentSkillSection, getSkillsForProject, matchIntentSkills } from "../skill/injector.js"
+import { buildProactiveFileSection } from "../skill/proactive-files.js"
 import { joinPromptSections, type ResolvedPromptSection } from "./prompt-sections.js"
 import { skillScoreStore } from "../skill/score-store.js"
 import { ProviderFallback, NonRetryableStreamError } from "../provider/fallback.js"
@@ -363,14 +364,23 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   // --- Skill injection (otomatik proje tespiti) ---
   // Git context buildSystemPrompt dışında tutulur — Anthropic'te ayrı uncached blok olarak inject edilir
   const baseSystemSections = await buildSystemPromptSections(workdir, opts.system, false, opts.runtime?.agentType, lastUserText)
-  const projectSkills   = await getSkillsForProject(workdir).catch(() => [])
+  const projectSkills = await getSkillsForProject(workdir).catch((error) => {
+    reportBackgroundError("project skill discovery", error)
+    return []
+  })
   const projectSkillIds = new Set(projectSkills.map((s) => s.id))
   const activatedSkills = matchIntentSkills(lastUserText, workdir, projectSkillIds)
   if (activatedSkills.length > 0) opts.onSkillsActivated?.(activatedSkills)
 
   const [proactiveSection, intentSection] = await Promise.all([
-    buildProactiveFileSection(lastUserText, workdir).catch(() => ""),
-    buildIntentSkillSection(lastUserText, workdir, projectSkillIds).catch(() => ""),
+    buildProactiveFileSection(lastUserText, workdir).catch((error) => {
+      reportBackgroundError("proactive file context", error)
+      return ""
+    }),
+    buildIntentSkillSection(lastUserText, workdir, projectSkillIds).catch((error) => {
+      reportBackgroundError("intent skill context", error)
+      return ""
+    }),
   ])
 
   const runtimeSystemSections: ResolvedPromptSection[] = [...baseSystemSections]
@@ -751,6 +761,16 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
       experimental_continueSteps: true,
       ...(attemptSystemParam ? { system: attemptSystemParam } : {}),
       abortSignal: responseDeadline.signal,
+      onStepFinish: (step: { usage: Record<string, unknown>; providerMetadata?: Record<string, unknown> }) => {
+        const tokens = extractTokenBreakdown(step.usage, step.providerMetadata)
+        opts.onModelUsage?.({
+          provider: attemptProviderId,
+          model: attemptModelId,
+          tokens,
+          costUsd: calculateCostUsd(attemptModelId, tokens),
+        })
+        opts.onStepFinish?.()
+      },
       ...(effectiveEffort ? (() => {
         const thinkOpts = attemptPlugin.buildThinkingOptions(attemptModelId, effectiveEffort)
         return thinkOpts ? { providerOptions: thinkOpts } : {}
@@ -879,8 +899,7 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
             })
           }
         } else if (part.type === "step-finish") {
-          // Yalnızca step tamamlama sinyali — tool result emission yok (race condition önleme)
-          opts.onStepFinish?.()
+          // Usage and user callbacks are handled by AI SDK's onStepFinish hook.
         }
         }
 
@@ -986,7 +1005,7 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
   try {
     if (fallbackEnabled) {
       const { result, provider: resolvedProvider, switchedFrom } =
-        await fallbackRuntime.execute(providerName, (attemptPlugin) => runOneAttempt(attemptPlugin.id))
+        await fallbackRuntime.execute(providerName, (attemptPlugin) => runOneAttempt(attemptPlugin.id), opts.signal)
       attemptResult = result
       if (switchedFrom) {
         opts.onProviderFallback?.(switchedFrom, resolvedProvider, {
@@ -995,7 +1014,7 @@ async function runAgentScoped(opts: AgentRunOptions, cfg: OmniConfig): Promise<A
         })
       }
     } else {
-      attemptResult = await runWithRetry(() => runOneAttempt(providerName))
+      attemptResult = await runWithRetry(() => runOneAttempt(providerName), 2, opts.signal)
     }
   } catch (error) {
     if (sessionId) {

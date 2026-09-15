@@ -1,5 +1,6 @@
 import { ProviderRegistry } from "./registry.js"
 import type { ProviderPlugin } from "./plugin.js"
+import { throwIfProviderRetryAborted, waitForProviderRetry } from "./retry-delay.js"
 
 /**
  * Provider Fallback Chain
@@ -67,11 +68,13 @@ export class ProviderFallback {
   async execute<T>(
     primaryProvider: string,
     fn: (provider: ProviderPlugin) => Promise<T>,
+    signal?: AbortSignal,
   ): Promise<{ result: T; provider: string; switchedFrom?: string }> {
+    throwIfProviderRetryAborted(signal)
     if (!this.config.enabled || this.config.providers.length === 0) {
       // Fallback devre dışı — sadece primary dene, mevcut retry mantığı
       const plugin = ProviderRegistry.get(primaryProvider)
-      const result = await this.executeWithRetry(plugin, fn)
+      const result = await this.executeWithRetry(plugin, fn, signal)
       return { result, provider: primaryProvider }
     }
 
@@ -80,6 +83,7 @@ export class ProviderFallback {
     let lastError: Error | null = null
 
     for (let i = 0; i < providerChain.length; i++) {
+      throwIfProviderRetryAborted(signal)
       const providerId = providerChain[i]!
       
       // Circuit breaker kontrolü
@@ -90,7 +94,7 @@ export class ProviderFallback {
       const plugin = ProviderRegistry.get(providerId)
       
       try {
-        const result = await this.executeWithRetry(plugin, fn)
+        const result = await this.executeWithRetry(plugin, fn, signal)
         return {
           result,
           provider: providerId,
@@ -122,10 +126,12 @@ export class ProviderFallback {
   private async executeWithRetry<T>(
     plugin: ProviderPlugin,
     fn: (provider: ProviderPlugin) => Promise<T>,
+    signal?: AbortSignal,
   ): Promise<T> {
     let lastError: Error | null = null
 
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
+      throwIfProviderRetryAborted(signal)
       try {
         const result = await fn(plugin)
         // Başarılı — circuit breaker'ı sıfırla
@@ -141,7 +147,7 @@ export class ProviderFallback {
 
         // Retry delay
         const delay = this.parseRetryAfter(lastError) ?? this.config.retryDelayMs
-        await this.sleep(delay)
+        await waitForProviderRetry(delay, signal)
       }
     }
 
@@ -246,9 +252,6 @@ export class ProviderFallback {
     this.circuitBreakers.clear()
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
-  }
 }
 
 /**

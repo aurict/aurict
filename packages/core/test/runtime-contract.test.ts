@@ -5,6 +5,7 @@ import { AgentRuntime } from "../src/runtime/agent-runtime.js"
 import { RunStateMachine } from "../src/runtime/run-state.js"
 import { buildHeadlessRunResult } from "../src/runtime/headless-result.js"
 import { toolOutcomeFromExecuteResult } from "../src/runtime/tool-outcome.js"
+import { BudgetExceededError } from "../src/runtime/budget-manager.js"
 
 const baseFinish: AgentFinishResult = {
   text: "finished",
@@ -93,6 +94,48 @@ describe("AgentRuntime event contract", () => {
     expect(headless.status).toBe("completed")
     expect(headless.tool_calls).toBe(1)
     expect(headless.input_tokens).toBe(12)
+  })
+
+  it("stops a multi-step engine at the first reported token overrun", async () => {
+    let reachedSecondStep = false
+    const runtime = new AgentRuntime(async options => {
+      options.onPhase?.("waiting_for_provider")
+      options.onModelUsage?.({
+        provider: "mock",
+        model: "mock-1",
+        tokens: { input: 6, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 },
+        costUsd: 0,
+      })
+      reachedSecondStep = true
+      return baseFinish
+    })
+
+    await expect(runtime.run({
+      messages: [],
+      runtime: { budget: { inputTokens: 5 } },
+    })).rejects.toBeInstanceOf(BudgetExceededError)
+    expect(reachedSecondStep).toBe(false)
+  })
+
+  it("aborts the shared runtime signal when a usage budget fails", async () => {
+    let runtimeSignal: AbortSignal | undefined
+    const runtime = new AgentRuntime(async options => {
+      runtimeSignal = options.signal
+      options.onModelUsage?.({
+        provider: "mock",
+        model: "mock-1",
+        tokens: { input: 0, output: 2, cacheRead: 0, cacheWrite: 0, reasoning: 0 },
+        costUsd: 0,
+      })
+      return baseFinish
+    })
+
+    await expect(runtime.run({
+      messages: [],
+      runtime: { budget: { outputTokens: 1 } },
+    })).rejects.toThrow("outputTokens")
+    expect(runtimeSignal?.aborted).toBe(true)
+    expect(runtimeSignal?.reason).toBeInstanceOf(BudgetExceededError)
   })
 })
 

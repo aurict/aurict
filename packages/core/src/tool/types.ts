@@ -11,6 +11,12 @@ import type { WorkspaceTransactionRecord } from "../transaction/workspace-transa
 export type ToolCategory = "read" | "write" | "execute" | "network" | "system"
 export type RiskLevel    = "low" | "medium" | "high" | "critical"
 
+export interface ToolDiagnostic {
+  source: "hook" | "hallucination_check" | "language_verification" | "test_discovery"
+  severity: "warning" | "error"
+  message: string
+}
+
 export type ToolResultContentPart =
   | { type: "text"; text: string }
   | { type: "image"; data: string; mimeType?: string }
@@ -78,6 +84,7 @@ export interface ExecuteResult {
       rawDiff: string
     }
     transaction?: WorkspaceTransactionRecord
+    diagnostics?: ToolDiagnostic[]
   }
 }
 

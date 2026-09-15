@@ -19,14 +19,14 @@ export class AgentRuntime {
     const budget = new RunBudgetManager(options.runtime?.budget)
     let toolCalls = 0
     let selectedModel: string | undefined
-    const wallTimeController = new AbortController()
+    const runtimeController = new AbortController()
     const wallTimeLimit = options.runtime?.budget?.wallTimeMs
     const wallTimeTimer = wallTimeLimit === undefined ? undefined : setTimeout(() => {
-      wallTimeController.abort(new BudgetExceededError("wallTimeMs", wallTimeLimit, Date.now() - state.snapshot().startedAt))
+      runtimeController.abort(new BudgetExceededError("wallTimeMs", wallTimeLimit, Date.now() - state.snapshot().startedAt))
     }, wallTimeLimit)
     const runtimeSignal = options.signal
-      ? AbortSignal.any([options.signal, wallTimeController.signal])
-      : wallTimeController.signal
+      ? AbortSignal.any([options.signal, runtimeController.signal])
+      : runtimeController.signal
 
     events.emit({ type: "run.started", profile })
     events.emit({
@@ -34,12 +34,21 @@ export class AgentRuntime {
       state: state.transition("preparing", "runtime_started"),
     })
 
-    const { onPhase, onModelSelected, onToolSelection, onToolCall, onToolResult, onCompaction, onProviderFallback, onFinish, ...base } = options
+    let usageReportedByEngine = false
+    const guardBudget = (operation: () => void) => {
+      try {
+        operation()
+      } catch (error) {
+        if (!runtimeController.signal.aborted) runtimeController.abort(error)
+        throw error
+      }
+    }
+    const { onPhase, onModelSelected, onToolSelection, onToolCall, onToolResult, onCompaction, onProviderFallback, onModelUsage, onFinish, ...base } = options
     const wrapped: AgentRunOptions = {
       ...base,
       signal: runtimeSignal,
       onPhase: phase => {
-        if (phase === "waiting_for_provider") budget.recordModelTurn()
+        if (phase === "waiting_for_provider") guardBudget(() => budget.recordModelTurn())
         events.emit({ type: "run.provider_phase", phase })
         onPhase?.(phase)
       },
@@ -59,7 +68,7 @@ export class AgentRuntime {
         onToolSelection?.(selection)
       },
       onToolCall: call => {
-        budget.recordToolCall()
+        guardBudget(() => budget.recordToolCall())
         toolCalls++
         if (state.current !== "executing") {
           events.emit({
@@ -72,7 +81,7 @@ export class AgentRuntime {
       },
       onToolResult: result => {
         const outcome = result.outcome ?? legacyToolOutcome(result)
-        budget.recordToolOutcome(outcome)
+        guardBudget(() => budget.recordToolOutcome(outcome))
         const enriched = { ...result, outcome }
         events.emit({ type: "tool.completed", toolCallId: result.id, tool: result.tool, outcome })
         onToolResult?.(enriched)
@@ -90,15 +99,26 @@ export class AgentRuntime {
         events.emit({ type: "provider.fallback", from, to })
         onProviderFallback?.(from, to, models)
       },
+      onModelUsage: usage => {
+        usageReportedByEngine = true
+        guardBudget(() => budget.recordUsage(
+          usage.tokens.input + usage.tokens.cacheRead + usage.tokens.cacheWrite,
+          usage.tokens.output + usage.tokens.reasoning,
+          usage.costUsd,
+        ))
+        onModelUsage?.(usage)
+      },
     }
 
     try {
       const result = await this.engine(wrapped)
-      budget.recordUsage(
-        result.tokens.input + result.tokens.cacheRead + result.tokens.cacheWrite,
-        result.tokens.output + result.tokens.reasoning,
-        selectedModel ? calculateCostUsd(selectedModel, result.tokens) : 0,
-      )
+      if (!usageReportedByEngine) {
+        guardBudget(() => budget.recordUsage(
+          result.tokens.input + result.tokens.cacheRead + result.tokens.cacheWrite,
+          result.tokens.output + result.tokens.reasoning,
+          selectedModel ? calculateCostUsd(selectedModel, result.tokens) : 0,
+        ))
+      }
       const blocked = result.continuation?.stopReason === "blocked"
       const terminalState = state.transition(blocked ? "blocked" : "completed", blocked ? "run_blocked" : "run_finished")
       const finishedAt = Date.now()
@@ -117,8 +137,8 @@ export class AgentRuntime {
       onFinish?.(enriched)
       return enriched
     } catch (error) {
-      const failure = wallTimeController.signal.aborted && wallTimeController.signal.reason instanceof BudgetExceededError
-        ? wallTimeController.signal.reason
+      const failure = runtimeController.signal.aborted && runtimeController.signal.reason instanceof BudgetExceededError
+        ? runtimeController.signal.reason
         : error
       const cancelled = options.signal?.aborted === true
       const terminalState = state.transition(cancelled ? "cancelled" : "failed", cancelled ? "user_cancelled" : "runtime_error")

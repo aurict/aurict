@@ -174,6 +174,51 @@ describe("analyzeToolError", () => {
   })
 })
 
+describe("executor diagnostics", () => {
+  it("blocks execution and returns a structured diagnostic when a before hook fails", async () => {
+    const { executeTool } = await import("../src/tool/executor.js")
+    const { hooks } = await import("../src/hook/emitter.js")
+    let executed = false
+    const unsubscribe = hooks.on("v1.tool.before", () => {
+      throw new Error("fixture hook failure")
+    }, { priority: 0 })
+
+    try {
+      const res = await executeTool({
+        id: "fixture_hook_failure",
+        description: "fixture",
+        parameters: (await import("zod")).z.object({}),
+        async execute() {
+          executed = true
+          return { output: "unexpected" }
+        },
+      }, {}, ctx())
+
+      expect(executed).toBe(false)
+      expect(res.error).toContain("fixture hook failure")
+      expect(res.metadata?.diagnostics).toEqual([{
+        source: "hook",
+        severity: "error",
+        message: "fixture hook failure",
+      }])
+    } finally {
+      unsubscribe()
+    }
+  })
+
+  it("appends best-effort failures as visible structured diagnostics", async () => {
+    const { appendToolDiagnostic } = await import("../src/tool/diagnostics.js")
+    const result = appendToolDiagnostic({ output: "Updated" }, {
+      source: "test_discovery",
+      severity: "warning",
+      message: "fixture discovery failure",
+    })
+
+    expect(result.output).toContain("Diagnostic:test_discovery")
+    expect(result.metadata?.diagnostics?.[0]?.message).toBe("fixture discovery failure")
+  })
+})
+
 // ── summarizeToolOutput ───────────────────────────────────────────────────────
 
 describe("summarizeToolOutput", () => {

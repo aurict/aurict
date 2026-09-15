@@ -31,7 +31,10 @@ let streamSpecs: StreamSpec[] = []
 mock.module("ai", () => ({
   ...actualAI,
   tool: (def: unknown) => def,
-  streamText: (args: { model: unknown }) => {
+  streamText: (args: {
+    model: unknown
+    onStepFinish?: (step: { usage: Record<string, unknown>; providerMetadata?: Record<string, unknown> }) => void | Promise<void>
+  }) => {
     const spec = streamSpecs[streamCallCount] ?? streamSpecs[streamSpecs.length - 1]!
     // Mock model'ler kendi id'lerini taşır (bkz. createMockProvider) — hangi
     // provider'ın çağrıldığını attempt sırasına göre kaydet.
@@ -39,7 +42,15 @@ mock.module("ai", () => ({
     streamCallCount++
     return {
       fullStream: (async function* () {
-        for (const part of spec.parts) yield part
+        for (const part of spec.parts) {
+          if (part.type === "step-finish") {
+            await args.onStepFinish?.({
+              usage: (part.usage as Record<string, unknown> | undefined) ?? {},
+              providerMetadata: part.providerMetadata as Record<string, unknown> | undefined,
+            })
+          }
+          yield part
+        }
       })(),
       usage: Promise.resolve({}),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -97,6 +108,19 @@ describe("withRetry — NonRetryableStreamError bypass", () => {
     })
     expect(result).toBe("ok")
     expect(calls).toBe(2)
+  })
+
+  it("cancels the retry delay and does not start another model request", async () => {
+    const controller = new AbortController()
+    let calls = 0
+    const execution = withRetry(async () => {
+      calls++
+      throw new Error("429 too many requests")
+    }, 2, controller.signal)
+    setTimeout(() => controller.abort(new Error("agent retry cancelled")), 10)
+
+    await expect(execution).rejects.toThrow("agent retry cancelled")
+    expect(calls).toBe(1)
   })
 })
 
@@ -209,6 +233,27 @@ describe("runAgent — Faz 1 provider fallback wiring", () => {
       expect(result.text).toBe("plain success")
       expect(streamCallProviders).toEqual(["mock-primary-c"])
       expect(restartCalls.length).toBe(0)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it("charges provider-reported step usage before another model request can start", async () => {
+    registerMockPlugin("mock-primary-d", "model-a")
+    streamSpecs = [{ parts: [
+      { type: "text-delta", textDelta: "partial" },
+      { type: "step-finish", usage: { inputTokens: 12, outputTokens: 1 } },
+    ] }]
+    const { dir, cleanup } = createTempDir()
+
+    try {
+      await expect(runAgent({
+        provider: "mock-primary-d",
+        workdir: dir,
+        messages: [{ role: "user", content: "hello" }],
+        runtime: { budget: { inputTokens: 5 } },
+      })).rejects.toThrow(/inputTokens/)
+      expect(streamCallProviders).toEqual(["mock-primary-d"])
     } finally {
       cleanup()
     }
