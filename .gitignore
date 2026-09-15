@@ -9,6 +9,7 @@ __pycache__/
 .env.trustedsigning
 electron-windows-sign.log
 *.pfx
+*.p12
 google-services.json
 GoogleService-Info.plist
 *.jks

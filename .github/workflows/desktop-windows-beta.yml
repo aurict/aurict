@@ -157,8 +157,9 @@ jobs:
           path: artifacts/debian/*
 
   build-macos-beta:
-    name: Build macOS ${{ matrix.architecture }} desktop beta
+    name: Build signed macOS ${{ matrix.architecture }} desktop beta
     needs: test-desktop
+    environment: macos-release
     strategy:
       fail-fast: false
       matrix:
@@ -166,16 +167,29 @@ jobs:
           - architecture: x64
             runner: macos-15-intel
             sidecar_target: bun-darwin-x64
+            mach_architecture: x86_64
           - architecture: arm64
             runner: macos-14
             sidecar_target: bun-darwin-arm64
+            mach_architecture: arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     env:
       AURICT_SIDECAR_TARGET: ${{ matrix.sidecar_target }}
+      AURICT_MACOS_SIGNING: developer-id
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node.js for Electron Forge
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -185,10 +199,47 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build unsigned macOS ZIP
+      - name: Validate macOS release credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in APPLE_APP_SPECIFIC_PASSWORD APPLE_ID APPLE_TEAM_ID MACOS_CERTIFICATE_BASE64 MACOS_CERTIFICATE_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Missing macOS release secret::$name must be configured before publishing a macOS build."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Import Developer ID certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          certificate_path="$RUNNER_TEMP/aurict-developer-id.p12"
+          keychain_path="$RUNNER_TEMP/aurict-signing.keychain-db"
+          keychain_password="$(uuidgen)"
+
+          printf '%s' "$MACOS_CERTIFICATE_BASE64" | base64 --decode --output "$certificate_path"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain_path"
+          security list-keychain -d user -s "$keychain_path"
+
+          identity_count="$(security find-identity -v -p codesigning "$keychain_path" | grep -c 'Developer ID Application:' || true)"
+          if [ "$identity_count" -ne 1 ]; then
+            echo "::error title=Invalid macOS signing certificate::Expected exactly one Developer ID Application identity, found $identity_count."
+            exit 1
+          fi
+
+          echo "APPLE_SIGNING_KEYCHAIN=$keychain_path" >> "$GITHUB_ENV"
+
+      - name: Build signed and notarized macOS ZIP
         run: bun run --cwd apps/desktop make -- --targets @electron-forge/maker-zip
 
-      - name: Prepare macOS website download files
+      - name: Verify and prepare macOS website download files
         shell: bash
         run: |
           set -euo pipefail
@@ -198,6 +249,26 @@ jobs:
             exit 1
           fi
           package="$(find apps/desktop/out/make -name '*.zip' -type f -print -quit)"
+          verification_dir="$RUNNER_TEMP/hoprel-macos-${{ matrix.architecture }}"
+          mkdir -p "$verification_dir"
+          ditto -x -k "$package" "$verification_dir"
+          app_path="$verification_dir/Hoprel.app"
+          main_executable="$app_path/Contents/MacOS/hoprel"
+          sidecar_executable="$app_path/Contents/Resources/aurict-sidecar"
+
+          test -d "$app_path"
+          test -x "$main_executable"
+          test -x "$sidecar_executable"
+          test "$(lipo -archs "$main_executable")" = "${{ matrix.mach_architecture }}"
+          test "$(lipo -archs "$sidecar_executable")" = "${{ matrix.mach_architecture }}"
+          codesign --verify --deep --strict --verbose=4 "$app_path"
+          signature_details="$(codesign -dv --verbose=4 "$app_path" 2>&1)"
+          printf '%s\n' "$signature_details"
+          grep -q '^Authority=Developer ID Application:' <<< "$signature_details"
+          grep -q "^TeamIdentifier=$APPLE_TEAM_ID$" <<< "$signature_details"
+          xcrun stapler validate "$app_path"
+          spctl --assess --type execute --verbose=4 "$app_path"
+
           mkdir -p artifacts/macos
           asset="Hoprel-Beta-macos-${{ matrix.architecture }}.zip"
           cp "$package" "artifacts/macos/$asset"
@@ -212,6 +283,14 @@ jobs:
           name: hoprel-macos-${{ matrix.architecture }}-beta
           if-no-files-found: error
           path: artifacts/macos/*
+
+      - name: Remove temporary signing keychain
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${APPLE_SIGNING_KEYCHAIN:-}" ] && [ -f "$APPLE_SIGNING_KEYCHAIN" ]; then
+            security delete-keychain "$APPLE_SIGNING_KEYCHAIN"
+          fi
 
   publish-beta-release:
     name: Publish desktop beta release
