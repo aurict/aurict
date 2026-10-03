@@ -2,7 +2,7 @@ import { z } from "zod"
 import { writeFile, mkdir, readFile } from "fs/promises"
 import { resolve, dirname, relative } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
-import { snapshotManager } from "../../snapshot/snapshot.js"
+import { snapshotManager, sessionSnapshotScope } from "../../snapshot/snapshot.js"
 import { resolveAuthorizedFilesystemPath } from "../../security/filesystem-grants.js"
 import { createUnifiedFileDiff } from "../file-diff.js"
 
@@ -33,7 +33,7 @@ export const writeTool: ToolDef = {
       return { output: "", error: `Security: ${error instanceof Error ? error.message : String(error)}` }
     }
     const content  = String(args["content"] ?? "")
-    await takeSnapshotBestEffort(filePath, `${ctx.workdir}\0${ctx.sessionId}`)
+    await takeSnapshotBestEffort(filePath, sessionSnapshotScope(ctx.workdir, ctx.sessionId))
     // Eski içeriği oku; kullanıcıya yazılan içeriğin tamamını diff olarak göstereceğiz.
     let oldContent: string | null = null
     try {

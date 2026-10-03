@@ -86,4 +86,13 @@ describe("terminal Unicode text primitives", () => {
     expect(displayWidth(`  ${row.action}${row.spacer}${row.metadata}`)).toBeLessThanOrEqual(36)
     expect(displayWidth(`    ${row.subject}`)).toBeLessThanOrEqual(36)
   })
+
+  it("keeps the space after a carried word when the overflowing character is a space", () => {
+    const text = "aaaaaaaa · tools run without asking, dangerous operations still ask"
+    for (let width = 12; width <= 40; width++) {
+      const rows = wrapStyledSegments([{ text }], width).map((row) => row.map((segment) => segment.text).join(""))
+      expect(rows.join(" ")).toBe(text)
+      expect(rows.every((row) => displayWidth(row) <= width)).toBe(true)
+    }
+  })
 })

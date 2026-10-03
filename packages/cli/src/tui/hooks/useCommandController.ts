@@ -5,7 +5,6 @@ import {
   fileWatcher,
   getSessionAgent,
   runAgent,
-  snapshotManager,
 } from "@aurict/core";
 import type { CoreMessage } from "@aurict/core";
 import { THEMES } from "../../utils/theme.js";
@@ -20,8 +19,55 @@ import type { ConversationBranch } from "../app/app-state-types.js";
 import { ZERO_TOKENS } from "../app/app-state-types.js";
 import type { AppCommandParams } from "../app/app-command-types.js";
 import { writeClipboard } from "../../util/clipboard.js";
+import { checkpointChangedFiles, restoreCheckpointFiles, rewindChoiceItems } from "../app/turn-checkpoints.js";
 
 export function useCommandController(params: AppCommandParams) {
+  /** Returns the conversation (and optionally files) to before checkpoint `index`. */
+  const rewindTo = useCallback(async (index: number, restoreFiles: boolean): Promise<string[]> => {
+    const checkpoint = params.checkpoints[index];
+    if (!checkpoint) return [];
+    if (params.loading) {
+      params.addSystemMsg("Stop the running turn (Esc) before rewinding.");
+      return [];
+    }
+    let restored: string[] = [];
+    if (restoreFiles) {
+      try {
+        restored = await restoreCheckpointFiles(checkpoint);
+      } catch (error) {
+        params.addSystemMsg(`⚠ File restore failed: ${error instanceof Error ? error.message : String(error)} · conversation not rewound`);
+        return [];
+      }
+    }
+    params.setMessages(checkpoint.messages);
+    params.setHistory(checkpoint.history);
+    params.setCompletionProof(undefined);
+    params.setCheckpoints((checkpoints) => checkpoints.slice(0, index));
+    params.setInput(checkpoint.prompt);
+    params.addSystemMsg(
+      `↩ Rewound to before "${checkpoint.label}" · ${restoreFiles ? `${restored.length} file${restored.length === 1 ? "" : "s"} restored` : "files left as they are"} · the prompt is back in the composer`,
+    );
+    return restored;
+  }, [params]);
+
+  /** Asks whether to restore files when the agent changed any since the checkpoint. */
+  const requestRewind = useCallback((index: number) => {
+    const checkpoint = params.checkpoints[index];
+    if (!checkpoint) return;
+    const files = checkpointChangedFiles(checkpoint);
+    if (files.length === 0) {
+      void rewindTo(index, false);
+      return;
+    }
+    params.setPicker({
+      title: `Rewind to before "${checkpoint.label}"`,
+      items: rewindChoiceItems(files),
+      onSelect: (item) => {
+        if (item.id !== "cancel") void rewindTo(index, item.id === "files");
+      },
+    });
+  }, [params, rewindTo]);
+
   const buildContext = useCallback(() => ({
     sessionId: params.mainSessionId.current,
     provider: params.provider,
@@ -50,17 +96,9 @@ export function useCommandController(params: AppCommandParams) {
     toggleUndercover: () => params.setIsUndercover((value) => !value),
     toggleCoordinator: () => params.setCoordinatorMode((value) => !value),
     autopilotMode: params.autopilotMode,
-    toggleAutopilot: () => {
-      params.setAutopilotMode((value) => {
-        const next = !value;
-        params.addSystemMsg(
-          next
-            ? `Project Auto ON for ${params.workdir} — typed file changes are auto-approved; shell and sensitive operations still ask`
-            : "Project Auto OFF — manual confirmation restored",
-        );
-        return next;
-      });
-    },
+    toggleAutopilot: () => params.setApprovalMode(params.approvalMode === "ask" ? "auto" : "ask"),
+    approvalMode: params.approvalMode,
+    setApprovalMode: params.setApprovalMode,
     startBackgroundTask: params.startBackgroundTask,
     cancelBackgroundTask: params.cancelBackgroundTask,
     bgTasks: params.bgTasks,
@@ -128,6 +166,10 @@ export function useCommandController(params: AppCommandParams) {
       secret: boolean,
       onSubmit: (value: string) => void,
     ) => params.setPrompt({ title, placeholder, secret, onSubmit }),
+    showDiff: (rawDiff: string, title: string) => {
+      params.overlay.closePrimaryOverlays();
+      params.overlay.setExpandedContent({ content: rawDiff, toolName: title, kind: "diff", rawDiff });
+    },
     restoreSession: (
       messages: Array<{ role: "user" | "assistant"; content: string }>,
     ) => {
@@ -146,19 +188,11 @@ export function useCommandController(params: AppCommandParams) {
     },
     messages: params.messages,
     checkpoints: params.checkpoints,
-    popCheckpoints: async (count: number) => {
-      if (params.checkpoints.length === 0) return;
-      const index = Math.max(0, params.checkpoints.length - count);
+    rewindTo,
+    requestRewind,
+    checkpointFiles: (index: number) => {
       const checkpoint = params.checkpoints[index];
-      if (!checkpoint) return;
-      await snapshotManager.restoreToMark(checkpoint.mark);
-      params.setMessages(checkpoint.messages);
-      params.setHistory(checkpoint.history);
-      params.setCompletionProof(undefined);
-      params.setCheckpoints((checkpoints) => checkpoints.slice(0, index));
-      params.addSystemMsg(
-        `↩ Rolled back ${count} step${count > 1 ? "s" : ""}`,
-      );
+      return checkpoint ? checkpointChangedFiles(checkpoint) : [];
     },
     branches: params.branches.map((branch, index) => ({
       id: branch.id,
@@ -282,15 +316,6 @@ export function useCommandController(params: AppCommandParams) {
     contextUsage: params.contextUsage,
     promptDiagnostics: params.promptDiagnostics,
     promptCacheHealth: params.promptCacheHealth,
-    replayTo: async (index: number) => {
-      const checkpoint = params.checkpoints[index];
-      if (!checkpoint) return;
-      await snapshotManager.restoreToMark(checkpoint.mark);
-      params.setMessages(checkpoint.messages);
-      params.setHistory(checkpoint.history);
-      params.setCompletionProof(undefined);
-      params.setCheckpoints((checkpoints) => checkpoints.slice(0, index + 1));
-    },
     openDesign: (brief?: string) => {
       params.setDesignInitialBrief(brief?.trim() || undefined);
       params.overlay.setDesignWizardOpen(true);
@@ -298,7 +323,7 @@ export function useCommandController(params: AppCommandParams) {
     startRemoteSession: () => params.remoteBridgeRef.current.start(),
     stopRemoteSession: () => params.remoteBridgeRef.current.stop(),
     remoteConnected: params.remoteConnected,
-  }), [params]);
+  }), [params, rewindTo, requestRewind]);
 
   const applyResult = useCallback((result: CommandResult) => {
     switch (result.type) {
@@ -326,6 +351,7 @@ export function useCommandController(params: AppCommandParams) {
           onSubmit: result.onSubmit,
         });
         break;
+      case "new":
       case "clear":
         params.setMessages([]);
         params.setHistory([]);
@@ -335,7 +361,13 @@ export function useCommandController(params: AppCommandParams) {
         params.setSessionTitle(undefined);
         params.isFirstMessage.current = true;
         params.extractedRef.current = false;
-        params.addSystemMsg("History cleared");
+        if (result.type === "new") {
+          params.mainSessionId.current = crypto.randomUUID();
+          params.setCheckpoints([]);
+          params.addSystemMsg("New session started · the previous one is in /resume");
+        } else {
+          params.addSystemMsg("History cleared");
+        }
         break;
       case "exit":
         params.exit();
@@ -410,5 +442,5 @@ export function useCommandController(params: AppCommandParams) {
     setTimeout(() => params.submitRef.current(content), 30);
   }, [params]);
 
-  return { executeCommand, handleCmdExecute, handleCmdFill, handleEditRerun };
+  return { executeCommand, handleCmdExecute, handleCmdFill, handleEditRerun, requestRewind };
 }

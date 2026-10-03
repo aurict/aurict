@@ -1,3 +1,4 @@
+import type { ApprovalMode } from "../approval-mode.js";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type {
   ContextUsage,
@@ -29,6 +30,8 @@ export interface AppCommandParams {
   coordinatorMode: boolean;
   activeAgent: string;
   autopilotMode: boolean;
+  approvalMode: ApprovalMode;
+  setApprovalMode: (mode: ApprovalMode) => void;
   messages: DisplayMessage[];
   history: CoreMessage[];
   tokens: TokenBreakdown;
@@ -58,7 +61,6 @@ export interface AppCommandParams {
   setWorkdir: Dispatch<SetStateAction<string>>;
   setIsUndercover: Dispatch<SetStateAction<boolean>>;
   setCoordinatorMode: Dispatch<SetStateAction<boolean>>;
-  setAutopilotMode: Dispatch<SetStateAction<boolean>>;
   startBackgroundTask: (prompt: string) => string;
   cancelBackgroundTask: (id: string) => boolean;
   setPicker: Dispatch<SetStateAction<PickerRequest | null>>;
@@ -75,6 +77,7 @@ export interface AppCommandParams {
   setSessionTitle: Dispatch<SetStateAction<string | undefined>>;
   setDesignInitialBrief: Dispatch<SetStateAction<string | undefined>>;
   setInput: Dispatch<SetStateAction<string>>;
+  loading: boolean;
   addSystemMsg: (content: string) => void;
   exit: () => void;
 }

@@ -15,8 +15,13 @@ Show terminal session health: context usage, active checkpoints, MCP connections
 ### `/session`
 Show current session info — ID, token count, message count, and provider/model. With no args shows current session; `/session restore <id>` restores a previous session.
 
-### `/sessions`
+### `/sessions` (alias: `/resume`)
 Open an interactive picker to browse and restore previous sessions. Supports search: `/sessions search <query>`.
+From a shell, `aurict --resume <id>` continues a saved session and `aurict --continue` picks the most recent one.
+
+### `/new`
+Start a new session. The conversation, token counters, and checkpoints reset; the previous session
+stays in the database and in `/resume`.
 
 ### `/clear`
 Clear the conversation history in the current session. Does not delete persisted session from the database.
@@ -26,6 +31,15 @@ Show recent visible messages and the persisted session tail from the database.
 
 ### `/cost`
 Show session token usage and an estimated cost breakdown by provider pricing.
+
+### `/rewind` and `/undo`
+A checkpoint is saved before every prompt runs. `/rewind` lists earlier prompts (newest first);
+choosing one returns the conversation to just before that prompt and puts the prompt back in the
+composer. When the agent changed files since then, you choose between restoring those files too
+or keeping them as they are. `/rewind N` goes N prompts back with the same choice. `/undo [N]`
+restores files and conversation N prompts back without asking. `Esc Esc` on an empty composer
+opens the same rewind flow for a chosen prompt. Only files changed by Aurict's file tools are
+restored; edits you made to those files afterwards are overwritten.
 
 ### `/fork`
 Fork the current session — creates an independent copy that continues from the same point. Useful for exploring alternative approaches without losing the original.
@@ -56,6 +70,18 @@ Switch the active session agent: `omni`, `plan`, `review`, or any custom agent d
 
 ### `/coordinator`
 Toggle multi-agent coordinator mode. When enabled, the coordinator breaks tasks into subtasks and routes them to specialist worker agents.
+
+### `/approvals` (alias: `/permissions`)
+Choose how tool calls are approved. Without arguments it opens a picker; `/approvals ask|auto|full`
+sets the mode directly. The active mode is shown in the footer when it is not `ask`.
+
+| Mode | Behavior |
+|---|---|
+| `ask` | Every file change and command waits for approval |
+| `auto` | Project Auto (see `/autopilot`): bounded file changes inside the project run; commands still ask |
+| `full` | Everything runs without asking, except requests the gate rates as dangerous |
+
+Changing the workdir resets the mode to `ask`.
 
 ### `/autopilot`
 Toggle Project Auto for the current project (alias: `/auto`). Project Auto approves only bounded
@@ -104,6 +130,10 @@ time out. Review workers receive only the existing read-only `read`, `glob`, `gr
 
 ### `/commit`
 AI-assisted git commit. Stages all changes, analyzes the diff, and generates a conventional commit message. Prompts for confirmation before committing.
+
+### `/diff`
+Open the working tree diff against `HEAD` — staged, unstaged, and untracked files — in the
+full-screen diff viewer. Untracked files over 256 KB and beyond the first 50 are listed as skipped.
 
 ### `/diffs`
 Show all `edit`, `write`, and `apply_patch` outputs from the current terminal session.

@@ -19,6 +19,10 @@ import { renderCompletion } from "./cli/completion.js"
 import { chatOptionsFromParsed } from "./cli/chat-options.js"
 import { wantsJsonOutput, writeCliInfrastructureError, writeCliUsageError } from "./cli/errors.js"
 import { formatVersionText, getBuildInfo } from "./version.js"
+import { alternateScreenActive, setAlternateScreenActive } from "./tui/alternate-screen-state.js"
+import { resolveTuiMode } from "./tui/render-mode.js"
+import { formatExitSummary, type SessionExitSummary } from "./util/exit-summary.js"
+import { createSynchronizedOutput, synchronizedOutputEnabled } from "./util/synchronized-output.js"
 
 let mcpManagerRef: { disconnectAll(): Promise<void> } | null = null
 
@@ -26,7 +30,10 @@ let mcpManagerRef: { disconnectAll(): Promise<void> } | null = null
 function restoreTerminal() {
   try {
     if (!process.stdout.isTTY) return
-    process.stdout.write("\x1b[?1049l")  // exit alternate screen
+    // Leaving the alternate screen restores the saved cursor; only do it when
+    // Aurict is actually on it, or inline output would be overwritten.
+    if (alternateScreenActive()) process.stdout.write("\x1b[?1049l")
+    setAlternateScreenActive(false)
     process.stdout.write("\x1b[?25h")    // show cursor
     process.stdout.write("\x1b[?2004l")  // disable bracketed paste
     process.stdout.write("\x1b[0m")      // reset colors
@@ -222,6 +229,8 @@ if (!process.stdin.isTTY) {
 }
 
 // Interactive mode — full bootstrap is intentionally isolated to the TTY path.
+// Ink colours through chalk, which ignores NO_COLOR; translate it before Ink loads.
+if (process.env["NO_COLOR"] !== undefined && process.env["FORCE_COLOR"] === undefined) process.env["FORCE_COLOR"] = "0"
 migrateLegacyCoreState()
 profileCheckpoint("prefetch_started")
 const [reactMod, inkMod] = await Promise.all([
@@ -230,7 +239,7 @@ const [reactMod, inkMod] = await Promise.all([
 ])
 const [
   bootstrapMod, appMod, setupWizardMod,
-  errorBoundaryMod, updateCheckMod, coreMod, providerSetupMod,
+  errorBoundaryMod, updateCheckMod, coreMod, providerSetupMod, mouseMod,
 ] = await Promise.all([
   import("./bootstrap.js"),
   import("./tui/App.js"),
@@ -239,6 +248,7 @@ const [
   import("./util/update-check.js"),
   import("@aurict/core"),
   import("./provider-setup.js"),
+  import("./tui/mouse.js"),
 ])
 profileCheckpoint("prefetch_resolved")
 
@@ -257,9 +267,42 @@ await loadPlugins()
 profileCheckpoint("plugins_loaded")
 
 const cfg = applyFlags(loadConfig(workdir), flags)
+let tuiMode
+try {
+  tuiMode = resolveTuiMode({
+    flag: chatOptions?.tuiMode,
+    env: process.env["AURICT_TUI_MODE"],
+    config: cfg.defaults?.tuiMode,
+  })
+} catch (error) {
+  const usageError = new CliUsageError(error instanceof Error ? error.message : String(error))
+  writeCliUsageError(usageError, false)
+  process.exit(usageError.exitCode)
+}
+// Inline mode leaves the mouse to the terminal: native selection and scrollback.
+if (tuiMode === "inline") mouseMod.disableMouseTracking()
+// The UI paints first; MCP servers and custom tools connect behind it.
+let resolveServices: () => void = () => {}
+const servicesReady = new Promise<void>((resolve) => { resolveServices = resolve })
+let exitSummary: SessionExitSummary | null = null
+const appSessionProps = {
+  tuiMode,
+  servicesReady,
+  onExitSummary: (summary: SessionExitSummary) => { exitSummary = summary },
+  ...(chatOptions?.resumeSessionId !== undefined ? { resumeSessionId: chatOptions.resumeSessionId } : {}),
+}
+const renderOptions = {
+  exitOnCtrlC: false,
+  ...(synchronizedOutputEnabled()
+    ? createSynchronizedOutput(process.stdout, process.stderr)
+    : { stdout: process.stdout, stderr: process.stderr }),
+}
 registerCustomThemes(workdir)
 const initialTheme = resolveThemePreference(cfg.defaults?.theme)
-const { defaultProvider, localServer } = await bootstrap(cfg)
+const { defaultProvider, localServer, startServices } = await bootstrap(cfg)
+const startServicesAfterFirstFrame = () => {
+  void startServices().finally(resolveServices)
+}
 profileCheckpoint("bootstrap_done")
 
 const provider = cfg.provider ?? defaultProvider
@@ -287,6 +330,7 @@ if (needsSetup) {
             workdir,
             updatePromise,
             localServer,
+            ...appSessionProps,
             ...(cfg.system !== undefined ? { system: cfg.system } : {}),
             ...(cfg.undercover !== undefined ? { undercover: cfg.undercover } : {}),
           }
@@ -295,12 +339,13 @@ if (needsSetup) {
               onError: writeTUIcrashReport,
               children: React.createElement(App, appProps),
             }),
-            { exitOnCtrlC: false },
+            renderOptions,
           )
+          startServicesAfterFirstFrame()
           wait().then(resolve)
         },
       }),
-      { exitOnCtrlC: false },
+      renderOptions,
     )
   })
 } else {
@@ -314,12 +359,14 @@ if (needsSetup) {
         workdir,
         updatePromise,
         localServer,
+        ...appSessionProps,
         ...(cfg.system !== undefined ? { system: cfg.system } : {}),
         ...(cfg.undercover !== undefined ? { undercover: cfg.undercover } : {}),
       }),
     }),
-    { exitOnCtrlC: false },
+    renderOptions,
   )
+  startServicesAfterFirstFrame()
   await waitUntilExit()
 }
 
@@ -332,4 +379,5 @@ if (mcpManagerRef) {
   ])
 }
 restoreTerminal()
+for (const line of formatExitSummary(exitSummary)) process.stdout.write(`${line}\n`)
 process.exit(0)

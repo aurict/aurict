@@ -22,6 +22,7 @@ import {
   previousGraphemeBoundary,
 } from "./terminal-text/graphemes.js"
 import { useInputUndo } from "./hooks/useInputUndo.js"
+import { usePastePlaceholders } from "./hooks/usePastePlaceholders.js"
 
 export { extractRange, type LocalPoint } from "./multiline-input-model.js"
 
@@ -56,6 +57,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
   useEffect(() => { linesRef.current = lines }, [lines])
   useEffect(() => { cursorRef.current = cursor }, [cursor])
   const inputUndo = useInputUndo({ linesRef, cursorRef, setLines, setCursor })
+  const pastes = usePastePlaceholders()
   useEffect(() => {
     if (lines.join("\n").length < MAX_DRAFT_CHARS && lines.length < MAX_DRAFT_LINES) {
       hasReportedLimitRef.current = false
@@ -118,15 +120,16 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
   function applyPaste(raw: string) {
     const cleaned = sanitizeInput(raw)
     const currentLines = linesRef.current
-    const pasted = limitInputInsertion(
+    const inserted = limitInputInsertion(
       sanitizePaste(raw),
       currentLines.join("\n").length,
       currentLines.length,
     )
-    if (inputWasTruncated(raw, cleaned, pasted) && !hasReportedLimitRef.current) {
+    if (inputWasTruncated(raw, cleaned, inserted) && !hasReportedLimitRef.current) {
       hasReportedLimitRef.current = true
-      onInputTruncated?.(raw.length, pasted.length)
+      onInputTruncated?.(raw.length, inserted.length)
     }
+    const pasted = pastes.collapse(inserted)
     if (!pasted) return
     const pastedLines = pasted.split("\n")
     const currentCursor = cursorRef.current
@@ -219,7 +222,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
       setCursor({ row: 0, col: 0 })
       setHIdx(-1)
       draftRef.current = [""]
-      onQueue(text)
+      onQueue(pastes.take(text))
       return
     }
 
@@ -246,7 +249,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
       setCursor({ row: 0, col: 0 })
       setHIdx(-1)
       draftRef.current = [""]
-      onSubmit(text)
+      onSubmit(pastes.take(text))
       return
     }
 
@@ -277,7 +280,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     }
 
     // ── Up arrow ─────────────────────────────────────────────────────────
-    if (key.upArrow) {
+    if (key.upArrow && !key.meta) {
       if (cursor.row > 0) {
         setCursor(c => {
           const newRow = c.row - 1
@@ -447,7 +450,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
         if (text) {
           setLines([""])
           setCursor({ row: 0, col: 0 })
-          onSubmit(text)
+          onSubmit(pastes.take(text))
         }
         return
       }

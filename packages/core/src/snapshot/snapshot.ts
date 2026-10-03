@@ -127,6 +127,11 @@ class SnapshotManager {
     return this.history(scope).length
   }
 
+  /** Distinct files with a pre-image recorded after `mark` (what a restore would touch). */
+  changedFilesSince(mark: number, scope = "default"): string[] {
+    return [...new Set(this.history(scope).slice(mark).map((snapshot) => snapshot.filePath))]
+  }
+
   getHistoryLength(scope = "default"): number {
     return this.history(scope).length
   }
@@ -166,3 +171,8 @@ class SnapshotManager {
 }
 
 export const snapshotManager = new SnapshotManager()
+
+/** Snapshot scope for a session's file tools; checkpoints must use the same key. */
+export function sessionSnapshotScope(workdir: string, sessionId: string): string {
+  return `${workdir}\0${sessionId}`
+}

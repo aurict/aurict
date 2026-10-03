@@ -20,11 +20,17 @@ export interface WatchedPath {
   prompt?: string;
 }
 
+/** State before one user prompt ran; see `turn-checkpoints.ts`. */
 export interface Checkpoint {
+  id: string;
+  /** File-snapshot history length in `scope` when the turn started. */
   mark: number;
+  scope: string;
   messages: DisplayMessage[];
   history: CoreMessage[];
+  prompt: string;
   label: string;
+  createdAt: number;
 }
 
 export interface ConversationBranch {

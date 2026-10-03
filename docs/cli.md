@@ -32,6 +32,19 @@ Pipe mode and `aurict run` accept:
 Interactive provider, model, system-prompt, streaming, and undercover flags keep
 their existing behavior. `--stream` and `--no-stream` are mutually exclusive.
 
+## Interactive terminal options
+
+| Option | Behavior |
+|---|---|
+| `--inline` | Default. Finished transcript rows go to the terminal's native scrollback; only the live area (stream tail, status line, composer, footer) is redrawn |
+| `--fullscreen` | The alternate-screen cockpit with an in-app scrollable viewport |
+| `-r, --resume <session>` | Continue a saved session by id (the id is printed when Aurict exits) |
+| `-c, --continue` | Continue the most recent session |
+
+The render mode resolves in this order: flag, `AURICT_TUI_MODE=inline|fullscreen`,
+`defaults.tuiMode` in the global config, then `inline`. An invalid value is a usage
+error. `AURICT_SYNC_OUTPUT=0` disables synchronized terminal updates (DEC mode 2026).
+
 ## Output and exit contracts
 
 Stdout is reserved for the requested result. Human progress and text errors use

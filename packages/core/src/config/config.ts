@@ -176,6 +176,8 @@ export interface OmniConfig {
     model?: string
     effort?: number
     theme?: string
+    /** Terminal UI render mode: "inline" (native scrollback) or "fullscreen". */
+    tuiMode?: string
     /** Continuation bütçesi — Faz 6 CLI'ye taşır (şu an CLI'de hardcoded). */
     maxContinuations?: number
     maxTaskContinuations?: number

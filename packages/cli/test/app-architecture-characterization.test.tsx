@@ -27,6 +27,7 @@ const EMPTY_FOCUS: FocusState = {
   keyboardShortcuts: false,
   subagent: false,
   transcriptSearch: false,
+  transcript: false,
   historySearch: false,
   quickSearch: false,
   commandPalette: false,

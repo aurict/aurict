@@ -21,6 +21,9 @@ interface CategoryMeta {
 const CATEGORY_BY_NAME: Record<string, CommandCategory> = {
   help: "system",
   clear: "session",
+  new: "session",
+  resume: "session",
+  approvals: "agent",
   session: "session",
   sessions: "session",
   status: "session",

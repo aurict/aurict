@@ -32,7 +32,16 @@ export function linuxCopyCommands(): string[] {
   return ["wl-copy", "xclip -selection clipboard", "xsel --clipboard --input"]
 }
 
-type ExecFn = (command: string, options?: { input?: string }) => Buffer | string
+type ExecFn = (
+  command: string,
+  options?: { input?: string; stdio?: ["pipe", "ignore", "ignore"]; timeout?: number },
+) => Buffer | string
+
+// wl-copy and xclip fork a daemon that keeps serving the selection. The
+// daemon inherits the child's stdout/stderr, so piping them would make
+// execSync wait for the daemon to exit; discard them instead, and never let a
+// clipboard helper block the UI for long.
+const COPY_EXEC_OPTIONS = { stdio: ["pipe", "ignore", "ignore"] as ["pipe", "ignore", "ignore"], timeout: 2_000 }
 
 /**
  * Writes text to the system clipboard. OSC 52 is always tried (SSH/tmux-safe,
@@ -50,13 +59,13 @@ export function writeClipboard(text: string, exec: ExecFn = execSync): void {
 
   try {
     if (isMac()) {
-      exec("pbcopy", { input: text })
+      exec("pbcopy", { input: text, ...COPY_EXEC_OPTIONS })
       return
     }
     if (isLinux()) {
       for (const cmd of linuxCopyCommands()) {
         try {
-          exec(cmd, { input: text })
+          exec(cmd, { input: text, ...COPY_EXEC_OPTIONS })
           return
         } catch { /* try the next command */ }
       }

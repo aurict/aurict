@@ -104,6 +104,7 @@ export function patchPermissionMetadata(summary: PatchSummary, patchText?: strin
       path: file.path,
       action: file.action,
       ...(file.targetPath ? { targetPath: file.targetPath } : {}),
+      ...(file.hunks && file.hunks.length > 0 ? { hunks: file.hunks } : {}),
     })),
     diff: { added: summary.added, removed: summary.removed, fileCount: summary.files.length },
     ...(patchText ? { patch: { text: patchText, granular } } : {}),

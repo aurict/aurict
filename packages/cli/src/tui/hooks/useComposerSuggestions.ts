@@ -1,6 +1,6 @@
 import type { CommandDef } from "../../commands/types.js";
 import { getCommandMatches } from "../CommandSuggest.js";
-import { listFileMentionMatches } from "../FileMention.js";
+import { listFileMentionMatches, useFileIndexVersion } from "../FileMention.js";
 import type { FocusLayer } from "../app/app-types.js";
 
 export function useComposerSuggestions(
@@ -9,6 +9,7 @@ export function useComposerSuggestions(
   workdir: string,
   commandDefs: CommandDef[],
 ) {
+  useFileIndexVersion(workdir);
   const slashBody = input.startsWith("/") ? input.slice(1) : null;
   const cmdFilter = focusLayer === "ready" && slashBody !== null && !/\s/.test(slashBody)
     ? slashBody

@@ -27,6 +27,8 @@ export interface LatestToolCall {
 }
 
 export interface AgentSubmitParams {
+  /** Background MCP/custom-tool startup; a turn waits for it before running. */
+  servicesReady?: Promise<void> | undefined;
   provider: string;
   model: string;
   workdir: string;

@@ -10,6 +10,7 @@ const FOCUS_PRIORITY: ReadonlyArray<readonly [FocusLayer, keyof FocusState]> = [
   ["keyboardShortcuts", "keyboardShortcuts"],
   ["subagent", "subagent"],
   ["transcriptSearch", "transcriptSearch"],
+  ["transcript", "transcript"],
   ["historySearch", "historySearch"],
   ["quickSearch", "quickSearch"],
   ["commandPalette", "commandPalette"],

@@ -2,7 +2,7 @@ import { z } from "zod"
 import { readFile, writeFile, mkdir, unlink } from "node:fs/promises"
 import path from "node:path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
-import { snapshotManager } from "../../snapshot/snapshot.js"
+import { snapshotManager, sessionSnapshotScope } from "../../snapshot/snapshot.js"
 import { resolveWithinWorkspace } from "../../security/path-boundary.js"
 import { createUnifiedDiff, type UnifiedFileChange } from "../file-diff.js"
 import {
@@ -367,7 +367,7 @@ export const applyPatchTool: ToolDef = {
       return { output: "", error: `Patch validation failed: ${msg}` }
     }
 
-    const snapshotScope = `${ctx.workdir}\0${ctx.sessionId}`
+    const snapshotScope = sessionSnapshotScope(ctx.workdir, ctx.sessionId)
     const mark = snapshotManager.mark(snapshotScope)
     try {
       for (const file of plan.staged) {

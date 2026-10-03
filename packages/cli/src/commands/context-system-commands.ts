@@ -1,4 +1,4 @@
-import { SessionManager, gateGuard, getCircuitState, getContextBreakdown, loadConfig, readLatestTraceEvents, snapshotManager } from "@aurict/core"
+import { SessionManager, gateGuard, getCircuitState, getContextBreakdown, loadConfig, readLatestTraceEvents } from "@aurict/core"
 import type { CommandDef, CommandResult } from "./types.js"
 import { CURRENT_VERSION } from "../util/update-check.js"
 import { ensureLine, formatRelativeTime, oneLine, traceSummary } from "./command-helpers.js"
@@ -149,11 +149,11 @@ export const contextSystemCommands: CommandDef[] = [
     handler: async (args, ctx): Promise<CommandResult> => {
       const { checkpoints } = ctx
       if (checkpoints.length === 0) {
-        return { type: "text", content: "No checkpoints saved yet. Checkpoints are saved after each AI step." }
+        return { type: "text", content: "No checkpoints saved yet. A checkpoint is saved before each prompt runs." }
       }
 
       if (args.length === 0) {
-        const lines = checkpoints.map((cp, i) => `  [${i}] ${cp.label}`)
+        const lines = checkpoints.map((cp, i) => `  [${i}] before "${cp.label}"`)
         return { type: "text", content: "Checkpoints:\n" + lines.join("\n") + "\n\nUse /replay <N> to jump to checkpoint N." }
       }
 
@@ -162,14 +162,8 @@ export const contextSystemCommands: CommandDef[] = [
         return { type: "error", message: `Invalid checkpoint index. Valid range: 0-${checkpoints.length - 1}` }
       }
 
-      const cp = checkpoints[idx]!
-      const restored = await snapshotManager.restoreToMark(cp.mark)
-      ctx.replayTo(idx)
-
-      return {
-        type:    "text",
-        content: `↩ Replayed to checkpoint ${idx}: "${cp.label}"${restored.length ? `\n   Files restored: ${restored.join(", ")}` : ""}`,
-      }
+      await ctx.rewindTo(idx, true)
+      return { type: "text", content: "" }
     },
   },
 
@@ -307,33 +301,35 @@ export const contextSystemCommands: CommandDef[] = [
   // ── /rewind ───────────────────────────────────────────────────────────────
   {
     name:        "rewind",
-    description: "Rewind conversation to Nth checkpoint",
-    usage:       "/rewind [N]  — omit N to show checkpoint list",
+    description: "Rewind to before an earlier prompt — conversation, and optionally the files the agent changed",
+    usage:       "/rewind [N]  — omit N to pick a prompt; N = prompts back",
     handler: (args, ctx): CommandResult => {
       const cps = ctx.checkpoints
       if (cps.length === 0) {
-        return { type: "text", content: "No checkpoints yet. Checkpoints are created automatically after each agent step." }
+        return { type: "text", content: "No checkpoints yet. A checkpoint is saved before each prompt runs." }
       }
 
       if (!args[0]) {
-        // Show picker
-        const items = cps.map((cp, i) => ({
-          id:    String(i),
-          label: cp.label,
-          hint:  `${(cp.messages as unknown[]).length} messages`,
-        }))
+        const items = cps.map((cp, i) => {
+          const files = ctx.checkpointFiles(i).length
+          return {
+            id:    String(i),
+            label: `before "${cp.label}"`,
+            hint:  `${new Date(cp.createdAt).toTimeString().slice(0, 5)} · ${files} file${files === 1 ? "" : "s"} changed since`,
+          }
+        }).reverse()
         return {
           type: "picker",
-          title: "Rewind to checkpoint",
+          title: "Rewind to before a prompt",
           items,
-          onSelect: (item) => ctx.replayTo(parseInt(item.id, 10)),
+          onSelect: (item) => ctx.requestRewind(parseInt(item.id, 10)),
         }
       }
 
       const n = parseInt(args[0]!, 10)
-      if (isNaN(n) || n < 1) return { type: "error", message: "Usage: /rewind [N]  (N = steps back, 1 = last)" }
-      ctx.popCheckpoints(n)
-      return { type: "text", content: `Rewound ${n} step${n > 1 ? "s" : ""}.` }
+      if (isNaN(n) || n < 1) return { type: "error", message: "Usage: /rewind [N]  (N = prompts back, 1 = last)" }
+      ctx.requestRewind(Math.max(0, cps.length - n))
+      return { type: "text", content: "" }
     },
   },
 

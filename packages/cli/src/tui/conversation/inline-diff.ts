@@ -1,24 +1,49 @@
 import { parseRawDiff, wordRangesByLine, type DiffLine, type Hunk } from "../DiffRenderer/logic.js"
 import { wrapStyledSegments } from "../terminal-text/wrap-segments.js"
-import type { TranscriptRow, TranscriptSegment, TranscriptTone } from "./row-model.js"
+import { C, detectLang, tokenizeLine, type Lang } from "../../utils/highlight.js"
+import type { SyntaxKind, TranscriptRow, TranscriptSegment, TranscriptTone } from "./row-model.js"
 
-function highlightedSegments(
-  text: string,
-  tone: TranscriptTone,
-  ranges: Array<{ start: number; end: number }>,
-): TranscriptSegment[] {
-  if (ranges.length === 0) return [{ text, tone }]
-  const segments: TranscriptSegment[] = []
-  let cursor = 0
-  for (const range of [...ranges].sort((a, b) => a.start - b.start)) {
-    const start = Math.min(Math.max(range.start, cursor), text.length)
-    const end = Math.min(Math.max(range.end, start), text.length)
-    if (start > cursor) segments.push({ text: text.slice(cursor, start), tone })
-    if (end > start) segments.push({ text: text.slice(start, end), tone, bold: true })
-    cursor = end
+const SYNTAX_BY_COLOR = new Map<string, SyntaxKind>(
+  (Object.entries(C) as Array<[SyntaxKind | "plain", string]>)
+    .filter((entry): entry is [SyntaxKind, string] => entry[0] !== "plain")
+    .map(([kind, color]) => [color, kind]),
+)
+
+export function diffLanguage(file: string): Lang | undefined {
+  const extension = file.includes(".") ? file.slice(file.lastIndexOf(".") + 1) : ""
+  const lang = detectLang(extension)
+  return lang === "generic" ? undefined : lang
+}
+
+/**
+ * Added and context lines carry syntax kinds; removed lines stay in the
+ * removal tone so deletions read as deletions at a glance.
+ */
+function contentSegments(text: string, tone: TranscriptTone, lang: Lang | undefined): TranscriptSegment[] {
+  if (!lang || tone === "diff-remove") return [{ text, tone }]
+  return tokenizeLine(text, lang).map((token) => {
+    const syntax = SYNTAX_BY_COLOR.get(token.color)
+    return { text: token.text, tone, ...(syntax ? { syntax } : {}) }
+  })
+}
+
+/** Bolds the characters a word-level diff marks as changed, splitting segments as needed. */
+function emphasize(segments: TranscriptSegment[], ranges: Array<{ start: number; end: number }>): TranscriptSegment[] {
+  if (ranges.length === 0) return segments
+  const changed = (offset: number) => ranges.some((range) => offset >= range.start && offset < range.end)
+  const output: TranscriptSegment[] = []
+  let offset = 0
+  for (const segment of segments) {
+    let start = 0
+    for (let index = 1; index <= segment.text.length; index++) {
+      if (index < segment.text.length && changed(offset + index) === changed(offset + start)) continue
+      const piece = segment.text.slice(start, index)
+      output.push(changed(offset + start) ? { ...segment, text: piece, bold: true } : { ...segment, text: piece })
+      start = index
+    }
+    offset += segment.text.length
   }
-  if (cursor < text.length) segments.push({ text: text.slice(cursor), tone })
-  return segments.length > 0 ? segments : [{ text: "", tone }]
+  return output.length > 0 ? output : segments
 }
 
 function linePrefix(line: DiffLine, width: number): { text: string; tone: TranscriptTone } {
@@ -45,11 +70,13 @@ function renderLine(
   id: string,
   detailId: string,
   width: number,
+  lang: Lang | undefined,
 ): TranscriptRow[] {
   const prefix = linePrefix(line, width)
   const contentTone = line.type === "context" ? "diff-context" : line.type === "add" ? "diff-add" : "diff-remove"
   const contentWidth = Math.max(4, width - prefix.text.length)
-  const wrapped = wrapStyledSegments(highlightedSegments(line.content, contentTone, ranges), contentWidth)
+  const content = emphasize(contentSegments(line.content, contentTone, lang), ranges)
+  const wrapped = wrapStyledSegments(content.length > 0 ? content : [{ text: "", tone: contentTone }], contentWidth)
   const surface = lineSurface(line)
   return wrapped.map((segments, index) => ({
       id: `${id}:${index}`,
@@ -84,6 +111,7 @@ export function projectInlineDiff(rawDiff: string, id: string, detailId: string,
   const rows: TranscriptRow[] = []
   groupHunks(parsed.hunks).forEach((group, groupIndex) => {
     const stats = groupStats(group.hunks)
+    const lang = diffLanguage(group.file)
     rows.push({
       id: `${id}:file:${groupIndex}`,
       segments: [
@@ -109,6 +137,7 @@ export function projectInlineDiff(rawDiff: string, id: string, detailId: string,
         `${id}:file:${groupIndex}:hunk:${hunkIndex}:line:${lineIndex}`,
         detailId,
         width,
+        lang,
       )))
     })
   })

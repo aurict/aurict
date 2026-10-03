@@ -29,6 +29,7 @@ export { OpenCodePlugin }   from "./provider/opencode.js"
 export { OllamaPlugin }     from "./provider/ollama.js"
 export { createOpenAICompatiblePlugin, type OpenAICompatiblePluginOptions } from "./provider/openai-compatible-factory.js"
 export { countTokens, estimateMessages } from "./provider/tokenizer.js"
+export { calculateCostUsd, formatCostUsd } from "./provider/costs.js"
 
 export { hooks }                             from "./hook/emitter.js"
 export { loadUserHooks }                     from "./hook/user-hooks.js"
@@ -166,7 +167,7 @@ export { ptyManager }                                    from "./pty/manager.js"
 export type { PtySession }                               from "./pty/manager.js"
 
 export { formatFile, getFormatCommand }                  from "./format/formatter.js"
-export { snapshotManager }                               from "./snapshot/snapshot.js"
+export { snapshotManager, sessionSnapshotScope }         from "./snapshot/snapshot.js"
 export type { Snapshot }                                 from "./snapshot/snapshot.js"
 
 export { taskManager }                                   from "./task/manager.js"

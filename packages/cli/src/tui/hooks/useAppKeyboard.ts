@@ -1,8 +1,6 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import crypto from "node:crypto";
 import {
-  PermissionGate,
-  PlanGate,
   SessionManager,
   agentPool,
   getAllSessionAgents,
@@ -12,15 +10,27 @@ import { readClipboard } from "../../util/clipboard.js";
 import { writeClipboard } from "../../util/clipboard.js";
 import { lastAssistantCodeBlock, lastAssistantText } from "../conversation/transcript-export.js";
 import type { AppKeyboardParams } from "../app/app-keyboard-types.js";
-import { TURN_CANCELLED_NOTICE } from "../app/cancellation-feedback.js";
 import {
+  cancelActiveTurn,
   closeFocusedLayer,
+  editLastQueuedMessage,
+  openBacktrackPicker,
   togglePrimaryOverlay,
 } from "../app/app-keyboard-actions.js";
 
-export function useAppKeyboard(params: AppKeyboardParams): void {
+const DOUBLE_ESCAPE_MS = 1500;
+
+/** Returns transient footer guidance produced by key sequences. */
+export function useAppKeyboard(params: AppKeyboardParams): string | undefined {
   const ctrlCCountRef = useRef(0);
   const ctrlCTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const escapeArmedAtRef = useRef(0);
+  const [hint, setHint] = useState<string>();
+  useEffect(() => {
+    if (!hint) return;
+    const timer = setTimeout(() => setHint(undefined), DOUBLE_ESCAPE_MS);
+    return () => clearTimeout(timer);
+  }, [hint]);
   const overlay = params.overlay;
 
   useInput((input, key) => {
@@ -35,25 +45,7 @@ export function useAppKeyboard(params: AppKeyboardParams): void {
         if (ctrlCTimerRef.current) clearTimeout(ctrlCTimerRef.current);
         return;
       }
-      if (params.loadingRef.current && params.abortControllerRef.current) {
-        params.abortControllerRef.current.abort();
-        params.abortControllerRef.current = null;
-        PermissionGate.cancelPending();
-        PlanGate.cancelPending();
-        overlay.setPlanRequest(null);
-        params.setPermissionQueue([]);
-        params.setMessages((messages) =>
-          messages.map((message) =>
-            message.pending ? { ...message, pending: false } : message,
-          ),
-        );
-        params.setStreamingText(null);
-        params.setStreamingReason(null);
-        params.setScrollLocked(false);
-        params.setConversationOffsetRows(0);
-        params.addSystemMsg(TURN_CANCELLED_NOTICE);
-        return;
-      }
+      if (cancelActiveTurn(params)) return;
       ctrlCCountRef.current += 1;
       if (ctrlCTimerRef.current) clearTimeout(ctrlCTimerRef.current);
       if (ctrlCCountRef.current >= 2) {
@@ -70,6 +62,13 @@ export function useAppKeyboard(params: AppKeyboardParams): void {
     }
 
     if (key.escape) {
+      if (params.focusLayer === "streaming") {
+        // A half-written steer message is cleared first; Esc on an empty
+        // composer interrupts the turn ("esc to interrupt").
+        if (params.inputRef.current.length > 0) params.setInput("");
+        else cancelActiveTurn(params);
+        return;
+      }
       if (closeFocusedLayer(params)) return;
       if (params.updateAvailable && overlay.updateDismissed === false) {
         overlay.setUpdateDismissed(true);
@@ -79,7 +78,15 @@ export function useAppKeyboard(params: AppKeyboardParams): void {
         params.setInput("");
         return;
       }
-      if (!params.loading) params.exit();
+      if (params.loading) return;
+      const now = Date.now();
+      if (now - escapeArmedAtRef.current <= DOUBLE_ESCAPE_MS) {
+        escapeArmedAtRef.current = 0;
+        setHint(openBacktrackPicker(params) ? undefined : "No previous message to edit");
+        return;
+      }
+      escapeArmedAtRef.current = now;
+      setHint("Esc again to edit a previous message");
       return;
     }
 
@@ -143,6 +150,7 @@ export function useAppKeyboard(params: AppKeyboardParams): void {
       params.openExternalEditor();
       return;
     }
+    if (key.meta && key.upArrow && editLastQueuedMessage(params)) return;
     if (key.shift && key.upArrow) {
       params.scrollConversation(3);
       return;
@@ -182,7 +190,10 @@ export function useAppKeyboard(params: AppKeyboardParams): void {
     }
 
     if (key.ctrl && input === "t") {
-      if (params.tasks.length > 0) togglePrimaryOverlay("taskPanel", params);
+      // Inline history lives in scrollback; Ctrl+T opens the re-wrapped
+      // transcript (with tasks) instead of the fullscreen side panel.
+      if (params.tuiMode === "inline") togglePrimaryOverlay("transcript", params);
+      else if (params.tasks.length > 0) togglePrimaryOverlay("taskPanel", params);
       return;
     }
     if (key.ctrl && input.toLowerCase() === "f") {
@@ -305,4 +316,5 @@ export function useAppKeyboard(params: AppKeyboardParams): void {
       overlay.setKeyboardShortcutsOpen(true);
     }
   });
+  return hint;
 }

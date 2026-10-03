@@ -20,6 +20,8 @@ import type { useOverlayState } from "../hooks/useOverlayState.js";
 import type { PermissionPromptDecision } from "../PermissionPrompt.js";
 import type { RunActivity } from "../run-status.js";
 import type { FocusLayer } from "./app-types.js";
+import type { TuiMode } from "../render-mode.js";
+import type { ApprovalMode } from "../approval-mode.js";
 import type { PickerRequest, PromptRequest } from "./app-state-types.js";
 
 export interface TaskSummary {
@@ -30,6 +32,9 @@ export interface TaskSummary {
 }
 
 export interface AppScreenProps {
+  tuiMode: TuiMode;
+  /** Inline mode: the final frame before exit flushes everything to scrollback. */
+  exiting: boolean;
   termRows: number;
   termCols: number;
   terminalMeasured: boolean;
@@ -49,6 +54,9 @@ export interface AppScreenProps {
   loading: boolean;
   coordinatorMode: boolean;
   autopilotMode: boolean;
+  approvalMode: ApprovalMode;
+  /** Transient keyboard guidance for the footer (e.g. the Esc-Esc backtrack hint). */
+  keyboardHint?: string | undefined;
   activeTool: string | undefined;
   runActivity: RunActivity | undefined;
   tasks: Task[];

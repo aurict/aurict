@@ -139,12 +139,12 @@ export const projectHistoryCommands: CommandDef[] = [
   {
     name:        "undo",
     aliases:     ["u"],
-    description: "Rollback N steps (files + conversation)",
+    description: "Undo the last N prompts: files the agent changed and the conversation",
     usage:       "/undo [N]",
     handler: async (args, ctx): Promise<CommandResult> => {
       const n = Math.max(1, parseInt(args[0] ?? "1", 10) || 1)
       if (ctx.checkpoints.length === 0) return { type: "error", message: "No checkpoints available" }
-      await ctx.popCheckpoints(n)
+      await ctx.rewindTo(Math.max(0, ctx.checkpoints.length - n), true)
       return { type: "text", content: "" }
     },
   },
@@ -156,9 +156,10 @@ export const projectHistoryCommands: CommandDef[] = [
     description: "List saved checkpoints",
     handler: (_args, ctx): CommandResult => {
       if (ctx.checkpoints.length === 0) return { type: "text", content: "No checkpoints yet" }
-      const lines = ctx.checkpoints.map((c, i) =>
-        `  ${i + 1}. ${c.label}  (${c.history.length} messages)`
-      )
+      const lines = ctx.checkpoints.map((c, i) => {
+        const files = ctx.checkpointFiles(i).length
+        return `  ${i + 1}. before "${c.label}"  ${new Date(c.createdAt).toTimeString().slice(0, 5)} · ${files} file${files === 1 ? "" : "s"} changed since`
+      })
       return { type: "text", content: "Checkpoints:\n" + lines.join("\n") }
     },
   },

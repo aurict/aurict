@@ -43,8 +43,15 @@ export function useAppState(options: AppStateOptions) {
   const [provider, setProviderState] = useState(options.initialProvider);
   const [model, setModelState] = useState(options.initialModel);
   const [effort, setEffort] = useState<number>();
-  const [termCols, setTermCols] = useState(() => process.stdout.columns ?? 80);
-  const [termRows, setTermRows] = useState(() => process.stdout.rows ?? 24);
+  // One state for both dimensions: legacy-mode React renders each update
+  // synchronously, and a frame with new columns but stale rows can exceed
+  // the shrunken screen.
+  const [termSize, setTermSize] = useState(() => ({
+    cols: process.stdout.columns ?? 80,
+    rows: process.stdout.rows ?? 24,
+  }));
+  const termCols = termSize.cols;
+  const termRows = termSize.rows;
   const [terminalMeasured, setTerminalMeasured] = useState(false);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const addSystemMsg = useCallback((content: string) => {
@@ -103,6 +110,7 @@ export function useAppState(options: AppStateOptions) {
   const [activeAgentCount, setActiveAgentCount] = useState(() => agentPool.active.length);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [autopilotMode, setAutopilotMode] = useState(false);
+  const [fullAccess, setFullAccess] = useState(false);
   const [projectAutoPromptOpen, setProjectAutoPromptOpen] = useState(true);
   const [recentCmds, setRecentCmds] = useState<string[]>([]);
   const [designInitialBrief, setDesignInitialBrief] = useState<string>();
@@ -119,6 +127,7 @@ export function useAppState(options: AppStateOptions) {
     throw new Error("Submit controller is not initialized");
   });
   const autopilotRef = useRef(false);
+  const fullAccessRef = useRef(false);
   const watchCleanupRef = useRef<Map<string, () => void>>(new Map());
   const mainSessionId = useRef(crypto.randomUUID());
   const extractedRef = useRef(false);
@@ -144,6 +153,7 @@ export function useAppState(options: AppStateOptions) {
 
   useEffect(() => { historyRef.current = history; }, [history]);
   useEffect(() => { autopilotRef.current = autopilotMode; }, [autopilotMode]);
+  useEffect(() => { fullAccessRef.current = fullAccess; }, [fullAccess]);
   useEffect(() => {
     if (!options.updatePromise) return;
     void options.updatePromise
@@ -156,7 +166,7 @@ export function useAppState(options: AppStateOptions) {
 
   return {
     provider, setProviderState, model, setModelState, effort, setEffort,
-    termCols, setTermCols, termRows, setTermRows, terminalMeasured, setTerminalMeasured,
+    termCols, termRows, setTermSize, terminalMeasured, setTerminalMeasured,
     messages, setMessages, addSystemMsg, input, setInput, loading, setLoading,
     permissionQueue, setPermissionQueue, permission: permissionQueue[0] ?? null,
     question, setQuestion, picker, setPicker, prompt, setPrompt, tokens, setTokens,
@@ -171,7 +181,8 @@ export function useAppState(options: AppStateOptions) {
     contextUsage, setContextUsage, completionProof, setCompletionProof,
     promptDiagnostics, setPromptDiagnostics,
     promptCacheHealth, setPromptCacheHealth, activeAgentCount, setActiveAgentCount,
-    updateInfo, autopilotMode, setAutopilotMode, projectAutoPromptOpen,
+    updateInfo, autopilotMode, setAutopilotMode, fullAccess, setFullAccess,
+    fullAccessRef, projectAutoPromptOpen,
     setProjectAutoPromptOpen, recentCmds, setRecentCmds,
     designInitialBrief, setDesignInitialBrief, watchedPaths, setWatchedPaths,
     checkpoints, setCheckpoints, branches, setBranches, activeBranchIdx,

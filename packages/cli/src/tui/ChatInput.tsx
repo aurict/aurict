@@ -15,7 +15,7 @@ import { useTheme } from "../utils/theme.js"
 import { HStack, VStack, Surface, StatusDot, Typo } from "./design-system/index.js"
 import { useTerminalSize } from "./TerminalSizeContext.js"
 import type { ComposerQueueItem } from "./composer-queue.js"
-import { glyph, terminalText } from "./terminal-glyphs.js"
+import { glyph, prefersAsciiGlyphs, terminalText } from "./terminal-glyphs.js"
 import { useSemanticTheme } from "./theme/semantic-theme.js"
 
 interface Props {
@@ -31,6 +31,8 @@ interface Props {
   onInputTruncated?:  (originalLen: number, truncatedLen: number) => void
   onCopied?:          (charCount: number) => void
 }
+
+const MAX_QUEUE_PREVIEW = 3
 
 // Bottom hint-bar cells — chosen based on terminal width
 const HINTS: { key: string; label: string }[] = [
@@ -56,11 +58,17 @@ export function ChatInput({ value, onChange, onSubmit, onQueue, disabled, workin
   return (
     <VStack flexGrow={1} flexShrink={1}>
       {queued && queued.length > 0 && (
-        <HStack paddingX="md" gap="sm">
-          <Typo variant="body" tone="warning">{queued[0]!.kind}</Typo>
-          <Typo variant="body" tone="muted" dimColor>"{queued[0]!.text.slice(0, 42)}{queued[0]!.text.length > 42 ? glyph("ellipsis") : ""}"</Typo>
-          {queued.length > 1 && <Typo variant="body" tone="muted" dimColor>+{queued.length - 1}</Typo>}
-        </HStack>
+        <VStack paddingX="md">
+          {queued.slice(0, MAX_QUEUE_PREVIEW).map((item, index) => (
+            <HStack key={item.id} gap="sm">
+              <Typo variant="body" tone="warning">{index + 1}. {item.kind}</Typo>
+              <Typo variant="body" tone="muted" dimColor>"{item.text.replace(/\s+/g, " ").slice(0, 42)}{item.text.length > 42 ? glyph("ellipsis") : ""}"</Typo>
+              {index === Math.min(queued.length, MAX_QUEUE_PREVIEW) - 1 && (
+                <Typo variant="caption" tone="muted">{queued.length > MAX_QUEUE_PREVIEW ? `+${queued.length - MAX_QUEUE_PREVIEW} more ${glyph("statusTiny")} ` : ""}{prefersAsciiGlyphs() ? "Alt+Up" : "⌥↑"} edit last</Typo>
+              )}
+            </HStack>
+          ))}
+        </VStack>
       )}
 
       <Surface

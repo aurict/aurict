@@ -183,3 +183,62 @@ Theme and palette selections are user preferences. Every picker, slash-command, 
 - Tool status owns the strongest color: failed calls keep a red marker/action while the explanatory outcome returns to normal reading contrast; verified outcomes may use success color. Structured metadata is preferred over stdout parsing, and environment/search/Git summaries expose useful counts without leaking raw output.
 - Inline Markdown has one projection contract across stable transcripts and full Markdown views: emphasis, strike-through, code, and links never leak raw delimiter syntax. Safe `http`, `https`, `file`, and `mailto` targets use OSC 8 links; control characters and unsafe schemes are never emitted.
 - The cockpit is the sole owner of provider, model, context, session identity, workspace, and branch. The footer is the sole owner of runtime exceptions, background activity, remote/autopilot state, sandbox scope, and transient selection guidance.
+
+## Phase 8 inline scrollback and Codex parity
+
+Date: 2026-10-03
+
+### Inline render mode (default)
+
+- `inline` is the default render mode; `fullscreen` keeps the alternate-screen cockpit. Resolution order: `--inline`/`--fullscreen`, `AURICT_TUI_MODE`, `defaults.tuiMode`, then `inline`. Invalid values are usage errors.
+- Finished transcript rows are written once, through Ink `<Static>`, into the terminal's native scrollback. Native scroll, selection, search, and copy work, and the whole session stays in the terminal after exit. Inline mode never enables mouse tracking.
+- `conversation/inline-commit.ts` decides finality. Every message before the first pending message is final. Inside the open assistant turn, completed blocks before the last boundary that no future block can regroup are final. Only rows that a projection of those blocks alone reproduces exactly are committed, so tool grouping, interrupted-prose coalescing, and spacing never change after a row reaches scrollback.
+- Committed rows that are no longer a prefix of the projection (`/clear`, `/new`, edit-and-rerun, rewind, branch switch, session restore, a settled width change) trigger one full reprint: clear screen and scrollback, then print the history again at the current width. Width changes are debounced by 150 ms so a drag-resize reprints once.
+- The live frame is capped at `rows - 1`. Ink repaints the entire terminal whenever a frame reaches the screen height, which would flash and duplicate history. The live transcript shows the newest rows that fit above the composer.
+- Blocking modals (pager, palette, settings, pickers) open on the alternate screen. Closing one restores the main buffer untouched, and scrollback writes are held while a modal is open. Permission prompts, command and file suggestions, and the status line stay inline.
+- The exit frame commits every remaining row and erases the live area. `CSI ?1049l` is written only while Aurict owns the alternate screen, because it also restores the saved cursor.
+- Frame writes from one tick are coalesced into a single DEC 2026 synchronized update (`AURICT_SYNC_OUTPUT=0` disables it). Stderr writes flush pending stdout first, so Ink's erase → console message → redraw sequence reaches the terminal in order.
+- `Ctrl+T` opens the transcript pager: the whole conversation re-projected at the current width, including the running turn and tracked tasks. `Ctrl+F` results open the pager at the selected message.
+
+### Interaction parity
+
+- Inline mode replaces the cockpit with one status row above the composer: `Working (12s · esc to interrupt) · <action> · <latest reasoning heading> · <n> queued`. The footer carries provider/model, context percentage, and a non-default approval mode.
+- Streamed text repaints on a throttle (one flush per 80–200 ms window), not a debounce, so steady token streams stay visible.
+- `Esc` while a turn runs clears a half-written steer message first, then interrupts the turn. `Esc` on an empty, idle composer arms backtrack; a second `Esc` within 1.5 s lists previous prompts, and the chosen one opens in the editor and re-runs from that point. `Esc` no longer exits; use `Ctrl+C` twice or `/exit`.
+- `/approvals ask|auto|full` selects the approval mode. `full` approves every request except those the gate rates as dangerous.
+- Pastes of six or more lines or more than 1,000 characters show as `[Pasted text #N · L lines]` and expand on submit or queue. A token the user edited is sent as typed. Existing draft limits are unchanged.
+- `/new` starts a new session, `/resume` (alias of `/sessions`) restores one, and `/diff` opens the working-tree diff against `HEAD`, including untracked files. After exit Aurict prints token usage and `aurict --resume <id>`.
+- `@` mentions search the whole project fuzzily. The index is `git ls-files` (tracked plus untracked, honouring `.gitignore`), or a bounded walk outside git, cached and refreshed in the background. Ranking rewards word and camelCase starts, contiguous runs, and basename hits, and files beat directories on ties. `@` alone or a path ending in `/` browses that directory.
+- MCP servers and custom tools connect after the first frame. A turn submitted earlier waits for them, so no tool is missing.
+
+### Phase 8 acceptance checks
+
+- `inline-commit.test.ts`: settled-row rules, boundary safety, an open turn that grows and finishes with no reprint, and reprint on rewrite or width change.
+- `inline-app-shell.test.tsx`: history is written once, the live frame equals `rows - 1` under a long stream, and the exit frame flushes everything and draws no composer.
+- `inline-render-mode.test.ts`: mode precedence and invalid values, write coalescing, and stderr ordering.
+- `codex-parity.test.ts` and `codex-parity-ui.test.tsx`: approval modes and `/approvals`, the session commands, the exit summary, fuzzy ranking, paste placeholders, the status line, the inline footer, `Esc Esc` backtrack, interrupt, the pager anchor, and the working-tree diff.
+- `inline-layout-contract.test.tsx`: at 60×18, 80×24, 100×30, and 140×40, every scenario commits each row exactly once while streaming with no reprint, rows fit the rail and inset, and the frame geometry never reaches the screen height.
+- `bun run test:pty`: the real-PTY matrix described in `docs/testing.md`.
+
+### Beyond parity
+
+- **Turn checkpoints and rewind.** A checkpoint is saved before every prompt: the conversation, plus the length of the session's file-snapshot history in the same scope file tools write their pre-images to (`sessionSnapshotScope`). `/rewind`, `/rewind N`, `Esc Esc`, `/undo`, and `/replay` restore to before a prompt. When the agent changed files since then, a choice offers "conversation and files" or "conversation only". The prompt returns to the composer. Earlier step checkpoints restored files from the wrong snapshot scope and recorded stale messages; they are gone.
+- **Hunk-level patch approval.** `apply_patch` requests list every `@@` chunk of multi-chunk updates. Chunks toggle individually (`←/→`, `Space`), and the response carries `approvedHunks`. Chunks are located by context lines, so dropping one leaves the others applicable.
+- **Diffs.** Inline diffs keep word-level emphasis and add syntax kinds on added and context lines. Removed lines stay in the removal tone. Colours apply only on dark brand themes; accessibility and light themes keep semantic tones. The full-screen diff viewer opens side by side from 140 columns. `v`, `n`, and `p` toggle the view and step through hunks; these actions previously had no default key.
+- **Editable queue.** The queue preview lists up to three items. `Alt+↑` on an empty composer takes the newest queued message back for editing; re-submitting with `Enter` (steer, runs first) or `Tab` (queued, runs last) reorders it.
+- **Turn stats, cost, and proof.** Each finished turn closes with `── Worked for 12s · 1.5k tokens · $0.0041 ──`, attached in the same update that settles the turn so scrollback never sees it change. The inline footer adds the completion proof state, the visible conversation's cost, and `/compact` once context passes 85%.
+- **Multi-agent view.** The agent radar draws a tree under `main` and collapses beyond four agents. The transcript pager gains one tab per subagent session (`Tab` / `Shift+Tab`).
+
+### Hardening fixes found by the PTY matrix
+
+- Terminal size is one state value. Separate column and row updates rendered a frame with new columns and stale rows, and the frame could exceed a shrunken screen. The inline frame is also clamped to the live `stdout.rows` Ink draws into.
+- Exit writes on the alternate screen go through Ink's stdout. The fullscreen exit transcript is therefore no longer overwritten by a queued final frame.
+- `NO_COLOR` maps to `FORCE_COLOR=0` before Ink loads; chalk ignores `NO_COLOR` on its own. The transcript rail uses the glyph vocabulary, so `AURICT_ASCII=1` renders `|`.
+- Segment wrapping kept dropping the space that separated a carried word from the next one (`dangerousoperations`). Clipboard helpers (`wl-copy`, `xclip`) no longer pipe output a forking daemon keeps open, which used to hang copies on Wayland.
+
+### Known limits
+
+- Startup: first frame went from about 3.7 s to about 0.5 s in the compiled binary. About 240 ms passes before any JavaScript runs (runtime start plus bundle parse), and `aurict --version` takes about 0.43 s. Reaching 150 ms needs bytecode compilation, which in turn requires removing top-level `await` from the entry point and its modules.
+- A full reprint clears the terminal's scrollback, including output from before Aurict started.
+- Rewind restores only files changed through Aurict's file tools. User edits made to those files after the chosen prompt are overwritten.
+- The PTY matrix runs against xterm.js emulation. tmux, ssh, Windows Terminal, iTerm2, and Kitty have not been exercised by it.

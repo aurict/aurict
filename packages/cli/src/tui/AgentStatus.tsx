@@ -19,8 +19,11 @@ import { useTheme } from "../utils/theme.js"
 import { useTerminalSize } from "./TerminalSizeContext.js"
 import { agentTone } from "./theme/agent-tone.js"
 import { useSemanticTheme } from "./theme/semantic-theme.js"
+import { glyph } from "./terminal-glyphs.js"
 
 const EVICT_AFTER_MS = 6_000
+/** Rows shown under `main`; the rest collapse into one "+N more" line. */
+const MAX_AGENT_ROWS = 4
 
 const RADAR_FRAMES = ["◜", "◠", "◝", "◞", "◡", "◟"]
 const SCAN_FRAMES = ["▰▱▱▱", "▱▰▱▱", "▱▱▰▱", "▱▱▱▰"]
@@ -131,7 +134,7 @@ export function AgentStatus({ inputActive = true, viewingSessionId, onViewAgent,
       </Box>
 
       {/* Per-agent lines */}
-      {visible.map((v, i) => {
+      {visible.slice(0, MAX_AGENT_ROWS).map((v, i) => {
         const { info } = v
         const isSelected  = i === (selectedAgentIdx ?? -1)
         const isViewed    = viewingSessionId === info.sessionId
@@ -139,7 +142,8 @@ export function AgentStatus({ inputActive = true, viewingSessionId, onViewAgent,
         const isDone      = info.status === "done"
         const isError     = info.status === "error"
         const color       = agentTone(info.type, semantic)
-        const prefix      = isSelected ? "▶ " : "  "
+        const lastShown   = i === Math.min(visible.length, MAX_AGENT_ROWS) - 1 && visible.length <= MAX_AGENT_ROWS
+        const prefix      = `${isSelected ? "▶" : " "}${glyph(lastShown ? "treeEnd" : "treeMid")} `
         const bullet      = isViewed ? "●" : "○"
         const statusIcon  = isRunning ? (frame + i) % 2 === 0 ? "◆" : "◇" : isDone ? "✓" : "!"
         const elapsedStr  = fmtElapsed(info.startedAt, now)
@@ -183,6 +187,13 @@ export function AgentStatus({ inputActive = true, viewingSessionId, onViewAgent,
           </Box>
         )
       })}
+      {visible.length > MAX_AGENT_ROWS && (
+        <Box paddingLeft={1}>
+          <Text color={theme.textDim}>
+            {` ${glyph("treeEnd")} +${visible.length - MAX_AGENT_ROWS} more ${glyph("statusTiny")} Ctrl+X to view`}
+          </Text>
+        </Box>
+      )}
     </Box>
   )
 }

@@ -18,6 +18,7 @@ export type CommandResult =
   | { type: "picker"; title: string; items: PickerItem[]; onSelect: (item: PickerItem) => void }
   | { type: "prompt"; title: string; placeholder?: string; secret?: boolean; onSubmit: (value: string) => void }
   | { type: "clear" }
+  | { type: "new" }
   | { type: "exit" }
 
 export interface CommandDef {
@@ -54,16 +55,25 @@ export interface CommandContext {
   toggleCoordinator: () => void
   autopilotMode:     boolean
   toggleAutopilot:   () => void
+  approvalMode:      ApprovalMode
+  setApprovalMode:   (mode: ApprovalMode) => void
   startBackgroundTask:  (prompt: string) => string
   cancelBackgroundTask: (id: string) => boolean
   bgTasks:           BackgroundTask[]
   showBgTask:        (id: string) => void
   showPicker:        (title: string, items: PickerItem[], onSelect: (item: PickerItem) => void) => void
   showPrompt:        (title: string, placeholder: string, secret: boolean, onSubmit: (value: string) => void) => void
+  /** Opens a unified diff in the full-screen diff viewer. */
+  showDiff:          (rawDiff: string, title: string) => void
   restoreSession:    (msgs: Array<{ role: "user" | "assistant"; content: string }>) => void
   messages:          Array<{ role: string; content: string; tool?: string; pending?: boolean; resultContent?: string; timestamp?: number }>
-  checkpoints:       Array<{ mark: number; messages: unknown[]; history: unknown[]; label: string }>
-  popCheckpoints:    (n: number) => void
+  checkpoints:       Array<{ mark: number; messages: unknown[]; history: unknown[]; label: string; prompt: string; createdAt: number }>
+  /** Rewinds to before turn checkpoint `index`; returns the restored file paths. */
+  rewindTo:          (index: number, restoreFiles: boolean) => Promise<string[]>
+  /** Rewinds after asking whether to restore files, when any changed. */
+  requestRewind:     (index: number) => void
+  /** Files a rewind to checkpoint `index` would restore. */
+  checkpointFiles:   (index: number) => string[]
   branches:          Array<{ id: string; name: string; createdAt: number; messageCount: number }>
   activeBranchIdx:   number
   createBranch:      (name?: string) => void
@@ -75,7 +85,6 @@ export interface CommandContext {
   contextWindow:     number
   /** Latest core-produced prompt estimate, when the session has completed a turn. */
   contextUsage?:     ContextUsage | undefined
-  replayTo:          (idx: number) => void
   tokens?:           { input: number; output: number; cacheRead?: number; cacheWrite?: number; reasoning?: number }
   promptDiagnostics?: {
     totalChars: number
@@ -100,3 +109,4 @@ export interface CommandContext {
   remoteConnected:    boolean
 }
 import type { ContextUsage, CoreMessage } from "@aurict/core"
+import type { ApprovalMode } from "../tui/approval-mode.js"

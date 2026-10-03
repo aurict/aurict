@@ -16,6 +16,7 @@ import { QuestionPrompt } from "../QuestionPrompt.js";
 import { QuickSearch } from "../QuickSearch.js";
 import { SettingsPanel } from "../SettingsPanel.js";
 import { TranscriptSearch } from "../TranscriptSearch.js";
+import { TranscriptPager } from "../TranscriptPager.js";
 
 type ComponentConfig<T extends React.ElementType> = React.ComponentProps<T> | null;
 
@@ -25,6 +26,7 @@ export interface AppOverlayContentsProps {
   keyboardShortcuts: ComponentConfig<typeof KeyboardShortcuts>;
   historySearch: ComponentConfig<typeof HistorySearch>;
   transcriptSearch: ComponentConfig<typeof TranscriptSearch>;
+  transcriptPager?: ComponentConfig<typeof TranscriptPager> | undefined;
   quickSearch: ComponentConfig<typeof QuickSearch>;
   commandPalette: ComponentConfig<typeof CommandPalette>;
   settings: ComponentConfig<typeof SettingsPanel>;
@@ -52,6 +54,8 @@ export function AppOverlayContents(props: AppOverlayContentsProps) {
       return <HistorySearch {...requireConfig(props.activeLayer, props.historySearch)} />;
     case "transcriptSearch":
       return <TranscriptSearch {...requireConfig(props.activeLayer, props.transcriptSearch)} />;
+    case "transcript":
+      return <TranscriptPager {...requireConfig(props.activeLayer, props.transcriptPager ?? null)} />;
     case "quickSearch":
       return <QuickSearch {...requireConfig(props.activeLayer, props.quickSearch)} />;
     case "commandPalette":

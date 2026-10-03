@@ -2,7 +2,10 @@ import React from "react";
 import { Box, Text } from "ink";
 import type { TranscriptRow, TranscriptTone } from "./conversation/projector.js";
 import { useSemanticTheme, type SemanticTheme } from "./theme/semantic-theme.js";
-import { useTheme } from "../utils/theme.js";
+import { useTheme, type Theme } from "../utils/theme.js";
+import { C } from "../utils/highlight.js";
+import { glyph } from "./terminal-glyphs.js";
+import type { SyntaxKind } from "./conversation/row-model.js";
 import { getDiffPalette, type DiffPalette } from "./DiffRenderer/palette.js";
 
 function toneColor(tone: TranscriptTone | undefined, theme: SemanticTheme): string {
@@ -23,20 +26,37 @@ function toneColor(tone: TranscriptTone | undefined, theme: SemanticTheme): stri
   return theme.foreground.secondary;
 }
 
+/**
+ * Syntax colours follow the code-block palette, but only on dark brand
+ * themes: accessibility themes and light backgrounds keep semantic tones so
+ * contrast guarantees hold.
+ */
+export function syntaxPalette(theme: Theme): Readonly<Record<SyntaxKind, string>> | null {
+  if (ACCESSIBILITY_THEMES.has(theme.name)) return null;
+  const background = /^#([0-9a-f]{6})$/i.exec(theme.bgDeep ?? theme.bgHighlight)?.[1];
+  if (!background) return null;
+  const [r, g, b] = [0, 2, 4].map((offset) => parseInt(background.slice(offset, offset + 2), 16) / 255);
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b! < 0.5 ? C : null;
+}
+
+const ACCESSIBILITY_THEMES = new Set(["System ANSI", "High Contrast", "Colorblind Dark"]);
+
 export function TranscriptRows({ rows, rail = false }: { rows: TranscriptRow[]; rail?: boolean }) {
   const theme = useSemanticTheme();
-  const diffPalette = getDiffPalette(useTheme());
+  const baseTheme = useTheme();
+  const diffPalette = getDiffPalette(baseTheme);
+  const syntax = syntaxPalette(baseTheme);
   return <>
     {rows.map((row) => {
       const backgroundColor = rowBackground(row, theme, diffPalette);
       return (
         <Box key={row.id} width="100%" {...(backgroundColor ? { backgroundColor } : {})}>
           <Text wrap="truncate-end">
-            {rail && rowHasContent(row) && <Text color={railColor(row, theme)}>│ </Text>}
+            {rail && rowHasContent(row) && <Text color={railColor(row, theme)}>{glyph("separator")} </Text>}
             {row.segments.map((segment, index) => (
               <Text
                 key={`${row.id}:${index}`}
-                color={toneColor(segment.tone, theme)}
+                color={(segment.syntax && syntax?.[segment.syntax]) || toneColor(segment.tone, theme)}
                 {...(segment.bold ? { bold: true } : {})}
                 {...(segment.italic ? { italic: true } : {})}
                 {...(segment.underline ? { underline: true } : {})}

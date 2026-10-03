@@ -14,10 +14,16 @@ failed suite's state for diagnosis.
 | `bun run test:cli` | CLI and terminal suite, including both `.test.ts` and `.test.tsx` |
 | `bun run test:desktop` | Desktop suite |
 | `bun run test:integration` | Opt-in real WebRTC test; requires the documented environment variables |
+| `bun run test:pty` | Real-PTY terminal matrix: drives the TUI in a pseudo-terminal against a scripted provider and checks the emulated screen and scrollback (`--only <name>`, `--keep`, `--binary <path>`) |
 | `bun run test:coverage` | Core and CLI coverage thresholds |
 | `bun run test:stability` | Fixed-seed randomized order, with every test file run twice |
 | `bun run check:quality` | Test-script, error-handler, and pinned-runtime contracts |
 | `bun run quality` | Quality contracts, typecheck, version consistency, and all local tests |
+
+`test:pty` runs entirely in temporary directories, including `HOME`. MCP servers are pre-disabled and
+the local server is off, so it needs no network and installs nothing. Scenarios cover inline mode at
+60×18, 80×24, and 140×40, resize reprints, the status line and Esc interrupt, the transcript pager,
+rewind with file restore, fullscreen mode, `NO_COLOR`, `AURICT_ASCII`, and `TERM=dumb`.
 
 Coverage excludes test files. The initial repository-wide floor is 45% lines and 30% functions;
 critical review modules remain substantially above that floor. Raise thresholds only with tests,

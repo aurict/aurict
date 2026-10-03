@@ -10,6 +10,9 @@ import { FileWriteView } from "./FileDiffView.js"
 import { writePreview } from "./conversation/transcript-details.js"
 import { prefersAsciiGlyphs } from "./terminal-glyphs.js"
 
+/** Wide terminals open diffs side by side; `v` still toggles the view. */
+const SIDE_BY_SIDE_MIN_COLUMNS = 140
+
 interface Props {
   content:  string
   toolName: string
@@ -113,6 +116,7 @@ export function ExpandableOutput({
           <DiffRenderer
             rawDiff={rawDiff}
             width={Math.max(40, cols - 4)}
+            initialMode={cols >= SIDE_BY_SIDE_MIN_COLUMNS ? "side-by-side" : "unified"}
             {...(filePath ? { fileName: filePath } : {})}
           />
         </Box>

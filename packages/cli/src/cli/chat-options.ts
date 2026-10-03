@@ -1,12 +1,16 @@
 import type { CLIFlags } from "../config/loader.js"
 import type { CliOutputAudience, CliOutputFormat } from "../headless/pipe.js"
 import type { ParsedCliCommand } from "./types.js"
+import type { TuiMode } from "../tui/render-mode.js"
 
 export interface ChatCliOptions {
   flags: CLIFlags
   format: CliOutputFormat
   audience: CliOutputAudience
   quiet: boolean
+  tuiMode?: TuiMode
+  /** Session id to restore, or "latest" for --continue. */
+  resumeSessionId?: string
 }
 
 export function chatOptionsFromParsed(parsed: ParsedCliCommand): ChatCliOptions {
@@ -25,5 +29,9 @@ export function chatOptionsFromParsed(parsed: ParsedCliCommand): ChatCliOptions 
     format: options["format"] === "json" ? "json" : "text",
     audience: options["audience"] === "agent" ? "agent" : "human",
     quiet: options["quiet"] === true,
+    ...(options["inline"] === true ? { tuiMode: "inline" as const } : {}),
+    ...(options["fullscreen"] === true ? { tuiMode: "fullscreen" as const } : {}),
+    ...(typeof options["resume"] === "string" ? { resumeSessionId: options["resume"] } : {}),
+    ...(options["continue"] === true ? { resumeSessionId: "latest" } : {}),
   }
 }
