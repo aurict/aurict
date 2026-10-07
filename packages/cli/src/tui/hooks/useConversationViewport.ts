@@ -11,6 +11,8 @@ interface ConversationViewportParams {
   pickerOpen: boolean;
   permissionOpen: boolean;
   questionOpen: boolean;
+  /** Fullscreen owns the mouse wheel; inline leaves scrolling to the terminal. */
+  mouseScroll: boolean;
 }
 
 export function useConversationViewport(params: ConversationViewportParams) {
@@ -66,7 +68,7 @@ export function useConversationViewport(params: ConversationViewportParams) {
     }
     if (params.overlayOpen || params.viewingSubagent) return;
     scrollConversation(event.button === "scroll-up" ? 3 : -3);
-  }, true);
+  }, params.mouseScroll);
 
   return {
     scrollLocked,

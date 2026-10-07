@@ -12,12 +12,21 @@ export interface PatchUpdateChunk {
   endOfFile?: boolean | undefined
 }
 
+export interface PatchHunkSummary {
+  /** The `@@` anchor text, when the chunk has one. */
+  context?: string
+  added: number
+  removed: number
+}
+
 export interface PatchFileSummary {
   path: string
   action: "add" | "delete" | "update" | "move"
   targetPath?: string
   added: number
   removed: number
+  /** Independently selectable chunks of an update. */
+  hunks?: PatchHunkSummary[]
 }
 
 export interface PatchSummary {
@@ -129,6 +138,11 @@ export function summarizePatchText(patchText: string): PatchSummary {
       ...(hunk.movePath ? { targetPath: hunk.movePath } : {}),
       added: hunk.chunks.reduce((sum, chunk) => sum + chunk.addedCount, 0),
       removed: hunk.chunks.reduce((sum, chunk) => sum + chunk.removedCount, 0),
+      hunks: hunk.chunks.map((chunk) => ({
+        ...(chunk.changeContext ? { context: chunk.changeContext } : {}),
+        added: chunk.addedCount,
+        removed: chunk.removedCount,
+      })),
     }
   })
   return {
@@ -154,7 +168,30 @@ function blockPaths(lines: readonly string[], start: number, end: number): { pat
   return { path: sourcePath }
 }
 
-export function filterPatchTextByFiles(patchText: string, approvedFiles: readonly string[]): string {
+/**
+ * Keeps only the chosen `@@` chunks of an update block. Chunks are located by
+ * their context lines, not by line numbers, so dropping one leaves the others
+ * applicable.
+ */
+function selectUpdateChunks(block: readonly string[], selected: readonly number[]): string[] {
+  const firstChunk = block.findIndex((line) => line.startsWith("@@"))
+  if (firstChunk === -1) return [...block]
+  const header = block.slice(0, firstChunk)
+  const chunks: string[][] = []
+  for (const line of block.slice(firstChunk)) {
+    if (line.startsWith("@@")) chunks.push([line])
+    else chunks[chunks.length - 1]!.push(line)
+  }
+  const wanted = new Set(selected)
+  const kept = chunks.filter((_, index) => wanted.has(index))
+  return kept.length === 0 ? [] : [...header, ...kept.flat()]
+}
+
+export function filterPatchTextByFiles(
+  patchText: string,
+  approvedFiles: readonly string[],
+  approvedHunks: Readonly<Record<string, readonly number[]>> = {},
+): string {
   const approved = new Set(approvedFiles)
   const lines = stripHeredoc(patchText.trim()).split("\n")
   const begin = lines.findIndex((line) => line.trim() === "*** Begin Patch")
@@ -171,7 +208,12 @@ export function filterPatchTextByFiles(patchText: string, approvedFiles: readonl
     let next = i + 1
     while (next < end && !lines[next]?.startsWith("*** Add File:") && !lines[next]?.startsWith("*** Delete File:") && !lines[next]?.startsWith("*** Update File:")) next++
     const paths = blockPaths(lines, i, next)
-    if (paths && (approved.has(paths.path) || (paths.targetPath && approved.has(paths.targetPath)))) selectedBlocks.push(lines.slice(i, next))
+    if (paths && (approved.has(paths.path) || (paths.targetPath && approved.has(paths.targetPath)))) {
+      const hunks = approvedHunks[paths.path]
+      const block = lines.slice(i, next)
+      const selected = hunks && lines[i]!.startsWith("*** Update File:") ? selectUpdateChunks(block, hunks) : block
+      if (selected.length > 0) selectedBlocks.push(selected)
+    }
     i = next
   }
   if (selectedBlocks.length === 0) throw new Error("No patch files selected")

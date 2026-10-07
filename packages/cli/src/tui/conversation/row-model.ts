@@ -11,7 +11,11 @@ export interface TranscriptSegment {
   underline?: boolean
   strikethrough?: boolean
   dim?: boolean
+  /** Syntax token kind; the renderer colours it when the theme allows. */
+  syntax?: SyntaxKind
 }
+
+export type SyntaxKind = "keyword" | "string" | "comment" | "number" | "type" | "fn" | "operator" | "builtin"
 
 export interface TranscriptRow {
   id: string

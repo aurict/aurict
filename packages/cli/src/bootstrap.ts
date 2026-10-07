@@ -206,7 +206,32 @@ function printStartupStatus({
   console.error(`╰${"─".repeat(width)}╯`)
 }
 
-export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvider: string; serverToken: string; localServer: LocalServerStatus }> {
+export interface BootstrapResult {
+  defaultProvider: string
+  serverToken: string
+  localServer: LocalServerStatus
+  /**
+   * Connects MCP servers and loads custom tools. Deferred so the terminal UI
+   * can paint first; the first agent turn awaits it so no tool is missing.
+   */
+  startServices: () => Promise<void>
+}
+
+/** MCP connections and custom tools; failures are reported, never fatal. */
+export async function startBackgroundServices(cwd: string): Promise<void> {
+  try {
+    await mcpManager.init(cwd)
+  } catch (error) {
+    console.warn("[aurict] MCP startup failed", error)
+  }
+  try {
+    await loadCustomTools(cwd)
+  } catch (error) {
+    console.warn("[aurict] custom tool loading failed", error)
+  }
+}
+
+export async function bootstrap(cfg: AurictConfig = {}): Promise<BootstrapResult> {
   const available      = ProviderRegistry.available()
   const defaultProvider = cfg.provider ?? ProviderRegistry.detectDefault()
 
@@ -247,21 +272,8 @@ export async function bootstrap(cfg: AurictConfig = {}): Promise<{ defaultProvid
     await runAnimatedMCPSetup()
   }
 
-  // Start the MCP servers
-  try {
-    await mcpManager.init(process.cwd())
-  } catch (error) {
-    console.warn("[aurict] MCP startup failed", error)
-  }
-
-  // Load custom tools: ~/.aurict/tools/ + .aurict/tools/
-  try {
-    await loadCustomTools(process.cwd())
-  } catch (error) {
-    console.warn("[aurict] custom tool loading failed", error)
-  }
-
-  return { defaultProvider, serverToken, localServer }
+  const cwd = process.cwd()
+  return { defaultProvider, serverToken, localServer, startServices: () => startBackgroundServices(cwd) }
 }
 
 function envVar(id: string): string {

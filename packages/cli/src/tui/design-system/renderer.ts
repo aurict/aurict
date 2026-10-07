@@ -7,10 +7,12 @@
  */
 export {
   Box,
+  Static,
   Text,
   measureElement,
   useApp,
   useInput,
+  useStdout,
 } from "ink";
 
 export type {

@@ -87,6 +87,14 @@ describe("writeClipboard — Linux native command fallback", () => {
     expect(calls[0]).toEqual({ cmd: "wl-copy", input: "text" })
   })
 
+  it("never pipes the helper's output, so a forking clipboard daemon cannot block", () => {
+    if (process.platform !== "linux") return
+    const seen: unknown[] = []
+    writeClipboard("text", (_cmd, opts) => { seen.push(opts); return "" })
+    expect(seen[0]).toMatchObject({ input: "text", stdio: ["pipe", "ignore", "ignore"] })
+    expect((seen[0] as { timeout?: number }).timeout).toBeGreaterThan(0)
+  })
+
   it("falls back to xclip if wl-copy is unavailable", () => {
     if (process.platform !== "linux") return
     const calls: string[] = []

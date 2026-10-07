@@ -21,8 +21,13 @@ export class TranscriptProjectionCache {
   constructor(private readonly projectMessage: MessageProjector = projectStableMessage) {}
 
   project(messages: TranscriptMessage[], width: number): TranscriptRow[] {
-    const output: TranscriptRow[] = [];
-    messages.forEach((message, index) => {
+    return this.projectByMessage(messages, width).flat();
+  }
+
+  /** Rows grouped by source message; a tool call's trailing gap stays with its message. */
+  projectByMessage(messages: TranscriptMessage[], width: number): TranscriptRow[][] {
+    return messages.map((message, index) => {
+      const output: TranscriptRow[] = [];
       const key = `${width}:${message.id ? "stable" : index}`;
       const entries = this.messages.get(message) ?? [];
       let entry = entries.find((candidate) => candidate.key === key);
@@ -37,8 +42,8 @@ export class TranscriptProjectionCache {
           segments: [{ text: "", tone: "muted" }],
         });
       }
+      return output;
     });
-    return output;
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef } from "react";
 import { allCommands } from "../commands/registry.js";
 import { useApp } from "./design-system/renderer.js";
 import { useOverlayState } from "./hooks/useOverlayState.js";
@@ -20,6 +20,12 @@ import type { AppProps as Props } from "./app/app-props.js";
 import { configuredSandboxBackend } from "./app/app-environment.js";
 import { useTerminalAttention } from "./hooks/useTerminalAttention.js";
 import { useProjectAutoMode } from "./hooks/useProjectAutoMode.js";
+import { useModeAwareExit } from "./hooks/useModeAwareExit.js";
+import { useResumeSession } from "./hooks/useResumeSession.js";
+import { summarizeTasks } from "./app/task-summary.js";
+import { formatRecentHistory } from "./app/history-context.js";
+import { useTransientFlag } from "./hooks/useTransientFlag.js";
+import { approvalModeFrom } from "./approval-mode.js";
 
 export function App({
   initialProvider,
@@ -30,8 +36,12 @@ export function App({
   undercover,
   updatePromise,
   localServer,
+  tuiMode = "fullscreen",
+  resumeSessionId,
+  onExitSummary,
+  servicesReady,
 }: Props) {
-  const { exit } = useApp();
+  const inkExit = useApp().exit;
 
   const overlay = useOverlayState();
   const {
@@ -46,7 +56,7 @@ export function App({
 
   const {
     provider, setProviderState, model, setModelState, effort, setEffort,
-    termCols, setTermCols, termRows, setTermRows, terminalMeasured,
+    termCols, termRows, setTermSize, terminalMeasured,
     setTerminalMeasured, messages, setMessages, addSystemMsg, input, setInput,
     loading, setLoading, permissionQueue, setPermissionQueue, permission,
     question, setQuestion, picker, setPicker, prompt, setPrompt, tokens,
@@ -63,6 +73,7 @@ export function App({
     promptDiagnostics, setPromptDiagnostics,
     promptCacheHealth, setPromptCacheHealth, activeAgentCount,
     setActiveAgentCount, updateInfo, autopilotMode, setAutopilotMode,
+    fullAccess, setFullAccess, fullAccessRef,
     projectAutoPromptOpen, setProjectAutoPromptOpen,
     recentCmds, setRecentCmds, designInitialBrief, setDesignInitialBrief,
     watchedPaths, setWatchedPaths, checkpoints, setCheckpoints, branches,
@@ -74,6 +85,10 @@ export function App({
     streamTimerRef, tokenRateRef, lastTokenTimeRef, turnHadToolRef,
     turnAssistantIdRef,
   } = useAppState({ initialProvider, initialModel, initialTheme, workdir, updatePromise });
+  const { exit, exiting } = useModeAwareExit(inkExit, tuiMode, () => onExitSummary?.({
+    sessionId: mainSessionId.current, tokens, turns: commandHistory.length,
+  }));
+  useResumeSession({ sessionId: resumeSessionId, mainSessionId, setHistory, setMessages, addSystemMsg });
   const {
     overlayOpen,
     focusLayer,
@@ -103,30 +118,15 @@ export function App({
       model,
       workdir: workdirState,
       parentSessionId: mainSessionId.current,
-      getParentContext: () =>
-        historyRef.current
-          .slice(-10)
-          .map((message) =>
-            `${message.role}: ${typeof message.content === "string" ? message.content : JSON.stringify(message.content)}`,
-          )
-          .join("\n"),
+      getParentContext: () => formatRecentHistory(historyRef.current),
     });
 
   const remoteConnected = remoteStatus === "connected";
 
   const {
-    scrollLocked,
-    setScrollLocked,
-    scrollLockedRef,
-    conversationOffsetRows,
-    setConversationOffsetRows,
-    measuredViewportRows,
-    setMeasuredViewportRows,
-    unseenCount,
-    unseenLabel,
-    scrollConversation,
-    handleScrollRange,
-    pageConversation,
+    scrollLocked, setScrollLocked, scrollLockedRef, conversationOffsetRows,
+    setConversationOffsetRows, measuredViewportRows, setMeasuredViewportRows,
+    unseenCount, unseenLabel, scrollConversation, handleScrollRange, pageConversation,
   } = useConversationViewport({
     messages,
     terminalRows: termRows,
@@ -135,38 +135,29 @@ export function App({
     pickerOpen: picker !== null,
     permissionOpen: permission !== null,
     questionOpen: question !== null,
+    mouseScroll: tuiMode === "fullscreen",
   });
 
   const commandDefs = allCommands();
   const { cmdFilter, mentionFilter, inlineSuggestionActive } =
     useComposerSuggestions(input, focusLayer, workdirState, commandDefs);
 
-  // ── Finalized messages for Static ─────────────────────────────────────────
   const showStartupBanner = !viewingSubagentId && startupBannerVisible;
-  const taskSummary = useMemo(
-    () => ({
-      pending: tasks.filter((t) => t.status === "pending" || t.status === "ready" || t.status === "blocked").length,
-      inProgress: tasks.filter((t) => t.status === "in_progress" || t.status === "verifying").length,
-      done: tasks.filter((t) => t.status === "done" || t.status === "cancelled").length,
-      error: tasks.filter((t) => t.status === "error").length,
-    }),
-    [tasks],
-  );
+  const taskSummary = useMemo(() => summarizeTasks(tasks), [tasks]);
   const sandboxBackend = useMemo(() => configuredSandboxBackend(), []);
-  const [selectionHintVisible, setSelectionHintVisible] = useState(true);
-  useEffect(() => {
-    const timer = setTimeout(() => setSelectionHintVisible(false), 10_000);
-    return () => clearTimeout(timer);
-  }, []);
+  const selectionHintVisible = useTransientFlag(10_000);
 
   const inputRef = useRef(input);
-  const resolveProjectAutoPrompt = useProjectAutoMode({
+  const { resolvePrompt: resolveProjectAutoPrompt, setApprovalMode } = useProjectAutoMode({
     workdir: workdirState,
     autopilotRef,
     setAutopilotMode,
+    fullAccessRef,
+    setFullAccess,
     setPromptOpen: setProjectAutoPromptOpen,
     addSystemMsg,
   });
+  const approvalMode = approvalModeFrom(autopilotMode, fullAccess);
   const openExternalEditor = useExternalEditor({
     inputRef,
     loadingRef,
@@ -179,12 +170,12 @@ export function App({
     input,
     loading,
     autopilotRef,
+    fullAccessRef,
     inputRef,
     loadingRef,
     mainSessionId,
     remoteRuntimeRef,
-    setTermCols,
-    setTermRows,
+    setTermSize,
     setTerminalMeasured,
     setMeasuredViewportRows,
     setConversationOffsetRows,
@@ -221,58 +212,12 @@ export function App({
     addSystemMsg,
   });
 
-  useAppKeyboard({
-    exit,
-    focusLayer,
-    loading,
-    overlayOpen,
-    updateAvailable: updateInfo !== null,
-    inlineSuggestionActive,
-    workdir: workdirState,
-    activeAgent,
-    commandHistory,
-    tasks,
-    messages,
-    transcriptDetails,
-    selectedTranscriptDetailId,
-    permission,
-    projectAutoPromptOpen,
-    resolveProjectAutoPrompt,
-    pickerOpen: picker !== null,
-    questionOpen: question !== null,
-    overlay,
-    mainSessionId,
-    loadingRef,
-    inputRef,
-    abortControllerRef,
-    streamTextRef,
-    streamReasonRef,
-    latestToolCallRef,
-    btwFrameRef,
-    setPermissionQueue,
-    setMessages,
-    setStreamingText,
-    setStreamingReason,
-    setScrollLocked,
-    setConversationOffsetRows,
-    setInput,
-    setAttachments,
-    setActiveAgent,
-    addSystemMsg,
-    handleAttachSubmit,
-    openExternalEditor,
-    scrollConversation,
-    pageConversation,
-    openTranscriptDetail,
-  });
 
   const {
-    executeCommand,
-    handleCmdExecute,
-    handleCmdFill,
-    handleEditRerun,
+    executeCommand, handleCmdExecute, handleCmdFill, handleEditRerun, requestRewind,
   } = useCommandController({
     provider,
+    loading,
     model,
     workdir: workdirState,
     effort,
@@ -282,6 +227,8 @@ export function App({
     coordinatorMode,
     activeAgent,
     autopilotMode,
+    approvalMode,
+    setApprovalMode,
     messages,
     history,
     tokens,
@@ -311,7 +258,6 @@ export function App({
     setWorkdir: setWorkdirState,
     setIsUndercover,
     setCoordinatorMode,
-    setAutopilotMode,
     startBackgroundTask,
     cancelBackgroundTask,
     setPicker,
@@ -331,7 +277,53 @@ export function App({
     addSystemMsg,
     exit,
   });
+
+  const keyboardHint = useAppKeyboard({
+    exit,
+    tuiMode,
+    setPicker,
+    checkpoints,
+    requestRewind,
+    composerQueue,
+    setComposerQueue,
+    focusLayer,
+    loading,
+    overlayOpen,
+    updateAvailable: updateInfo !== null,
+    inlineSuggestionActive,
+    workdir: workdirState,
+    activeAgent,
+    commandHistory,
+    tasks,
+    messages,
+    transcriptDetails,
+    selectedTranscriptDetailId,
+    permission,
+    projectAutoPromptOpen,
+    resolveProjectAutoPrompt,
+    pickerOpen: picker !== null,
+    questionOpen: question !== null,
+    overlay,
+    mainSessionId, loadingRef, inputRef, abortControllerRef, streamTextRef,
+    streamReasonRef, latestToolCallRef, btwFrameRef,
+    setPermissionQueue,
+    setMessages,
+    setStreamingText,
+    setStreamingReason,
+    setScrollLocked,
+    setConversationOffsetRows,
+    setInput,
+    setAttachments,
+    setActiveAgent,
+    addSystemMsg,
+    handleAttachSubmit,
+    openExternalEditor,
+    scrollConversation,
+    pageConversation,
+    openTranscriptDetail,
+  });
   const { handleSubmit, handleQueue } = useAgentSubmit({
+    servicesReady,
     provider,
     model,
     workdir: workdirState,
@@ -403,6 +395,8 @@ export function App({
 
   return (
     <AppScreen
+      tuiMode={tuiMode}
+      exiting={exiting}
       termRows={termRows}
       termCols={termCols}
       terminalMeasured={terminalMeasured}
@@ -422,6 +416,8 @@ export function App({
       loading={loading}
       coordinatorMode={coordinatorMode}
       autopilotMode={autopilotMode}
+      approvalMode={approvalMode}
+      keyboardHint={keyboardHint}
       activeTool={activeTool}
       runActivity={runActivity}
       tasks={tasks}
@@ -450,7 +446,7 @@ export function App({
       conversationOffsetRows={conversationOffsetRows}
       unseenCount={unseenCount}
       unseenLabel={unseenLabel}
-      selectionHintVisible={selectionHintVisible}
+      selectionHintVisible={selectionHintVisible && tuiMode === "fullscreen"}
       measuredViewportRows={measuredViewportRows}
       commandHistory={commandHistory}
       commandDefs={commandDefs}

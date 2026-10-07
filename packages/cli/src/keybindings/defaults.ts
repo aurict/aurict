@@ -212,6 +212,9 @@ export const DEFAULT_BINDINGS: ContextBindings = {
   modal: {
     ...emptyBindings(),
     "cancel":                     ["escape", "q"],
+    "diff.toggle-view":           ["v"],
+    "diff.next-hunk":             ["n"],
+    "diff.prev-hunk":             ["p"],
     "nav.up":                     ["up", "k"],
     "nav.down":                   ["down", "j"],
     "quit":                       ["ctrl+c"],

@@ -11,6 +11,8 @@ import { useSemanticTheme } from "./theme/semantic-theme.js";
 import { CockpitSignal } from "./CockpitSignal.js";
 import { shellHorizontalInset } from "./app-shell/layout-metrics.js";
 import { displayWidth, truncateDisplayWidth } from "./terminal-text/display-width.js";
+import { approvalModeLabel, type ApprovalMode } from "./approval-mode.js";
+import { formatCostUsd } from "@aurict/core";
 
 export interface SessionHeaderProps {
   provider: string; model: string; workdir: string; tokens: TokenBreakdown;
@@ -31,6 +33,14 @@ export interface SessionFooterProps {
   cols?: number | undefined;
   scrollLocked?: boolean | undefined; remoteConnected?: boolean | undefined;
   selectionHint?: boolean | undefined;
+  approvalMode?: ApprovalMode | undefined;
+  /** Inline mode has no cockpit, so the footer carries model and context. */
+  session?: { provider: string; model: string; contextTokens: number; contextWindow?: number | undefined } | undefined;
+  /** Transient guidance such as "Esc again to edit a previous message". */
+  hint?: string | undefined;
+  /** Inline mode: completion proof and the visible conversation's cost. */
+  proof?: CompletionProof | undefined;
+  costUsd?: number | undefined;
 }
 
 function short(value: string, max: number): string {
@@ -148,7 +158,16 @@ export function SessionFooter(props: SessionFooterProps) {
   const taskErrors = props.taskSummary?.error ?? 0;
   const skills = (props.skills?.length ?? 0) + (props.turnSkills?.length ?? 0);
   const sandbox = props.sandboxBackend === "none" ? "no sandbox" : props.sandboxBackend === "docker" ? "docker" : "policy";
-  const state = props.scrollLocked
+  const approval = props.approvalMode ?? (props.autopilotMode ? "auto" : "ask");
+  const session = props.session;
+  const context = session ? contextState(session.contextTokens, session.contextWindow) : undefined;
+  const proof = proofState(props.proof, semantic);
+  const nearLimit = (context?.ratio ?? 0) >= 0.85;
+  // Inline footers carry more state, so compact ones drop the static extras.
+  const showChrome = !(compact && session);
+  const state = props.hint
+    ? props.hint
+    : props.scrollLocked
     ? "output paused"
     : taskErrors > 0
       ? `${taskErrors} task${taskErrors === 1 ? "" : "s"} failed`
@@ -161,16 +180,20 @@ export function SessionFooter(props: SessionFooterProps) {
       <HStack justify="space-between">
         <HStack gap="sm">
           <Text color={theme.borderBright}>{glyph("headingMinor")}</Text>
-          <Text color={props.scrollLocked || taskErrors > 0 ? semantic.status.warning : theme.textSecondary}>{state}</Text>
+          <Text color={props.hint ? semantic.status.info : props.scrollLocked || taskErrors > 0 ? semantic.status.warning : theme.textSecondary}>{state}</Text>
         </HStack>
         <HStack gap="sm">
           {!compact && props.selectionHint && <Text color={theme.textDim}>Shift+drag selects</Text>}
           {!compact && skills > 0 && <Text color={theme.textDim}>{skills} skills</Text>}
           {!compact && props.remoteConnected && <Text color={semantic.status.success}>{glyph("statusTiny")} remote</Text>}
-          {!compact && props.autopilotMode && <Text color={semantic.status.warning}>{glyph("statusTiny")} auto</Text>}
-          <Text color={props.sandboxBackend === "none" ? semantic.status.warning : semantic.foreground.muted}>{glyph("statusTiny")} {sandbox}</Text>
-          <Text color={theme.borderDim}>{glyph("separator")}</Text>
-          <Text color={theme.textDim}>/help</Text>
+          {session && <Text color={theme.accentAlt}>{compact ? "" : `${short(session.provider, 10)}/`}{short(shortModel(session.model), compact ? 14 : 24)}</Text>}
+          {context && <Text color={nearLimit ? semantic.status.error : context.ratio >= 0.6 ? semantic.status.warning : theme.textDim}>{glyph("statusTiny")} ctx {context.percent}{nearLimit ? " /compact" : ""}</Text>}
+          {proof && <Text color={proof.color}>{glyph("statusTiny")} {proof.icon} {proof.label}</Text>}
+          {session && (props.costUsd ?? 0) > 0 && <Text color={theme.textDim}>{glyph("statusTiny")} {formatCostUsd(props.costUsd!)}</Text>}
+          {approval !== "ask" && (!compact || session) && <Text color={approval === "full" ? semantic.status.error : semantic.status.warning}>{glyph("statusTiny")} {approvalModeLabel(approval)}</Text>}
+          {(showChrome || props.sandboxBackend === "none") && <Text color={props.sandboxBackend === "none" ? semantic.status.warning : semantic.foreground.muted}>{glyph("statusTiny")} {sandbox}</Text>}
+          {showChrome && <Text color={theme.borderDim}>{glyph("separator")}</Text>}
+          {showChrome && <Text color={theme.textDim}>/help</Text>}
         </HStack>
       </HStack>
     </Surface>

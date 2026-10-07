@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useSyncExternalStore } from "react"
 import { Box, Text, useInput } from "./design-system/renderer.js"
 import { readdirSync } from "node:fs"
 import { join } from "node:path"
 import { useTheme } from "../utils/theme.js"
+import { fileIndexVersion, projectPaths, subscribeFileIndex } from "./file-index.js"
+import { rankPaths } from "./file-search.js"
 
-const MAX_SHOW = 5
+const MAX_SHOW = 6
 
 interface Match { display: string; full: string; isDir: boolean }
 
-export function listFileMentionMatches(workdir: string, filter: string): Match[] {
+function listDirectory(workdir: string, filter: string): Match[] {
   try {
     const lastSlash = filter.lastIndexOf("/")
     const dir       = lastSlash >= 0 ? filter.slice(0, lastSlash + 1) : ""
@@ -27,6 +29,29 @@ export function listFileMentionMatches(workdir: string, filter: string): Match[]
   }
 }
 
+let lastQuery: { key: string; matches: Match[] } | null = null
+
+/**
+ * `@` alone (or a path ending in `/`) browses that directory; anything else is
+ * a fuzzy search over the whole project index.
+ */
+export function listFileMentionMatches(workdir: string, filter: string): Match[] {
+  if (!filter || filter.endsWith("/")) return listDirectory(workdir, filter)
+  const paths = projectPaths(workdir)
+  const key = `${workdir}\0${fileIndexVersion(workdir)}\0${filter}`
+  if (lastQuery?.key === key) return lastQuery.matches
+  const matches = paths.length > 0
+    ? rankPaths(filter, paths, MAX_SHOW).map(({ path }) => ({ display: path, full: path, isDir: path.endsWith("/") }))
+    : listDirectory(workdir, filter)
+  lastQuery = { key, matches }
+  return matches
+}
+
+/** Re-renders the caller when the project file index finishes (re)loading. */
+export function useFileIndexVersion(workdir: string): number {
+  return useSyncExternalStore(subscribeFileIndex, () => fileIndexVersion(workdir))
+}
+
 interface Props {
   filter:   string
   workdir:  string
@@ -37,6 +62,7 @@ interface Props {
 export function FileMention({ filter, workdir, isActive, onSelect }: Props) {
   const theme   = useTheme()
   const [idx, setIdx] = useState(0)
+  useFileIndexVersion(workdir)
   const matches = listFileMentionMatches(workdir, filter)
 
   useEffect(() => { setIdx(0) }, [filter])
@@ -58,8 +84,9 @@ export function FileMention({ filter, workdir, isActive, onSelect }: Props) {
         return (
           <Box key={m.full}>
             <Text color={sel ? theme.accent : theme.textDim}>{sel ? "▸ " : "  "}</Text>
+            <Text color={theme.textDim}>{parentOf(m.display)}</Text>
             <Text color={m.isDir ? theme.warning : theme.textPrimary} bold={sel}>
-              {m.display}
+              {baseOf(m.display)}
             </Text>
           </Box>
         )
@@ -67,4 +94,17 @@ export function FileMention({ filter, workdir, isActive, onSelect }: Props) {
       <Text color={theme.textDim} dimColor>  up/down  tab/enter select</Text>
     </Box>
   )
+}
+
+function splitAt(path: string): number {
+  const trimmed = path.endsWith("/") ? path.slice(0, -1) : path
+  return trimmed.lastIndexOf("/") + 1
+}
+
+function parentOf(path: string): string {
+  return path.slice(0, splitAt(path))
+}
+
+function baseOf(path: string): string {
+  return path.slice(splitAt(path))
 }

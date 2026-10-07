@@ -23,6 +23,8 @@ import { buildAgentStreamHandlers } from "../app/agent-stream-handlers.js";
 import type { AgentSubmitParams, AgentTurnContext } from "../app/app-agent-submit-types.js";
 import { resolveBackendAccessToken } from "../app/app-environment.js";
 import { prepareUserInput } from "../app/prepare-user-input.js";
+import { createTurnCheckpoint } from "../app/turn-checkpoints.js";
+import { MAX_CHECKPOINTS } from "../app/app-state-types.js";
 
 export function useAgentSubmit(params: AgentSubmitParams) {
   const publishAgentStatus = useCallback((state: "working" | "idle") => {
@@ -83,6 +85,16 @@ export function useAgentSubmit(params: AgentSubmitParams) {
     params.turnHadToolRef.current = false;
     params.turnAssistantIdRef.current = null;
 
+    if (!autoContinueSubmit) {
+      const checkpoint = createTurnCheckpoint({
+        messages: params.messages,
+        history: params.historyRef.current,
+        workdir: params.workdir,
+        sessionId: params.mainSessionId.current,
+        prompt: text,
+      });
+      params.setCheckpoints((previous) => [...previous.slice(-(MAX_CHECKPOINTS - 1)), checkpoint]);
+    }
     const userMessage: CoreMessage = { role: "user", content: text };
     params.setMessages((previous) => [
       ...previous,
@@ -101,6 +113,9 @@ export function useAgentSubmit(params: AgentSubmitParams) {
     };
 
     try {
+      // The first turn may start while MCP servers are still connecting.
+      if (params.servicesReady) await params.servicesReady;
+      if (controller.signal.aborted) return;
       const agent = getSessionAgent(params.activeAgent, params.workdir);
       const taskScope = taskManager.configureScope(params.workdir, params.mainSessionId.current);
       const effectiveSystem = [agent.system || null, params.system]

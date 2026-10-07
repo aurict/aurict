@@ -1,10 +1,11 @@
 import {
+  calculateCostUsd,
   extractAndStoreMemories,
   metrics,
   notifyTaskDone,
 } from "@aurict/core";
 import type { AgentRunOptions, CoreMessage } from "@aurict/core";
-import type { DisplayMessage } from "../conversation/types.js";
+import type { DisplayMessage, TurnStats } from "../conversation/types.js";
 import { contextLimitNotice, formatCompactionEvent } from "../context-usage-format.js";
 import type { AgentTurnContext } from "./app-agent-submit-types.js";
 import { resolvePersistentTurnHistory } from "./agent-history.js";
@@ -81,12 +82,17 @@ function finishTurn(
   }
   params.historyRef.current = updatedHistory;
   params.setHistory(updatedHistory);
-  params.setMessages((previous) => mergeFinishedAssistantMessage(
+  const turnStats: TurnStats = {
+    durationMs: Date.now() - startTime,
+    tokens: result.tokens.input + result.tokens.output + result.tokens.cacheRead + result.tokens.cacheWrite,
+    costUsd: calculateCostUsd(params.model, result.tokens),
+  };
+  params.setMessages((previous) => withTurnStats(mergeFinishedAssistantMessage(
     previous,
     stableAssistantId,
     finalSegmentText,
     finalReason,
-  ));
+  ), turnStats));
   const proof = result.completionProof;
   params.setCompletionProof(proof);
   if (proof && proof.status !== "not_applicable" && !result.completionGate?.shouldAutoContinue) {
@@ -96,6 +102,19 @@ function finishTurn(
     );
   }
   params.autoContinueRef.current = resolveAutoContinue(context, result);
+}
+
+/** Stats ride on the same update that settles the turn, so inline scrollback never sees them change. */
+function withTurnStats(messages: DisplayMessage[], stats: TurnStats): DisplayMessage[] {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index]!;
+    if (message.role === "user") break;
+    if (message.role !== "assistant") continue;
+    const next = [...messages];
+    next[index] = { ...message, turnStats: stats };
+    return next;
+  }
+  return messages;
 }
 
 function mergeFinishedAssistantMessage(

@@ -1,6 +1,8 @@
 import { glyph, terminalText } from "../terminal-glyphs.js";
 import { activityLabel, type RunActivity } from "../run-status.js";
-import type { TranscriptMessage, TranscriptBlock } from "./types.js";
+import type { TranscriptMessage, TranscriptBlock, TurnStats } from "./types.js";
+import { formatCostUsd } from "@aurict/core";
+import { formatElapsed, formatTokenCount } from "../run-status.js";
 import {
   coalesceInterruptedAssistantBlocks,
   collapseRepeatedAssistantText,
@@ -43,6 +45,8 @@ export interface ProjectOptions {
 
 export type LiveTranscriptOptions = Omit<ProjectOptions, "messages"> & {
   hasAssistantHeader?: boolean;
+  /** A separate status line reports activity; keep only the paused notice. */
+  statusLine?: boolean;
 };
 
 function inlineSegments(text: string, tone: TranscriptTone): TranscriptSegment[] {
@@ -142,6 +146,16 @@ function timestamp(timestamp: number | undefined): string {
   return ` · ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
 }
 
+/** `── Worked for 12s · 1.5k tokens · $0.0041 ──` closes a finished turn. */
+export function turnStatsRow(id: string, stats: TurnStats, width: number): TranscriptRow {
+  const parts = [`Worked for ${formatElapsed(stats.durationMs)}`];
+  if (stats.tokens > 0) parts.push(`${formatTokenCount(stats.tokens)} tokens`);
+  if (stats.costUsd > 0) parts.push(formatCostUsd(stats.costUsd));
+  const label = ` ${parts.join(` ${glyph("statusTiny")} `)} `;
+  const rule = glyph("divider").repeat(Math.max(2, Math.min(24, width - label.length - 2)));
+  return { id, segments: [{ text: `${glyph("divider").repeat(2)}${label}${rule}`, tone: "muted" }] };
+}
+
 function projectMessage(rows: TranscriptRow[], message: TranscriptMessage, index: number, width: number): void {
   const id = message.id ?? `message-${index}`;
   if (message.role === "system") {
@@ -197,6 +211,7 @@ function projectMessage(rows: TranscriptRow[], message: TranscriptMessage, index
       previousKind = sectionKind;
     }
   } else pushMarkdown(rows, `${id}:body`, message.resultContent ?? message.content, tone, width);
+  if (message.role === "assistant" && message.turnStats) rows.push(turnStatsRow(`${id}:stats`, message.turnStats, width));
   pushGap(rows, `${id}:gap`);
   if (message.role === "user") {
     for (let rowIndex = messageStart; rowIndex < rows.length; rowIndex++) {
@@ -244,7 +259,7 @@ export function projectLiveTranscript(options: LiveTranscriptOptions): Transcrip
       rows.push({ id: "stream:header", segments: [{ text: `${glyph("assistant")} Aurict`, tone: "assistant", bold: true }] });
     pushMarkdown(rows, "stream:text", options.streamingText, "assistant", width);
   }
-  if (presentation === "paused" || presentation === "activity") {
+  if (presentation === "paused" || (presentation === "activity" && !options.statusLine)) {
     const paused = presentation === "paused";
     const label = paused ? "live output paused · Ctrl+L resume" : activityLabel(options.activity);
     rows.push({
@@ -266,7 +281,7 @@ function normalizeTerminalRows(rows: TranscriptRow[]): TranscriptRow[] {
   }));
 }
 
-function hasAssistantHeader(rows: TranscriptRow[]): boolean {
+export function hasAssistantHeader(rows: readonly TranscriptRow[]): boolean {
   return rows.some((row) => row.id.endsWith(":header") && row.segments.some((segment) => segment.text.toLowerCase().includes("aurict")));
 }
 

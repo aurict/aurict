@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
 import { join } from "path"
 import type { CommandDef, CommandResult, PickerItem } from "./types.js"
 import { ensureLine, formatRelativeTime, oneLine } from "./command-helpers.js"
+import { workingTreeDiff } from "./git-working-diff.js"
 
 export const sessionCommands: CommandDef[] = [
   // ── /clear ────────────────────────────────────────────────────────────────
@@ -13,6 +14,13 @@ export const sessionCommands: CommandDef[] = [
     handler: (): CommandResult => ({ type: "clear" }),
   },
 
+
+  // ── /new ─────────────────────────────────────────────────────────────────
+  {
+    name:        "new",
+    description: "Start a new session (the current one stays available in /resume)",
+    handler: (): CommandResult => ({ type: "new" }),
+  },
 
   // ── /status ──────────────────────────────────────────────────────────────
   {
@@ -99,7 +107,6 @@ export const sessionCommands: CommandDef[] = [
   // ── /diffs ───────────────────────────────────────────────────────────────
   {
     name:        "diffs",
-    aliases:     ["diff"],
     description: "List recent diff, patch, edit, and write tool outputs in this terminal session",
     usage:       "/diffs [N]",
     handler: (args, ctx): CommandResult => {
@@ -139,6 +146,23 @@ export const sessionCommands: CommandDef[] = [
       }
 
       return { type: "text", content: lines.join("\n") }
+    },
+  },
+
+  // ── /diff ────────────────────────────────────────────────────────────────
+  {
+    name:        "diff",
+    description: "Show the working tree diff against HEAD, including untracked files",
+    handler: async (_args, ctx): Promise<CommandResult> => {
+      const result = await workingTreeDiff(ctx.workdir)
+      const skipped = result.skippedUntracked.length > 0
+        ? ` · ${result.skippedUntracked.length} large or extra untracked file(s) not shown`
+        : ""
+      if (!result.diff) {
+        return { type: "text", content: `Working tree clean — no changes against HEAD${skipped}` }
+      }
+      ctx.showDiff(result.diff, `git diff · ${result.trackedFiles} tracked, ${result.untrackedFiles} untracked${skipped}`)
+      return { type: "text", content: "" }
     },
   },
 
@@ -298,7 +322,7 @@ export const sessionCommands: CommandDef[] = [
   // ── /sessions ─────────────────────────────────────────────────────────────
   {
     name:        "sessions",
-    aliases:     ["ss"],
+    aliases:     ["ss", "resume"],
     description: "Browse and restore sessions (interactive picker) — /sessions search <query>",
     usage:       "/sessions [today|week|all|search <query>]",
     handler: (args, ctx): CommandResult => {

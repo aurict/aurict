@@ -37,8 +37,8 @@ const helpCommand: CommandDef = {
   handler: () => {
     const categories: Record<string, string[]> = {
       "Setup & Config": ["init", "doctor", "providers", "models", "config", "theme", "palette", "keys", "settings", "version"],
-      "Session & History": ["status", "history", "diffs", "session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints", "proof", "flight"],
-      "Agents & AI": ["agent", "agents", "coordinator", "autopilot", "undercover", "background", "btw"],
+      "Session & History": ["new", "status", "history", "diff", "diffs", "session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints", "proof", "flight"],
+      "Agents & AI": ["agent", "agents", "coordinator", "approvals", "autopilot", "undercover", "background", "btw"],
       "Context & Memory": ["pin", "memory", "ctx", "trace", "compact", "worktree"],
       "Tools & Integration": ["review", "commit", "watch", "unwatch", "mcp", "security", "skill", "plugin", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores", "visual"],
       "Info & Misc": ["help", "cost", "export", "share", "stash", "crashes", "exit", "pet", "name", "companion"],

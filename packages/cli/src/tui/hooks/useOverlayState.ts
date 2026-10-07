@@ -55,6 +55,7 @@ export interface ExpandedContent {
 
 export type PrimaryOverlay =
   | "transcriptSearch"
+  | "transcript"
   | "quickSearch"
   | "commandPalette"
   | "settings"
@@ -70,6 +71,10 @@ export interface OverlayState {
   // Overlay open flags
   quickSearchOpen: boolean
   transcriptSearchOpen: boolean
+  /** Inline-mode transcript pager (Ctrl+T). */
+  transcriptPagerOpen: boolean
+  /** Message the pager scrolls to when it opens; null opens at the bottom. */
+  pagerAnchor: string | null
   cmdPaletteOpen: boolean
   settingsOpen: boolean
   designWizardOpen: boolean
@@ -96,6 +101,8 @@ export interface OverlayActions {
   // Open/close toggles
   setQuickSearchOpen: Dispatch<SetStateAction<boolean>>
   setTranscriptSearchOpen: Dispatch<SetStateAction<boolean>>
+  setTranscriptPagerOpen: Dispatch<SetStateAction<boolean>>
+  setPagerAnchor: Dispatch<SetStateAction<string | null>>
   setCmdPaletteOpen: Dispatch<SetStateAction<boolean>>
   setSettingsOpen: Dispatch<SetStateAction<boolean>>
   setDesignWizardOpen: Dispatch<SetStateAction<boolean>>
@@ -150,6 +157,10 @@ export function useOverlayState(): OverlayState & OverlayActions {
   const setTranscriptSearchOpen = useCallback((action: SetStateAction<boolean>) => {
     setPrimaryOpen("transcriptSearch", action)
   }, [setPrimaryOpen])
+  const setTranscriptPagerOpen = useCallback((action: SetStateAction<boolean>) => {
+    setPrimaryOpen("transcript", action)
+  }, [setPrimaryOpen])
+  const [pagerAnchor, setPagerAnchor] = useState<string | null>(null)
   const setCmdPaletteOpen = useCallback((action: SetStateAction<boolean>) => {
     setPrimaryOpen("commandPalette", action)
   }, [setPrimaryOpen])
@@ -170,6 +181,7 @@ export function useOverlayState(): OverlayState & OverlayActions {
   }, [setPrimaryOpen])
   const quickSearchOpen = primaryOverlay === "quickSearch"
   const transcriptSearchOpen = primaryOverlay === "transcriptSearch"
+  const transcriptPagerOpen = primaryOverlay === "transcript"
   const cmdPaletteOpen = primaryOverlay === "commandPalette"
   const settingsOpen = primaryOverlay === "settings"
   const designWizardOpen = primaryOverlay === "designWizard"
@@ -201,6 +213,7 @@ export function useOverlayState(): OverlayState & OverlayActions {
       cmdPaletteOpen ||
       quickSearchOpen ||
       transcriptSearchOpen ||
+      transcriptPagerOpen ||
       historySearchOpen ||
       keyboardShortcutsOpen ||
       !!planRequest ||
@@ -217,7 +230,7 @@ export function useOverlayState(): OverlayState & OverlayActions {
       !!extras?.prompt
     )
   }, [
-    designWizardOpen, settingsOpen, cmdPaletteOpen, quickSearchOpen, transcriptSearchOpen,
+    designWizardOpen, settingsOpen, cmdPaletteOpen, quickSearchOpen, transcriptSearchOpen, transcriptPagerOpen,
     historySearchOpen, keyboardShortcutsOpen,
     planRequest, editingMsg, expandedContent, btwState, viewingSubagentId,
     taskPanelOpen, attachInput,
@@ -246,6 +259,8 @@ export function useOverlayState(): OverlayState & OverlayActions {
     primaryOverlay,
     quickSearchOpen,
     transcriptSearchOpen,
+    transcriptPagerOpen,
+    pagerAnchor,
     cmdPaletteOpen,
     settingsOpen,
     designWizardOpen,
@@ -266,6 +281,8 @@ export function useOverlayState(): OverlayState & OverlayActions {
     // Actions
     setQuickSearchOpen,
     setTranscriptSearchOpen,
+    setTranscriptPagerOpen,
+    setPagerAnchor,
     setCmdPaletteOpen,
     setSettingsOpen,
     setDesignWizardOpen,

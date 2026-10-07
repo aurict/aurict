@@ -1,9 +1,7 @@
-import { snapshotManager } from "@aurict/core";
 import type { AgentRunOptions } from "@aurict/core";
 import { RemoteEventTypes } from "../../remote/event-codec.js";
 import { visibleLiveStream } from "../conversation/live-stream.js";
 import type { AssistantContentBlock, DisplayMessage } from "../conversation/types.js";
-import { MAX_CHECKPOINTS } from "./app-state-types.js";
 import type { AgentTurnContext } from "./app-agent-submit-types.js";
 
 type StreamHandlers = Pick<
@@ -71,8 +69,9 @@ export function buildAgentStreamHandlers(context: AgentTurnContext): StreamHandl
             : rate > 5
               ? 120
               : 200;
-      if (params.streamTimerRef.current) clearTimeout(params.streamTimerRef.current);
-      params.streamTimerRef.current = setTimeout(flushStream, delay);
+      // Throttle, not debounce: a steady token stream must still repaint
+      // every `delay` ms instead of waiting for the provider to pause.
+      if (!params.streamTimerRef.current) params.streamTimerRef.current = setTimeout(flushStream, delay);
     },
     onChunk: (chunk) => {
       params.setMessages((previous) => {
@@ -218,29 +217,6 @@ export function buildAgentStreamHandlers(context: AgentTurnContext): StreamHandl
         );
       });
       params.setActiveTool(undefined);
-      const maxResult = 10_000;
-      const checkpointMessages = params.messages.map((message) => ({
-        ...message,
-        ...(message.blocks ? {
-          blocks: message.blocks.map((block) =>
-            block.type === "tool" && block.resultContent && block.resultContent.length > maxResult
-              ? { ...block, resultContent: `${block.resultContent.slice(0, maxResult)}\n[truncated in checkpoint]` }
-              : block,
-          ),
-        } : {}),
-        ...(!message.blocks && message.resultContent && message.resultContent.length > maxResult
-          ? { resultContent: `${message.resultContent.slice(0, maxResult)}\n[truncated in checkpoint]` }
-          : {}),
-      }));
-      params.setCheckpoints((previous) => [
-        ...previous.slice(-(MAX_CHECKPOINTS - 1)),
-        {
-          mark: snapshotManager.mark(),
-          messages: checkpointMessages,
-          history: params.history.slice(),
-          label: `step ${params.checkpoints.length + 1}`,
-        },
-      ]);
     },
     onToolResult: (toolResult) => {
       const rawResult = typeof toolResult.result === "object"

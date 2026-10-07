@@ -30,6 +30,15 @@ type MouseHandler = (e: MouseEvent) => void
 
 const handlers = new Set<MouseHandler>()
 let enabled = false
+let trackingAllowed = true
+
+/**
+ * Inline mode leaves the mouse to the terminal so native selection, copy, and
+ * wheel scrollback keep working. Must be called before any handler mounts.
+ */
+export function disableMouseTracking(): void {
+  trackingAllowed = false
+}
 
 // ── Terminal focus (DECSET 1004: CSI I / CSI O) ─────────────────────────────
 // Focus sequences are also parsed here, at the SAME single stdin-tap point as
@@ -139,7 +148,7 @@ export function injectInput(sequence: string): void {
 }
 
 function enableMouseTracking(): () => void {
-  if (enabled) return () => {}
+  if (enabled || !trackingAllowed) return () => {}
   enabled = true
   // The registry (terminal-modes.ts) ensures these sequences are written on
   // SIGINT/SIGTERM/exit — previously this relied solely on the React effect's

@@ -538,6 +538,7 @@ export async function executeTool(
           const filteredPatch = filterPatchTextByFiles(
             String(args["patchText"] ?? ""),
             approvedFiles,
+            userResponse.approvedHunks,
           );
           args["patchText"] = filteredPatch;
           patchSummary = summarizePatchText(filteredPatch);

@@ -30,6 +30,8 @@ export interface PermissionRequest {
     path: string
     action: "add" | "delete" | "update" | "move"
     targetPath?: string
+    /** `@@` chunks of an update, selectable one by one. */
+    hunks?: Array<{ context?: string; added: number; removed: number }>
   }>
   diff?: {
     added: number
@@ -51,4 +53,6 @@ export type PermissionDecision = "allow" | "allow_directory" | "allow_once" | "a
 export interface PermissionResponse {
   decision: PermissionDecision
   approvedFiles?: string[]
+  /** Update path → chunk indices to apply; a file absent here applies every chunk. */
+  approvedHunks?: Record<string, number[]>
 }

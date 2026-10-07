@@ -21,6 +21,8 @@ import { AppBottomBar } from "./AppBottomBar.js";
 import { AppHeader } from "./AppHeader.js";
 import { AppOverlayContents } from "./AppOverlayContents.js";
 import { AppView } from "./AppView.js";
+import { StartupBanner } from "../StartupBanner.js";
+import { overlayGeometry } from "../app-shell/OverlayStack.js";
 import type { AppScreenProps } from "./app-screen-types.js";
 import { formatExitTranscript } from "../conversation/transcript-export.js";
 import { transcriptOffsetForMessage } from "../conversation/search-model.js";
@@ -76,8 +78,68 @@ export function AppScreen(props: AppScreenProps) {
     () => formatExitTranscript(messages, sessionTitle ?? "Aurict session"),
     [messages, sessionTitle],
   );
+  const subagentView = viewingSubagentId ? {
+    sessionId: viewingSubagentId,
+    parentSessionId: mainSessionId.current,
+    siblingIndex: subIndex + 1,
+    siblingCount: subSessions.length,
+    onClose: () => setViewingSubagentId(null),
+    onPrev: () => {
+      const previous = subSessions[
+        (subIndex - 1 + subSessions.length) % subSessions.length
+      ];
+      if (previous) setViewingSubagentId(previous.id);
+    },
+    onNext: () => {
+      const next = subSessions[(subIndex + 1) % subSessions.length];
+      if (next) setViewingSubagentId(next.id);
+    },
+  } : null;
+  const transcriptWidth = Math.max(20, termCols - 9);
+  const conversationCost = useMemo(
+    () => messages.reduce((sum, message) => sum + (message.turnStats?.costUsd ?? 0), 0),
+    [messages],
+  );
+  const inlineView = props.tuiMode === "inline" ? {
+    intro: (
+      <StartupBanner
+        version={`v${CURRENT_VERSION}`}
+        provider={provider}
+        model={model}
+        workdir={workdir}
+        cols={termCols}
+        rows={termRows}
+      />
+    ),
+    transcript: {
+      messages,
+      width: transcriptWidth,
+      loading,
+      streamingText,
+      streamingReason,
+      streamingError,
+      paused: scrollLocked,
+      activeTool,
+      activity: runActivity,
+    },
+    header: (
+      <AppHeader
+        theme={activeTheme}
+        subagent={subagentView}
+        cockpit={null}
+        startup={null}
+        updateInfo={updateInfo}
+        updateDismissed={updateDismissed}
+        sessionTitle={sessionTitle}
+        showSessionTitle={false}
+      />
+    ),
+    transcriptVisible: !viewingSubagentId,
+    exiting: props.exiting,
+  } : undefined;
   return (
     <AppView
+      inline={inlineView}
       rows={termRows}
       columns={termCols}
       theme={activeTheme}
@@ -88,23 +150,7 @@ export function AppScreen(props: AppScreenProps) {
       header={
         <AppHeader
           theme={activeTheme}
-          subagent={viewingSubagentId ? {
-            sessionId: viewingSubagentId,
-            parentSessionId: mainSessionId.current,
-            siblingIndex: subIndex + 1,
-            siblingCount: subSessions.length,
-            onClose: () => setViewingSubagentId(null),
-            onPrev: () => {
-              const previous = subSessions[
-                (subIndex - 1 + subSessions.length) % subSessions.length
-              ];
-              if (previous) setViewingSubagentId(previous.id);
-            },
-            onNext: () => {
-              const next = subSessions[(subIndex + 1) % subSessions.length];
-              if (next) setViewingSubagentId(next.id);
-            },
-          } : null}
+          subagent={subagentView}
           cockpit={!viewingSubagentId && !showStartupBanner ? {
             provider,
             model,
@@ -150,7 +196,7 @@ export function AppScreen(props: AppScreenProps) {
         <TranscriptPane
           visible={!viewingSubagentId}
           height={measuredViewportRows}
-          width={Math.max(20, termCols - 9)}
+          width={transcriptWidth}
           messages={messages}
           loading={loading}
           streamingText={streamingText}
@@ -186,6 +232,11 @@ export function AppScreen(props: AppScreenProps) {
             onClose: () => setTranscriptSearchOpen(false),
             onSelect: (messageId) => {
               setTranscriptSearchOpen(false);
+              if (props.tuiMode === "inline") {
+                props.overlay.setPagerAnchor(messageId);
+                props.overlay.setTranscriptPagerOpen(true);
+                return;
+              }
               props.setConversationOffsetRows(transcriptOffsetForMessage(
                 messages,
                 Math.max(20, termCols - 9),
@@ -193,6 +244,16 @@ export function AppScreen(props: AppScreenProps) {
                 messageId,
               ));
             },
+          } : null}
+          transcriptPager={props.overlay.transcriptPagerOpen ? {
+            messages,
+            streamingText,
+            width: transcriptWidth,
+            height: Math.max(3, overlayGeometry(termCols, Math.max(1, termRows - 1)).height - 3),
+            tasks,
+            anchorMessageId: props.overlay.pagerAnchor,
+            parentSessionId: mainSessionId.current,
+            onClose: () => props.overlay.setTranscriptPagerOpen(false),
           } : null}
           quickSearch={quickSearchOpen ? {
             onClose: () => setQuickSearchOpen(false),
@@ -355,6 +416,15 @@ export function AppScreen(props: AppScreenProps) {
             ),
           } : null}
           attachmentNames={attachments.map((attachment) => attachment.name)}
+          runStatus={props.tuiMode === "inline" ? {
+            loading,
+            activity: runActivity,
+            activeTool,
+            reasoning: streamingReason,
+            queued: composerQueue.length,
+            paused: scrollLocked,
+            columns: termCols,
+          } : null}
           projectAuto={projectAutoPromptOpen && !permission ? {
             workdir: workdirState,
             onDecide: resolveProjectAutoPrompt,
@@ -391,6 +461,18 @@ export function AppScreen(props: AppScreenProps) {
             scrollLocked,
             remoteConnected,
             selectionHint: props.selectionHintVisible,
+            approvalMode: props.approvalMode,
+            ...(props.keyboardHint ? { hint: props.keyboardHint } : {}),
+            ...(props.tuiMode === "inline" ? {
+              proof: completionProof,
+              costUsd: conversationCost,
+              session: {
+                provider,
+                model,
+                contextTokens: contextUsage?.effectiveTokens ?? 0,
+                contextWindow: contextUsage?.contextWindow ?? currentContextWindow,
+              },
+            } : {}),
             ...(runningBackgroundTaskCount > 0 ? { bgTaskCount: runningBackgroundTaskCount } : {}),
             ...(tasks.length > 0 ? { taskSummary } : {}),
           } : null}

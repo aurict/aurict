@@ -28,6 +28,8 @@ export type GlyphName =
   | "statusOn"
   | "statusOff"
   | "statusTiny"
+  | "treeMid"
+  | "treeEnd"
 
 const UNICODE_GLYPHS: Record<GlyphName, string> = {
   assistant: "◇", user: "◆", system: "·", thinking: "∴", tool: "›",
@@ -36,6 +38,7 @@ const UNICODE_GLYPHS: Record<GlyphName, string> = {
   headingMajor: "◆", headingMinor: "▸", patch: "±", working: "◌",
   paused: "⏸", error: "✗", action: "→", separator: "│", branch: "⌥",
   ellipsis: "…", divider: "─", statusOn: "●", statusOff: "○", statusTiny: "·",
+  treeMid: "├", treeEnd: "└",
 }
 
 const ASCII_GLYPHS: Record<GlyphName, string> = {
@@ -45,6 +48,7 @@ const ASCII_GLYPHS: Record<GlyphName, string> = {
   headingMajor: ">", headingMinor: ">", patch: "+", working: "o",
   paused: "P", error: "x", action: ">", separator: "|", branch: "b",
   ellipsis: ".", divider: "-", statusOn: "*", statusOff: "o", statusTiny: ".",
+  treeMid: "|", treeEnd: "`",
 }
 
 export function prefersAsciiGlyphs(): boolean {

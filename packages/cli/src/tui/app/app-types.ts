@@ -7,6 +7,7 @@ export type FocusLayer =
   | "keyboardShortcuts"
   | "subagent"
   | "transcriptSearch"
+  | "transcript"
   | "historySearch"
   | "quickSearch"
   | "commandPalette"
@@ -30,6 +31,7 @@ export interface FocusState {
   keyboardShortcuts: boolean;
   subagent: boolean;
   transcriptSearch: boolean;
+  transcript: boolean;
   historySearch: boolean;
   quickSearch: boolean;
   commandPalette: boolean;

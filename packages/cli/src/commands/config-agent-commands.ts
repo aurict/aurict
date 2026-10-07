@@ -2,6 +2,7 @@ import { BRAND_PALETTE_IDS, THEMES, THEME_NAMES, isBrandTheme } from "../utils/t
 import { SECURITY_SANDBOX_PROFILE_DEFAULTS, getAllSessionAgents, getConfigPath, loadConfig, pinStore, resolveLongTaskRuntimeConfig, resolveSecuritySandboxConfig, setApiKey, setCompaction, setDefault, setLongTaskRuntime, setSecuritySandbox } from "@aurict/core"
 import type { CommandDef, CommandResult, PickerItem } from "./types.js"
 import { longTaskConfigLines, pullSecurityImage, securityConfigLines } from "./command-helpers.js"
+import { APPROVAL_MODES, parseApprovalMode } from "../tui/approval-mode.js"
 
 export const configAgentCommands: CommandDef[] = [
   // ── /background ───────────────────────────────────────────────────────────
@@ -326,6 +327,35 @@ export const configAgentCommands: CommandDef[] = [
     handler: (_args, ctx): CommandResult => {
       ctx.toggleAutopilot()
       return { type: "text", content: "" }
+    },
+  },
+
+  // ── /approvals ────────────────────────────────────────────────────────────
+  {
+    name:        "approvals",
+    aliases:     ["permissions"],
+    description: "Choose how tool calls are approved: ask, Project Auto, or full access",
+    usage:       "/approvals [ask|auto|full]",
+    handler: (args, ctx): CommandResult => {
+      if (args[0]) {
+        const mode = parseApprovalMode(args[0])
+        if (!mode) return { type: "error", message: `Unknown approval mode: ${args[0]}. Use ask, auto, or full.` }
+        ctx.setApprovalMode(mode)
+        return { type: "text", content: "" }
+      }
+      return {
+        type:  "picker",
+        title: "Approval mode — dangerous operations always ask",
+        items: APPROVAL_MODES.map((mode) => ({
+          id:    mode.id,
+          label: `${mode.id === ctx.approvalMode ? "● " : "  "}${mode.label}`,
+          hint:  mode.description,
+        })),
+        onSelect: (item) => {
+          const mode = parseApprovalMode(item.id)
+          if (mode) ctx.setApprovalMode(mode)
+        },
+      }
     },
   },
 

@@ -2,7 +2,7 @@ import { z } from "zod"
 import { readFile, stat, writeFile } from "fs/promises"
 import { resolve, relative } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
-import { snapshotManager } from "../../snapshot/snapshot.js"
+import { snapshotManager, sessionSnapshotScope } from "../../snapshot/snapshot.js"
 import { resolveAuthorizedFilesystemPath } from "../../security/filesystem-grants.js"
 import { createUnifiedFileDiff } from "../file-diff.js"
 
@@ -62,7 +62,7 @@ export const editTool: ToolDef = {
       return { output: "", error: `Cannot stat file before edit: ${err}` }
     }
 
-    await takeSnapshotBestEffort(filePath, `${ctx.workdir}\0${ctx.sessionId}`)
+    await takeSnapshotBestEffort(filePath, sessionSnapshotScope(ctx.workdir, ctx.sessionId))
 
     let content: string
     try {

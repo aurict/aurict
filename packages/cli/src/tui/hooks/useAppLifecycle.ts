@@ -28,6 +28,8 @@ import { getTerminalCaps } from "../../util/terminal-caps.js";
 import { registerTerminalMode } from "../event-system/terminal-modes.js";
 import { installStdinResumeGuard } from "../event-system/stdin-resume.js";
 import { PERMISSION_STORE_FILE } from "../app/app-environment.js";
+import { fullAccessApproves } from "../approval-mode.js";
+import { profileCheckpoint } from "../../util/startupProfiler.js";
 
 interface Params {
   initialProvider: string;
@@ -35,12 +37,12 @@ interface Params {
   input: string;
   loading: boolean;
   autopilotRef: MutableRefObject<boolean>;
+  fullAccessRef: MutableRefObject<boolean>;
   inputRef: MutableRefObject<string>;
   loadingRef: MutableRefObject<boolean>;
   mainSessionId: MutableRefObject<string>;
   remoteRuntimeRef: MutableRefObject<CliRemoteRuntime | null>;
-  setTermCols: Dispatch<SetStateAction<number>>;
-  setTermRows: Dispatch<SetStateAction<number>>;
+  setTermSize: Dispatch<SetStateAction<{ cols: number; rows: number }>>;
   setTerminalMeasured: Dispatch<SetStateAction<boolean>>;
   setMeasuredViewportRows: Dispatch<SetStateAction<number>>;
   setConversationOffsetRows: Dispatch<SetStateAction<number>>;
@@ -64,20 +66,24 @@ export function useAppLifecycle(params: Params): void {
     currentWorkdirRef.current = params.workdir;
   }, [params.workdir]);
 
+  useEffect(() => profileCheckpoint("app_first_frame"), []);
   useLayoutEffect(() => {
     const handler = () => {
       const nextCols = process.stdout.columns ?? 80;
       const nextRows = process.stdout.rows ?? 24;
-      params.setTermCols(nextCols);
-      params.setTermRows(nextRows);
+      params.setTermSize((current) =>
+        current.cols === nextCols && current.rows === nextRows ? current : { cols: nextCols, rows: nextRows });
       params.setTerminalMeasured(true);
       params.setMeasuredViewportRows(Math.max(3, nextRows - 8));
       params.setConversationOffsetRows((previous) => Math.max(0, previous));
     };
     handler();
     const timer = setTimeout(handler, 0);
-    process.stdout.on("resize", handler);
-    process.on("SIGWINCH", handler);
+    // Run before Ink's own resize listener: Ink repaints immediately on
+    // resize, and a frame still sized for the old height would reach the new
+    // screen height and force a full-terminal reprint of all static output.
+    process.stdout.prependListener("resize", handler);
+    process.prependListener("SIGWINCH", handler);
     return () => {
       clearTimeout(timer);
       process.stdout.off("resize", handler);
@@ -116,6 +122,10 @@ export function useAppLifecycle(params: Params): void {
           });
       };
 
+      if (params.fullAccessRef.current && fullAccessApproves(event.request)) {
+        queueMicrotask(() => PermissionGate.respond(event.request.id, "allow_once"));
+        return;
+      }
       if (!params.autopilotRef.current) {
         showPermission();
         return;

@@ -40,6 +40,15 @@ export interface TranscriptMessage {
   durationMs?: number;
   artifact?: ToolResultArtifact;
   errorPresentation?: TranscriptErrorPresentation;
+  /** Set on the assistant message that closed a turn. */
+  turnStats?: TurnStats;
+}
+
+export interface TurnStats {
+  durationMs: number;
+  tokens: number;
+  /** 0 when the model has no known price. */
+  costUsd: number;
 }
 
 // Stable aliases for command/runtime code that still uses the earlier names.

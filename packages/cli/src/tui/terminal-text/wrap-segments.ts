@@ -86,7 +86,17 @@ export function wrapStyledSegments<T extends StyledTextSegment>(segments: T[], m
       emit();
     }
 
-    if (isWhitespace(atom)) continue;
+    if (isWhitespace(atom)) {
+      // The overflowing space separates the carried word from the next one;
+      // drop it only at a line start or when the line break replaces it.
+      if (row.length === 0) continue;
+      if (rowWidth + atomWidth > width) emit();
+      else {
+        row.push(atom);
+        rowWidth += atomWidth;
+      }
+      continue;
+    }
     if (rowWidth + atomWidth > width && row.length > 0) emit();
     row.push(atom);
     rowWidth += atomWidth;
