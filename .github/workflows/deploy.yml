@@ -1,0 +1,94 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "apps/mobile-web/**"
+      - "apps/decision-web/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+# Every app deploys from the same server checkout, so runs queue instead of racing.
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Pick apps to deploy
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: plan
+        name: Build the deploy matrix
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          all='[{"app":"web","pm2":"aurict-web","port":3376},{"app":"mobile-web","pm2":"mobile-aurict-web","port":3377},{"app":"decision-web","pm2":"decision-aurict-web","port":3211}]'
+          if [ "$EVENT" != "push" ] || [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null \
+            || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -qx ".github/workflows/deploy.yml"; then
+            echo "matrix=$all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+          matrix=$(jq -c --arg changed "$changed" '[.[] | select(. as $a | $changed | split("\n") | any(startswith("apps/" + $a.app + "/")))]' <<<"$all")
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "Deploying: $matrix"
+
+  deploy:
+    name: Deploy ${{ matrix.app }}
+    needs: plan
+    if: needs.plan.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Build and restart on the server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT }}
+          fingerprint: ${{ secrets.DEPLOY_SSH_FINGERPRINT }}
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            export PATH="/home/admin/.bun/bin:/home/admin/.nvm/versions/node/v24.16.0/bin:$PATH"
+            # The server checkout is deploy-only: always build exactly origin/main.
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git fetch --quiet origin main
+            git checkout --quiet main
+            git reset --quiet --hard origin/main
+            cd "apps/${{ matrix.app }}"
+            bun install
+            # The server's bun may rewrite lockfiles; keep the checkout identical to main.
+            git -C "${{ secrets.DEPLOY_PATH }}" checkout -- .
+            bun run build
+            pm2 restart "${{ matrix.pm2 }}" --update-env
+            pm2 save
+            for attempt in $(seq 1 30); do
+              if curl -fsS -o /dev/null "http://127.0.0.1:${{ matrix.port }}/"; then
+                echo "${{ matrix.app }} is healthy on port ${{ matrix.port }}"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Health check failed for ${{ matrix.app }}" >&2
+            pm2 logs "${{ matrix.pm2 }}" --lines 60 --nostream
+            exit 1
