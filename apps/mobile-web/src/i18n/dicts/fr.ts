@@ -88,6 +88,14 @@ export const fr = {
 			title: `Confidentialité de Duckley`,
 			body: `La politique de confidentialité de l’appli Duckley.`,
 		},
+		deleteJelly: {
+			title: `Supprimer ton compte Jelly Paradox`,
+			body: `Supprime ton compte Jelly Paradox et tes données de jeu.`,
+		},
+		jellyPrivacy: {
+			title: `Confidentialité de Jelly Paradox`,
+			body: `La politique de confidentialité du jeu Jelly Paradox.`,
+		},
 		terms: {
 			title: `Conditions d’utilisation`,
 			body: `Les règles d’utilisation de nos applis et de ce site.`,

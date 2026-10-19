@@ -88,6 +88,14 @@ export const en = {
 			title: `Duckley privacy policy`,
 			body: `The privacy policy for the Duckley app.`,
 		},
+		deleteJelly: {
+			title: `Delete your Jelly Paradox account`,
+			body: `Remove your Jelly Paradox account and game data.`,
+		},
+		jellyPrivacy: {
+			title: `Jelly Paradox privacy policy`,
+			body: `The privacy policy for the Jelly Paradox game.`,
+		},
 		terms: {
 			title: `Terms of service`,
 			body: `The rules for using our apps and this site.`,

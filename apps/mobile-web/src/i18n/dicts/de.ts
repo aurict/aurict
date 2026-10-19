@@ -88,6 +88,14 @@ export const de = {
 			title: `Duckley-Datenschutzerklärung`,
 			body: `Die Datenschutzerklärung der Duckley-App.`,
 		},
+		deleteJelly: {
+			title: `Jelly-Paradox-Konto löschen`,
+			body: `Entferne dein Jelly-Paradox-Konto und deine Spieldaten.`,
+		},
+		jellyPrivacy: {
+			title: `Jelly-Paradox-Datenschutzerklärung`,
+			body: `Die Datenschutzerklärung des Spiels Jelly Paradox.`,
+		},
 		terms: {
 			title: `Nutzungsbedingungen`,
 			body: `Die Regeln für unsere Apps und diese Website.`,
