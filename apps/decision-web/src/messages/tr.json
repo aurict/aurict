@@ -1,0 +1,606 @@
+{
+  "Nav": {
+    "brand": "aurict",
+    "product": "Urun",
+    "productDesc": "Karar Motoru platformunu kesfedin",
+    "ecosystem": "Ekosistem",
+    "site": "Site",
+    "docs": "Dokumanlar",
+    "changelog": "Surum Notlari",
+    "roadmap": "Yol Haritasi",
+    "blog": "Blog",
+    "pricing": "Fiyatlandirma",
+    "security": "Guvenlik",
+    "about": "Hakkimizda",
+    "useCases": "Kullanim Alanlari",
+    "compare": "Karsilastir",
+    "privacy": "Gizlilik",
+    "terms": "Kosullar",
+    "getStarted": "Baslayin",
+    "console": "Konsol",
+    "menu": "Menu",
+    "close": "Kapat",
+    "navigationIndex": "navigasyon indeksi",
+    "productItems": {
+      "01": {
+        "title": "Skorlama Motoru",
+        "desc": "Cihaz ustunde gercek zamanli niyet ve egilim skorlamasi"
+      },
+      "02": {
+        "title": "Segmentasyon",
+        "desc": "Sifir veri sizintisi ile dinamik kitle kurallari"
+      },
+      "03": {
+        "title": "Karar Calisma Zamani",
+        "desc": "10ms altinda sonraki en iyi eylem secimi"
+      },
+      "04": {
+        "title": "Atif Takibi",
+        "desc": "Gizlilik oncelikli donusum takibi ve artis analizi"
+      },
+      "05": {
+        "title": "Aciklanabilirlik",
+        "desc": "Her tahmin icin SHAP degerleri ve karar kayitlari"
+      },
+      "06": {
+        "title": "Federe Ogrenme",
+        "desc": "Verileri merkezilestirmeden cihazlar arasi model egitimi"
+      },
+      "07": {
+        "title": "A/B Testi",
+        "desc": "Otomatik orneklem boyutu ile Bayesci deney cercevesi"
+      },
+      "08": {
+        "title": "Entegrasyonlar",
+        "desc": "Braze, Insider, mParticle, Segment ve ozel SDK'lar"
+      }
+    }
+  },
+  "Hero": {
+    "eyebrow": "Decision Engine",
+    "title": "Karar Motoru,\nCihazinizda",
+    "subtitle": "Her oturumda tek bir sonraki en iyi eylemi secen, gizlilik oncelikli, cihaz ustu karar calisma zamani.",
+    "ctaConsole": "Console'a Git",
+    "ctaDocs": "Dokumantasyon",
+    "terminal": {
+      "line1": "oturum: id=a8f9e... sayfa=/urunler t=3406",
+      "line2": "skor: niyet=0.847 guven=0.93 gecikme=3.2ms",
+      "line3": "karar: eylem=cikis_satis goster degisken=B sebep=niyet>0.8",
+      "line4": "gonder: braze::kampanya/cta-katman-2 yuk gonderildi"
+    }
+  },
+  "Sections": {
+    "sectionLabel": "Yetenekler",
+    "more": "Detayli bilgi",
+    "index": "02 / yetenekler",
+    "capabilities": {
+      "title": "Karar Motoru'nun tum yapabildikleri",
+      "subtitle": "Cihaz ustu karar almayi mumkun kilan sekiz yetenek. Sunucu gidis-gelisleri yok. Veri sizintisi yok.",
+      "scoring": {
+        "title": "Skorlama",
+        "desc": "Gercek zamanli niyet tespiti, egilim modelleme ve oturum skorlamasi. Her oturum, tamamen cihaz ustunde hesaplanan bir skor vektoru alir."
+      },
+      "segmentation": {
+        "title": "Segmentasyon",
+        "desc": "Davranissal sinyallere dayali dinamik kitle kurallari. Kullanicinin davranisi degistikce segmentler otomatik olarak guncellenir."
+      },
+      "decision": {
+        "title": "Karar",
+        "desc": "Sonraki en iyi eylem secim motoru. Skorlanmis bir oturum ve aktif kampanyalar verildiginde, 10 milisaniyeden kisa surede en uygun mudahaleyi secer."
+      },
+      "attribution": {
+        "title": "Atif",
+        "desc": "Gizlilik oncelikli donusum takibi. Kalici tanimlayicilar olmadan artisi olcun. Diferansiyel gizlilik garantileriyle kararlari asagi akis olaylarina baglayin."
+      },
+      "explainability": {
+        "title": "Aciklanabilirlik",
+        "desc": "Her tahmin icin SHAP tabanli ozellik atfi. Guven skorlari, ozellik katkilari ve yedekleme nedenlerini iceren tam karar kayitlari."
+      },
+      "federated": {
+        "title": "Federe Ogrenme",
+        "desc": "Ham verileri merkezilestirmeden milyonlarca cihazda global modeller egitin. Cihazdan sadece sifreli model guncellemeleri ayrilir."
+      },
+      "abtesting": {
+        "title": "A/B Testi",
+        "desc": "Otomatik orneklem boyutu hesaplamali Bayesci deney cercevesi. Sunucu tarafi durumu olmadan karar varyantlarina karsi cok kollu banditler calistirin."
+      },
+      "handoff": {
+        "title": "Saglayici Aktarimi",
+        "desc": "Cihaz ustunde karar verin, mevcut altyapinizla yurutun. Braze, Insider, mParticle, Segment veya ozel webhook'lara dogal aktarim."
+      }
+    },
+    "howItWorks": {
+      "label": "Nasil Calisir",
+      "title": "Oturumdan eyleme uc adim",
+      "subtitle": "Karar Motoru hatti tamamen cihaz ustunde calisir. Sunucu cagrisi yok. Gecikme artisi yok.",
+      "step1": {
+        "label": "Adim 01",
+        "title": "Skorla",
+        "desc": "SDK oturum sinyallerini yakalar ve cihaz ustu ML modelleri ile niyet, egilim ve etkilesim skorlarini hesaplar."
+      },
+      "step2": {
+        "label": "Adim 02",
+        "title": "Segmentle ve Karar Ver",
+        "desc": "Dinamik segmentasyon kullaniciyi aktif kampanyalarla eslestirir. Karar calisma zamani tek optimal sonraki eylemi secer."
+      },
+      "step3": {
+        "label": "Adim 03",
+        "title": "Aktar",
+        "desc": "Secilen eylem, yurutme icin tercih ettiginiz pazarlama saglayicisina — Braze, Insider veya ozel webhook — gonderilir."
+      }
+    },
+    "security": {
+      "label": "Guvenlik ve Gizlilik",
+      "title": "Tasarim geregi, verileriniz cihazda kalir",
+      "subtitle": "Gizlilik bir ozellik degildir. Mimaridir.",
+      "onDevice": {
+        "title": "Cihaz Ustu Gizlilik",
+        "desc": "Oturum sinyalleri, davranissal veriler ve model cikarimi tamamen yerel olarak gerceklesir. Ham veri kullanicinin cihazindan asla ayrilmaz."
+      },
+      "kvkk": {
+        "title": "KVKK ve GDPR Uyumlu",
+        "desc": "Tam VERBIS kaydi. Ayrintili onay yonetimi. Talep uzerine veri aktarimi ve silme. Karar kayitlarinda kisisel veri yok."
+      },
+      "encryption": {
+        "title": "Uctan Uca Sifreleme",
+        "desc": "SDK ile bulut hizmetleri arasindaki tum iletisim aktarimda ve depoda sifrelenir. Federe guncellemeler diferansiyel gizlilik kullanir."
+      }
+    },
+    "pricing": {
+      "label": "Fiyatlandirma",
+      "title": "Her olcek icin planlar",
+      "subtitle": "Prototipten uretime. Tum planlar cekirdek Karar Motoru SDK'sini icerir.",
+      "starter": {
+        "name": "Baslangic",
+        "price": "Ucretsiz",
+        "period": "/ay",
+        "credits": "10.000 karar",
+        "desc": "Prototip ve degerlendirme icin. Bir proje, bir ortam.",
+        "features": [
+          "Cekirdek Karar Motoru SDK",
+          "1 proje, 1 ortam",
+          "10.000 aylik karar",
+          "Topluluk destegi",
+          "7 gun karar kaydi saklama"
+        ]
+      },
+      "growth": {
+        "name": "Buyume",
+        "price": "$249",
+        "period": "/ay",
+        "credits": "500.000 karar",
+        "desc": "Buyuyen ekipler icin. Coklu projeler, A/B testi ve e-posta destegi.",
+        "features": [
+          "Baslangic'taki her sey",
+          "5 proje, 3 ortam",
+          "500.000 aylik karar",
+          "A/B Test cercevesi",
+          "E-posta destegi",
+          "30 gun karar kaydi saklama",
+          "Temel aciklanabilirlik raporlari"
+        ]
+      },
+      "scale": {
+        "name": "Olcekleme",
+        "price": "$999",
+        "period": "/ay",
+        "credits": "5.000.000 karar",
+        "desc": "Uretim is yukleri icin. Federe ogrenme, SSO, oncelikli destek.",
+        "features": [
+          "Buyume'deki her sey",
+          "Sinirsiz proje",
+          "5.000.000 aylik karar",
+          "Federe Ogrenme hatti",
+          "SSO ve SAML",
+          "Oncelikli destek",
+          "90 gun karar kaydi saklama",
+          "Tam aciklanabilirlik paketi",
+          "Ozel model egitimi"
+        ]
+      },
+      "enterprise": {
+        "name": "Kurumsal",
+        "price": "Iletisime gecin",
+        "period": "",
+        "credits": "Sozlesmeli karar kapasitesi",
+        "desc": "Ozel uyumluluk ve olcek gereksinimleri olan organizasyonlar icin.",
+        "features": [
+          "Olcekleme'deki her sey",
+          "Sozlesmeye gore karar kapasitesi",
+          "Yerinde kurulum secenegi",
+          "Ozel SLA",
+          "Ozel destek muhendisi",
+          "Ozel veri bolgeleri",
+          "Denetim izi ve uyumluluk raporlari",
+          "Ozel entegrasyonlar",
+          "Yillik faturalandirma"
+        ]
+      },
+      "recommended": "Onerilen"
+    },
+    "integrations": {
+      "label": "Entegrasyonlar",
+      "title": "Mevcut altyapinizla calisir",
+      "subtitle": "Cihazda karar verin. Pazarlama saglayicilarinizla yurutun."
+    }
+  },
+  "FAQ": {
+    "label": "SSS",
+    "title": "Sikca sorulan sorular",
+    "questions": [
+      {
+        "q": "Karar Motoru tam olarak nedir?",
+        "a": "Karar Motoru, bir sonraki en iyi eylemi secmek icin oturum sinyallerini (niyet, etkilesim, baglam) degerlendiren bir calisma zamanidir — indirim goster, urun oner, kampanya tetikle — tumu sunucu gidis-gelisi olmadan cihaz ustunde hesaplanir."
+      },
+      {
+        "q": "Karar Motoru pazarlama platformumun yerini mi aliyor?",
+        "a": "Hayir. Karar Motoru secim mantigini cihaz ustunde yurutur, ardindan karari yurutme icin mevcut platformlariniza (Braze, Insider, mParticle, Segment) aktarir. Onu beyin olarak dusunun, yurutme katmani olarak degil."
+      },
+      {
+        "q": "Cihaz ustu isleme gizliligi nasil saglar?",
+        "a": "Tum oturum sinyalleri ve model cikarimi kullanicinin cihazinda yerel olarak gerceklesir. Ham davranissal veriler cihazdan asla ayrilmaz. Raporlama icin bulut hizmetlerine yalnizca anonim, toplu metrikler gonderilir."
+      },
+      {
+        "q": "Ne kadar gecikme bekleyebilirim?",
+        "a": "Karar cikarimi modern cihazlarda 10 milisaniyeden kisa surede calisir. Tum Skorla → Karar Ver → Aktar hatti bir sonraki ekran goruntulemenizden once tamamlanir."
+      },
+      {
+        "q": "Minimum entegrasyon nedir?",
+        "a": "SDK'yi 10 satirdan az kodla kurabilir ve dakikalar icinde kararlari calistirmaya baslayabilirsiniz. Temel entegrasyon icin arka ucta degisiklik gerekmez."
+      },
+      {
+        "q": "Federe ogrenme nasil calisir?",
+        "a": "Modeller, veriler merkezilestirilmeden cihazlar arasi egitilir. Her cihaz model guncellemelerini yerel olarak hesaplar, diferansiyel gizlilikle sifreler ve toplama sunucusuna yalnizca sifreli gradyanlari gonderir. Global model ham verileri hic gormeden gelisir."
+      },
+      {
+        "q": "Hangi platformlar destekleniyor?",
+        "a": "Android ve iOS icin yerel SDK'lar. Tarayici tabanli uygulamalar icin Web SDK. Platformlar arasi uygulamalar icin React Native koprusu. Tum SDK'lar ayni karar calisma zamani cekirdegini paylasir."
+      },
+      {
+        "q": "Yerinde calistirabilir miyim?",
+        "a": "Evet. Kurumsal planlar, bulut hizmetlerinin (panel, toplama sunucusu, analitik) yerinde kurulumunu icerir. SDK her durumda her zaman cihaz ustunde calisir."
+      }
+    ]
+  },
+  "FinalCTA": {
+    "title": "Her oturuma zeka katmaya hazir misiniz?",
+    "subtitle": "Ayda 10.000 ucretsiz kararla baslayin. Kredi karti gerekmez.",
+    "cta": "Ucretsiz Baslayin",
+    "secondary": "Satisla Gorusun"
+  },
+  "Footer": {
+    "license": "Ticari yazilimdir. © Aurict. Tum haklari saklidir.",
+    "product": "Urun",
+    "productLinks": {
+      "overview": "Genel Bakis",
+      "pricing": "Fiyatlandirma",
+      "security": "Guvenlik",
+      "changelog": "Surum Notlari",
+      "roadmap": "Yol Haritasi",
+      "integrations": "Entegrasyonlar"
+    },
+    "company": "Sirket",
+    "companyLinks": {
+      "about": "Hakkimizda",
+      "blog": "Blog",
+      "useCases": "Kullanim Alanlari",
+      "compare": "Karsilastir"
+    },
+    "legal": "Yasal",
+    "legalLinks": {
+      "privacy": "Gizlilik Politikasi",
+      "terms": "Kullanim Kosullari",
+      "kvkk": "KVKK",
+      "cookies": "Cerez Politikasi"
+    },
+    "openSource": "Gelistiriciler",
+    "openSourceLinks": {
+      "github": "GitHub",
+      "docs": "Dokumantasyon",
+      "sdkAndroid": "Android SDK",
+      "sdkIOS": "iOS SDK",
+      "sdkWeb": "Web SDK"
+    }
+  },
+  "Pricing": {
+    "eyebrow": "Fiyatlandirma",
+    "title": "Basit, seffaf fiyatlandirma",
+    "subtitle": "Tum planlar cekirdek Karar Motoru SDK'sini icerir. Kullandigin kadar ode.",
+    "compareTable": {
+      "feature": "Ozellik",
+      "starter": "Baslangic",
+      "growth": "Buyume",
+      "scale": "Olcekleme",
+      "enterprise": "Kurumsal",
+      "rows": {
+        "decisions": "Aylik kararlar",
+        "projects": "Projeler",
+        "environments": "Ortamlar",
+        "abTesting": "A/B Testi",
+        "federated": "Federe Ogrenme",
+        "explainability": "Aciklanabilirlik",
+        "sso": "SSO ve SAML",
+        "support": "Destek",
+        "retention": "Kayit saklama",
+        "onPrem": "Yerinde kurulum",
+        "sla": "SLA",
+        "customModels": "Ozel modeller"
+      }
+    }
+  },
+  "Security": {
+    "eyebrow": "Guvenlik",
+    "title": "Gizlilik mimaridir",
+    "subtitle": "Aurict, kullanici verilerinin cihazdan asla ayrilmamasi ilkesi uzerine insa edilmistir. Bunu nasil mumkun kildigimizi ogrenin.",
+    "principles": {
+      "title": "Guvenlik Ilkeleri",
+      "subtitle": "Her muhendislik kararini yonlendiren alti ilke.",
+      "01": {
+        "title": "Veri Minimizasyonu",
+        "desc": "Yalnizca karar motorunun ihtiyac duydugunu topla. Oturum sinyalleri gecicidir ve sunucularda asla kalici olarak saklanmaz."
+      },
+      "02": {
+        "title": "Yerel Odakli",
+        "desc": "Tum cikarim cihaz ustunde calisir. Bulut ham davranissal verileri hic gormez — yalnizca anonim, toplu metrikler."
+      },
+      "03": {
+        "title": "Her Yerde Sifreleme",
+        "desc": "Tum iletisim icin TLS 1.3. Depodaki veriler icin AES-256-GCM. Federe model guncellemeleri cihaza ozel anahtarlarla sifrelenir."
+      },
+      "04": {
+        "title": "Tasarim Geregi Onay",
+        "desc": "SDK'ya entegre ayrintili onay kontrolleri. Kullanicilar hangi sinyallerin paylasilacagini secer. Iptal aninda gecerlidir."
+      },
+      "05": {
+        "title": "Duzenleyici Uyum",
+        "desc": "KVKK VERBIS kayitli. GDPR uyumlu. CCPA hazir. Yayinlanmis sonuclarla duzenli ucuncu taraf denetimleri."
+      },
+      "06": {
+        "title": "Kalici Kimlik Yok",
+        "desc": "Karar Motoru gecici oturum jetonlari kullanir. Cihaz parmak izi yok. Siteler arasi izleme yok. Kalici tanimlayicilar yok."
+      }
+    },
+    "compliance": {
+      "title": "Uyumluluk",
+      "kvkk": "VERBIS kaydi tamamlandi. Veri isleme envanteri uc ayda bir guncellenir.",
+      "gdpr": "Kurumsal musteriler icin Veri Isleme Sozlesmesi mevcut olan tam GDPR uyumu.",
+      "ccpa": "California Tuketici Gizliligi Yasasi hazir. Panelde self-servis veri aktarimi ve silme."
+    },
+    "reports": {
+      "title": "Guvenlik Raporlari",
+      "penTest": "Bagimsiz firmalar tarafindan yillik penetrasyon testi",
+      "audit": "SOC 2 Type II denetimi devam ediyor",
+      "bugBounty": "HackerOne'da halka acik bug bounty programi"
+    }
+  },
+  "About": {
+    "eyebrow": "Hakkimizda",
+    "title": "Neden bir Karar Motoru?",
+    "subtitle": "Pazarlama otomasyonu bozuk. Milyonlarca kampanya, hic istememis kullanicilara koru korune atesleniyor. Aurict'i bunu duzeltmek icin — her seferinde bir kararla — insa ettik.",
+    "manifesto": {
+      "title": "Karar Motoru Manifestosu",
+      "01": {
+        "title": "Kararlar ucta olmali",
+        "desc": "Her milisaniye sunucu gecikmesi kullanici deneyimini kotulestirir. Kararlari cihaz ustunde alarak gidis-gelisleri ortadan kaldiriyor ve gercekten anlik kisisellestirme sunuyoruz."
+      },
+      "02": {
+        "title": "Gizlilik pazarlik konusu degildir",
+        "desc": "Ham davranissal verileri buluta gondermek bir yukumluluktur, ozellik degil. Cihaz ustu cikarim, gizliligin sonradan eklenen bir dusunce degil, varsayilan durum oldugu anlamina gelir."
+      },
+      "03": {
+        "title": "Oturum basina bir karar",
+        "desc": "Kullanicilari birden fazla kampanya ile bombalamak ters etki yapar. Karar Motoru oturum basina tek bir en iyi eylem secer, kullaniciyi bunaltmadan etkiyi maksimize eder."
+      },
+      "04": {
+        "title": "Modeller kolektif olarak, gizlice gelismeli",
+        "desc": "Federe ogrenme, modellerin ham verileri gormeden her cihazdan ogrenmesini saglar. Bireysel gizlilik mutlak kalirken kolektif zeka buyur."
+      },
+      "05": {
+        "title": "Seffaflik guven insa eder",
+        "desc": "Her karar SHAP atfi ile kaydedilir. Kullanicilar ve operatorler belirli bir eylemin neden secildigini tam olarak gorebilir. Kara kutu yok."
+      },
+      "06": {
+        "title": "Denetlenebilir altyapi",
+        "desc": "Her karar gerekceleri ve surumleriyle kaydedilir. Kurumsal musteriler karar calisma zamanini, SDK'lari ve toplama sunucusunu ticari bir sozlesme kapsaminda inceleyebilir."
+      }
+    },
+    "team": {
+      "title": "Dagitik bir ekip tarafindan gelistirildi",
+      "subtitle": "Cihaz ustu zekanin gelecegi uzerinde calisan muhendisler, arastirmacilar ve gizlilik savunuculari."
+    }
+  },
+  "Changelog": {
+    "eyebrow": "Surum Notlari",
+    "title": "Aurict'te neler yeni",
+    "subtitle": "Her surum belgelenir. Her degisiklik aciklanir.",
+    "entries": [
+      {
+        "version": "v1.7.0",
+        "date": "2026-07-18",
+        "tag": "new",
+        "title": "Federe Ogrenme Hatti GA",
+        "body": "Federe ogrenme hatti artik Scale ve Enterprise planlarinda genel kullanima aciktir. Modeller artik ham verileri merkezilestirmeden milyonlarca cihazda egitilebilir. Varsayilan epsilon=2.0 ile diferansiyel gizlilik garantileri ve konsolda yeni bir toplama panosu icerir."
+      },
+      {
+        "version": "v1.6.3",
+        "date": "2026-07-10",
+        "tag": "fix",
+        "title": "iOS SDK 1.6.3 — Oturum skorlama bellek gerilemesi",
+        "body": "iOS SDK'da oturum skorlama modellerinin tamponlari oturumlar arasinda tuttugu bir bellek gerilemesi duzeltildi. 4GB veya daha az RAM'e sahip cihazlarda en yuksek bellek kullanimi %40 azaltildi."
+      },
+      {
+        "version": "v1.6.2",
+        "date": "2026-07-03",
+        "tag": "perf",
+        "title": "Karar gecikmesi 8ms altina dusuruldu",
+        "body": "Karar cikarim grafi operator birlestirme ile optimize edildi. P95 karar gecikmesi referans cihazlarda 12ms'den 7.8ms'ye dustu. Android SDK ikili boyutu %15 azaltildi."
+      },
+      {
+        "version": "v1.6.0",
+        "date": "2026-06-25",
+        "tag": "new",
+        "title": "SHAP aciklanabilirlik paneli",
+        "body": "Konsoldaki yeni aciklanabilirlik sekmesi her karar icin ozellik katkilarini gosterir. Operatorler, eylem secimini hangi sinyallerin yonlendirdigini gosteren selale grafikleriyle bireysel oturum kararlarini inceleyebilir."
+      },
+      {
+        "version": "v1.5.1",
+        "date": "2026-06-18",
+        "tag": "fix",
+        "title": "Web SDK — Safari 18 Gizli Tarama duzeltmesi",
+        "body": "Web SDK'nin IndexedDB kalicilik katmaninin Safari 18 Gizli Tarama modunda engellendigi bir sorun cozuldu. SDK artik konsol uyarisiyla bellek ici depolamaya geri donuyor."
+      },
+      {
+        "version": "v1.5.0",
+        "date": "2026-06-10",
+        "tag": "new",
+        "title": "Braze ve Insider aktarim saglayicilari",
+        "body": "Braze ve Insider icin dogal aktarim entegrasyonlari artik kullanilabilir. Cihaz ustunde alinan kararlar ek sunucu tarafi mantigi olmadan dogrudan her iki platforma gonderilebilir. Kampanya esleme ve yanit takibi destegi icerir."
+      },
+      {
+        "version": "v1.4.0",
+        "date": "2026-05-28",
+        "tag": "break",
+        "title": "Kirici: Decision API v2 gocu",
+        "body": "Decision API v2'ye guncellendi. Eski `decide()` fonksiyonu kullanimsizdir ve v2.0.0'da kaldirilacaktir. Yeni kampanya baglam nesnesiyle `session.evaluate()` fonksiyonuna gecin. Goc kilavuzu dokumanlarda mevcuttur."
+      },
+      {
+        "version": "v1.3.2",
+        "date": "2026-05-15",
+        "tag": "perf",
+        "title": "React Native kopru baslatma 3 kat hizlandi",
+        "body": "React Native kopru baslatma, tembel modul yukleme kullanacak sekilde yeniden yazildi. Kopru kurulum suresi soguk baslatmada ~450ms'den ~140ms'ye dustu. Yerel modul artik onceden derleniyor."
+      }
+    ]
+  },
+  "Roadmap": {
+    "eyebrow": "Yol Haritasi",
+    "title": "Nereye gidiyoruz",
+    "subtitle": "Aurict Karar Motoru icin halka acik yol haritasi. Buradaki her sey degisiklige tabidir.",
+    "phases": [
+      {
+        "status": "released",
+        "title": "Faz 1 — Cekirdek Karar Calisma Zamani",
+        "desc": "Cihaz ustu skorlama, segmentasyon ve karar motoru. A/B test cercevesi. Konsol paneli v1.",
+        "items": ["Skorlama Motoru", "Segmentasyon Motoru", "Karar Calisma Zamani", "A/B Testi", "Konsol Paneli"]
+      },
+      {
+        "status": "beta",
+        "title": "Faz 2 — Federe Zeka",
+        "desc": "Federe ogrenme hatti, SHAP aciklanabilirligi, coklu model topluluk kararlari.",
+        "items": ["Federe Ogrenme", "SHAP Aciklanabilirligi", "Model Topluluklari", "Ozel Model Egitimi", "Karar Kayitlari API"]
+      },
+      {
+        "status": "in-progress",
+        "title": "Faz 3 — Ekosistem ve Olcekleme",
+        "desc": "Saglayici pazaryeri, cok bolgeli dagitim, yerinde kurumsal secenegi.",
+        "items": ["Saglayici Pazaryeri", "Cok Bolgeli", "Yerinde Kurulum", "Ozel Aktarim Webhooklari", "Denetim Izi", "SOC 2 Sertifikasi"]
+      },
+      {
+        "status": "planned",
+        "title": "Faz 4 — Otonom Optimizasyon",
+        "desc": "Kendiliginden ayarlanan modeller, otomatik kampanya optimizasyonu, tahmine dayali butce dagilimi.",
+        "items": ["Oto-Optimizasyon", "Butce Dagilimi", "Kampanyalar Arasi Atif", "Tahminsel Analitik", "Gercek Zamanli Panolar"]
+      }
+    ]
+  },
+  "Blog": {
+    "eyebrow": "Blog",
+    "title": "Muhendislik ve Urun",
+    "subtitle": "Cihaz ustu ML, karar teorisi ve gizlilik oncelikli kisisellestirmenin gelecegi uzerine derinlemesine incelemeler.",
+    "posts": [
+      {
+        "slug": "on-device-ml-is-the-future",
+        "date": "2026-07-20",
+        "title": "Kisisellestirmenin Gelecegi Neden Cihaz Ustu ML",
+        "summary": "Sunucu tarafi kisisellestirme yavas, pahali ve mudahalecidir. ML'yi ucta calistirmanin neden her seyi degistirdigini acikliyoruz.",
+        "tag": "Muhendislik"
+      },
+      {
+        "slug": "building-a-decision-engine",
+        "date": "2026-07-12",
+        "title": "Bir Karar Motoru Insa Etmek: Mimari Derin Inceleme",
+        "summary": "Aurict'in karar calisma zamanini standart donanimda 10ms altinda calisacak sekilde nasil tasarladik.",
+        "tag": "Muhendislik"
+      },
+      {
+        "slug": "privacy-first-by-default",
+        "date": "2026-06-28",
+        "title": "Varsayilan Olarak Gizlilik Oncelikli: Cihaz Ustu Veri Yaklasimimiz",
+        "summary": "Aurict'i neden verilerin cihazdan asla ayrilmamasi varsayimiyla insa ettik.",
+        "tag": "Urun"
+      },
+      {
+        "slug": "federated-learning-explained",
+        "date": "2026-06-15",
+        "title": "Federe Ogrenme, Gercek Kodla Aciklandi",
+        "summary": "Federe ogrenmeye pratik bir rehber: nasil calisir, ne zaman kullanilir ve odunlesimler nelerdir.",
+        "tag": "Muhendislik"
+      },
+      {
+        "slug": "from-sessions-to-decisions",
+        "date": "2026-05-30",
+        "title": "Oturumlardan Kararlara: Pazarlama Otomasyonunu Yeniden Dusunmek",
+        "summary": "Oturum basina bir karar: neden pazarlama otomasyonunda daha az daha fazladir.",
+        "tag": "Urun"
+      }
+    ],
+    "readMore": "Devamini oku",
+    "publishedOn": "Yayin tarihi"
+  },
+  "UseCases": {
+    "eyebrow": "Kullanim Alanlari",
+    "title": "Karar Motoru'nun parladigi yerler",
+    "subtitle": "Cihaz ustu kararlarin fark yarattigi gercek dunya senaryolari.",
+    "cartAbandonment": {
+      "title": "Sepet Terk Kurtarma",
+      "desc": "Terk niyetini gerceklesmeden tespit edin. Sepet oturumlarini gercek zamanli skorlayin ve optimum anda elde tutma teklifleri tetikleyin.",
+      "slug": "cart-abandonment"
+    },
+    "categoryIndecision": {
+      "title": "Kategori Kararsizligi",
+      "desc": "Kullanicilar etkilesime girmeden kategoriler arasinda gecis yaptiginda, ayrilmadan once yonlendirilmis bir oneri ile mudahale edin.",
+      "slug": "category-indecision"
+    },
+    "firstPurchase": {
+      "title": "Ilk Satin Alma Donusumu",
+      "desc": "Yeni kullanici oturumlarini satin alma niyeti icin skorlayin. Ilk islemi donusturmek icin dogru anda dogru tesviki sunun.",
+      "slug": "first-purchase"
+    },
+    "reengagement": {
+      "title": "Yeniden Etkilesim",
+      "desc": "Yuksek gizli niyetli uykudaki kullanicilari tespit edin ve ayrilmadan once kisisellestirilmis tekliflerle yeniden etkilesime gecirin.",
+      "slug": "re-engagement"
+    }
+  },
+  "Compare": {
+    "eyebrow": "Karsilastir",
+    "title": "Aurict alternatiflere karsi",
+    "subtitle": "Karar Motoru'nun geleneksel pazarlama otomasyonu platformlariyla karsilastirmasi.",
+    "comparisons": [
+      {
+        "slug": "aurict-vs-braze-decisioning",
+        "title": "Aurict vs Braze Decisioning",
+        "desc": "Cihaz ustu cikarim vs sunucu tarafi kurallar. Gizlilik etkileri ve gecikme karsilastirmasi."
+      },
+      {
+        "slug": "aurict-vs-insider-predict",
+        "title": "Aurict vs Insider Predictive",
+        "desc": "Federe ogrenme vs merkezi model egitimi. Veriler cihazda nasil kalir."
+      },
+      {
+        "slug": "aurict-vs-dynamic-yield",
+        "title": "Aurict vs Dynamic Yield",
+        "desc": "Oturum basina tek karar mimarisi vs surekli yeniden degerlendirme. Hangi yaklasim daha iyi donusturur?"
+      }
+    ]
+  },
+  "LocaleSwitcher": {
+    "label": "Dil",
+    "en": "English",
+    "tr": "Turkish"
+  },
+  "NotFound": {
+    "label": "rota bulunamadi",
+    "goHome": "Ana sayfaya don"
+  }
+}

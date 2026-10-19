@@ -1,0 +1,143 @@
+/* ============================================================
+   Footer.module.css — Aurict Decision
+   Aurict footer pattern adapted
+   ============================================================ */
+
+.footer {
+  border-top: 1px solid oklch(1 0 0 / 0.08);
+  background: color-mix(in oklch, var(--bg-alt) 70%, transparent);
+}
+
+.frame {
+  width: min(100% - 48px, 1320px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 64px;
+  padding: 64px 0;
+}
+
+/* Identity */
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wordmark {
+  font: 600 16px var(--font-mono), "IBM Plex Mono", monospace;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.cursor {
+  animation: blink 1.1s steps(1) infinite;
+  color: var(--accent);
+}
+
+.sub {
+  color: var(--text-muted);
+  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  letter-spacing: 0.02em;
+}
+
+.email {
+  width: fit-content;
+  color: var(--text-dim);
+  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in oklch, var(--text-muted) 35%, transparent);
+  transition: color 0.16s ease, border-color 0.16s ease;
+}
+
+.email:hover {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.copyright {
+  color: var(--text-muted);
+  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  margin-top: 4px;
+}
+
+/* Columns */
+.columns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.colLabel {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font: 9px var(--font-mono), "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.col a {
+  color: var(--text-dim);
+  font: 12px var(--font-mono), "IBM Plex Mono", monospace;
+  text-decoration: none;
+  padding: 3px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.16s ease, border-color 0.16s ease;
+}
+
+.col a:hover {
+  color: var(--text);
+  border-bottom-color: color-mix(in oklch, var(--text-muted) 40%, transparent);
+}
+
+/* Bottom bar */
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px min(24px, 3vw);
+  border-top: 1px solid oklch(1 0 0 / 0.07);
+  color: var(--text-muted);
+  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  letter-spacing: 0.04em;
+}
+
+/* Responsive */
+@media (max-width: 860px) {
+  .frame {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 48px 0;
+  }
+
+  .columns {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .frame {
+    width: min(100% - 32px, 1320px);
+    padding: 40px 0;
+  }
+
+  .columns {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 14px 16px;
+  }
+}

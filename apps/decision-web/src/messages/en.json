@@ -1,0 +1,606 @@
+{
+  "Nav": {
+    "brand": "aurict",
+    "product": "Product",
+    "productDesc": "Explore the Decision Engine platform",
+    "ecosystem": "Ecosystem",
+    "site": "Site",
+    "docs": "Docs",
+    "changelog": "Changelog",
+    "roadmap": "Roadmap",
+    "blog": "Blog",
+    "pricing": "Pricing",
+    "security": "Security",
+    "about": "About",
+    "useCases": "Use Cases",
+    "compare": "Compare",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "getStarted": "Get Started",
+    "console": "Console",
+    "menu": "Menu",
+    "close": "Close",
+    "navigationIndex": "navigation index",
+    "productItems": {
+      "01": {
+        "title": "Scoring Engine",
+        "desc": "Real-time intent and propensity scoring on-device"
+      },
+      "02": {
+        "title": "Segmentation",
+        "desc": "Dynamic audience rules with zero data leakage"
+      },
+      "03": {
+        "title": "Decision Runtime",
+        "desc": "Next-best-action selection in sub-10ms"
+      },
+      "04": {
+        "title": "Attribution",
+        "desc": "Privacy-safe conversion tracking and lift analysis"
+      },
+      "05": {
+        "title": "Explainability",
+        "desc": "SHAP values and decision logs for every prediction"
+      },
+      "06": {
+        "title": "Federated Learning",
+        "desc": "Train across devices without centralizing data"
+      },
+      "07": {
+        "title": "A/B Testing",
+        "desc": "Bayesian experimentation with automatic sample sizing"
+      },
+      "08": {
+        "title": "Integrations",
+        "desc": "Braze, Insider, mParticle, Segment, and custom SDKs"
+      }
+    }
+  },
+  "Hero": {
+    "eyebrow": "Decision Engine",
+    "title": "Decision Engine,\nOn-Device",
+    "subtitle": "A privacy-first, on-device decision runtime that selects a single next-best action every session.",
+    "ctaConsole": "Open Console",
+    "ctaDocs": "Documentation",
+    "terminal": {
+      "line1": "session: id=a8f9e... page=/products t=3406",
+      "line2": "score: intent=0.847 confidence=0.93 latency=3.2ms",
+      "line3": "decide: action=show_upsell variant=B reason=intent>0.8",
+      "line4": "dispatch: braze::campaign/cta-tier-2 payload sent"
+    }
+  },
+  "Sections": {
+    "sectionLabel": "Capabilities",
+    "more": "Learn more",
+    "index": "02 / capabilities",
+    "capabilities": {
+      "title": "Everything the Decision Engine can do",
+      "subtitle": "Eight capabilities that make on-device decisions possible. No server round-trips. No data leaks.",
+      "scoring": {
+        "title": "Scoring",
+        "desc": "Intent detection, propensity modeling, and session scoring in real time. Every session gets a vector of scores computed entirely on-device."
+      },
+      "segmentation": {
+        "title": "Segmentation",
+        "desc": "Dynamic audience rules based on behavioral signals. Segments update automatically as user behavior shifts, with zero raw data leaving the device."
+      },
+      "decision": {
+        "title": "Decision",
+        "desc": "Next-best-action selection engine. Given a scored session and active campaigns, the runtime chooses the single optimal intervention in under 10 milliseconds."
+      },
+      "attribution": {
+        "title": "Attribution",
+        "desc": "Privacy-safe conversion tracking. Measure lift without persistent identifiers. Correlate decisions to downstream events with differential privacy guarantees."
+      },
+      "explainability": {
+        "title": "Explainability",
+        "desc": "SHAP-based feature attribution for every prediction. Full decision logs with confidence scores, feature contributions, and fallback reasons."
+      },
+      "federated": {
+        "title": "Federated Learning",
+        "desc": "Train global models across millions of devices without centralizing any raw data. Only encrypted model updates leave the device."
+      },
+      "abtesting": {
+        "title": "A/B Testing",
+        "desc": "Bayesian experimentation framework with automatic sample size calculation. Run multi-arm bandits against decision variants without server-side state."
+      },
+      "handoff": {
+        "title": "Provider Handoff",
+        "desc": "Decide on-device, execute through your existing stack. Native handoff to Braze, Insider, mParticle, Segment, or custom webhooks."
+      }
+    },
+    "howItWorks": {
+      "label": "How It Works",
+      "title": "Three steps from session to action",
+      "subtitle": "The Decision Engine pipeline runs entirely on-device. No server calls. No latency spikes.",
+      "step1": {
+        "label": "Step 01",
+        "title": "Score",
+        "desc": "The SDK captures session signals and computes intent, propensity, and engagement scores using on-device ML models."
+      },
+      "step2": {
+        "label": "Step 02",
+        "title": "Segment & Decide",
+        "desc": "Dynamic segmentation matches the user to active campaigns. The decision runtime selects the single optimal next-best-action."
+      },
+      "step3": {
+        "label": "Step 03",
+        "title": "Handoff",
+        "desc": "The chosen action is dispatched to your marketing provider of choice — Braze, Insider, or any custom webhook — for execution."
+      }
+    },
+    "security": {
+      "label": "Security & Privacy",
+      "title": "By design, your data stays on the device",
+      "subtitle": "Privacy is not a feature. It is the architecture.",
+      "onDevice": {
+        "title": "On-Device Privacy",
+        "desc": "Session signals, behavioral data, and model inference all happen locally. Raw data never leaves the user's device."
+      },
+      "kvkk": {
+        "title": "KVKK & GDPR Ready",
+        "desc": "Full VERBIS registration. Consent management with granular opt-in. Data export and deletion by request. No PII in decision logs."
+      },
+      "encryption": {
+        "title": "End-to-End Encryption",
+        "desc": "All communication between SDK and cloud services is encrypted at-rest and in-transit. Federated updates use differential privacy."
+      }
+    },
+    "pricing": {
+      "label": "Pricing",
+      "title": "Plans for every scale",
+      "subtitle": "From prototype to production. All plans include the core Decision Engine SDK.",
+      "starter": {
+        "name": "Starter",
+        "price": "$0",
+        "period": "/month",
+        "credits": "10,000 decisions",
+        "desc": "For prototyping and evaluation. One project, one environment.",
+        "features": [
+          "Core Decision Engine SDK",
+          "1 project, 1 environment",
+          "10,000 monthly decisions",
+          "Community support",
+          "7-day decision log retention"
+        ]
+      },
+      "growth": {
+        "name": "Growth",
+        "price": "$249",
+        "period": "/month",
+        "credits": "500,000 decisions",
+        "desc": "For growing teams. Multiple projects, A/B testing, and email support.",
+        "features": [
+          "Everything in Starter",
+          "5 projects, 3 environments",
+          "500,000 monthly decisions",
+          "A/B Testing framework",
+          "Email support",
+          "30-day decision log retention",
+          "Basic explainability reports"
+        ]
+      },
+      "scale": {
+        "name": "Scale",
+        "price": "$999",
+        "period": "/month",
+        "credits": "5,000,000 decisions",
+        "desc": "For production workloads. Federated learning, SSO, priority support.",
+        "features": [
+          "Everything in Growth",
+          "Unlimited projects",
+          "5,000,000 monthly decisions",
+          "Federated Learning pipeline",
+          "SSO & SAML",
+          "Priority support",
+          "90-day decision log retention",
+          "Full explainability suite",
+          "Custom model training"
+        ]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "price": "Custom",
+        "period": "",
+        "credits": "Contracted decision capacity",
+        "desc": "For organizations with custom compliance and scale requirements.",
+        "features": [
+          "Everything in Scale",
+          "Contracted decision capacity",
+          "On-premise deployment option",
+          "Custom SLA",
+          "Dedicated support engineer",
+          "Custom data regions",
+          "Audit trail & compliance reports",
+          "Custom integrations",
+          "Annual invoicing"
+        ]
+      },
+      "recommended": "Recommended"
+    },
+    "integrations": {
+      "label": "Integrations",
+      "title": "Works with your existing stack",
+      "subtitle": "Decide on-device. Execute through your marketing providers."
+    }
+  },
+  "FAQ": {
+    "label": "FAQ",
+    "title": "Frequently asked questions",
+    "questions": [
+      {
+        "q": "What exactly is a Decision Engine?",
+        "a": "A Decision Engine is a runtime that evaluates session signals (intent, engagement, context) to select the single best action to take next — show a discount, recommend a product, trigger a campaign — all computed on-device without server round-trips."
+      },
+      {
+        "q": "Does the Decision Engine replace my marketing platform?",
+        "a": "No. The Decision Engine handles the selection logic on-device, then hands off the decision to your existing platforms (Braze, Insider, mParticle, Segment) for execution. Think of it as the brain, not the execution layer."
+      },
+      {
+        "q": "How does on-device processing ensure privacy?",
+        "a": "All session signals and model inference happen locally on the user's device. No raw behavioral data ever leaves the device. Only anonymous, aggregated metrics are sent to cloud services for reporting."
+      },
+      {
+        "q": "What latency can I expect?",
+        "a": "Decision inference runs in under 10 milliseconds on modern devices. The entire Score → Decide → Handoff pipeline completes before your next screen render."
+      },
+      {
+        "q": "Is there a minimum integration?",
+        "a": "You can install the SDK in under 10 lines of code and be running decisions within minutes. No backend changes required for the basic integration."
+      },
+      {
+        "q": "How does federated learning work?",
+        "a": "Models are trained across devices without centralizing data. Each device computes model updates locally, encrypts them with differential privacy, and sends only the encrypted gradients to the aggregation server. The global model improves without ever seeing raw data."
+      },
+      {
+        "q": "What platforms are supported?",
+        "a": "Native SDKs for Android and iOS. Web SDK for browser-based applications. React Native bridge for cross-platform apps. All SDKs share the same decision runtime core."
+      },
+      {
+        "q": "Can I run on-premise?",
+        "a": "Yes. Enterprise plans include on-premise deployment of the cloud services (dashboard, aggregation server, analytics). The SDK always runs on-device regardless."
+      }
+    ]
+  },
+  "FinalCTA": {
+    "title": "Ready to add intelligence to every session?",
+    "subtitle": "Start with 10,000 free decisions per month. No credit card required.",
+    "cta": "Get Started Free",
+    "secondary": "Talk to Sales"
+  },
+  "Footer": {
+    "license": "Commercial software. © Aurict. All rights reserved.",
+    "product": "Product",
+    "productLinks": {
+      "overview": "Overview",
+      "pricing": "Pricing",
+      "security": "Security",
+      "changelog": "Changelog",
+      "roadmap": "Roadmap",
+      "integrations": "Integrations"
+    },
+    "company": "Company",
+    "companyLinks": {
+      "about": "About",
+      "blog": "Blog",
+      "useCases": "Use Cases",
+      "compare": "Compare"
+    },
+    "legal": "Legal",
+    "legalLinks": {
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "kvkk": "KVKK",
+      "cookies": "Cookie Policy"
+    },
+    "openSource": "Developers",
+    "openSourceLinks": {
+      "github": "GitHub",
+      "docs": "Documentation",
+      "sdkAndroid": "Android SDK",
+      "sdkIOS": "iOS SDK",
+      "sdkWeb": "Web SDK"
+    }
+  },
+  "Pricing": {
+    "eyebrow": "Pricing",
+    "title": "Simple, transparent pricing",
+    "subtitle": "All plans include the core Decision Engine SDK. Pay for what you use.",
+    "compareTable": {
+      "feature": "Feature",
+      "starter": "Starter",
+      "growth": "Growth",
+      "scale": "Scale",
+      "enterprise": "Enterprise",
+      "rows": {
+        "decisions": "Monthly decisions",
+        "projects": "Projects",
+        "environments": "Environments",
+        "abTesting": "A/B Testing",
+        "federated": "Federated Learning",
+        "explainability": "Explainability",
+        "sso": "SSO & SAML",
+        "support": "Support",
+        "retention": "Log retention",
+        "onPrem": "On-premise",
+        "sla": "SLA",
+        "customModels": "Custom models"
+      }
+    }
+  },
+  "Security": {
+    "eyebrow": "Security",
+    "title": "Privacy is the architecture",
+    "subtitle": "Aurict is built on the principle that user data should never leave the device. Learn how we make that possible.",
+    "principles": {
+      "title": "Security Principles",
+      "subtitle": "Six principles that guide every engineering decision.",
+      "01": {
+        "title": "Data Minimization",
+        "desc": "Collect only what the decision engine needs. Session signals are ephemeral and never persisted on servers."
+      },
+      "02": {
+        "title": "Local-First",
+        "desc": "All inference runs on-device. The cloud never sees raw behavioral data — only anonymous, aggregated metrics."
+      },
+      "03": {
+        "title": "Encryption Everywhere",
+        "desc": "TLS 1.3 for all transport. AES-256-GCM for data at rest. Federated model updates encrypted with per-device keys."
+      },
+      "04": {
+        "title": "Consent by Design",
+        "desc": "Granular opt-in controls built into the SDK. Users choose what signals to share. Revocation is immediate."
+      },
+      "05": {
+        "title": "Regulatory Alignment",
+        "desc": "KVKK VERBIS registered. GDPR compliant. CCPA ready. Regular third-party audits with published results."
+      },
+      "06": {
+        "title": "No Persistent IDs",
+        "desc": "The Decision Engine uses ephemeral session tokens. No device fingerprinting. No cross-site tracking. No permanent identifiers."
+      }
+    },
+    "compliance": {
+      "title": "Compliance",
+      "kvkk": "VERBIS registration complete. Data processing inventory maintained and updated quarterly.",
+      "gdpr": "Full GDPR compliance with Data Processing Agreement available for Enterprise customers.",
+      "ccpa": "California Consumer Privacy Act ready. Data export and deletion self-service in the dashboard."
+    },
+    "reports": {
+      "title": "Security Reports",
+      "penTest": "Annual penetration testing by independent firms",
+      "audit": "SOC 2 Type II audit in progress",
+      "bugBounty": "Public bug bounty program on HackerOne"
+    }
+  },
+  "About": {
+    "eyebrow": "About",
+    "title": "Why build a Decision Engine?",
+    "subtitle": "Marketing automation is broken. Millions of campaigns fire blindly at users who never asked for them. We built Aurict to fix this — one decision at a time.",
+    "manifesto": {
+      "title": "The Decision Engine Manifesto",
+      "01": {
+        "title": "Decisions belong at the edge",
+        "desc": "Every millisecond of server latency degrades the user experience. By making decisions on-device, we eliminate round-trips and deliver truly instant personalization."
+      },
+      "02": {
+        "title": "Privacy is not negotiable",
+        "desc": "Sending raw behavioral data to the cloud is a liability, not a feature. On-device inference means privacy is the default state, not an afterthought."
+      },
+      "03": {
+        "title": "One decision per session",
+        "desc": "Bombarding users with multiple campaigns is counterproductive. The Decision Engine selects the single best action per session, maximizing impact without overwhelming the user."
+      },
+      "04": {
+        "title": "Models should improve collectively, privately",
+        "desc": "Federated learning lets models learn from every device without seeing any raw data. The collective intelligence grows while individual privacy remains absolute."
+      },
+      "05": {
+        "title": "Transparency builds trust",
+        "desc": "Every decision is logged with SHAP attribution. Users and operators can see exactly why a particular action was chosen. No black boxes."
+      },
+      "06": {
+        "title": "Auditable infrastructure",
+        "desc": "Every decision is logged with its reasons and versions. Enterprise customers can review the decision runtime, the SDKs, and the aggregation server under a commercial agreement."
+      }
+    },
+    "team": {
+      "title": "Built by a distributed team",
+      "subtitle": "Engineers, researchers, and privacy advocates working on the future of on-device intelligence."
+    }
+  },
+  "Changelog": {
+    "eyebrow": "Changelog",
+    "title": "What's new in Aurict",
+    "subtitle": "Every release, documented. Every change, explained.",
+    "entries": [
+      {
+        "version": "v1.7.0",
+        "date": "2026-07-18",
+        "tag": "new",
+        "title": "Federated Learning Pipeline GA",
+        "body": "The federated learning pipeline is now generally available on Scale and Enterprise plans. Models can now be trained across millions of devices without centralizing any raw data. Includes differential privacy guarantees with epsilon=2.0 by default and a new aggregation dashboard in the console."
+      },
+      {
+        "version": "v1.6.3",
+        "date": "2026-07-10",
+        "tag": "fix",
+        "title": "iOS SDK 1.6.3 — Memory regression on session scoring",
+        "body": "Fixed a memory regression in the iOS SDK where session scoring models were retaining buffers across sessions. Peak memory usage reduced by 40% on devices with 4GB RAM or less."
+      },
+      {
+        "version": "v1.6.2",
+        "date": "2026-07-03",
+        "tag": "perf",
+        "title": "Decision latency reduced to sub-8ms",
+        "body": "Optimized the decision inference graph with operator fusion. P95 decision latency dropped from 12ms to 7.8ms on benchmark devices. Android SDK binary size reduced by 15%."
+      },
+      {
+        "version": "v1.6.0",
+        "date": "2026-06-25",
+        "tag": "new",
+        "title": "SHAP explainability dashboard",
+        "body": "New explainability tab in the console shows feature contributions for every decision. Operators can inspect individual session decisions with waterfall charts showing which signals drove the action selection."
+      },
+      {
+        "version": "v1.5.1",
+        "date": "2026-06-18",
+        "tag": "fix",
+        "title": "Web SDK — Safari 18 Private Browsing fix",
+        "body": "Resolved an issue where the Web SDK's IndexedDB persistence layer was blocked in Safari 18 Private Browsing mode. The SDK now gracefully falls back to in-memory storage with a console warning."
+      },
+      {
+        "version": "v1.5.0",
+        "date": "2026-06-10",
+        "tag": "new",
+        "title": "Braze and Insider handoff providers",
+        "body": "Native handoff integrations for Braze and Insider are now available. Decisions made on-device can be dispatched directly to either platform without additional server-side logic. Includes campaign mapping and response-tracking support."
+      },
+      {
+        "version": "v1.4.0",
+        "date": "2026-05-28",
+        "tag": "break",
+        "title": "Breaking: Decision API v2 migration",
+        "body": "The Decision API has been updated to v2. The old `decide()` function is deprecated and will be removed in v2.0.0. Migrate to `session.evaluate()` with the new campaign context object. Migration guide available in docs."
+      },
+      {
+        "version": "v1.3.2",
+        "date": "2026-05-15",
+        "tag": "perf",
+        "title": "React Native bridge initialization 3x faster",
+        "body": "Rewrote the React Native bridge initialization to use lazy module loading. Bridge setup time reduced from ~450ms to ~140ms on cold start. Native module now compiled ahead-of-time."
+      }
+    ]
+  },
+  "Roadmap": {
+    "eyebrow": "Roadmap",
+    "title": "Where we're headed",
+    "subtitle": "The public roadmap for the Aurict Decision Engine. Everything here is subject to change.",
+    "phases": [
+      {
+        "status": "released",
+        "title": "Phase 1 — Core Decision Runtime",
+        "desc": "On-device scoring, segmentation, and decision engine. A/B testing framework. Console dashboard v1.",
+        "items": ["Scoring Engine", "Segmentation Engine", "Decision Runtime", "A/B Testing", "Console Dashboard"]
+      },
+      {
+        "status": "beta",
+        "title": "Phase 2 — Federated Intelligence",
+        "desc": "Federated learning pipeline, SHAP explainability, multi-model ensemble decisions.",
+        "items": ["Federated Learning", "SHAP Explainability", "Model Ensembles", "Custom Model Training", "Decision Logs API"]
+      },
+      {
+        "status": "in-progress",
+        "title": "Phase 3 — Ecosystem & Scale",
+        "desc": "Provider marketplace, multi-region deployment, on-premise enterprise option.",
+        "items": ["Provider Marketplace", "Multi-Region", "On-Premise Deploy", "Custom Handoff Webhooks", "Audit Trail", "SOC 2 Certification"]
+      },
+      {
+        "status": "planned",
+        "title": "Phase 4 — Autonomous Optimization",
+        "desc": "Self-tuning models, automatic campaign optimization, predictive budget allocation.",
+        "items": ["Auto-Optimization", "Budget Allocation", "Cross-Campaign Attribution", "Predictive Analytics", "Real-Time Dashboards"]
+      }
+    ]
+  },
+  "Blog": {
+    "eyebrow": "Blog",
+    "title": "Engineering & Product",
+    "subtitle": "Deep dives into on-device ML, decision theory, and the future of privacy-first personalization.",
+    "posts": [
+      {
+        "slug": "on-device-ml-is-the-future",
+        "date": "2026-07-20",
+        "title": "Why On-Device ML Is the Future of Personalization",
+        "summary": "Server-side personalization is slow, expensive, and invasive. Here's why running ML on the edge changes everything.",
+        "tag": "Engineering"
+      },
+      {
+        "slug": "building-a-decision-engine",
+        "date": "2026-07-12",
+        "title": "Building a Decision Engine: Architecture Deep Dive",
+        "summary": "How we designed Aurict's decision runtime to run inference in under 10ms on commodity hardware.",
+        "tag": "Engineering"
+      },
+      {
+        "slug": "privacy-first-by-default",
+        "date": "2026-06-28",
+        "title": "Privacy-First by Default: Our Approach to On-Device Data",
+        "summary": "Why we built Aurict with the assumption that data should never leave the device.",
+        "tag": "Product"
+      },
+      {
+        "slug": "federated-learning-explained",
+        "date": "2026-06-15",
+        "title": "Federated Learning, Explained with Real Code",
+        "summary": "A practical guide to federated learning: how it works, when to use it, and what the tradeoffs are.",
+        "tag": "Engineering"
+      },
+      {
+        "slug": "from-sessions-to-decisions",
+        "date": "2026-05-30",
+        "title": "From Sessions to Decisions: Rethinking Marketing Automation",
+        "summary": "The case for one-decision-per-session: why less is more in marketing automation.",
+        "tag": "Product"
+      }
+    ],
+    "readMore": "Read more",
+    "publishedOn": "Published on"
+  },
+  "UseCases": {
+    "eyebrow": "Use Cases",
+    "title": "Where the Decision Engine shines",
+    "subtitle": "Real-world scenarios where on-device decisions make the difference.",
+    "cartAbandonment": {
+      "title": "Cart Abandonment Recovery",
+      "desc": "Detect abandonment intent before it happens. Score cart sessions in real time and trigger retention offers at the optimal moment.",
+      "slug": "cart-abandonment"
+    },
+    "categoryIndecision": {
+      "title": "Category Indecision",
+      "desc": "When users bounce between categories without engaging, intervene with a guided recommendation before they leave.",
+      "slug": "category-indecision"
+    },
+    "firstPurchase": {
+      "title": "First Purchase Conversion",
+      "desc": "Score new user sessions for purchase intent. Offer the right incentive at the right moment to convert the first transaction.",
+      "slug": "first-purchase"
+    },
+    "reengagement": {
+      "title": "Re-engagement",
+      "desc": "Identify dormant users with high latent intent and re-engage them with personalized offers before they churn.",
+      "slug": "re-engagement"
+    }
+  },
+  "Compare": {
+    "eyebrow": "Compare",
+    "title": "Aurict vs the alternatives",
+    "subtitle": "How the Decision Engine compares to traditional marketing automation platforms.",
+    "comparisons": [
+      {
+        "slug": "aurict-vs-braze-decisioning",
+        "title": "Aurict vs Braze Decisioning",
+        "desc": "On-device inference vs server-side rules. Privacy implications and latency comparison."
+      },
+      {
+        "slug": "aurict-vs-insider-predict",
+        "title": "Aurict vs Insider Predictive",
+        "desc": "Federated learning vs centralized model training. How data stays on-device."
+      },
+      {
+        "slug": "aurict-vs-dynamic-yield",
+        "title": "Aurict vs Dynamic Yield",
+        "desc": "Single-decision-per-session architecture vs continuous re-evaluation. Which approach converts better?"
+      }
+    ]
+  },
+  "LocaleSwitcher": {
+    "label": "Language",
+    "en": "English",
+    "tr": "Turkish"
+  },
+  "NotFound": {
+    "label": "route not found",
+    "goHome": "Go home"
+  }
+}

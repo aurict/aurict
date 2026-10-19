@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <title>Aurict Decision Adaptive Loop</title>
+  <desc>A paradox loop representing continuous decision optimization around a selected micro audience.</desc>
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M128 24 231 207H25L128 24Zm0 53-57 101h114L128 77Z" fill="#20C2B3"/>
+  <path d="m113 56 15-26 16 27-31-1Z" fill="#47D5F9"/>
+  <path d="m196 182 26 13-31 0 5-13Z" fill="#24CC9E"/>
+  <path d="m34 195 27-15 5 15H34Z" fill="#119EBB"/>
+  <path d="M103 127c8-14 21-21 39-18" stroke="#DFFFF9" stroke-width="4" stroke-linecap="round"/>
+  <path d="m143 109-10-7 1 12 9-5Z" fill="#DFFFF9"/>
+  <path d="M153 137c-3 16-13 27-30 31" stroke="#DFFFF9" stroke-width="4" stroke-linecap="round"/>
+  <path d="m123 168 12 4-5-11-7 7Z" fill="#DFFFF9"/>
+  <path d="M111 156c-11-10-15-22-10-37" stroke="#DFFFF9" stroke-width="4" stroke-linecap="round"/>
+  <path d="m101 119-5 11 11-4-6-7Z" fill="#DFFFF9"/>
+  <circle cx="128" cy="138" r="16" fill="#0E2229"/>
+  <circle cx="128" cy="138" r="11" fill="#E2FFF9"/>
+  <circle cx="128" cy="138" r="4" fill="#10313A"/>
+  <circle cx="88" cy="119" r="4" fill="#45D4FF" opacity=".75"/>
+  <circle cx="166" cy="111" r="3" fill="#25D2C0" opacity=".7"/>
+  <circle cx="168" cy="165" r="4" fill="#31DC8A" opacity=".75"/>
+</svg>
