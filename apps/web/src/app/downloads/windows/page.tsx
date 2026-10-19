@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { TightPeriods } from '@/components/ui/TightPeriods'
 import Image from 'next/image'
 import { getLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
@@ -7,6 +8,9 @@ import { Nav } from '@/components/Nav'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { TrackedDownloadLink } from '@/components/analytics/TrackedDownloadLink'
 import { getDesktopBetaRelease, type ReleaseAsset } from '@/lib/desktop-beta-release'
+import { localizeInstallSteps } from '@/content/landing-translations'
+import { InstallTabs, type InstallMethod } from '../InstallTabs'
+import styles from '../Downloads.module.css'
 import { localizedMetadata } from '@/i18n/metadata'
 import type { AppLocale } from '@/i18n/routing'
 
@@ -18,92 +22,92 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function WindowsDownloadPage() {
   const [beta, locale] = await Promise.all([getDesktopBetaRelease(), getLocale()])
   const tr = locale === 'tr'
+  const installMethods: InstallMethod[] = [
+    { id: 'npm', label: 'npm', command: 'npm install -g aurict', note: tr ? 'macOS, Linux ve Windows için aynı komut.' : 'The same command on macOS, Linux and Windows.' },
+    { id: 'curl', label: 'curl', command: 'curl -fsSL https://aurict.com/install.sh | bash', note: tr ? 'macOS ve Linux için yerel ikiliyi ~/.local/bin altına kurar.' : 'Installs the native binary into ~/.local/bin on macOS and Linux.' },
+    { id: 'windows', label: 'Windows', command: 'Invoke-WebRequest https://github.com/aurict/aurict/releases/latest/download/aurict-win32-x64.exe -OutFile aurict.exe', note: tr ? 'Windows x64 için yerel ikiliyi PowerShell ile indirir.' : 'Downloads the native Windows x64 binary with PowerShell.' },
+  ]
 
   return (
     <>
       <Nav />
-      <main className="marketing-main" style={{ maxWidth: 860 }}>
-        <Breadcrumb items={[{ label: tr ? 'Ana sayfa' : 'Home', href: '/' }, { label: tr ? 'Hoprel indirmeleri' : 'Hoprel downloads', href: '/downloads' }]} />
-        <section className="marketing-hero" style={{ marginTop: 24 }}>
-          <p className="marketing-eyebrow">{tr ? 'Masaüstü · herkese açık beta' : 'Desktop · public beta'}</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Image alt="Hoprel icon" height={50} src="/hoprel-icon.svg" width={50} />
-            <h1 className="marketing-title">{tr ? 'Hoprel indirmeleri.' : 'Hoprel downloads.'}</h1>
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <Breadcrumb items={[{ label: tr ? 'Ana sayfa' : 'Home', href: '/' }, { label: tr ? 'İndirmeler' : 'Downloads', href: '/downloads' }]} />
+        </div>
+
+        <section className={`${styles.shell} ${styles.hero}`}>
+          <div>
+            <p className={styles.eyebrow}>{tr ? 'Hoprel · Aurict tarafından' : 'Hoprel · by Aurict'}</p>
+            <h1><TightPeriods text={tr ? 'Ajanların. Çalışma alanın. Bilgisayarın.' : 'Your agents. Your workspace. Your machine.'} /></h1>
+            <p className={styles.lede}>
+              {tr ? 'Hoprel by Aurict yerel öncelikli bir masaüstü çalışma alanıdır. Windows, Debian ve macOS paketleri aynı beta sürümünden yayımlanır.' : 'Hoprel by Aurict is a local-first desktop workspace. Windows, Debian, and macOS packages are published from the same beta release.'}
+            </p>
+            {beta ? (
+              <>
+                <p className={styles.release}><span className={styles.live} />{tr ? 'Son beta' : 'Latest beta'} · {beta.version}</p>
+                <div className={styles.downloadList}>
+                  <DownloadCard asset={beta.macosArm64} command="shasum -a 256 Hoprel-Beta-macos-arm64.zip" detail={tr ? 'Apple Silicon · imzasız macOS ZIP' : 'Apple Silicon · unsigned macOS ZIP'} analyticsPlatform="macos_arm64" platform="macOS · Apple Silicon" releaseVersion={beta.version} tr={tr} />
+                  <DownloadCard asset={beta.macosX64} command="shasum -a 256 Hoprel-Beta-macos-x64.zip" detail={tr ? 'Intel · imzasız macOS ZIP' : 'Intel · unsigned macOS ZIP'} analyticsPlatform="macos_x64" platform="macOS · Intel" releaseVersion={beta.version} tr={tr} />
+                  <DownloadCard asset={beta.windows} command="Get-FileHash .\Hoprel-Beta-Setup.exe -Algorithm SHA256" detail={tr ? 'Windows x64 · kendinden imzalı beta yükleyicisi' : 'Windows x64 · self-signed beta installer'} analyticsPlatform="windows" platform="Windows" releaseVersion={beta.version} tr={tr} />
+                  <DownloadCard asset={beta.debian} command="sha256sum Hoprel-Beta-amd64.deb" detail={tr ? 'Debian amd64 · doğrudan .deb paketi' : 'Debian amd64 · direct .deb package'} analyticsPlatform="debian" platform="Debian / Ubuntu" releaseVersion={beta.version} tr={tr} />
+                </div>
+                <a className={styles.textLink} href={beta.releaseUrl}>{tr ? 'Sürüm notlarını görüntüle' : 'View release notes'} ↗</a>
+              </>
+            ) : (
+              <div className={styles.pending}>
+                <p className={styles.pendingLabel}>{tr ? 'Beta derlemesi bekleniyor' : 'Beta build pending'}</p>
+                <h2>{tr ? 'İlk Hoprel betası hazırlanıyor.' : 'The first Hoprel beta is being prepared.'}</h2>
+                <p>{tr ? 'Yayımlandığında bu sayfa kullanılabilir her masaüstü paketini ve SHA-256 sağlama toplamını gösterecek.' : 'When published, this page will show each available desktop package and its SHA-256 checksum.'}</p>
+                <a className={styles.textLink} href="https://github.com/aurict/aurict/releases">{tr ? 'GitHub sürümlerini görüntüle' : 'View GitHub releases'} ↗</a>
+              </div>
+            )}
           </div>
-          <p className="marketing-lede">
-            {tr ? 'Hoprel by Aurict yerel öncelikli bir masaüstü çalışma alanıdır. Windows, Debian ve macOS paketleri aynı beta sürümünden yayımlanır.' : 'Hoprel by Aurict is a local-first desktop workspace. Windows, Debian, and macOS packages are published from the same beta release.'}
-          </p>
+          <div className={styles.heroArt} aria-hidden="true">
+            <Image alt="" height={420} priority src="/ecosystem/hoprel.webp" width={380} />
+          </div>
         </section>
 
-        <section className="marketing-card" style={{ borderColor: 'color-mix(in oklch, var(--warning) 48%, var(--border))', marginBottom: 22, padding: 26 }}>
-          <p className="mono" style={{ color: 'var(--warning)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 12 }}>{tr ? 'İmzasız beta bildirimi' : 'Unsigned beta notice'}</p>
-          <p className="marketing-copy" style={{ color: 'var(--text)', marginBottom: 12 }}>
+        <section className={`${styles.shell} ${styles.notice}`}>
+          <p className={styles.noticeLabel}>{tr ? 'İmzasız beta bildirimi' : 'Unsigned beta notice'}</p>
+          <p>
             {tr ? 'Bu beta derlemeleri kamuya açık olarak güvenilir kabul edilmediği için Windows SmartScreen, macOS ise Gatekeeper uyarısı gösterebilir. Yalnızca Hoprel’i bu sayfadan veya bağlı GitHub sürümünden bilerek indirdiyseniz devam edin.' : 'Windows may show a SmartScreen warning and macOS may show a Gatekeeper warning because these beta builds are not publicly trusted. Only continue if you intentionally downloaded Hoprel from this page or the linked GitHub release.'}
           </p>
-          <p className="marketing-copy">
+          <p>
             {tr ? 'Bir kök sertifika yüklemeyin ve Windows güvenlik özelliklerini devre dışı bırakmayın. Yükleyiciyi açmadan önce yayımlanan SHA-256 sağlama toplamını doğrulayın.' : 'Do not install a root certificate or disable Windows security features. Verify the published SHA-256 checksum before opening the installer.'}
           </p>
         </section>
 
-        {beta ? (
-          <section className="marketing-card" style={{ padding: 28, marginBottom: 64 }}>
-            <p className="mono" style={{ color: 'var(--success)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 12 }}>{tr ? 'Son beta kullanılabilir' : 'Latest beta available'}</p>
-            <h2 style={{ color: 'var(--text)', fontSize: 28, fontWeight: 600, marginBottom: 10 }}>{beta.version}</h2>
-            <p className="marketing-copy" style={{ marginBottom: 24 }}>{tr ? 'Her masaüstü paketi bir SHA-256 doğrulama dosyası içerir.' : 'Every desktop package includes a SHA-256 verification file.'}</p>
-            <div className="resp-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-              <DownloadCard
-                asset={beta.windows}
-                command="Get-FileHash .\Hoprel-Beta-Setup.exe -Algorithm SHA256"
-                detail={tr ? 'Windows x64 · kendinden imzalı beta yükleyicisi' : 'Windows x64 · self-signed beta installer'}
-                analyticsPlatform="windows"
-                platform="Windows"
-                releaseVersion={beta.version}
-                tr={tr}
-              />
-              <DownloadCard
-                asset={beta.debian}
-                command="sha256sum Hoprel-Beta-amd64.deb"
-                detail={tr ? 'Debian amd64 · doğrudan .deb paketi' : 'Debian amd64 · direct .deb package'}
-                analyticsPlatform="debian"
-                platform="Debian / Ubuntu"
-                releaseVersion={beta.version}
-                tr={tr}
-              />
-              <DownloadCard
-                asset={beta.macosArm64}
-                command="shasum -a 256 Hoprel-Beta-macos-arm64.zip"
-                detail={tr ? 'Apple Silicon · imzasız macOS ZIP' : 'Apple Silicon · unsigned macOS ZIP'}
-                analyticsPlatform="macos_arm64"
-                platform="macOS · Apple Silicon"
-                releaseVersion={beta.version}
-                tr={tr}
-              />
-              <DownloadCard
-                asset={beta.macosX64}
-                command="shasum -a 256 Hoprel-Beta-macos-x64.zip"
-                detail={tr ? 'Intel · imzasız macOS ZIP' : 'Intel · unsigned macOS ZIP'}
-                analyticsPlatform="macos_x64"
-                platform="macOS · Intel"
-                releaseVersion={beta.version}
-                tr={tr}
-              />
+        <section className={styles.cliBand}>
+          <div className={`${styles.shell} ${styles.cliLayout}`}>
+            <div>
+              <p className={styles.eyebrow}>{tr ? 'Açık kaynak · terminalin' : 'Open source · your terminal'}</p>
+              <h2>{tr ? 'Aurict CLI kur' : 'Install Aurict CLI'}</h2>
+              <p className={styles.lede}>{tr ? 'Açık kaynak terminal yapay zekâ kodlama ajanı. Kendi model sağlayıcını getir, bağlamı yerelde tut ve her eylemi onayla.' : 'An open-source terminal AI coding agent. Bring your own model provider, keep context local, and approve every action.'}</p>
+              <InstallTabs methods={installMethods} />
+              <p className={styles.checksums}>
+                <a className={styles.textLink} href="https://github.com/aurict/aurict/releases/latest/download/checksums.txt">SHA-256 checksums ↗</a>
+                <Link className={styles.textLink} href="/terminal-agent">{tr ? 'Aurict CLI hakkında' : 'About Aurict CLI'} →</Link>
+              </p>
             </div>
-            <a className="aur-button aur-button-secondary" href={beta.releaseUrl} style={{ marginTop: 18 }}>{tr ? 'sürümü görüntüle' : 'view release'}</a>
-          </section>
-        ) : (
-          <section className="marketing-card" style={{ padding: 28, marginBottom: 64 }}>
-            <p className="mono" style={{ color: 'var(--warning)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 12 }}>{tr ? 'Beta derlemesi bekleniyor' : 'Beta build pending'}</p>
-            <h2 style={{ color: 'var(--text)', fontSize: 28, fontWeight: 600, marginBottom: 10 }}>{tr ? 'İlk Hoprel betası hazırlanıyor.' : 'The first Hoprel beta is being prepared.'}</h2>
-            <p className="marketing-copy" style={{ marginBottom: 22 }}>{tr ? 'Yayımlandığında bu sayfa kullanılabilir her masaüstü paketini ve SHA-256 sağlama toplamını gösterecek.' : 'When published, this page will show each available desktop package and its SHA-256 checksum.'}</p>
-            <a className="aur-button aur-button-secondary" href="https://github.com/aurict/aurict/releases">{tr ? 'GitHub sürümlerini görüntüle' : 'view GitHub releases'}</a>
-          </section>
-        )}
+            <div className={styles.steps}>
+              <h3>{tr ? 'Hızlı başlangıç' : 'Quick start'}</h3>
+              {localizeInstallSteps(locale as AppLocale).map(([title, code, note]) => (
+                <article key={title}>
+                  <span>{title}</span>
+                  <code className="mono surface-dark">{code}</code>
+                  <p>{note}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
 
-        <section className="marketing-card" style={{ padding: 26, marginBottom: 64 }}>
-          <p className="marketing-eyebrow" style={{ marginBottom: 12 }}>{tr ? 'Önerilen kanal' : 'Recommended channel'}</p>
-          <h2 style={{ color: 'var(--text)', fontSize: 25, fontWeight: 600, marginBottom: 10 }}>{tr ? 'Microsoft Store dağıtımı planlanıyor.' : 'Microsoft Store distribution is planned.'}</h2>
-          <p className="marketing-copy">{tr ? 'Store derlemesi, Microsoft tarafından yönetilen imza ve güncellemelerle önerilen herkese açık kurulum yolunu sunacak.' : 'The Store build will provide the recommended public installation path with Microsoft-managed signing and updates.'}</p>
-          <Link className="aur-button aur-button-secondary" href="/roadmap" style={{ marginTop: 20 }}>{tr ? 'ürün yol haritasını gör' : 'view product roadmap'}</Link>
+        <section className={`${styles.shell} ${styles.store}`}>
+          <p className={styles.eyebrow}>{tr ? 'Önerilen kanal' : 'Recommended channel'}</p>
+          <h2><TightPeriods text={tr ? 'Microsoft Store dağıtımı planlanıyor.' : 'Microsoft Store distribution is planned.'} /></h2>
+          <p>{tr ? 'Store derlemesi, Microsoft tarafından yönetilen imza ve güncellemelerle önerilen herkese açık kurulum yolunu sunacak.' : 'The Store build will provide the recommended public installation path with Microsoft-managed signing and updates.'}</p>
+          <Link className={styles.textLink} href="/roadmap">{tr ? 'Ürün yol haritasını gör' : 'View product roadmap'} →</Link>
         </section>
       </main>
       <Footer />
@@ -130,22 +134,26 @@ function DownloadCard({
 }) {
   if (!asset) {
     return (
-      <article style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 20 }}>
-        <p className="mono" style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 10 }}>{platform}</p>
-        <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.55 }}>{tr ? 'Bu beta sürümünde mevcut değil.' : 'Not available in this beta release.'}</p>
+      <article className={`${styles.downloadCard} ${styles.unavailable}`}>
+        <div>
+          <strong>{platform}</strong>
+          <small>{tr ? 'Bu beta sürümünde mevcut değil.' : 'Not available in this beta release.'}</small>
+        </div>
       </article>
     )
   }
 
   return (
-    <article style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 20 }}>
-      <p className="mono" style={{ color: 'var(--accent)', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>{platform}</p>
-      <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.55, marginBottom: 18 }}>{detail}</p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, marginBottom: 16 }}>
-        <TrackedDownloadLink className="aur-button aur-button-primary" href={asset.downloadUrl} platform={analyticsPlatform} releaseVersion={releaseVersion}>{tr ? 'indir' : 'download'}</TrackedDownloadLink>
-        <a className="aur-button aur-button-secondary" href={asset.checksumUrl}>SHA-256</a>
+    <article className={styles.downloadCard}>
+      <div>
+        <strong>{platform}</strong>
+        <small>{detail}</small>
+        <code className="mono">{command}</code>
       </div>
-      <p className="mono" style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.65 }}>{command}</p>
+      <div className={styles.downloadActions}>
+        <TrackedDownloadLink className={styles.downloadButton} href={asset.downloadUrl} platform={analyticsPlatform} releaseVersion={releaseVersion}>{tr ? 'İndir' : 'Download'}</TrackedDownloadLink>
+        <a className={styles.checksumLink} href={asset.checksumUrl}>SHA-256</a>
+      </div>
     </article>
   )
 }

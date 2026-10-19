@@ -1,53 +1,47 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useLocale, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
+import { AppWindow, ChevronDown, Cpu, Download, Smartphone, SquareTerminal, type LucideIcon } from "lucide-react"
 import { BrandMark } from "@/components/BrandMark"
 import { AuthNavSlot } from "@/components/auth/AuthNavSlot"
 import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 import { Link } from "@/i18n/navigation"
-import { currentEditionLabel } from "@/content/product-facts"
-import type { AppLocale } from "@/i18n/config"
 import styles from "./Nav.module.css"
 
-const SITE_LINKS = [
-  { href: "/roadmap", key: "roadmap" },
+type Product = {
+  href: string
+  name: string
+  descKey: string
+  icon: LucideIcon
+  color: string
+  soft: string
+  external?: boolean
+}
+
+const PRODUCTS: Product[] = [
+  { href: "/terminal-agent", name: "Aurict CLI", descKey: "cliDesc", icon: SquareTerminal, color: "var(--cli)", soft: "var(--cli-soft)" },
+  { href: "/downloads", name: "Hoprel", descKey: "hoprelDesc", icon: AppWindow, color: "var(--hoprel)", soft: "var(--hoprel-soft)" },
+  { href: "https://mobile.aurict.com", name: "Aurict Mobile", descKey: "mobileDesc", icon: Smartphone, color: "var(--mobile)", soft: "var(--mobile-soft)", external: true },
+  { href: "https://decision.aurict.com", name: "Aurict Decision", descKey: "decisionDesc", icon: Cpu, color: "var(--decision)", soft: "var(--decision-soft)", external: true },
+]
+
+const PRIMARY_LINKS = [
+  { href: "/terminal-agent", key: "cli" },
+  { href: "/downloads", key: "hoprel" },
   { href: "/docs", key: "docs" },
+  { href: "/blog", key: "blog" },
+]
+
+const RESOURCE_LINKS = [
+  { href: "/ai-coding-agent", key: "aiCodingAgent" },
+  { href: "/use-cases", key: "useCases" },
+  { href: "/compare", key: "compare" },
+  { href: "/roadmap", key: "roadmap" },
   { href: "/changelog", key: "changelog" },
 ]
 
-const PRODUCT_LINKS = [
-  { href: "/", key: "overview" },
-  { href: "/ai-coding-agent", key: "aiCodingAgent" },
-  { href: "/terminal-agent", key: "terminalAgent" },
-  { href: "/#surfaces", key: "surfaces" },
-  { href: "/#capabilities", key: "capabilities" },
-  { href: "/#security", key: "security" },
-  { href: "/#mobile", key: "mobile" },
-  { href: "/downloads", key: "downloadHoprel" },
-  { href: "/#install", key: "install" },
-  { href: "/#faq", key: "faq" },
-]
-
-const ECOSYSTEM_LINKS = [
-  {
-    href: "https://bondley.one",
-    label: "Bondley.one",
-    descriptions: { en: "Aurict sub-product · fixed-income intelligence", tr: "Aurict alt ürünü · sabit getirili finans zekâsı", de: "Aurict-Teilprodukt · Anleihenanalyse", fr: "Produit Aurict · analyse obligataire", es: "Producto Aurict · inteligencia de renta fija" },
-  },
-  {
-    href: "https://mobile.aurict.com",
-    label: "aurict mobile",
-    descriptions: { en: "Aurict companion · mobile workspace", tr: "Aurict companion · mobil çalışma alanı", de: "Aurict-Begleiter · mobiler Workspace", fr: "Compagnon Aurict · espace mobile", es: "Compañero Aurict · espacio móvil" },
-  },
-  {
-    href: "https://decision.aurict.com",
-    label: "Decision Engine / MicroTarget",
-    descriptions: { en: "Aurict sub-product · on-device decisions", tr: "Aurict alt ürünü · cihaz içi kararlar", de: "Aurict-Teilprodukt · lokale Entscheidungen", fr: "Produit Aurict · décisions sur l’appareil", es: "Producto Aurict · decisiones en el dispositivo" },
-  },
-]
-
-type MenuName = "product" | "ecosystem" | null
+type MenuName = "products" | "resources" | null
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false)
@@ -55,7 +49,6 @@ export function Nav() {
   const [activeMenu, setActiveMenu] = useState<MenuName>(null)
   const navRef = useRef<HTMLElement>(null)
   const t = useTranslations("Nav")
-  const locale = useLocale() as AppLocale
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
@@ -98,56 +91,45 @@ export function Nav() {
     <>
       <nav
         aria-label="Primary navigation"
-        className={`${styles.nav} mono ${scrolled || menuOpen ? styles.navElevated : ""}`}
+        className={`${styles.nav} ${scrolled || menuOpen ? styles.navElevated : ""}`}
         ref={navRef}
       >
         <div className={styles.frame}>
-          <div className={styles.identity}>
-            <BrandMark compact />
-            <span className={styles.edition}>{currentEditionLabel} · AGPLv3</span>
-          </div>
+          <BrandMark />
 
           <div className={styles.desktopNav}>
             <NavMenu
-              active={activeMenu === "product"}
-              label={t("product")}
-              onToggle={() => setActiveMenu((menu) => menu === "product" ? null : "product")}
+              active={activeMenu === "products"}
+              label={t("products")}
+              onToggle={() => setActiveMenu((menu) => menu === "products" ? null : "products")}
             >
-              <div className={styles.productGrid}>
-                {PRODUCT_LINKS.map((link, index) => (
-                  <Link className={styles.menuItem} href={link.href} key={link.href} onClick={closeMenus}>
-                    <span className={styles.itemIndex}>{String(index + 1).padStart(2, "0")}</span>
-                    <span>{t(link.key)}</span>
-                  </Link>
-                ))}
+              <div className={styles.productPanel}>
+                {PRODUCTS.map((product) => <ProductLink key={product.name} onClick={closeMenus} product={product} t={t} />)}
               </div>
             </NavMenu>
-            <NavMenu
-              active={activeMenu === "ecosystem"}
-              label={t("ecosystem")}
-              onToggle={() => setActiveMenu((menu) => menu === "ecosystem" ? null : "ecosystem")}
-            >
-              <div className={styles.ecosystemPanel}>
-                <span className={styles.panelLabel}>{t("ecosystem")}</span>
-                {ECOSYSTEM_LINKS.map((link) => (
-                  <a className={styles.ecosystemLink} href={link.href} key={link.href} onClick={closeMenus} rel="noopener noreferrer" target="_blank">
-                    <span className={styles.ecosystemLinkText}>
-                      <strong>{link.label}</strong>
-                      <small>{link.descriptions[locale]}</small>
-                    </span>
-                    <span aria-hidden="true">↗</span>
-                  </a>
-                ))}
-              </div>
-            </NavMenu>
-            {SITE_LINKS.map((link) => (
-              <Link className={styles.siteLink} href={link.href} key={link.href}>{t(link.key)}</Link>
+            {PRIMARY_LINKS.map((link) => (
+              <Link className={styles.siteLink} href={link.href} key={link.key}>{t(link.key)}</Link>
             ))}
+            <NavMenu
+              active={activeMenu === "resources"}
+              label={t("resources")}
+              onToggle={() => setActiveMenu((menu) => menu === "resources" ? null : "resources")}
+            >
+              <div className={styles.resourcePanel}>
+                {RESOURCE_LINKS.map((link) => (
+                  <Link className={styles.resourceLink} href={link.href} key={link.key} onClick={closeMenus}>{t(link.key)}</Link>
+                ))}
+              </div>
+            </NavMenu>
           </div>
 
           <div className={styles.controls}>
             <LocaleSwitcher />
             <AuthNavSlot />
+            <Link className={styles.cta} href="/downloads">
+              <Download aria-hidden="true" size={16} strokeWidth={2.4} />
+              {t("download")}
+            </Link>
           </div>
 
           <button
@@ -164,32 +146,45 @@ export function Nav() {
       </nav>
 
       {menuOpen && (
-        <div className={`${styles.drawer} mono`}>
-          <DrawerGroup label={t("product")}>
-            {PRODUCT_LINKS.map((link) => <Link href={link.href} key={link.href} onClick={closeMenus}>{t(link.key)}</Link>)}
-          </DrawerGroup>
-          <DrawerGroup label={t("ecosystem")}>
-            {ECOSYSTEM_LINKS.map((link) => (
-              <a className={styles.drawerEcosystemLink} href={link.href} key={link.href} onClick={closeMenus} rel="noopener noreferrer" target="_blank">
-                <span className={styles.ecosystemLinkText}>
-                  <strong>{link.label}</strong>
-                  <small>{link.descriptions[locale]}</small>
-                </span>
-                <span aria-hidden="true">↗</span>
-              </a>
-            ))}
+        <div className={styles.drawer}>
+          <DrawerGroup label={t("products")}>
+            {PRODUCTS.map((product) => <ProductLink key={product.name} onClick={closeMenus} product={product} t={t} />)}
           </DrawerGroup>
           <DrawerGroup label={t("site")}>
-            {SITE_LINKS.map((link) => <Link href={link.href} key={link.href} onClick={closeMenus}>{t(link.key)}</Link>)}
+            {[...PRIMARY_LINKS, ...RESOURCE_LINKS].map((link) => <Link className={styles.drawerLink} href={link.href} key={`${link.key}-${link.href}`} onClick={closeMenus}>{t(link.key)}</Link>)}
           </DrawerGroup>
           <div className={styles.drawerControls}>
             <LocaleSwitcher />
             <AuthNavSlot drawer />
           </div>
+          <Link className={`${styles.cta} ${styles.drawerCta}`} href="/downloads" onClick={closeMenus}>
+            <Download aria-hidden="true" size={16} strokeWidth={2.4} />
+            {t("download")}
+          </Link>
         </div>
       )}
     </>
   )
+}
+
+function ProductLink({ onClick, product, t }: { onClick: () => void; product: Product; t: ReturnType<typeof useTranslations> }) {
+  const Icon = product.icon
+  const body = (
+    <>
+      <span className={styles.productIcon} style={{ background: product.soft, color: product.color }}>
+        <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
+      </span>
+      <span className={styles.productText}>
+        <strong>{product.name}</strong>
+        <small>{t(product.descKey)}</small>
+      </span>
+      {product.external && <span aria-hidden="true" className={styles.external}>↗</span>}
+    </>
+  )
+
+  return product.external
+    ? <a className={styles.productLink} href={product.href} onClick={onClick} rel="noopener noreferrer" target="_blank">{body}</a>
+    : <Link className={styles.productLink} href={product.href} onClick={onClick}>{body}</Link>
 }
 
 function NavMenu({ active, children, label, onToggle }: {
@@ -202,7 +197,7 @@ function NavMenu({ active, children, label, onToggle }: {
     <div className={styles.menuWrap}>
       <button aria-expanded={active} className={styles.menuTrigger} onClick={onToggle} type="button">
         {label}
-        <span aria-hidden="true" className={styles.chevron}>⌄</span>
+        <ChevronDown aria-hidden="true" className={styles.chevron} size={15} strokeWidth={2.4} />
       </button>
       {active && <div className={styles.menuPanel}>{children}</div>}
     </div>

@@ -17,7 +17,7 @@ export default async function NotFound() {
 
   return (
     <main className="lost-route" aria-labelledby="lost-route-title">
-      <div className="lost-route-top"><BrandMark compact /></div>
+      <div className="lost-route-top"><BrandMark /></div>
       <div className="lost-route-mark" aria-hidden="true">
         <span className="lost-route-wing lost-route-wing-left" />
         <span className="lost-route-core">▊</span>

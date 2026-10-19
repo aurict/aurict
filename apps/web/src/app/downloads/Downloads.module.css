@@ -1,0 +1,376 @@
+.page {
+  padding: 28px 0 0;
+}
+
+.shell {
+  width: min(100% - 48px, 1200px);
+  margin: 0 auto;
+}
+
+.eyebrow {
+  margin-bottom: 12px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 48px;
+  align-items: center;
+  padding: 36px 0 56px;
+}
+
+.hero h1 {
+  color: var(--text);
+  font-size: clamp(40px, 6vw, 76px);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.lede {
+  max-width: 560px;
+  margin: 18px 0 26px;
+  color: var(--text-dim);
+  font-size: 19px;
+  line-height: 1.55;
+}
+
+.release {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 4px rgb(31 138 76 / 0.15);
+}
+
+.downloadList {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.downloadCard {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.downloadCard > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.downloadCard strong {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.downloadCard small {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.downloadCard code {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.unavailable {
+  opacity: 0.7;
+  box-shadow: none;
+}
+
+.downloadActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+}
+
+.downloadButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  color: var(--accent-ink);
+  background: var(--accent);
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.downloadButton:hover {
+  background: var(--accent-hover);
+}
+
+.checksumLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-bright);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.textLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.heroArt {
+  display: flex;
+  justify-content: center;
+}
+
+.heroArt img {
+  width: min(100%, 360px);
+  height: auto;
+  filter: drop-shadow(0 40px 50px rgb(201 53 43 / 0.28));
+}
+
+.pending {
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+}
+
+.pendingLabel,
+.noticeLabel {
+  margin-bottom: 10px;
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pending h2 {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.pending p {
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.notice {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 72px;
+  padding: 26px 28px;
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+  border-radius: var(--radius-card);
+  background: #fff8ec;
+}
+
+.notice p:not(.noticeLabel) {
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.cliBand {
+  padding: 88px 0;
+  background: var(--bg-alt);
+}
+
+.cliLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+
+.cliLayout h2 {
+  color: var(--text);
+  font-size: clamp(36px, 4.6vw, 58px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.tabs {
+  max-width: 560px;
+}
+
+.tabList {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+}
+
+.tab {
+  flex: 1;
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text-dim);
+  background: transparent;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  color: var(--accent-ink);
+  background: var(--ink);
+}
+
+.tabPanel :global(.copy-command) {
+  margin-bottom: 10px;
+  border-radius: 16px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.tabPanel p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.checksums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 12px;
+}
+
+.steps {
+  display: grid;
+  gap: 12px;
+}
+
+.steps h3 {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.steps article {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-card);
+}
+
+.steps span {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.steps code {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.steps p {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.store {
+  padding: 72px 0 96px;
+}
+
+.store h2 {
+  margin-bottom: 10px;
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.store > p:not(.eyebrow) {
+  max-width: 640px;
+  color: var(--text-dim);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+@media (max-width: 960px) {
+  .hero,
+  .cliLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .heroArt {
+    order: -1;
+  }
+
+  .heroArt img {
+    width: 200px;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    width: min(100% - 32px, 1200px);
+  }
+
+  .downloadCard {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .downloadActions .downloadButton {
+    flex: 1;
+    justify-content: center;
+  }
+}

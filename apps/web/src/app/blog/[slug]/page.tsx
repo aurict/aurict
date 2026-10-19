@@ -65,7 +65,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           </header>
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {post.content.map((block, index) => {
-              if (block.type === "heading") return <h2 key={index} style={{ fontFamily: "var(--font-serif)", fontSize: 28, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.01em", marginTop: 20 }}>{block.text}</h2>
+              if (block.type === "heading") return <h2 key={index} style={{ fontFamily: "var(--font-sans)", fontSize: 28, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.01em", marginTop: 20 }}>{block.text}</h2>
               if (block.type === "paragraph") return <p key={index} className="marketing-copy">{block.text}</p>
               if (block.type === "code") return <CodeBlock key={index} code={block.text ?? ""} language={block.language} />
               return <ul key={index} className="marketing-list">{block.items?.map((item) => <li key={item}>{item}</li>)}</ul>
@@ -74,7 +74,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           {!tr && (
             <aside className="marketing-card" style={{ marginTop: 48, padding: "26px 28px" }}>
               <p className="marketing-eyebrow" style={{ marginBottom: 10 }}>open-source terminal agent</p>
-              <h2 style={{ color: "var(--text)", fontFamily: "var(--font-serif)", fontSize: 25, marginBottom: 10 }}>Run the workflow in your own terminal.</h2>
+              <h2 style={{ color: "var(--text)", fontFamily: "var(--font-sans)", fontSize: 25, marginBottom: 10 }}>Run the workflow in your own terminal.</h2>
               <p className="marketing-copy" style={{ marginBottom: 18 }}>Explore how Aurict combines repository context, specialist agents, model-provider choice, explicit approvals, and verification in an inspectable terminal runtime.</p>
               <Link href="/terminal-agent" style={{ color: "var(--accent)", fontFamily: "var(--font-mono)", fontSize: 13, textDecoration: "none" }}>Explore the open-source terminal agent →</Link>
             </aside>

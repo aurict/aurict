@@ -25,7 +25,19 @@
     "changelog": "değişiklikler",
     "site": "site",
     "openMenu": "Menüyü aç",
-    "closeMenu": "Menüyü kapat"
+    "closeMenu": "Menüyü kapat",
+    "products": "ürünler",
+    "resources": "kaynaklar",
+    "cli": "CLI",
+    "hoprel": "Hoprel",
+    "blog": "blog",
+    "download": "İndir",
+    "compare": "karşılaştır",
+    "useCases": "kullanım örnekleri",
+    "cliDesc": "Açık kaynak terminal yapay zekâ kodlama ajanı",
+    "hoprelDesc": "Yerel öncelikli masaüstü yapay zekâ ajan çalışma alanı",
+    "mobileDesc": "Tüketici uygulamaları ve oyunlar stüdyomuz",
+    "decisionDesc": "10 ms altında, cihaz içinde gizli kararlar"
   },
   "Footer": {
     "product": "ürün",
@@ -43,7 +55,9 @@
     "legal": "yasal",
     "privacy": "gizlilik",
     "terms": "koşullar",
-    "openSource": "açık kaynak"
+    "openSource": "açık kaynak",
+    "resources": "kaynaklar",
+    "tagline": "Tek şirket. Bağlantılı ürünler. Senin etrafında tasarlandı."
   },
   "Auth": {
     "login": "giriş yap",

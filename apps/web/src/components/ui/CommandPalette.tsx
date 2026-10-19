@@ -86,7 +86,7 @@ export function CommandPalette() {
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.7)",
+          background: "rgb(23 17 15 / 0.45)",
           backdropFilter: "blur(4px)",
           zIndex: 1000,
         }}
@@ -105,7 +105,7 @@ export function CommandPalette() {
           background: "var(--bg-card)",
           border: "1px solid var(--border)",
           borderRadius: 12,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          boxShadow: "0 24px 70px rgb(23 17 15 / 0.18)",
           zIndex: 1001,
           display: "flex",
           flexDirection: "column",

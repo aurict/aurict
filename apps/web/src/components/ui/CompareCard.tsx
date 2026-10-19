@@ -23,11 +23,11 @@ export function CompareCard({ slug, competitor, tagline, description, differenti
           position: "relative",
         }}
       >
-        <span className="mono aur-corner" style={{ position: "absolute", top: 8, left: 8, color: "oklch(1 0 0/.18)" }}>┌</span>
+        <span className="mono aur-corner" style={{ position: "absolute", top: 8, left: 8, color: "rgb(23 17 15 / .18)" }}>┌</span>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              <h2 style={{ fontFamily: "var(--font-serif)", fontSize: 22, fontWeight: 600, color: "var(--text)", margin: 0 }}>
+              <h2 style={{ fontFamily: "var(--font-sans)", fontSize: 22, fontWeight: 600, color: "var(--text)", margin: 0 }}>
                 Aurict {tr ? "ve" : "vs"} {competitor}
               </h2>
               <span
@@ -42,7 +42,7 @@ export function CompareCard({ slug, competitor, tagline, description, differenti
             <p className="mono" style={{ fontSize: 12.5, color: "var(--text-muted)", margin: 0, marginBottom: 8 }}>
               {tagline}
             </p>
-            <p style={{ fontFamily: "var(--font-serif)", fontSize: 15.5, color: "var(--text-dim)", lineHeight: 1.62, margin: 0 }}>
+            <p style={{ fontFamily: "var(--font-sans)", fontSize: 15.5, color: "var(--text-dim)", lineHeight: 1.62, margin: 0 }}>
               {description}
             </p>
           </div>

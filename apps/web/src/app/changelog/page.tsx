@@ -23,10 +23,10 @@ const breadcrumbJsonLd = {
 }
 
 const TYPE_STYLE: Record<string, { label: string; color: string; bg: string }> = {
-  new:  { label: "New",  color: "#4eba65", bg: "rgba(78,186,101,0.1)" },
-  fix:  { label: "Fix",  color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
-  break: { label: "Breaking", color: "#ff6b6b", bg: "rgba(255,107,107,0.1)" },
-  perf: { label: "Perf", color: "#818cf8", bg: "rgba(129,140,248,0.1)" },
+  new:  { label: "New",  color: "#1f8a4c", bg: "rgba(78,186,101,0.1)" },
+  fix:  { label: "Fix",  color: "#b45309", bg: "rgba(245,158,11,0.1)" },
+  break: { label: "Breaking", color: "#c62828", bg: "rgba(255,107,107,0.1)" },
+  perf: { label: "Perf", color: "#4f46e5", bg: "rgba(129,140,248,0.1)" },
 }
 
 export default async function ChangelogPage() {
@@ -129,7 +129,7 @@ export default async function ChangelogPage() {
                       >
                         {typeLabel}
                       </span>
-                      <p style={{ fontFamily: "var(--font-serif)", fontSize: 15, color: "var(--text-dim)", lineHeight: 1.62 }}>
+                      <p style={{ fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--text-dim)", lineHeight: 1.62 }}>
                         {change.text}
                       </p>
                     </div>

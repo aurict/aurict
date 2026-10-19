@@ -50,8 +50,8 @@ export function AuthNavSlot({ drawer = false }: { drawer?: boolean }) {
       </>
     ) : (
       <>
-        <Link className="mono landing-nav-link" href="/login">{t("login")}</Link>
-        <Link className="mono landing-primary-link" href="/register">{t("register")} →</Link>
+        <Link className="landing-nav-link" href="/login">{t("login")}</Link>
+        <Link className="landing-primary-link" href="/register">{t("register")}</Link>
       </>
     )
   }

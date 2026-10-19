@@ -60,8 +60,8 @@ export default async function DocsPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
                   {section.content.map((item) => (
                     <article key={item.heading} className="marketing-card" style={{ padding: "24px 26px", position: "relative" }}>
-                      <span className="mono aur-corner" style={{ position: "absolute", top: 8, left: 8, color: "oklch(1 0 0/.18)" }}>┌</span>
-                      <h3 style={{ fontFamily: "var(--font-serif)", fontSize: 22, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>{item.heading}</h3>
+                      <span className="mono aur-corner" style={{ position: "absolute", top: 8, left: 8, color: "rgb(23 17 15 / .18)" }}>┌</span>
+                      <h3 style={{ fontFamily: "var(--font-sans)", fontSize: 22, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>{item.heading}</h3>
                       <p className="marketing-copy" style={{ marginBottom: 14, whiteSpace: "pre-wrap" }}>{item.body}</p>
                       <pre className="marketing-code"><code>{item.code}</code></pre>
                     </article>
