@@ -88,6 +88,14 @@ export const zh = {
 			title: `Duckley 隐私政策`,
 			body: `Duckley 应用的隐私政策。`,
 		},
+		deleteJelly: {
+			title: `删除 Jelly Paradox 账户`,
+			body: `删除你的 Jelly Paradox 账户和游戏数据。`,
+		},
+		jellyPrivacy: {
+			title: `Jelly Paradox 隐私政策`,
+			body: `Jelly Paradox 游戏的隐私政策。`,
+		},
 		terms: {
 			title: `服务条款`,
 			body: `使用我们的应用和本网站的规则。`,

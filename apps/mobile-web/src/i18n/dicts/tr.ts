@@ -88,6 +88,14 @@ export const tr = {
 			title: `Duckley gizlilik politikası`,
 			body: `Duckley uygulamasının gizlilik politikası.`,
 		},
+		deleteJelly: {
+			title: `Jelly Paradox hesabını sil`,
+			body: `Jelly Paradox hesabını ve oyun verilerini kaldır.`,
+		},
+		jellyPrivacy: {
+			title: `Jelly Paradox gizlilik politikası`,
+			body: `Jelly Paradox oyununun gizlilik politikası.`,
+		},
 		terms: {
 			title: `Hizmet şartları`,
 			body: `Uygulamalarımızı ve bu siteyi kullanma kuralları.`,
