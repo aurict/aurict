@@ -104,7 +104,7 @@ try {
 }
 profileCheckpoint("flags_parsed")
 
-/** Resolves the signed backend token only for runs that may call Aurict modules. */
+/** Resolves the signed backend token only for runs that may call Aurict API tools. */
 async function resolveBackendAccessToken(signal?: AbortSignal): Promise<string | undefined> {
   const [{ ensureAccessToken }, { RemoteApiError }] = await Promise.all([
     import("./remote/auth.js"),

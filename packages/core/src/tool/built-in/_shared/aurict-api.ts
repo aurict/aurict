@@ -1,20 +1,13 @@
 import type { ToolContext } from "../../types.js"
 
 /**
- * bonds/rates/legal tool'larının ortak HTTP client'ı.
+ * Aurict backend'ini çağıran tool'ların (legal) ortak HTTP client'ı.
  *
- * bonds ve rates gateway'in (modules.aurict.com) arkasında — auth orada
- * yapılır. legal aurict-backend'in içinde bir modül, gateway'in arkasında
- * DEĞİL — kendi requireAuth middleware'iyle doğrulanır. İkisi de AYNI
- * Aurict access token'ını kabul eder (backend'in Ed25519-imzalı JWT'si),
- * sadece base URL farklı.
+ * İstekler backend'in Ed25519-imzalı JWT access token'ıyla doğrulanır.
  */
 
-const DEFAULT_MODULES_URL = "https://modules.aurict.com"
 const DEFAULT_BACKEND_URL = "https://api.aurict.com"
 const REQUEST_TIMEOUT_MS = 15_000
-
-export type AurictApiTarget = "modules" | "backend"
 
 export type AurictApiRequestOptions = {
   method?: "GET" | "POST"
@@ -24,18 +17,16 @@ export type AurictApiRequestOptions = {
 export type AurictApiResult<T> =
   | { kind: "success"; data: T }
   | { kind: "not_authenticated" }
-  | { kind: "authorization_rejected"; target: AurictApiTarget }
+  | { kind: "authorization_rejected" }
   | { kind: "unavailable"; detail: string }
   | { kind: "error"; status: number; detail: string }
 
-function baseUrlFor(target: AurictApiTarget): string {
-  if (target === "modules") return (process.env["AURICT_MODULES_URL"]?.trim() || DEFAULT_MODULES_URL)
+function baseUrl(): string {
   return process.env["AURICT_BACKEND_URL"]?.trim() || DEFAULT_BACKEND_URL
 }
 
 export async function callAurictApi<T>(
   ctx: ToolContext,
-  target: AurictApiTarget,
   path: string,
   options: AurictApiRequestOptions = {},
 ): Promise<AurictApiResult<T>> {
@@ -63,14 +54,14 @@ export async function callAurictApi<T>(
 
   let response: Response
   try {
-    response = await fetch(new URL(path, baseUrlFor(target)), request)
+    response = await fetch(new URL(path, baseUrl()), request)
   } catch (error) {
     return { kind: "unavailable", detail: error instanceof Error ? error.message : String(error) }
   } finally {
     clearTimeout(timer)
   }
 
-  if (response.status === 401) return { kind: "authorization_rejected", target }
+  if (response.status === 401) return { kind: "authorization_rejected" }
   if (response.status === 502 || response.status === 503 || response.status === 504) {
     return { kind: "unavailable", detail: `HTTP ${response.status}` }
   }
@@ -89,7 +80,7 @@ export async function callAurictApi<T>(
   return { kind: "success", data: body as T }
 }
 
-/** bonds/rates (FastAPI, `{"detail": "..."}`) ve legal (Hono, `{"error":{"message":"..."}}`) hata şekillerini normalize eder. */
+/** FastAPI (`{"detail": "..."}`) ve Hono (`{"error":{"message":"..."}}`) hata şekillerini normalize eder. */
 function extractErrorDetail(body: unknown, status: number): string {
   if (typeof body === "object" && body !== null) {
     const record = body as Record<string, unknown>
@@ -109,7 +100,7 @@ export function describeAurictApiFailure(result: Exclude<AurictApiResult<unknown
     case "not_authenticated":
       return "Kullanıcı Aurict hesabına giriş yapmamış (veya oturumun süresi dolmuş). Bu veriye erişmek için önce giriş yapması gerekiyor — kullanıcıya bunu açıkça söyle, veriyi uydurma."
     case "authorization_rejected":
-      return `Kullanıcı Aurict hesabında oturum açmış görünüyor, ancak ${result.target === "modules" ? "veri servisi" : "Aurict API"} bu oturum belirtecini HTTP 401 ile reddetti. Bu, giriş yapılmadığı anlamına gelmez; servis tarafındaki belirteç doğrulaması veya yetki yapılandırması incelenmeli.`
+      return `Kullanıcı Aurict hesabında oturum açmış görünüyor, ancak Aurict API bu oturum belirtecini HTTP 401 ile reddetti. Bu, giriş yapılmadığı anlamına gelmez; servis tarafındaki belirteç doğrulaması veya yetki yapılandırması incelenmeli.`
     case "unavailable":
       return `Veri servisine şu an ulaşılamıyor (${result.detail}). Kullanıcıya servisin geçici olarak erişilemez olduğunu söyle, aynı sorguyu art arda tekrar deneme.`
     case "error":

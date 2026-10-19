@@ -7,7 +7,7 @@ import type { TaskContext } from "../src/context/types.js"
 describe("capability tool routing", () => {
   const available = [
     "read", "grep", "edit", "bash", "verify", "websearch", "git",
-    "security_scan", "calculator", "document_extract", "mcp_acme_query",
+    "security_scan", "calculator", "render_pdf", "mcp_acme_query",
   ]
 
   it("keeps the core surface and activates intent packs without exceeding the limit", () => {
@@ -41,7 +41,7 @@ describe("capability tool routing", () => {
       maxVisible: 20,
     })
     expect(selection.capabilities).toEqual(expect.arrayContaining(["security", "document", "research"]))
-    expect(selection.selectedToolIds).toEqual(expect.arrayContaining(["security_scan", "document_extract", "websearch"]))
+    expect(selection.selectedToolIds).toEqual(expect.arrayContaining(["security_scan", "render_pdf", "websearch"]))
   })
 
   it("request_tools records a durable capability request in task context", async () => {

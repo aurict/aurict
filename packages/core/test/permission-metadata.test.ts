@@ -4,7 +4,7 @@ import { join } from "path"
 import { mkdirSync, rmSync } from "fs"
 import { executeTool, ExecutorEvents, PermissionGate, PermissionStore } from "../src/index.js"
 import { bashTool } from "../src/tool/built-in/bash.js"
-import { marketDataTool } from "../src/tool/built-in/market-data.js"
+import { legalSearchTool } from "../src/tool/built-in/legal-search.js"
 import { writeTool } from "../src/tool/built-in/write.js"
 import type { PermissionRequest } from "../src/index.js"
 
@@ -100,7 +100,7 @@ describe("permission request metadata", () => {
     expect(result.error).toContain("Level: warning")
   })
 
-  it("marks low-risk Aurict Modules requests safe for desktop auto-approval", async () => {
+  it("marks low-risk Aurict API requests safe for desktop auto-approval", async () => {
     let seen: PermissionRequest | null = null
     const off = ExecutorEvents.on((event) => {
       seen = event.request
@@ -108,8 +108,8 @@ describe("permission request metadata", () => {
     })
 
     const result = await executeTool(
-      marketDataTool,
-      { action: "tlref_latest" },
+      legalSearchTool,
+      { action: "get_unit", unitId: "unit-1" },
       {
         workdir: tmpdir(),
         sessionId: "test",
@@ -120,7 +120,7 @@ describe("permission request metadata", () => {
     off()
 
     expect(result.error).toContain("Permission denied by user")
-    expect(seen?.tool).toBe("market_data")
+    expect(seen?.tool).toBe("legal_search")
     expect(seen?.level).toBe("safe")
   })
 

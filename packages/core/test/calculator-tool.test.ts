@@ -32,7 +32,7 @@ describe('calculator tool', () => {
   it('routes finance conversations to the calculator instead of a formula tool', () => {
     const selection = selectTools({
       text: 'Calculate the return on this tahvil investment',
-      availableToolIds: ['read', 'grep', 'calculator', 'market_data'],
+      availableToolIds: ['read', 'grep', 'calculator'],
     })
 
     expect(selection.selectedToolIds).toContain('calculator')

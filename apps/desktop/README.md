@@ -99,11 +99,11 @@ trail, latest audit, status, and timestamps. The left rail creates, resumes,
 and removes local finance conversations; workspace sessions remain separate.
 Finance Desk follows the desktop application's English interface language.
 
-The built-in `finance` agent reserves `market_data` and `calculator` on every
-Finance Desk turn. It determines and explains the formula itself, then uses
-`calculator` for every non-trivial numeric step; there is no financial-formula
-tool. `market_data` supplies BIST/TLREF data when appropriate. This is
-analytical output, not personalized financial advice.
+The built-in `finance` agent reserves `calculator` on every Finance Desk turn.
+It determines and explains the formula itself, then uses `calculator` for every
+non-trivial numeric step; there is no financial-formula tool. BIST/TLREF data
+comes from primary sources through web research. This is analytical output, not
+personalized financial advice.
 
 Every response must finish with a structured audit record. Its HTTP(S) source
 URLs, publication/access dates, data-as-of date, assumptions, and

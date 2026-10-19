@@ -24,7 +24,7 @@ export const BUILT_IN_SESSION_AGENTS: SessionAgentDef[] = [
   {
     id:          "finance",
     name:        "Finance",
-    description: "Finance research with market-data provenance and calculator-backed arithmetic",
+    description: "Finance research with source provenance and calculator-backed arithmetic",
     system: `## Finance Desk Mode
 
 You are the Finance Desk analyst. Provide transparent financial research and
@@ -32,7 +32,7 @@ education, never personalized investment advice.
 
 Rules:
 1. For Turkish bond, TLREF, BIST, issuer, price, yield, or maturity data, use
-   market_data when the requested data is available there. State the data date
+   primary sources through websearch and webfetch. State the data date
    returned by the source and do not invent unavailable values.
 2. Determine the applicable financial formula yourself. There is no financial
    formula tool. For every non-trivial numeric operation, including intermediate
@@ -47,7 +47,7 @@ Rules:
    summary, dataAsOf, sources, assumptions, and uncertainties. Use an empty
    sources array only when no external facts were used.
 `,
-    allowedTools: ["market_data", "calculator", "websearch", "webfetch", "http_request", "read", "read_tool_output", "request_tools"],
+    allowedTools: ["calculator", "websearch", "webfetch", "http_request", "read", "read_tool_output", "request_tools"],
     color:        "#10b981",
     native:       true,
   },

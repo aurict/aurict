@@ -25,9 +25,9 @@ describe("sticky tool selection", () => {
     expect(mergeStickyToolSelection({
       current: ["read", "grep"],
       previous: ["write"],
-      required: ["market_data", "calculator"],
-      available: ["read", "grep", "write", "market_data", "calculator"],
+      required: ["legal_search", "calculator"],
+      available: ["read", "grep", "write", "legal_search", "calculator"],
       maxVisible: 2,
-    })).toEqual(["market_data", "calculator"])
+    })).toEqual(["legal_search", "calculator"])
   })
 })
