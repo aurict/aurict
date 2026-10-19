@@ -1,15 +1,9 @@
-/* ============================================================
-   Nav.module.css — Aurict Decision
-   Aurict nav pattern adapted for Aurict Decision
-   ============================================================ */
-
-/* ── Bar ─────────────────────────────────────────────────── */
 .nav {
   position: sticky;
   top: 0;
   z-index: 80;
   width: 100%;
-  background: color-mix(in oklch, var(--bg) 82%, transparent);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid transparent;
@@ -18,282 +12,220 @@
 
 .elevated {
   border-bottom-color: var(--border);
-  background: color-mix(in oklch, var(--bg) 94%, transparent);
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
 }
 
 .frame {
-  width: min(100% - 48px, 1400px);
-  margin: 0 auto;
-  min-height: 58px;
-  display: grid;
-  grid-template-columns: minmax(200px, 1fr) auto minmax(200px, 1fr);
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
+  width: min(100% - 48px, 1320px);
+  min-height: 76px;
+  margin: 0 auto;
 }
 
-/* ── Identity ─────────────────────────────────────────────── */
-.identity {
+.desktopNav,
+.controls {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
-.edition {
-  padding-left: 10px;
-  border-left: 1px solid var(--border);
-  color: var(--accent);
-  font: 9px var(--font-mono), "IBM Plex Mono", monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-/* ── Desktop nav ─────────────────────────────────────────── */
 .desktopNav {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  justify-content: center;
+  gap: 4px;
 }
 
-.siteLink {
+.controls {
+  gap: 14px;
+}
+
+.siteLink,
+.trigger {
   display: inline-flex;
   align-items: center;
-  padding: 6px 13px;
-  border-radius: 4px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
   color: var(--text-dim);
-  font: 12px var(--font-mono), "IBM Plex Mono", monospace;
+  background: transparent;
+  font: 600 15px/1 var(--font-sans);
   text-decoration: none;
-  border: 1px solid transparent;
-  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease;
 }
 
-.siteLink:hover {
+.siteLink:hover,
+.trigger:hover,
+.trigger[aria-expanded="true"] {
   color: var(--text);
-  background: oklch(1 0 0 / 0.04);
-  border-color: var(--border);
+  background: rgb(15 35 39 / 0.05);
 }
 
-/* ── Dropdown trigger ────────────────────────────────────── */
+.chevron {
+  margin-left: 4px;
+  transition: transform 160ms ease;
+}
+
+.trigger[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
 .menuWrap {
   position: relative;
 }
 
-.trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 13px;
-  border-radius: 4px;
-  color: var(--text-dim);
-  font: 12px var(--font-mono), "IBM Plex Mono", monospace;
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
-}
-
-.trigger:hover {
-  color: var(--text);
-  background: oklch(1 0 0 / 0.04);
-  border-color: var(--border);
-}
-
-.chevron {
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-/* ── Dropdown panel ──────────────────────────────────────── */
 .panel {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
-  min-width: 460px;
-  padding: 20px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
   background: var(--bg-card);
-  border: 1px solid var(--border-bright);
-  border-radius: 10px;
-  box-shadow: var(--shadow-soft);
-  animation: rise-in 0.14s ease-out both;
+  box-shadow: var(--shadow-hard);
 }
 
-.panelNarrow {
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(190px, 1fr));
+  gap: 2px;
+}
+
+.panelNarrow .siteGrid {
+  display: grid;
   min-width: 220px;
 }
 
-.panelLabel {
-  display: block;
-  margin-bottom: 14px;
-  color: var(--text-muted);
-  font: 9px var(--font-mono), "IBM Plex Mono", monospace;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-/* ── Product grid ────────────────────────────────────────── */
-.productGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
 .menuItem {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 9px 12px;
-  border-radius: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 600;
   text-decoration: none;
-  border: 1px solid transparent;
-  transition: background 0.16s ease, border-color 0.16s ease;
 }
 
 .menuItem:hover {
-  background: color-mix(in oklch, var(--accent) 8%, transparent);
-  border-color: color-mix(in oklch, var(--accent) 18%, transparent);
-}
-
-.itemIndex {
-  color: var(--text-muted);
-  font: 9px var(--font-mono), "IBM Plex Mono", monospace;
-  flex-shrink: 0;
-  min-width: 18px;
-  padding-top: 2px;
-}
-
-.menuItem > span:last-child {
   color: var(--text);
-  font: 13px var(--font-mono), "IBM Plex Mono", monospace;
+  background: var(--bg-alt);
 }
 
-/* ── Site grid ───────────────────────────────────────────── */
-.siteGrid {
-  display: grid;
-  gap: 2px;
-}
-
-.siteItem {
-  display: block;
-  padding: 8px 10px;
-  border-radius: 4px;
-  color: var(--text-dim);
-  text-decoration: none;
-  font: 13px var(--font-mono), "IBM Plex Mono", monospace;
-  border: 1px solid transparent;
-  transition: background 0.16s ease, color 0.16s ease;
-}
-
-.siteItem:hover {
-  background: color-mix(in oklch, var(--accent) 7%, transparent);
-  color: var(--text);
-}
-
-/* ── Controls ────────────────────────────────────────────── */
-.controls {
-  display: flex;
+.cta {
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  color: var(--accent-ink);
+  background: var(--accent);
+  box-shadow: 0 8px 22px rgb(11 123 134 / 0.28);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 160ms ease, transform 160ms ease;
 }
 
-/* ── Mobile burger ───────────────────────────────────────── */
+.cta:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.byAurict {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.byAurict:hover {
+  color: var(--text);
+}
+
+.aurictDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--aurict-red);
+}
+
 .burger {
   display: none;
   flex-direction: column;
-  gap: 5px;
-  padding: 8px;
+  justify-content: center;
+  gap: 6px;
+  width: 44px;
+  height: 44px;
+  padding: 0 11px;
+  border: 0;
   background: transparent;
-  border: 1px solid var(--border-bright);
-  border-radius: 4px;
   cursor: pointer;
-  transition: border-color 0.2s ease;
 }
-
-.burger:hover { border-color: color-mix(in oklch, var(--accent) 50%, transparent); }
 
 .burger span {
   display: block;
-  width: 16px;
-  height: 1.5px;
-  background: var(--text-dim);
-  border-radius: 1px;
-  transition: transform 0.2s ease;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text);
 }
 
-/* ── Mobile drawer ───────────────────────────────────────── */
 .drawer {
   position: fixed;
-  inset: 0;
-  z-index: 90;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
+  z-index: 79;
+  top: 76px;
+  right: 0;
+  left: 0;
+  display: grid;
+  gap: 20px;
+  max-height: calc(100vh - 76px);
   overflow-y: auto;
-  padding: 24px min(24px, 5vw) 40px;
-  animation: rise-in 0.18s ease-out both;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 72px; /* account for nav height */
+  padding: 18px 20px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
 }
 
 .drawerGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 20px;
+  display: grid;
 }
 
 .drawerGroupLabel {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-  font: 9px var(--font-mono), "IBM Plex Mono", monospace;
-  letter-spacing: 0.07em;
+  padding: 0 4px 8px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .drawerGroup a {
-  display: block;
-  padding: 9px 10px;
-  border-radius: 4px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border);
   color: var(--text-dim);
-  font: 14px var(--font-serif), Georgia, serif;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   text-decoration: none;
-  border: 1px solid transparent;
-  transition: background 0.16s ease, color 0.16s ease;
-}
-
-.drawerGroup a:hover {
-  background: color-mix(in oklch, var(--accent) 8%, transparent);
-  color: var(--text);
 }
 
 .drawerControls {
-  margin-top: auto;
-  padding-top: 24px;
-  border-top: 1px solid var(--border);
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
 }
 
-/* ── Responsive ──────────────────────────────────────────── */
-@media (max-width: 860px) {
-  .frame {
-    width: min(100% - 32px, 1320px);
-    grid-template-columns: 1fr auto;
-    gap: 12px;
+@media (max-width: 1080px) {
+  .desktopNav,
+  .controls {
+    display: none;
   }
 
-  .desktopNav,
-  .controls { display: none; }
-
-  .burger { display: flex; }
-}
-
-@media (max-width: 520px) {
-  .frame { width: min(100% - 24px, 1320px); }
+  .burger {
+    display: flex;
+  }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useState } from "react";
 import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -9,8 +10,8 @@ import { POSTS } from "@/content/blog-posts";
 
 const TAG_COLORS: Record<string, string> = {
   Engineering: "var(--accent)",
-  Product:     "oklch(0.72 0.14 160)",
-  Research:    "oklch(0.78 0.12 270)",
+  Product:     "#1f8a5f",
+  Research:    "#5b4fc4",
 };
 
 export default function BlogPage() {
@@ -33,7 +34,7 @@ export default function BlogPage() {
             <div className="page-intro-eyebrow">blog & insights</div>
             <div>
               <h1 className="page-h1">
-                {tr ? "Mühendislik ve Ürün Blogu" : "Engineering & Product Blog"}
+                <TightPeriods text={tr ? "Mühendislik ve Ürün Blogu" : "Engineering & Product Blog"} />
               </h1>
               <p className="page-lead">
                 {tr
@@ -46,7 +47,7 @@ export default function BlogPage() {
           {/* Featured Post Card */}
           <div
             style={{
-              background: "color-mix(in oklch, var(--accent) 6%, var(--bg-card))",
+              background: "color-mix(in srgb, var(--accent) 6%, var(--bg-card))",
               border: "1px solid var(--border-bright)",
               padding: "40px clamp(24px, 4vw, 48px)",
               marginBottom: 64,
@@ -60,7 +61,7 @@ export default function BlogPage() {
                 style={{
                   background: "var(--accent)",
                   color: "var(--accent-ink)",
-                  font: "600 10px var(--font-mono)",
+                  font: "700 12.5px var(--font-sans)",
                   padding: "3px 8px",
                   borderRadius: 3,
                   textTransform: "uppercase",
@@ -69,10 +70,10 @@ export default function BlogPage() {
               >
                 {tr ? "ÖNE ÇIKAN YAZI" : "FEATURED POST"}
               </span>
-              <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)" }}>
+              <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>
                 {featuredPost.date}
               </span>
-              <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)" }}>
+              <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>
                 • {featuredPost.readTime}
               </span>
             </div>
@@ -81,7 +82,7 @@ export default function BlogPage() {
               href={`/blog/${featuredPost.slug}`}
               style={{
                 color: "var(--text)",
-                font: "600 clamp(28px, 4vw, 40px) / 1.1 var(--font-serif)",
+                font: "800 clamp(28px, 4vw, 40px) / 1.1 var(--font-sans)",
                 textDecoration: "none",
                 letterSpacing: "-0.02em",
               }}
@@ -89,7 +90,7 @@ export default function BlogPage() {
               {tr ? featuredPost.title_tr : featuredPost.title}
             </Link>
 
-            <p style={{ color: "var(--text-dim)", font: "17px / 1.6 var(--font-serif)", maxWidth: 840 }}>
+            <p style={{ color: "var(--text-dim)", font: "17px / 1.6 var(--font-sans)", maxWidth: 840 }}>
               {tr ? featuredPost.summary_tr : featuredPost.summary}
             </p>
 
@@ -119,7 +120,7 @@ export default function BlogPage() {
               flexWrap: "wrap",
             }}
           >
-            <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)", marginRight: 8, textTransform: "uppercase" }}>
+            <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)", marginRight: 8, textTransform: "uppercase" }}>
               {tr ? "Kategoriler:" : "Filter:"}
             </span>
             {tags.map((tag) => (
@@ -130,13 +131,13 @@ export default function BlogPage() {
                 style={{
                   background:
                     selectedTag === tag
-                      ? "color-mix(in oklch, var(--accent) 15%, transparent)"
+                      ? "color-mix(in srgb, var(--accent) 15%, transparent)"
                       : "transparent",
                   border: `1px solid ${selectedTag === tag ? "var(--accent)" : "var(--border)"}`,
                   color: selectedTag === tag ? "var(--accent)" : "var(--text-dim)",
                   padding: "5px 14px",
                   borderRadius: 4,
-                  font: "11px var(--font-mono)",
+                  font: "700 12.5px var(--font-sans)",
                   cursor: "pointer",
                   transition: "all 0.16s ease",
                 }}
@@ -160,14 +161,14 @@ export default function BlogPage() {
                 >
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <span className="blog-date">{post.date}</span>
-                    <span style={{ color: "var(--text-muted)", font: "10px var(--font-mono)" }}>•</span>
+                    <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>•</span>
                     <span className="blog-date">{post.readTime}</span>
                   </div>
                   <span
                     className="tag"
                     style={{
-                      background: `color-mix(in oklch, ${TAG_COLORS[post.tag] ?? "var(--accent)"} 12%, transparent)`,
-                      borderColor: `color-mix(in oklch, ${TAG_COLORS[post.tag] ?? "var(--accent)"} 30%, transparent)`,
+                      background: `color-mix(in srgb, ${TAG_COLORS[post.tag] ?? "var(--accent)"} 12%, transparent)`,
+                      borderColor: `color-mix(in srgb, ${TAG_COLORS[post.tag] ?? "var(--accent)"} 30%, transparent)`,
                       color: TAG_COLORS[post.tag] ?? "var(--accent)",
                     }}
                   >
@@ -181,14 +182,14 @@ export default function BlogPage() {
                   {tr ? post.summary_tr : post.summary}
                 </p>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-                  <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)" }}>
+                  <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>
                     {post.author}
                   </span>
                   <Link
                     href={`/blog/${post.slug}`}
                     style={{
                       color: "var(--accent)",
-                      font: "11px var(--font-mono)",
+                      font: "700 12.5px var(--font-sans)",
                       textDecoration: "none",
                       letterSpacing: "0.05em",
                       textTransform: "uppercase",
@@ -203,28 +204,19 @@ export default function BlogPage() {
 
           {/* Newsletter Box */}
           <div
-            style={{
-              background: "color-mix(in oklch, var(--bg-card) 85%, var(--bg))",
-              border: "1px solid var(--border)",
-              padding: "36px 32px",
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 24,
-              alignItems: "center",
-              marginBottom: 80,
-            }}
+            className="cta-box"
           >
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", marginBottom: 6 }}>
                 <Mail size={18} />
-                <span style={{ font: "600 11px var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                <span style={{ font: "700 12.5px var(--font-sans)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   {tr ? "Mühendislik Bülteni" : "Engineering Newsletter"}
                 </span>
               </div>
-              <h3 style={{ color: "var(--text)", font: "600 22px var(--font-serif)", marginBottom: 4 }}>
+              <h3 style={{ color: "var(--text)", font: "800 22px var(--font-sans)", marginBottom: 4 }}>
                 {tr ? "Cihaz üstü ML gelişmelerini takip edin." : "Stay updated on edge ML & decision systems."}
               </h3>
-              <p style={{ color: "var(--text-dim)", font: "14px var(--font-serif)" }}>
+              <p style={{ color: "var(--text-dim)", font: "14px var(--font-sans)" }}>
                 {tr ? "Spam yok. Yalnızca teknik derinlikte makaleler ve mimari incelemeler." : "No marketing fluff. Only deep technical articles and architecture breakdowns."}
               </p>
             </div>

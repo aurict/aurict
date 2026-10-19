@@ -1,16 +1,18 @@
 .lab {
   display: grid;
   grid-template-columns: 0.82fr 1fr 1.08fr;
+  overflow: hidden;
   border: 1px solid var(--border-bright);
+  border-radius: 28px;
   background: var(--border);
-  box-shadow: 0 32px 90px oklch(0 0 0 / 0.2);
+  box-shadow: 0 30px 80px rgb(15 35 39 / 0.18);
 }
 
 .scenarioList,
 .signalPanel,
 .outcome {
   min-width: 0;
-  background: color-mix(in oklch, var(--bg-card) 88%, var(--bg));
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--bg));
 }
 
 .scenarioList,
@@ -27,7 +29,7 @@
   padding: 0 17px;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
-  font: 8px var(--font-mono), monospace;
+  font: 12px var(--font-mono), monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -59,7 +61,7 @@
 
 .scenarioList > button.activeScenario {
   position: relative;
-  background: color-mix(in oklch, var(--accent) 8%, var(--bg-card));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
   color: var(--text);
 }
 
@@ -73,7 +75,7 @@
 
 .scenarioIndex {
   color: var(--accent);
-  font: 8px var(--font-mono), monospace;
+  font: 12px var(--font-mono), monospace;
 }
 
 .scenarioList button > span:nth-child(2) {
@@ -82,12 +84,12 @@
 }
 
 .scenarioList strong {
-  font: 500 11px var(--font-mono), monospace;
+  font: 500 13px var(--font-mono), monospace;
 }
 
 .scenarioList small {
   color: var(--text-muted);
-  font: 8px var(--font-mono), monospace;
+  font: 12px var(--font-mono), monospace;
 }
 
 .scenarioList svg {
@@ -138,7 +140,7 @@
   align-items: center;
   justify-content: space-between;
   color: var(--text-dim);
-  font: 9px var(--font-mono), monospace;
+  font: 12.5px var(--font-mono), monospace;
 }
 
 .signal strong {
@@ -170,7 +172,7 @@
   padding: 17px 29px;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
-  font: 8px var(--font-mono), monospace;
+  font: 12px var(--font-mono), monospace;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -189,7 +191,7 @@
   padding-bottom: 24px;
   background:
     radial-gradient(circle at 100% 10%, oklch(0.64 0.14 210 / 0.14), transparent 36%),
-    color-mix(in oklch, var(--bg-card) 80%, var(--bg));
+    color-mix(in srgb, var(--bg-card) 80%, var(--bg));
   animation: reveal 350ms ease both;
 }
 
@@ -210,14 +212,14 @@
   width: 58px;
   height: 58px;
   margin: 33px 28px 37px;
-  border: 1px solid color-mix(in oklch, var(--accent) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
   border-radius: 50%;
 }
 
 .outcomeMark span {
   position: absolute;
   inset: 9px;
-  border: 1px dashed color-mix(in oklch, var(--accent) 60%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
   border-radius: 50%;
 }
 
@@ -226,7 +228,7 @@
   top: 50%;
   left: 50%;
   color: var(--accent);
-  font: normal 9px var(--font-mono), monospace;
+  font: normal 12.5px var(--font-mono), monospace;
   transform: translate(-50%, -50%);
 }
 
@@ -243,14 +245,15 @@
 
 .outcome > p {
   color: var(--accent);
-  font: 8px var(--font-mono), monospace;
+  font: 12px var(--font-mono), monospace;
   letter-spacing: 0.09em;
 }
 
 .outcome > h3 {
   margin-top: 8px;
   color: var(--text);
-  font: 600 clamp(26px, 2.5vw, 38px) / 0.98 var(--font-serif), Georgia, serif;
+  font: 800 clamp(26px, 2.5vw, 38px) / 1 var(--font-sans);
+  letter-spacing: -0.03em;
   letter-spacing: -0.04em;
 }
 
@@ -258,7 +261,7 @@
   display: block;
   margin-top: 9px;
   color: var(--text-muted);
-  font: 8px var(--font-mono), monospace;
+  font: 12px var(--font-mono), monospace;
 }
 
 .confidence {
@@ -271,7 +274,7 @@
   justify-content: space-between;
   margin-bottom: 9px;
   color: var(--text-muted);
-  font: 8px var(--font-mono), monospace;
+  font: 12px var(--font-mono), monospace;
   text-transform: uppercase;
 }
 
@@ -292,13 +295,13 @@
 
 .reason span {
   color: var(--accent);
-  font: 8px var(--font-mono), monospace;
+  font: 12px var(--font-mono), monospace;
   text-transform: uppercase;
 }
 
 .reason p {
   color: var(--text-dim);
-  font: 10px / 1.5 var(--font-mono), monospace;
+  font: 13px / 1.5 var(--font-mono), monospace;
 }
 
 @keyframes grow {

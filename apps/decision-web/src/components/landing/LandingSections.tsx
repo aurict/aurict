@@ -5,16 +5,15 @@ import {
   ArrowRight,
   BrainCircuit,
   Check,
-  Database,
   Fingerprint,
   GitBranch,
   ScanSearch,
-  ShieldCheck,
   Webhook,
 } from "lucide-react";
 import { useLocale } from "next-intl";
 import Image from "next/image";
 import { DecisionLab } from "./DecisionLab";
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import styles from "./LandingSections.module.css";
 
 const CONTENT = {
@@ -148,28 +147,53 @@ const CONTENT = {
 
 const CARD_ICONS = [Activity, GitBranch, BrainCircuit, ScanSearch, Fingerprint, Webhook] as const;
 const INTEGRATIONS = ["Braze", "Insider", "Segment", "mParticle", "Firebase", "Mixpanel", "Amplitude", "Webhook API"] as const;
+const STEPS = [
+  { en: ["capture", "Live first-party signals: browse, intent, cart, scroll and time on page."], tr: ["yakala", "Canlı birinci taraf sinyaller: gezinme, niyet, sepet, kaydırma ve sayfada kalma."] },
+  { en: ["score", "Intent, affinity and propensity are scored locally in milliseconds."], tr: ["skorla", "Niyet, ilgi ve eğilim milisaniyeler içinde yerelde skorlanır."] },
+  { en: ["govern", "Consent, budget, frequency and safety gates run before anything is shown."], tr: ["yönet", "Rıza, bütçe, frekans ve güvenlik kapıları hiçbir şey gösterilmeden önce çalışır."] },
+  { en: ["decide", "One explainable next-best action is committed for the session."], tr: ["karar ver", "Oturum için tek ve açıklanabilir bir sonraki en iyi eylem seçilir."] },
+] as const;
 
 export function LandingSections() {
   const locale = useLocale();
-  const copy = locale === "tr" ? CONTENT.tr : CONTENT.en;
+  const tr = locale === "tr";
+  const copy = tr ? CONTENT.tr : CONTENT.en;
 
   return (
     <>
       <section className={styles.thesis}>
         <div className={styles.shell}>
-          <div className={styles.thesisIndex}>01 — 06</div>
-          <div>
-            <p className={styles.kicker}>{copy.thesisLabel}</p>
-            <h2>
-              {copy.thesis}
-              <em>{copy.thesisAccent}</em>
-            </h2>
-          </div>
+          <p className={styles.kicker}>{copy.thesisLabel}</p>
+          <h2>
+            <TightPeriods text={copy.thesis} /> <em><TightPeriods text={copy.thesisAccent} /></em>
+          </h2>
           <p className={styles.thesisBody}>{copy.thesisBody}</p>
         </div>
       </section>
 
-      <section className={styles.capabilities} id="capabilities">
+      <section className={styles.section} id="how-it-works">
+        <div className={styles.shell}>
+          <SectionHeading
+            body={tr ? "Her karar aynı dört adımlık yoldan geçer; hepsi kullanıcının cihazında çalışır." : "Every decision takes the same four-step path, and all of it runs on the user's device."}
+            label={tr ? "Nasıl çalışır" : "How it works"}
+            title={tr ? "Sinyalden eyleme, tek bir yol." : "From signal to action, one path."}
+          />
+          <ol className={styles.steps}>
+            {STEPS.map((step, index) => {
+              const [name, text] = tr ? step.tr : step.en;
+              return (
+                <li key={step.en[0]}>
+                  <span className={styles.stepIndex}>{String(index + 1).padStart(2, "0")}</span>
+                  <h3>{name}</h3>
+                  <p>{text}</p>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </section>
+
+      <section className={`${styles.section} ${styles.tinted}`} id="capabilities">
         <div className={styles.shell}>
           <SectionHeading
             body={copy.capabilitiesBody}
@@ -181,22 +205,13 @@ export function LandingSections() {
             {copy.cards.map((card, index) => {
               const Icon = CARD_ICONS[index];
               return (
-                <article
-                  className={`${styles.capabilityCard} ${styles[`card${index + 1}`]}`}
-                  key={card.title}
-                >
-                  <div className={styles.cardTop}>
-                    <span>{card.tag}</span>
-                    <Icon aria-hidden="true" size={18} strokeWidth={1.35} />
-                  </div>
-                  {index === 0 && <ScoreGlyph />}
-                  {index === 1 && <SegmentGlyph />}
-                  {index === 2 && <DecisionGlyph />}
-                  <div className={styles.cardCopy}>
-                    <h3>{card.title}</h3>
-                    <p>{card.body}</p>
-                  </div>
-                  <span className={styles.cardArrow} aria-hidden="true">↗</span>
+                <article className={styles.card} key={card.title}>
+                  <span className={styles.cardIcon}>
+                    <Icon aria-hidden="true" size={22} strokeWidth={2} />
+                  </span>
+                  <span className={styles.cardTag}>{card.tag}</span>
+                  <h3>{card.title}</h3>
+                  <p>{card.body}</p>
                 </article>
               );
             })}
@@ -204,7 +219,7 @@ export function LandingSections() {
         </div>
       </section>
 
-      <section className={styles.labSection} id="decision-lab">
+      <section className={styles.section} id="decision-lab">
         <div className={styles.shell}>
           <SectionHeading
             body={copy.labBody}
@@ -215,82 +230,63 @@ export function LandingSections() {
         </div>
       </section>
 
-      <section className={styles.privacy} id="security">
-        <div className={styles.shell}>
-          <div className={styles.privacyCopy}>
+      <section className={`${styles.section} ${styles.tinted}`} id="security">
+        <div className={`${styles.shell} ${styles.privacyLayout}`}>
+          <div>
             <p className={styles.kicker}>{copy.privacyLabel}</p>
-            <h2>{copy.privacyTitle}</h2>
-            <p>{copy.privacyBody}</p>
-            <div className={styles.privacyPoints}>
+            <h2 className={styles.title}><TightPeriods text={copy.privacyTitle} /></h2>
+            <p className={styles.body}>{copy.privacyBody}</p>
+            <ul className={styles.privacyPoints}>
               {copy.privacyPoints.map((point) => (
-                <span key={point}>
-                  <Check aria-hidden="true" size={13} />
+                <li key={point}>
+                  <Check aria-hidden="true" size={16} strokeWidth={3} />
                   {point}
-                </span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
-
-          <div className={styles.deviceVisual} aria-hidden="true">
-            <div className={styles.device}>
-              <div className={styles.deviceTop}>
-                <span />
-                <i />
-              </div>
-              <div className={styles.deviceCore}>
-                <Fingerprint size={40} strokeWidth={1} />
-                <span>local inference</span>
-                <strong>raw_data = retained</strong>
-              </div>
-              <div className={styles.deviceEvents}>
-                <span>view</span>
-                <span>intent</span>
-                <span>context</span>
-              </div>
+          <div className={styles.privacyVisual} aria-hidden="true">
+            <Image alt="" height={760} src="/bento/shield.webp" width={635} />
+            <div className={styles.privacyChip}>
+              <span>raw_data</span>
+              <strong>{tr ? "cihazda kalır" : "stays on device"}</strong>
             </div>
-            <div className={styles.boundary}>
-              <ShieldCheck size={17} strokeWidth={1.4} />
-              <span>privacy boundary</span>
-            </div>
-            <div className={styles.safeOutput}>
-              <Database size={18} strokeWidth={1.3} />
+            <div className={`${styles.privacyChip} ${styles.privacyChipOut}`}>
               <span>decision_event</span>
-              <strong>anonymous</strong>
+              <strong>{tr ? "anonim" : "anonymous"}</strong>
             </div>
           </div>
         </div>
       </section>
 
-      <section className={styles.integrations} id="integrations">
+      <section className={styles.section} id="integrations">
         <div className={styles.shell}>
-          <div className={styles.integrationHeading}>
-            <p className={styles.kicker}>{copy.integrationsLabel}</p>
-            <h2>{copy.integrationsTitle}</h2>
-            <p>{copy.integrationsBody}</p>
-          </div>
-          <div className={styles.integrationGrid}>
-            {INTEGRATIONS.map((integration, index) => (
-              <div key={integration}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <strong>{integration}</strong>
-                <ArrowRight aria-hidden="true" size={14} strokeWidth={1.4} />
-              </div>
+          <SectionHeading
+            body={copy.integrationsBody}
+            label={copy.integrationsLabel}
+            title={copy.integrationsTitle}
+          />
+          <ul className={styles.integrationList}>
+            {INTEGRATIONS.map((integration) => (
+              <li key={integration}>
+                {integration}
+                <ArrowRight aria-hidden="true" size={16} strokeWidth={2.2} />
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
-      <section className={styles.faq} id="faq">
-        <div className={styles.shell}>
+      <section className={`${styles.section} ${styles.tinted}`} id="faq">
+        <div className={`${styles.shell} ${styles.faqShell}`}>
           <div className={styles.faqHeading}>
             <p className={styles.kicker}>{copy.faqLabel}</p>
-            <h2>{copy.faqTitle}</h2>
+            <h2 className={styles.title}><TightPeriods text={copy.faqTitle} /></h2>
           </div>
           <div className={styles.faqList}>
-            {copy.faqs.map(([question, answer], index) => (
+            {copy.faqs.map(([question, answer]) => (
               <details key={question}>
                 <summary>
-                  <span>0{index + 1}</span>
                   <strong>{question}</strong>
                   <i aria-hidden="true">+</i>
                 </summary>
@@ -302,18 +298,15 @@ export function LandingSections() {
       </section>
 
       <section className={styles.finalCta}>
-        <div className={styles.finalGlow} aria-hidden="true" />
-        <div className={styles.finalMark} aria-hidden="true">
-          <Image src="/brand-mark.svg" alt="" width={42} height={42} />
-        </div>
+        <Image alt="" aria-hidden="true" className={styles.finalArt} height={607} src="/bento/arrow.webp" width={897} />
         <p>{copy.finalLabel}</p>
-        <h2>{copy.finalTitle}</h2>
+        <h2><TightPeriods text={copy.finalTitle} /></h2>
         <div>
-          <a href="https://decision.aurict.com/register">
+          <a className={styles.finalPrimary} href="https://decision.aurict.com/register">
             {copy.finalPrimary}
-            <ArrowRight aria-hidden="true" size={15} />
+            <ArrowRight aria-hidden="true" size={18} strokeWidth={2.4} />
           </a>
-          <a href="/contact">{copy.finalSecondary}</a>
+          <a className={styles.finalSecondary} href="/contact">{copy.finalSecondary}</a>
         </div>
       </section>
     </>
@@ -324,39 +317,8 @@ function SectionHeading({ label, title, body }: { label: string; title: string; 
   return (
     <div className={styles.sectionHeading}>
       <p className={styles.kicker}>{label}</p>
-      <h2>{title}</h2>
-      <p>{body}</p>
-    </div>
-  );
-}
-
-function ScoreGlyph() {
-  return (
-    <div className={styles.scoreGlyph} aria-hidden="true">
-      <span style={{ "--score": "82%" } as React.CSSProperties}><i>intent</i><b>0.82</b></span>
-      <span style={{ "--score": "67%" } as React.CSSProperties}><i>affinity</i><b>0.67</b></span>
-      <span style={{ "--score": "91%" } as React.CSSProperties}><i>propensity</i><b>0.91</b></span>
-    </div>
-  );
-}
-
-function SegmentGlyph() {
-  return (
-    <div className={styles.segmentGlyph} aria-hidden="true">
-      <span /><span /><span /><span /><span /><span />
-      <i>dynamic / 24</i>
-    </div>
-  );
-}
-
-function DecisionGlyph() {
-  return (
-    <div className={styles.decisionGlyph} aria-hidden="true">
-      <span>signals</span>
-      <i />
-      <strong>01</strong>
-      <i />
-      <span>action</span>
+      <h2 className={styles.title}><TightPeriods text={title} /></h2>
+      <p className={styles.body}>{body}</p>
     </div>
   );
 }

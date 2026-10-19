@@ -1,45 +1,50 @@
 /* ============================================================
    Aurict Decision — globals.css
-   Design language: Aurict-derived asymmetric editorial grid
-   Accent palette: teal/cyan (decision engine = precise, cold)
+   Design language: light paper, glossy 3D bento, rounded cards.
+   Teal/mint is Aurict Decision's own hue inside the Aurict system.
    ============================================================ */
 
 /* Design Tokens
-   Aurict uses oklch(0.64 0.15 25) warm-red; we shift to
-   oklch(0.64 0.14 210) teal to differentiate Aurict Decision
-   as an Aurict sub-product with its own identity.
    ---------------------------------------------------------- */
 :root {
-  --accent:         oklch(0.64 0.14 210);
-  --accent-hover:   oklch(0.70 0.14 210);
-  --accent-ink:     oklch(0.12 0.02 210);
-  --accent-soft:    oklch(0.64 0.14 210 / 0.14);
-  --accent-glow:    var(--accent-soft);
-  --accent-alt:     oklch(0.78 0.12 160);
-  --accent-line:    oklch(0.64 0.14 210 / 0.40);
+  /* Aurict Decision — light paper theme, teal brand, mint secondary */
+  --accent:         #0b7b86;
+  --accent-hover:   #096570;
+  --accent-ink:     #ffffff;
+  --accent-soft:    rgb(11 123 134 / 0.1);
+  --accent-glow:    rgb(20 163 191 / 0.22);
+  --accent-alt:     #1f9e74;
+  --accent-line:    rgb(11 123 134 / 0.32);
+  --teal-bright:    #14a3bf;
+  --mint:           #7fd6b0;
+  --mint-soft:      #e3f5ee;
 
-  --bg:             oklch(0.13 0.009 220);
-  --bg-alt:         oklch(0.155 0.009 220);
+  --bg:             #f6faf9;
+  --bg-alt:         #eef5f3;
   --bg-subtle:      var(--bg-alt);
-  --bg-card:        oklch(0.175 0.009 220);
-  --bg-card-hover:  oklch(0.195 0.009 220);
-  --bg-deep:        oklch(0.09 0.006 220);
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #fbfdfd;
+  --bg-deep:        #e6f0ee;
+  --ink:            #0f2327;
 
-  --border:         oklch(1 0 0 / 0.08);
-  --border-bright:  oklch(1 0 0 / 0.16);
+  --border:         rgb(15 35 39 / 0.08);
+  --border-bright:  rgb(15 35 39 / 0.16);
 
-  --text:           oklch(0.95 0.004 200);
-  --text-dim:       oklch(0.68 0.010 195);
-  --text-muted:     oklch(0.50 0.010 195);
+  --text:           #0f2327;
+  --text-dim:       #42585c;
+  --text-muted:     #5f7477;
 
-  --success:        oklch(0.72 0.15 145);
-  --warning:        oklch(0.78 0.15 80);
-  --error:          oklch(0.68 0.17 25);
+  --success:        #1f8a4c;
+  --warning:        #a8650a;
+  --error:          #c62828;
+  --aurict-red:     #c9352b;
 
-  --shadow-soft:    0 24px 80px oklch(0 0 0 / 0.36);
-  --shadow-hard:    0 40px 120px oklch(0 0 0 / 0.52);
+  --shadow-soft:    0 18px 50px rgb(15 35 39 / 0.07);
+  --shadow-hard:    0 30px 80px rgb(15 35 39 / 0.13);
+  --radius-card:    28px;
 
-  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-sans);
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
@@ -62,10 +67,30 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 50% -20%, oklch(0.22 0.04 210 / 0.24), transparent 42%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+    radial-gradient(55% 40% at 80% -5%, rgb(127 214 176 / 0.18), transparent 70%),
+    radial-gradient(45% 35% at 0% 10%, rgb(20 163 191 / 0.08), transparent 70%),
+    var(--bg);
   color: var(--text);
-  font-family: var(--font-serif), "Source Serif 4", Georgia, serif;
+  font-family: var(--font-sans);
+}
+
+/* Dark islands inside the light theme: code, terminals, the decision lab. */
+.surface-dark {
+  --bg: #0b1114;
+  --bg-alt: #111a1e;
+  --bg-card: #121d21;
+  --bg-card-hover: #17252a;
+  --bg-deep: #070b0d;
+  --text: #eef4f5;
+  --text-dim: #b4c4c7;
+  --text-muted: #8a9ca0;
+  --border: rgb(255 255 255 / 0.09);
+  --border-bright: rgb(255 255 255 / 0.18);
+  --accent: #3cc3d9;
+  --accent-soft: rgb(60 195 217 / 0.14);
+  --success: #5fcf8e;
+  --warning: #f0b44c;
+  color: var(--text);
 }
 
 button, input, textarea, select {
@@ -73,7 +98,7 @@ button, input, textarea, select {
 }
 
 ::selection {
-  background: color-mix(in oklch, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
   color: var(--text);
 }
 
@@ -87,7 +112,7 @@ button, input, textarea, select {
 /* Utility classes
    ---------------------------------------------------------- */
 .mono { font-family: var(--font-mono), "IBM Plex Mono", monospace; }
-.serif { font-family: var(--font-serif), "Source Serif 4", Georgia, serif; }
+.serif { font-family: var(--font-sans); }
 
 /* Global background effects
    ---------------------------------------------------------- */
@@ -96,7 +121,7 @@ button, input, textarea, select {
   inset: 0;
   pointer-events: none;
   z-index: -1;
-  background-image: radial-gradient(oklch(1 0 0 / 0.030) 1px, transparent 1px);
+  background-image: radial-gradient(rgb(15 35 39 / 0.030) 1px, transparent 1px);
   background-size: 26px 26px;
   mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
   animation: slow-pan 22s ease-in-out infinite;
@@ -161,56 +186,22 @@ button, input, textarea, select {
 .brand-link {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  min-height: 44px;
+  color: var(--text);
   text-decoration: none;
-  flex-shrink: 0;
-}
-
-.brand-logo-shell {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg,
-    color-mix(in oklch, var(--accent) 22%, transparent),
-    var(--bg));
-  border: 1px solid color-mix(in oklch, var(--accent) 40%, transparent);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: border-color 0.2s ease, background 0.2s ease;
-}
-
-.brand-logo-shell img {
-  display: block;
-  transition: transform 0.2s ease;
-}
-
-.brand-link:hover .brand-logo-shell {
-  border-color: color-mix(in oklch, var(--accent) 65%, transparent);
-  background: linear-gradient(135deg,
-    color-mix(in oklch, var(--accent) 30%, transparent),
-    var(--bg));
-}
-
-.brand-link:hover .brand-logo-shell img {
-  transform: scale(1.06);
 }
 
 .brand-wordmark {
-  font-family: var(--font-mono), "IBM Plex Mono", monospace;
-  font-size: 14px;
-  font-weight: 600;
   color: var(--text);
-  letter-spacing: -0.01em;
+  font-size: 27px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.brand-cursor {
-  animation: blink 1.1s steps(1) infinite;
-  color: var(--accent);
-  font-family: var(--font-mono), "IBM Plex Mono", monospace;
-  font-size: 14px;
-  font-weight: 600;
+.brand-wordmark b {
+  font-weight: 800;
 }
 
 .brand-sub {
@@ -228,18 +219,20 @@ button, input, textarea, select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 5px;
-  font-family: var(--font-mono), "IBM Plex Mono", monospace;
-  font-size: 12px;
-  font-weight: 500;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
   text-decoration: none;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
   white-space: nowrap;
 }
+
 
 .aur-button:hover { transform: translateY(-2px); }
 
@@ -247,19 +240,22 @@ button, input, textarea, select {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
+  box-shadow: 0 10px 24px rgb(11 123 134 / 0.25);
 }
+
 .aur-button-primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
 
 .aur-button-secondary {
-  background: oklch(1 0 0 / 0.025);
-  color: var(--text-dim);
-  border-color: var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  border-color: var(--border-bright);
 }
+
 .aur-button-secondary:hover {
-  background: oklch(1 0 0 / 0.07);
+  background: rgb(15 35 39 / 0.07);
   color: var(--text);
   border-color: var(--border-bright);
 }
@@ -278,7 +274,7 @@ button, input, textarea, select {
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
   min-height: 720px;
-  border-bottom: 1px solid oklch(1 0 0 / 0.08);
+  border-bottom: 1px solid rgb(15 35 39 / 0.08);
 }
 
 /* decorative circle */
@@ -289,9 +285,9 @@ button, input, textarea, select {
   z-index: 0;
   width: min(58vw, 760px);
   aspect-ratio: 1;
-  border: 1px solid oklch(1 0 0 / 0.045);
+  border: 1px solid rgb(15 35 39 / 0.045);
   border-radius: 50%;
-  box-shadow: 0 0 0 90px oklch(1 0 0 / 0.012), 0 0 0 180px oklch(1 0 0 / 0.007);
+  box-shadow: 0 0 0 90px rgb(15 35 39 / 0.012), 0 0 0 180px rgb(15 35 39 / 0.007);
   content: "";
   pointer-events: none;
 }
@@ -302,7 +298,7 @@ button, input, textarea, select {
   flex-direction: column;
   gap: 19px;
   padding: 5px 22px 34px 0;
-  border-right: 1px solid oklch(1 0 0 / 0.085);
+  border-right: 1px solid rgb(15 35 39 / 0.085);
   color: var(--text-muted);
   font: 9px / 1.35 var(--font-mono), "IBM Plex Mono", monospace;
   letter-spacing: 0.06em;
@@ -339,7 +335,7 @@ button, input, textarea, select {
   gap: 18px;
   padding-top: 5px;
   color: var(--text-muted);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -349,8 +345,8 @@ button, input, textarea, select {
 .hero-content h1 {
   max-width: 1090px;
   margin: clamp(48px, 8vw, 112px) 0 46px;
-  color: oklch(0.96 0.004 200);
-  font: 600 clamp(56px, 8.3vw, 120px) / 0.89 var(--font-serif), Georgia, serif;
+  color: var(--text);
+  font: 800 clamp(56px, 8.3vw, 120px) / 0.89 var(--font-sans);
   letter-spacing: -0.048em;
 }
 
@@ -358,10 +354,10 @@ button, input, textarea, select {
 .hero-thread {
   position: relative;
   overflow: hidden;
-  border-top: 1px solid color-mix(in oklch, var(--border) 76%, var(--accent));
-  border-bottom: 1px solid color-mix(in oklch, var(--border) 76%, var(--accent));
-  background: color-mix(in oklch, var(--bg-card) 80%, var(--bg));
-  box-shadow: 0 24px 64px oklch(0 0 0 / 0.12);
+  border-top: 1px solid color-mix(in srgb, var(--border) 76%, var(--accent));
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 76%, var(--accent));
+  background: color-mix(in srgb, var(--bg-card) 80%, var(--bg));
+  box-shadow: 0 24px 64px rgb(15 35 39 / 0.12);
 }
 
 .hero-thread-topline,
@@ -371,14 +367,14 @@ button, input, textarea, select {
   justify-content: space-between;
   min-height: 42px;
   padding: 0 17px;
-  border-bottom: 1px solid oklch(1 0 0 / 0.08);
+  border-bottom: 1px solid rgb(15 35 39 / 0.08);
   color: var(--text-muted);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.04em;
 }
 .hero-thread-footer {
   min-height: 36px;
-  border-top: 1px solid oklch(1 0 0 / 0.08);
+  border-top: 1px solid rgb(15 35 39 / 0.08);
   border-bottom: 0;
   font-size: 9px;
 }
@@ -399,7 +395,7 @@ button, input, textarea, select {
   display: flex;
   gap: 10px;
   padding: 17px;
-  border-bottom: 1px solid oklch(1 0 0 / 0.08);
+  border-bottom: 1px solid rgb(15 35 39 / 0.08);
   color: var(--text);
   font: 12px / 1.5 var(--font-mono), "IBM Plex Mono", monospace;
 }
@@ -424,7 +420,7 @@ button, input, textarea, select {
   min-height: 125px;
   padding: 16px 12px;
   border: 1px solid transparent;
-  background: oklch(1 0 0 / 0.018);
+  background: rgb(15 35 39 / 0.018);
 }
 .hero-thread li > div { display: grid; min-width: 0; }
 .hero-step-num { grid-row: span 2; color: var(--text-muted); font: 10px var(--font-mono); }
@@ -435,7 +431,7 @@ button, input, textarea, select {
   border-color: oklch(0.64 0.14 210 / 0.40) !important;
   background: oklch(0.64 0.14 210 / 0.06) !important;
 }
-.hero-step-approval strong { color: oklch(0.85 0.08 210); }
+.hero-step-approval strong { color: var(--accent); }
 
 /* Decision row below thread */
 .hero-decision-row {
@@ -449,7 +445,7 @@ button, input, textarea, select {
   max-width: 580px;
   margin: 0 0 14px;
   color: var(--text-dim);
-  font: 400 17px / 1.6 var(--font-serif), Georgia, serif;
+  font: 400 17px / 1.6 var(--font-sans);
 }
 .hero-proof {
   margin: 0;
@@ -470,11 +466,11 @@ button, input, textarea, select {
   align-items: center;
   padding: 20px 0 0 104px;
   color: var(--text-muted);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 .hero-providers b {
   padding: 5px 8px;
-  border: 1px solid oklch(1 0 0 / 0.09);
+  border: 1px solid rgb(15 35 39 / 0.09);
   border-radius: 4px;
   color: var(--text-dim);
   font: inherit;
@@ -489,9 +485,9 @@ button, input, textarea, select {
 }
 
 .band {
-  border-top: 1px solid oklch(1 0 0 / 0.075);
-  border-bottom: 1px solid oklch(1 0 0 / 0.075);
-  background: color-mix(in oklch, var(--bg-alt) 72%, transparent);
+  border-top: 1px solid rgb(15 35 39 / 0.075);
+  border-bottom: 1px solid rgb(15 35 39 / 0.075);
+  background: color-mix(in srgb, var(--bg-alt) 72%, transparent);
 }
 
 .section-pad-lg { padding: 126px 0; }
@@ -509,12 +505,12 @@ button, input, textarea, select {
 .section-eyebrow {
   align-self: start;
   color: var(--accent);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   min-height: 112px;
   padding-right: 22px;
-  border-right: 1px solid oklch(1 0 0 / 0.09);
+  border-right: 1px solid rgb(15 35 39 / 0.09);
   writing-mode: vertical-rl;
 }
 
@@ -522,16 +518,18 @@ button, input, textarea, select {
 .section-final h2 {
   max-width: 830px;
   margin: 0;
-  color: oklch(0.95 0.004 200);
-  font: 600 clamp(38px, 4.4vw, 66px) / 0.99 var(--font-serif), Georgia, serif;
-  letter-spacing: -0.033em;
+  color: var(--text);
+  font: 800 clamp(36px, 4.6vw, 60px) / 1.02 var(--font-sans);
+  letter-spacing: -0.04em;
+  margin-inline: auto;
+  text-wrap: balance;
 }
 
 .section-intro p {
   max-width: 570px;
   margin: 20px 0 0;
   color: var(--text-dim);
-  font: 17px / 1.65 var(--font-serif), Georgia, serif;
+  font: 17px / 1.65 var(--font-sans);
 }
 
 /* ============================================================
@@ -549,12 +547,12 @@ button, input, textarea, select {
   padding: 23px;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  background: color-mix(in oklch, var(--bg-card) 62%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 62%, transparent);
   transition: background 0.2s ease;
 }
 
 .capability-grid article:hover {
-  background: color-mix(in oklch, var(--bg-card-hover) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-card-hover) 80%, transparent);
 }
 
 /* Column spans — 8-cap layout */
@@ -565,12 +563,12 @@ button, input, textarea, select {
 
 /* Highlight the "Decision" cell */
 .cap-highlight {
-  background: color-mix(in oklch, var(--accent) 8%, var(--bg-card)) !important;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-card)) !important;
 }
 
 .capability-grid .cap-idx {
   color: var(--accent);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 
 .capability-grid h3 {
@@ -582,7 +580,7 @@ button, input, textarea, select {
 .capability-grid p {
   margin: 0;
   color: var(--text-dim);
-  font: 14px / 1.55 var(--font-serif), Georgia, serif;
+  font: 14px / 1.55 var(--font-sans);
 }
 
 /* ============================================================
@@ -604,13 +602,13 @@ button, input, textarea, select {
 
 .principle-list > article > span {
   color: var(--accent);
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 
 .principle-list h3 {
   margin: 0;
   color: var(--text);
-  font: 600 29px / 1.05 var(--font-serif), Georgia, serif;
+  font: 800 29px / 1.05 var(--font-sans);
   letter-spacing: -0.018em;
 }
 
@@ -618,7 +616,7 @@ button, input, textarea, select {
   grid-column: 3;
   margin: 0;
   color: var(--text-dim);
-  font: 15px / 1.63 var(--font-serif), Georgia, serif;
+  font: 15px / 1.63 var(--font-sans);
 }
 
 /* ============================================================
@@ -637,7 +635,7 @@ button, input, textarea, select {
   padding: 28px;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  background: color-mix(in oklch, var(--bg-card) 82%, var(--bg));
+  background: color-mix(in srgb, var(--bg-card) 82%, var(--bg));
 }
 
 .security-grid article::before {
@@ -652,7 +650,7 @@ button, input, textarea, select {
 
 .security-grid span {
   color: var(--profile-color, var(--accent));
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -660,13 +658,13 @@ button, input, textarea, select {
 .security-grid h3 {
   margin: 100px 0 10px;
   color: var(--text);
-  font: 600 28px var(--font-serif), Georgia, serif;
+  font: 800 28px var(--font-sans);
 }
 
 .security-grid p {
   margin: 0;
   color: var(--text-dim);
-  font: 15px / 1.6 var(--font-serif), Georgia, serif;
+  font: 15px / 1.6 var(--font-sans);
 }
 
 /* ============================================================
@@ -686,12 +684,12 @@ button, input, textarea, select {
   padding: 29px 26px;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  background: color-mix(in oklch, var(--bg-card) 80%, var(--bg));
+  background: color-mix(in srgb, var(--bg-card) 80%, var(--bg));
   position: relative;
 }
 
 .pricing-card.pricing-recommended {
-  background: color-mix(in oklch, var(--accent) 6%, var(--bg-card));
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-card));
 }
 
 .pricing-card.pricing-recommended::before {
@@ -709,7 +707,7 @@ button, input, textarea, select {
   align-items: center;
   gap: 8px;
   color: var(--accent);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 14px;
@@ -726,13 +724,13 @@ button, input, textarea, select {
 
 .pricing-card .plan-price {
   color: var(--text);
-  font: 600 42px / 1 var(--font-serif), Georgia, serif;
+  font: 800 42px / 1 var(--font-sans);
   margin-bottom: 4px;
 }
 
 .pricing-card .plan-period {
   color: var(--text-muted);
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   margin-bottom: 10px;
 }
 
@@ -744,7 +742,7 @@ button, input, textarea, select {
 
 .pricing-card .plan-desc {
   color: var(--text-dim);
-  font: 14px / 1.5 var(--font-serif), Georgia, serif;
+  font: 14px / 1.5 var(--font-sans);
   margin-bottom: 24px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 20px;
@@ -800,7 +798,7 @@ button, input, textarea, select {
 
 .integration-list i {
   color: var(--accent);
-  font: 9px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   font-style: normal;
 }
 
@@ -818,7 +816,7 @@ button, input, textarea, select {
 
 .faq-wrap > .section-eyebrow {
   padding-right: 22px;
-  border-right: 1px solid oklch(1 0 0 / 0.09);
+  border-right: 1px solid rgb(15 35 39 / 0.09);
   writing-mode: vertical-rl;
 }
 
@@ -831,13 +829,13 @@ button, input, textarea, select {
 .faq-heading p {
   margin: 0;
   color: var(--text-muted);
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 
 .faq-heading h2 {
   max-width: 680px;
-  color: oklch(0.95 0.004 200);
-  font: 600 clamp(38px, 4.4vw, 60px) / 0.99 var(--font-serif), Georgia, serif;
+  color: var(--text);
+  font: 800 clamp(38px, 4.4vw, 60px) / 0.99 var(--font-sans);
   letter-spacing: -0.033em;
 }
 
@@ -869,10 +867,10 @@ button, input, textarea, select {
   max-width: 650px;
   margin: -5px 0 25px;
   color: var(--text-dim);
-  font: 16px / 1.65 var(--font-serif), Georgia, serif;
+  font: 16px / 1.65 var(--font-sans);
 }
 
-.faq-open { background: linear-gradient(90deg, oklch(1 0 0 / 0.03), transparent); }
+.faq-open { background: linear-gradient(90deg, rgb(15 35 39 / 0.03), transparent); }
 
 /* ============================================================
    FINAL CTA
@@ -883,7 +881,7 @@ button, input, textarea, select {
   overflow: hidden;
   border-top: 1px solid var(--border);
   color: var(--text);
-  background: color-mix(in oklch, var(--bg-alt) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-alt) 78%, transparent);
   text-align: center;
 }
 
@@ -893,9 +891,9 @@ button, input, textarea, select {
   left: 50%;
   width: 580px;
   height: 580px;
-  border: 1px solid oklch(1 0 0 / 0.06);
+  border: 1px solid rgb(15 35 39 / 0.06);
   border-radius: 50%;
-  box-shadow: 0 0 0 82px oklch(1 0 0 / 0.016);
+  box-shadow: 0 0 0 82px rgb(15 35 39 / 0.016);
   content: "";
   transform: translateX(-50%);
 }
@@ -905,7 +903,7 @@ button, input, textarea, select {
 .section-final > p {
   margin: 0 0 17px;
   color: var(--accent);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -939,7 +937,7 @@ button, input, textarea, select {
 }
 
 .lost-label {
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   color: var(--text-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -956,8 +954,8 @@ button, input, textarea, select {
 }
 
 .lost-link:hover {
-  background: color-mix(in oklch, var(--accent) 10%, transparent);
-  border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 /* ============================================================
@@ -985,35 +983,35 @@ button, input, textarea, select {
 }
 
 .inner-h1 {
-  color: oklch(0.96 0.004 200);
-  font: 600 clamp(42px, 5.5vw, 72px) / 0.96 var(--font-serif), Georgia, serif;
-  letter-spacing: -0.04em;
+  color: var(--text);
+  font: 800 clamp(40px, 5.6vw, 72px) / 1 var(--font-sans);
+  letter-spacing: -0.045em;
 }
 
 .inner-lead {
   max-width: 620px;
   margin-top: 20px;
   color: var(--text-dim);
-  font: 17px / 1.65 var(--font-serif), Georgia, serif;
+  font: 17px / 1.65 var(--font-sans);
 }
 
 .inner-copy {
   color: var(--text-dim);
-  font: 16px / 1.65 var(--font-serif), Georgia, serif;
+  font: 16px / 1.65 var(--font-sans);
 }
 
 .inner-copy h2 {
   margin-top: 48px;
   margin-bottom: 16px;
   color: var(--text);
-  font: 600 28px var(--font-serif), Georgia, serif;
+  font: 800 28px var(--font-sans);
 }
 
 .inner-copy h3 {
   margin-top: 32px;
   margin-bottom: 12px;
   color: var(--text);
-  font: 600 20px var(--font-serif), Georgia, serif;
+  font: 800 20px var(--font-sans);
 }
 
 .inner-copy p { margin-bottom: 16px; }
@@ -1051,7 +1049,7 @@ button, input, textarea, select {
   border-radius: 50%;
   background: var(--bg-card);
   border: 2px solid var(--accent);
-  box-shadow: 0 0 10px color-mix(in oklch, var(--accent) 40%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .changelog-meta {
@@ -1062,11 +1060,11 @@ button, input, textarea, select {
 }
 .changelog-version {
   color: var(--accent);
-  font: 600 13px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 800 13px var(--font-mono), "IBM Plex Mono", monospace;
 }
 .changelog-date {
   color: var(--text-muted);
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 
 /* Blog */
@@ -1085,12 +1083,12 @@ button, input, textarea, select {
 
 .blog-card .blog-date {
   color: var(--text-muted);
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 
 .blog-card .blog-title {
   color: var(--text);
-  font: 600 20px / 1.3 var(--font-serif), Georgia, serif;
+  font: 800 20px / 1.3 var(--font-sans);
   text-decoration: none;
   transition: color 0.2s ease;
 }
@@ -1098,7 +1096,7 @@ button, input, textarea, select {
 
 .blog-card .blog-summary {
   color: var(--text-dim);
-  font: 14px / 1.5 var(--font-serif), Georgia, serif;
+  font: 14px / 1.5 var(--font-sans);
 }
 
 /* Docs layout */
@@ -1127,8 +1125,8 @@ button, input, textarea, select {
 }
 .docs-sidebar a:hover,
 .docs-sidebar a.active {
-  background: color-mix(in oklch, var(--accent) 10%, transparent);
-  border-color: color-mix(in oklch, var(--accent) 25%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
   color: var(--text);
 }
 
@@ -1154,10 +1152,10 @@ button, input, textarea, select {
   gap: 5px;
   padding: 4px 10px;
   border-radius: 3px;
-  background: color-mix(in oklch, var(--accent) 12%, transparent);
-  border: 1px solid color-mix(in oklch, var(--accent) 25%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
   color: var(--accent);
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.04em;
 }
 
@@ -1186,60 +1184,72 @@ button, input, textarea, select {
 
 /* Page intro (full-width rail pattern, same as section-intro) */
 .page-intro {
-  display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
-  gap: clamp(26px, 5vw, 78px);
-  margin-bottom: 64px;
+  max-width: 860px;
+  margin-bottom: 56px;
 }
+
 
 .page-intro-eyebrow {
-  align-self: start;
+  margin-bottom: 14px;
   color: var(--accent);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
-  letter-spacing: 0.1em;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  min-height: 80px;
-  padding-right: 22px;
-  border-right: 1px solid oklch(1 0 0 / 0.09);
-  writing-mode: vertical-rl;
 }
+
 
 .page-h1 {
-  color: oklch(0.96 0.004 200);
-  font: 600 clamp(38px, 4.4vw, 66px) / 0.99 var(--font-serif), Georgia, serif;
-  letter-spacing: -0.033em;
-  margin: 0 0 16px;
+  color: var(--text);
+  font-size: clamp(40px, 5.6vw, 72px);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  margin: 0 0 18px;
+  text-wrap: balance;
 }
 
+
 .page-lead {
-  max-width: 570px;
+  max-width: 640px;
   color: var(--text-dim);
-  font: 17px / 1.65 var(--font-serif), Georgia, serif;
+  font-size: 19px;
+  line-height: 1.55;
 }
+
 
 /* Content card (used in docs, about, compare, security, use-cases) */
 .content-card {
-  background: color-mix(in oklch, var(--bg-card) 80%, var(--bg));
+  background: var(--bg-card);
   border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-soft);
   padding: 28px;
   position: relative;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+
 .content-card:hover {
-  background: var(--bg-card-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hard);
   border-color: var(--border-bright);
 }
 
+
 .content-card-title {
   color: var(--text);
-  font: 600 20px / 1.2 var(--font-serif), Georgia, serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   margin-bottom: 8px;
 }
 
+
 .content-card-body {
   color: var(--text-dim);
-  font: 14px / 1.55 var(--font-serif), Georgia, serif;
+  font: 14px / 1.55 var(--font-sans);
 }
 
 /* Docs layout */
@@ -1271,8 +1281,8 @@ button, input, textarea, select {
 
 .docs-sidebar a:hover,
 .docs-sidebar a.active {
-  background: color-mix(in oklch, var(--accent) 10%, transparent);
-  border-color: color-mix(in oklch, var(--accent) 25%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
   color: var(--text);
 }
 
@@ -1286,7 +1296,7 @@ button, input, textarea, select {
 }
 
 .blog-card {
-  background: color-mix(in oklch, var(--bg-card) 80%, var(--bg));
+  background: color-mix(in srgb, var(--bg-card) 80%, var(--bg));
   padding: 28px;
   display: flex;
   flex-direction: column;
@@ -1298,13 +1308,13 @@ button, input, textarea, select {
 
 .blog-date {
   color: var(--text-muted);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.05em;
 }
 
 .blog-title {
   color: var(--text);
-  font: 600 20px / 1.3 var(--font-serif), Georgia, serif;
+  font: 800 20px / 1.3 var(--font-sans);
   text-decoration: none;
   transition: color 0.18s ease;
 }
@@ -1314,7 +1324,7 @@ button, input, textarea, select {
 .blog-summary {
   flex: 1;
   color: var(--text-dim);
-  font: 14px / 1.55 var(--font-serif), Georgia, serif;
+  font: 14px / 1.55 var(--font-sans);
 }
 
 /* Tag system */
@@ -1324,15 +1334,15 @@ button, input, textarea, select {
   gap: 5px;
   padding: 3px 8px;
   border-radius: 3px;
-  font: 9px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.tag-new     { background: color-mix(in oklch, var(--accent) 12%, transparent);   border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent); color: var(--accent); }
-.tag-fix     { background: color-mix(in oklch, var(--success) 12%, transparent);  border: 1px solid color-mix(in oklch, var(--success) 30%, transparent); color: var(--success); }
-.tag-break   { background: color-mix(in oklch, var(--error) 12%, transparent);    border: 1px solid color-mix(in oklch, var(--error) 30%, transparent);   color: var(--error); }
-.tag-perf    { background: color-mix(in oklch, var(--warning) 12%, transparent);  border: 1px solid color-mix(in oklch, var(--warning) 30%, transparent); color: var(--warning); }
+.tag-new     { background: color-mix(in srgb, var(--accent) 12%, transparent);   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); color: var(--accent); }
+.tag-fix     { background: color-mix(in srgb, var(--success) 12%, transparent);  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); color: var(--success); }
+.tag-break   { background: color-mix(in srgb, var(--error) 12%, transparent);    border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);   color: var(--error); }
+.tag-perf    { background: color-mix(in srgb, var(--warning) 12%, transparent);  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); color: var(--warning); }
 
 /* Status pill (roadmap) */
 .status-pill {
@@ -1341,7 +1351,7 @@ button, input, textarea, select {
   gap: 5px;
   padding: 4px 10px;
   border-radius: 3px;
-  font: 9px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -1354,10 +1364,10 @@ button, input, textarea, select {
   background: currentColor;
 }
 
-.status-pill-success { background: color-mix(in oklch, var(--success) 12%, transparent); border: 1px solid color-mix(in oklch, var(--success) 30%, transparent); color: var(--success); }
-.status-pill-info    { background: color-mix(in oklch, var(--accent) 12%, transparent);  border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent);   color: var(--accent); }
-.status-pill-warning { background: color-mix(in oklch, var(--warning) 12%, transparent); border: 1px solid color-mix(in oklch, var(--warning) 30%, transparent); color: var(--warning); }
-.status-pill-error   { background: color-mix(in oklch, var(--text-muted) 10%, transparent); border: 1px solid var(--border); color: var(--text-muted); }
+.status-pill-success { background: color-mix(in srgb, var(--success) 12%, transparent); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); color: var(--success); }
+.status-pill-info    { background: color-mix(in srgb, var(--accent) 12%, transparent);  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);   color: var(--accent); }
+.status-pill-warning { background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); color: var(--warning); }
+.status-pill-error   { background: color-mix(in srgb, var(--text-muted) 10%, transparent); border: 1px solid var(--border); color: var(--text-muted); }
 
 /* Changelog timeline */
 .changelog-list {
@@ -1390,7 +1400,7 @@ button, input, textarea, select {
   border-radius: 50%;
   background: var(--bg-card);
   border: 2px solid var(--accent);
-  box-shadow: 0 0 10px color-mix(in oklch, var(--accent) 40%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .changelog-meta {
@@ -1402,12 +1412,12 @@ button, input, textarea, select {
 
 .changelog-version {
   color: var(--accent);
-  font: 600 13px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 800 13px var(--font-mono), "IBM Plex Mono", monospace;
 }
 
 .changelog-date {
   color: var(--text-muted);
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 
 /* Roadmap phases */
@@ -1431,13 +1441,13 @@ button, input, textarea, select {
 
 .roadmap-phase-title {
   color: var(--text);
-  font: 600 26px / 1.1 var(--font-serif), Georgia, serif;
+  font: 800 26px / 1.1 var(--font-sans);
   letter-spacing: -0.02em;
 }
 
 .roadmap-phase-desc {
   color: var(--text-dim);
-  font: 15px / 1.6 var(--font-serif), Georgia, serif;
+  font: 15px / 1.6 var(--font-sans);
   max-width: 640px;
   margin-bottom: 20px;
 }
@@ -1466,7 +1476,7 @@ button, input, textarea, select {
 }
 
 .roadmap-item {
-  background: color-mix(in oklch, var(--bg-card) 80%, var(--bg));
+  background: color-mix(in srgb, var(--bg-card) 80%, var(--bg));
   padding: 10px 14px;
   color: var(--text-dim);
   font: 12px var(--font-mono), "IBM Plex Mono", monospace;
@@ -1490,7 +1500,7 @@ button, input, textarea, select {
 }
 
 .manifesto-cell {
-  background: color-mix(in oklch, var(--bg-card) 80%, var(--bg));
+  background: color-mix(in srgb, var(--bg-card) 80%, var(--bg));
   padding: 28px;
   min-height: 200px;
   display: flex;
@@ -1503,17 +1513,17 @@ button, input, textarea, select {
 
 .manifesto-idx {
   color: var(--accent);
-  font: 10px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 
 .manifesto-title {
   color: var(--text);
-  font: 600 20px / 1.15 var(--font-serif), Georgia, serif;
+  font: 800 20px / 1.15 var(--font-sans);
 }
 
 .manifesto-desc {
   color: var(--text-dim);
-  font: 14px / 1.55 var(--font-serif), Georgia, serif;
+  font: 14px / 1.55 var(--font-sans);
 }
 
 /* Principle list (how-it-works style, used in about) */
@@ -1528,19 +1538,19 @@ button, input, textarea, select {
 
 .about-principle-num {
   color: var(--accent);
-  font: 11px var(--font-mono), "IBM Plex Mono", monospace;
+  font: 700 12px var(--font-sans);
 }
 
 .about-principle-title {
   color: var(--text);
-  font: 600 26px / 1.1 var(--font-serif), Georgia, serif;
+  font: 800 26px / 1.1 var(--font-sans);
   letter-spacing: -0.02em;
   margin-bottom: 8px;
 }
 
 .about-principle-body {
   color: var(--text-dim);
-  font: 15px / 1.6 var(--font-serif), Georgia, serif;
+  font: 15px / 1.6 var(--font-sans);
 }
 
 /* ============================================================
@@ -1580,7 +1590,7 @@ button, input, textarea, select {
     gap: 12px;
     padding: 0 0 16px;
     border-right: 0;
-    border-bottom: 1px solid oklch(1 0 0 / 0.085);
+    border-bottom: 1px solid rgb(15 35 39 / 0.085);
   }
   .hero-rail p, .hero-rail i { writing-mode: horizontal-tb; }
   .hero-rail i { margin-top: 0; margin-left: auto; }
@@ -1620,4 +1630,162 @@ button, input, textarea, select {
   .section-final { padding: 92px 20px; }
   .section-pad-lg, .section-pad-md { padding: 82px 0; }
   .inner-main { width: min(100% - 32px, 1320px); padding: 52px 0 72px; }
+}
+
+/* ============================================================
+   Bento theme — shared surfaces
+   The rules above are declared twice in places; these final
+   declarations give every page the same rounded, light surfaces.
+   ============================================================ */
+.locale-select {
+  appearance: none;
+  border: 1px solid var(--border-bright);
+  color: var(--text-dim);
+  cursor: pointer;
+  outline: none;
+  background: var(--bg-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2342585c' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 40px;
+  padding: 0 32px 0 14px;
+}
+
+.marketing-card,
+.blog-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-soft);
+}
+
+.marketing-card:hover,
+.blog-card:hover {
+  background: var(--bg-card);
+  border-color: var(--border-bright);
+  box-shadow: var(--shadow-hard);
+}
+
+.tag {
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 11px;
+  text-transform: none;
+}
+
+.section-final {
+  margin: 0 auto 96px;
+  width: min(100% - 48px, 1280px);
+  border: 0;
+  border-radius: 36px;
+  padding: 96px 24px;
+  background:
+    radial-gradient(60% 120% at 100% 0%, rgb(127 214 176 / 0.45), transparent 60%),
+    radial-gradient(50% 100% at 0% 100%, rgb(20 163 191 / 0.25), transparent 60%),
+    var(--ink);
+  color: #eef4f5;
+}
+
+.section-final::before { display: none; }
+
+.section-final > p {
+  color: var(--mint);
+  font: 700 13px var(--font-sans);
+  letter-spacing: 0.16em;
+}
+
+.section-final h2 {
+  color: #fff;
+}
+
+.section-final .aur-button-secondary {
+  background: transparent;
+  border-color: rgb(255 255 255 / 0.4);
+  color: #fff;
+}
+
+.blog-card .blog-title,
+.blog-title {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.site-grain {
+  background-image: radial-gradient(rgb(15 35 39 / 0.045) 1px, transparent 1px);
+  animation: none;
+}
+
+/* Form controls on content pages (contact, newsletter, filters) */
+main input:not([type="checkbox"]):not([type="radio"]),
+main select,
+main textarea {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-bright);
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--bg-card);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+main textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+main input:focus,
+main select:focus,
+main textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  outline: none;
+}
+
+main input::placeholder,
+main textarea::placeholder {
+  color: var(--text-muted);
+}
+
+:focus-visible {
+  outline: 3px solid var(--teal-bright);
+  outline-offset: 3px;
+}
+
+/* Inline call-to-action box (blog, roadmap, security) */
+.cta-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
+  align-items: center;
+  margin-bottom: 80px;
+  padding: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background:
+    radial-gradient(70% 120% at 100% 0%, rgb(127 214 176 / 0.18), transparent 60%),
+    var(--bg-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.cta-box > :last-child {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .cta-box {
+    grid-template-columns: 1fr;
+    padding: 28px 22px;
+  }
+
+  .cta-box .aur-button {
+    white-space: normal;
+  }
 }

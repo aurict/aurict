@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
 import { Footer } from "@/components/Footer";
@@ -36,7 +37,7 @@ export default function PricingPage() {
       <main className="inner-main-wide">
         <div className="page-intro">
           <div className="page-intro-eyebrow">{tr ? "şeffaf fiyatlandırma" : "transparent pricing"}</div>
-          <h1 className="page-h1">{tr ? "Küçük başlayın, kullanımla büyüyün." : "Start small. Scale with usage."}</h1>
+          <h1 className="page-h1"><TightPeriods text={tr ? "Küçük başlayın, kullanımla büyüyün." : "Start small. Scale with usage."} /></h1>
           <p className="page-lead">{tr ? "Developer ve SaaS planları toplantı olmadan kullanılabilir. Self-host ve Enterprise mimari görüşme gerektirir." : "Developer and SaaS plans are self-service. Self-host and Enterprise include an architecture review."}</p>
         </div>
 

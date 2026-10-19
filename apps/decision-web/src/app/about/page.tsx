@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useLocale } from "next-intl";
 import { Footer } from "@/components/Footer";
 import {
@@ -108,9 +109,9 @@ export default function AboutPage() {
             </div>
             <div>
               <h1 className="page-h1">
-                {tr
+                <TightPeriods text={tr
                   ? "Karar Motoru neden var?"
-                  : "Why the Decision Engine exists."}
+                  : "Why the Decision Engine exists."} />
               </h1>
               <p className="page-lead">
                 {tr
@@ -135,14 +136,14 @@ export default function AboutPage() {
               <div
                 key={i}
                 style={{
-                  background: "color-mix(in oklch, var(--bg-card) 85%, var(--bg))",
+                  background: "color-mix(in srgb, var(--bg-card) 85%, var(--bg))",
                   padding: "32px 24px",
                 }}
               >
                 <div
                   style={{
                     color: "var(--accent)",
-                    font: "600 clamp(36px, 4vw, 48px) / 1 var(--font-serif)",
+                    font: "800 clamp(36px, 4vw, 48px) / 1 var(--font-sans)",
                     marginBottom: 8,
                   }}
                 >
@@ -160,7 +161,7 @@ export default function AboutPage() {
                 <div
                   style={{
                     color: "var(--text-muted)",
-                    font: "11px var(--font-mono)",
+                    font: "700 12.5px var(--font-sans)",
                   }}
                 >
                   {s.sub}
@@ -174,7 +175,7 @@ export default function AboutPage() {
             <p
               style={{
                 color: "var(--accent)",
-                font: "10px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: 24,
@@ -221,7 +222,7 @@ export default function AboutPage() {
             <p
               style={{
                 color: "var(--accent)",
-                font: "10px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: 24,

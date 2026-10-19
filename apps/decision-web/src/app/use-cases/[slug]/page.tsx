@@ -54,17 +54,17 @@ export default function UseCaseDetailPage({
           {/* Header */}
           <div style={{ marginBottom: 36 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
-              <span className="tag" style={{ background: `color-mix(in oklch, ${uc.color} 15%, transparent)`, color: uc.color }}>
+              <span className="tag" style={{ background: `color-mix(in srgb, ${uc.color} 15%, transparent)`, color: uc.color }}>
                 {tr ? "Kullanım Senaryosu" : "Use Case Detail"}
               </span>
-              <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)" }}>
+              <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>
                 {uc.eyebrow}
               </span>
             </div>
 
             <h1
               style={{
-                fontFamily: "var(--font-serif), 'Source Serif 4', Georgia, serif",
+                fontFamily: "var(--font-sans)",
                 fontSize: "clamp(32px, 5vw, 52px)",
                 fontWeight: 600,
                 color: "var(--text)",
@@ -78,7 +78,7 @@ export default function UseCaseDetailPage({
 
             <p
               style={{
-                fontFamily: "var(--font-serif), 'Source Serif 4', Georgia, serif",
+                fontFamily: "var(--font-sans)",
                 fontSize: 19,
                 lineHeight: 1.6,
                 color: "var(--text-dim)",
@@ -116,7 +116,7 @@ export default function UseCaseDetailPage({
 
             {/* Implementation Code Box */}
             <div style={{ marginTop: 12, marginBottom: 12 }}>
-              <div style={{ color: "var(--accent)", font: "600 11px var(--font-mono)", marginBottom: 8, textTransform: "uppercase" }}>
+              <div style={{ color: "var(--accent)", font: "700 12.5px var(--font-sans)", marginBottom: 8, textTransform: "uppercase" }}>
                 {tr ? "ENTEGRASYON KODU:" : "IMPLEMENTATION SNIPPET:"}
               </div>
               <pre

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
@@ -19,8 +20,6 @@ const PRODUCT_LINKS = [
 ] as const;
 
 const SITE_LINKS_EN = [
-  ["/pricing",    "Pricing"],
-  ["/docs",       "Docs"],
   ["/changelog",  "Changelog"],
   ["/roadmap",    "Roadmap"],
   ["/blog",       "Blog"],
@@ -32,8 +31,6 @@ const SITE_LINKS_EN = [
 ] as const;
 
 const SITE_LINKS_TR = [
-  ["/pricing",    "Fiyatlandırma"],
-  ["/docs",       "Dokümantasyon"],
   ["/changelog",  "Değişiklik Günlüğü"],
   ["/roadmap",    "Yol Haritası"],
   ["/blog",       "Blog"],
@@ -89,53 +86,39 @@ export function Nav() {
   function closeAll() { setActiveMenu(null); setMenuOpen(false); }
 
   const siteLinks = tr ? SITE_LINKS_TR : SITE_LINKS_EN;
+  const primaryLinks: [string, string][] = [
+    ["/#how-it-works", tr ? "Nasıl çalışır" : "How it works"],
+    ["/pricing", tr ? "Fiyatlar" : "Pricing"],
+    ["/docs", tr ? "Dokümanlar" : "Docs"],
+  ];
 
   return (
     <>
       <nav
         id="mt-nav"
         aria-label="Primary navigation"
-        className={`${styles.nav} mono ${scrolled || menuOpen ? styles.elevated : ""}`}
+        className={`${styles.nav} ${scrolled || menuOpen ? styles.elevated : ""}`}
       >
         <div className={styles.frame}>
-          {/* Brand */}
-          <div className={styles.identity}>
-            <BrandMark />
-            <span className={styles.edition}>decision engine</span>
-          </div>
+          <BrandMark />
 
-          {/* Desktop links */}
           <div className={styles.desktopNav}>
-            {/* Product dropdown */}
             <div className={styles.menuWrap}>
               <button
                 aria-expanded={activeMenu === "product"}
                 className={styles.trigger}
-                onClick={() =>
-                  setActiveMenu((m) => (m === "product" ? null : "product"))
-                }
+                onClick={() => setActiveMenu((m) => (m === "product" ? null : "product"))}
                 type="button"
               >
                 {tr ? "Ürün" : "Product"}
-                <span aria-hidden="true" className={styles.chevron}>⌄</span>
+                <ChevronDown aria-hidden="true" className={styles.chevron} size={15} strokeWidth={2.4} />
               </button>
               {activeMenu === "product" && (
                 <div className={styles.panel}>
-                  <span className={styles.panelLabel}>
-                    {tr ? "kapasite indeksi" : "capability index"}
-                  </span>
                   <div className={styles.productGrid}>
-                    {PRODUCT_LINKS.map((link, i) => (
-                      <Link
-                        key={i}
-                        href={link.href}
-                        className={styles.menuItem}
-                        onClick={closeAll}
-                      >
-                        <span className={styles.itemIndex}>
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <span>{tr ? link.label_tr : link.label_en}</span>
+                    {PRODUCT_LINKS.map((link) => (
+                      <Link key={link.label_en} href={link.href} className={styles.menuItem} onClick={closeAll}>
+                        {tr ? link.label_tr : link.label_en}
                       </Link>
                     ))}
                   </div>
@@ -143,32 +126,25 @@ export function Nav() {
               )}
             </div>
 
-            {/* Site dropdown */}
+            {primaryLinks.map(([href, label]) => (
+              <Link key={href} href={href} className={styles.siteLink}>{label}</Link>
+            ))}
+
             <div className={styles.menuWrap}>
               <button
                 aria-expanded={activeMenu === "site"}
                 className={styles.trigger}
-                onClick={() =>
-                  setActiveMenu((m) => (m === "site" ? null : "site"))
-                }
+                onClick={() => setActiveMenu((m) => (m === "site" ? null : "site"))}
                 type="button"
               >
-                {tr ? "Site" : "Site"}
-                <span aria-hidden="true" className={styles.chevron}>⌄</span>
+                {tr ? "Kaynaklar" : "Resources"}
+                <ChevronDown aria-hidden="true" className={styles.chevron} size={15} strokeWidth={2.4} />
               </button>
               {activeMenu === "site" && (
                 <div className={`${styles.panel} ${styles.panelNarrow}`}>
-                  <span className={styles.panelLabel}>
-                    {tr ? "sayfa dizini" : "page index"}
-                  </span>
                   <div className={styles.siteGrid}>
                     {siteLinks.map(([href, label]) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        className={styles.siteItem}
-                        onClick={closeAll}
-                      >
+                      <Link key={href} href={href} className={styles.menuItem} onClick={closeAll}>
                         {label}
                       </Link>
                     ))}
@@ -176,31 +152,19 @@ export function Nav() {
                 </div>
               )}
             </div>
-
-            <Link href="/docs" className={styles.siteLink}>
-              {tr ? "Docs" : "Docs"}
-            </Link>
-            <Link href="/pricing" className={styles.siteLink}>
-              {tr ? "Fiyatlar" : "Pricing"}
-            </Link>
-            <Link href="/contact" className={styles.siteLink}>
-              {tr ? "İletişim" : "Contact"}
-            </Link>
           </div>
 
-          {/* Controls */}
           <div className={styles.controls}>
             <LocaleSwitcher />
-            <a
-              href="https://decision.aurict.com/register"
-              className="aur-button aur-button-primary"
-              style={{ fontSize: 11, minHeight: 36, padding: "0 13px" }}
-            >
-              {tr ? "Başla" : "Get Started"}
+            <a href="https://decision.aurict.com/register" className={styles.cta}>
+              {tr ? "Başla" : "Get started"}
+            </a>
+            <a className={styles.byAurict} href="https://aurict.com" rel="noopener noreferrer" target="_blank">
+              by Aurict
+              <span aria-hidden="true" className={styles.aurictDot} />
             </a>
           </div>
 
-          {/* Mobile burger */}
           <button
             aria-expanded={menuOpen}
             aria-label={menuOpen ? (tr ? "Menüyü kapat" : "Close menu") : (tr ? "Menüyü aç" : "Open menu")}
@@ -214,34 +178,27 @@ export function Nav() {
         </div>
       </nav>
 
-      {/* Mobile drawer */}
       {menuOpen && (
-        <div className={`${styles.drawer} mono`}>
+        <div className={styles.drawer}>
           <DrawerGroup label={tr ? "Ürün" : "Product"}>
-            {PRODUCT_LINKS.map((link, i) => (
-              <Link key={i} href={link.href} onClick={closeAll}>
-                <span style={{ color: "var(--text-muted)", marginRight: 8, fontSize: 10, fontFamily: "var(--font-mono)" }}>
-                  {String(i + 1).padStart(2, "0")}
-                </span>
+            {primaryLinks.map(([href, label]) => (
+              <Link key={href} href={href} onClick={closeAll}>{label}</Link>
+            ))}
+            {PRODUCT_LINKS.map((link) => (
+              <Link key={link.label_en} href={link.href} onClick={closeAll}>
                 {tr ? link.label_tr : link.label_en}
               </Link>
             ))}
           </DrawerGroup>
-          <DrawerGroup label={tr ? "Site" : "Site"}>
+          <DrawerGroup label={tr ? "Kaynaklar" : "Resources"}>
             {siteLinks.map(([href, label]) => (
-              <Link key={href} href={href} onClick={closeAll}>
-                {label}
-              </Link>
+              <Link key={href} href={href} onClick={closeAll}>{label}</Link>
             ))}
           </DrawerGroup>
           <div className={styles.drawerControls}>
             <LocaleSwitcher />
-            <a
-              href="https://decision.aurict.com/register"
-              className="aur-button aur-button-primary"
-              style={{ fontSize: 12, width: "100%", justifyContent: "center" }}
-            >
-              {tr ? "Başla" : "Get Started"}
+            <a href="https://decision.aurict.com/register" className={styles.cta}>
+              {tr ? "Başla" : "Get started"}
             </a>
           </div>
         </div>

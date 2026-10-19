@@ -35,12 +35,12 @@ export function Footer() {
   ];
 
   return (
-    <footer className={styles.footer}>
+    <footer className={`${styles.footer} surface-dark`}>
       <div className={styles.frame}>
         {/* Identity */}
         <div className={styles.identity}>
           <span className={styles.wordmark}>
-            aurict decision<span className={styles.cursor}>▊</span>
+            <b>aurict</b> decision
           </span>
           <p className={styles.sub}>
             {tr
@@ -66,7 +66,10 @@ export function Footer() {
 
       {/* Bottom bar */}
       <div className={styles.bottom}>
-        <span>aurict decision · aurict sub-product · decision engine</span>
+        <a href="https://aurict.com" rel="noopener noreferrer" target="_blank">
+          {tr ? "Aurict ekosisteminin parçası" : "Part of the Aurict ecosystem"}
+          <span aria-hidden="true" className={styles.aurictDot} />
+        </a>
         <span>
           {tr
             ? "© 2026 Aurict · Tüm hakları saklıdır"

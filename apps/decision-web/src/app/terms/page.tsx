@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useLocale } from "next-intl";
 import { Footer } from "@/components/Footer";
 
@@ -16,7 +17,7 @@ export default function TermsPage() {
             <p
               style={{
                 color: "var(--accent)",
-                font: "10px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: 16,
@@ -25,7 +26,7 @@ export default function TermsPage() {
               {tr ? "yasal dokümanlar" : "legal documentation"}
             </p>
             <h1 className="page-h1">
-              {tr ? "Kullanım Koşulları" : "Terms of Service"}
+              <TightPeriods text={tr ? "Kullanım Koşulları" : "Terms of Service"} />
             </h1>
             <p className="page-lead" style={{ marginTop: 12 }}>
               {tr
@@ -34,7 +35,7 @@ export default function TermsPage() {
             </p>
             <p
               style={{
-                font: "11px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 color: "var(--text-muted)",
                 marginTop: 16,
               }}

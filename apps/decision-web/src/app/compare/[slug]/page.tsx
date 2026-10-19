@@ -53,7 +53,7 @@ export default function CompareDetailPage({
 
             <h1
               style={{
-                fontFamily: "var(--font-serif), 'Source Serif 4', Georgia, serif",
+                fontFamily: "var(--font-sans)",
                 fontSize: "clamp(30px, 5vw, 48px)",
                 fontWeight: 600,
                 color: "var(--text)",
@@ -65,7 +65,7 @@ export default function CompareDetailPage({
               {match.title}
             </h1>
 
-            <p style={{ color: "var(--text-dim)", font: "18px / 1.6 var(--font-serif)" }}>
+            <p style={{ color: "var(--text-dim)", font: "18px / 1.6 var(--font-sans)" }}>
               {tr ? match.desc_tr : match.desc_en}
             </p>
           </div>
@@ -83,7 +83,7 @@ export default function CompareDetailPage({
               className="content-card"
               style={{
                 borderColor: "var(--accent)",
-                background: "color-mix(in oklch, var(--accent) 6%, var(--bg-card))",
+                background: "color-mix(in srgb, var(--accent) 6%, var(--bg-card))",
               }}
             >
               <div style={{ color: "var(--accent)", font: "600 14px var(--font-mono)", marginBottom: 12 }}>
