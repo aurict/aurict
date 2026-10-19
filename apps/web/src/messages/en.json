@@ -25,7 +25,19 @@
     "changelog": "changelog",
     "site": "site",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "products": "products",
+    "resources": "resources",
+    "cli": "CLI",
+    "hoprel": "Hoprel",
+    "blog": "blog",
+    "download": "Download",
+    "compare": "compare",
+    "useCases": "use cases",
+    "cliDesc": "Open-source terminal AI coding agent",
+    "hoprelDesc": "Local-first desktop AI agent workspace",
+    "mobileDesc": "Our studio of consumer apps and games",
+    "decisionDesc": "Private, on-device decisions in under 10 ms"
   },
   "Footer": {
     "product": "product",
@@ -43,7 +55,9 @@
     "legal": "legal",
     "privacy": "privacy",
     "terms": "terms",
-    "openSource": "open source"
+    "openSource": "open source",
+    "resources": "resources",
+    "tagline": "One company. Connected products. Built around you."
   },
   "Auth": {
     "login": "login",

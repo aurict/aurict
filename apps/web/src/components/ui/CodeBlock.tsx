@@ -29,6 +29,7 @@ export function CodeBlock({ code, language = "bash", filename }: CodeBlockProps)
 
   return (
     <div
+      className="surface-dark"
       style={{
         position: "relative",
         background: "var(--bg-deep)",

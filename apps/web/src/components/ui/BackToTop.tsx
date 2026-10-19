@@ -50,7 +50,7 @@ export function BackToTop() {
         alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+        boxShadow: "0 6px 18px rgb(23 17 15 / 0.14)",
         transition: "all 0.2s",
         zIndex: 50,
       }}

@@ -59,6 +59,7 @@ export function TerminalWindow() {
 
   return (
     <div
+      className="surface-dark"
       style={{
         background: "linear-gradient(180deg, var(--bg-card), var(--bg-deep))",
         border: "1px solid var(--border)",

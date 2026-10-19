@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import { IBM_Plex_Mono, Source_Serif_4 } from "next/font/google"
+import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
 import { ScrollProgress } from "@/components/ui/ScrollProgress"
@@ -11,10 +11,10 @@ import "./globals.css"
 
 const BASE_URL = "https://aurict.com"
 
-const sourceSerif = Source_Serif_4({
+const plusJakarta = Plus_Jakarta_Sans({
   display: "swap",
   subsets: ["latin", "latin-ext"],
-  variable: "--font-serif",
+  variable: "--font-sans",
 })
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -28,12 +28,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
 
   title: {
-    default: "Aurict — Agentic Workspaces Across Desktop, Mobile, and Terminal",
+    default: "Aurict — The Aurict Ecosystem: CLI, Hoprel, Mobile, Decision",
     template: "%s | Aurict",
   },
 
   description:
-    "Open-source AI workspaces across Hoprel desktop, Aurict Mobile, the terminal, and Bondley.one fixed-income intelligence. Bring your own provider, keep local context, and work with explicit control.",
+    "Aurict is the center of an ecosystem of AI products: the open-source Aurict CLI terminal agent, the Hoprel desktop agent workspace, the Aurict Mobile app studio, and the Aurict Decision engine. Bring your own provider, keep local context, and work with explicit control.",
 
   keywords: [
     "open source terminal agent",
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
     "AI terminal assistant",
     "local-first AI workspace",
     "Hoprel desktop app",
-    "Bondley.one",
-    "fixed-income intelligence",
+    "Aurict CLI",
+    "Aurict Decision",
     "Claude Code alternative",
     "OpenCode alternative",
     "open source AI coding assistant",
@@ -79,8 +79,8 @@ export const metadata: Metadata = {
     locale:      "en_US",
     url:         BASE_URL,
     siteName:    "Aurict",
-    title:       "Aurict — Agentic Workspaces",
-    description: "Hoprel desktop, Aurict Mobile, an open-source terminal runtime, and Bondley.one fixed-income intelligence.",
+    title:       "Aurict — The Aurict Ecosystem",
+    description: "Aurict CLI, Hoprel desktop, the Aurict Mobile studio, and Aurict Decision — one connected ecosystem.",
     images: [
       {
         url:    "/opengraph-image",
@@ -95,8 +95,8 @@ export const metadata: Metadata = {
     card:        "summary_large_image",
     site:        "@aurictdev",
     creator:     "@aurictdev",
-    title:       "Aurict — Agentic Workspaces",
-    description: "Hoprel desktop, Aurict Mobile, a terminal runtime, and Bondley.one fixed-income intelligence.",
+    title:       "Aurict — The Aurict Ecosystem",
+    description: "Aurict CLI, Hoprel desktop, the Aurict Mobile studio, and Aurict Decision — one connected ecosystem.",
     images:      ["/opengraph-image"],
   },
 
@@ -123,14 +123,14 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#171110",
+  themeColor: "#faf6f1",
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [locale, messages] = await Promise.all([getLocale(), getMessages()])
 
   return (
-    <html className={`${sourceSerif.variable} ${ibmPlexMono.variable}`} lang={locale}>
+    <html className={`${plusJakarta.variable} ${ibmPlexMono.variable}`} lang={locale}>
       <head>
         <link rel="dns-prefetch" href="https://github.com" />
         <link rel="dns-prefetch" href="https://registry.npmjs.org" />
@@ -138,7 +138,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="shortcut icon" href="/aurict-logo-v5.svg" />
         {/* Web App Manifest */}
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#171110" />
+        <meta name="theme-color" content="#faf6f1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>

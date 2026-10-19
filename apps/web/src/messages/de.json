@@ -25,7 +25,19 @@
     "changelog": "Änderungen",
     "site": "Website",
     "openMenu": "Menü öffnen",
-    "closeMenu": "Menü schließen"
+    "closeMenu": "Menü schließen",
+    "products": "Produkte",
+    "resources": "Ressourcen",
+    "cli": "CLI",
+    "hoprel": "Hoprel",
+    "blog": "Blog",
+    "download": "Herunterladen",
+    "compare": "Vergleich",
+    "useCases": "Anwendungsfälle",
+    "cliDesc": "Open-Source-KI-Coding-Agent fürs Terminal",
+    "hoprelDesc": "Local-first KI-Agent-Workspace für den Desktop",
+    "mobileDesc": "Unser Studio für Apps und Spiele",
+    "decisionDesc": "Private Entscheidungen auf dem Gerät in unter 10 ms"
   },
   "Footer": {
     "product": "Produkt",
@@ -43,7 +55,9 @@
     "legal": "Rechtliches",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
-    "openSource": "Open Source"
+    "openSource": "Open Source",
+    "resources": "Ressourcen",
+    "tagline": "Ein Unternehmen. Vernetzte Produkte. Rund um dich gebaut."
   },
   "Auth": {
     "login": "Anmelden",

@@ -62,7 +62,7 @@ export function AccountConsole() {
       <div className="console-topline" />
       <div className="console-layout">
         <aside className="console-sidebar">
-          <BrandMark compact />
+          <BrandMark />
           <nav className="console-nav" aria-label={tr ? "Konsol" : "Console"}>
             <Link className="console-nav-link console-nav-link-active" href="/console/account">
               <UserRound aria-hidden="true" size={15} />

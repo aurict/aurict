@@ -32,7 +32,7 @@ export default async function OgImage() {
           display:         "flex",
           flexDirection:   "column",
           justifyContent:  "space-between",
-          background:      "#0a0a0a",
+          background:      "#faf6f1",
           padding:         "64px 72px",
           fontFamily:      "monospace",
           position:        "relative",
@@ -47,7 +47,7 @@ export default async function OgImage() {
             left:       0,
             right:      0,
             height:     3,
-            background: "linear-gradient(90deg, #818cf8, #a78bfa, #c4b5fd)",
+            background: "linear-gradient(90deg, #c9352b, #e0604f, #e8b04a)",
             display:    "flex",
           }}
         />
@@ -61,7 +61,7 @@ export default async function OgImage() {
             width:        700,
             height:       700,
             borderRadius: "50%",
-            background:   "radial-gradient(ellipse, rgba(129,140,248,0.08) 0%, transparent 65%)",
+            background:   "radial-gradient(ellipse, rgba(201,53,43,0.08) 0%, transparent 65%)",
             display:      "flex",
           }}
         />
@@ -69,24 +69,24 @@ export default async function OgImage() {
         {/* Header row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            {/* Diamond icon */}
+            {/* Brand tile */}
             <div
               style={{
                 width:        44,
                 height:       44,
-                background:   "rgba(129,140,248,0.15)",
-                border:       "1px solid rgba(129,140,248,0.3)",
+                background:   "rgba(201,53,43,0.15)",
+                border:       "1px solid rgba(201,53,43,0.3)",
                 borderRadius: 10,
                 display:      "flex",
                 alignItems:   "center",
                 justifyContent: "center",
                 fontSize:     22,
-                color:        "#818cf8",
+                color:        "#c9352b",
               }}
             >
-              ◈
+              <div style={{ width: 18, height: 18, borderRadius: 5, background: "#c9352b", display: "flex" }} />
             </div>
-            <span style={{ fontSize: 36, fontWeight: 700, color: "#f5f5f5", letterSpacing: "-1px" }}>
+            <span style={{ fontSize: 36, fontWeight: 700, color: "#17110f", letterSpacing: "-1px" }}>
               aurict
             </span>
           </div>
@@ -94,9 +94,9 @@ export default async function OgImage() {
           <div
             style={{
               fontSize:     14,
-              color:        "#818cf8",
-              background:   "rgba(129,140,248,0.1)",
-              border:       "1px solid rgba(129,140,248,0.25)",
+              color:        "#c9352b",
+              background:   "rgba(201,53,43,0.1)",
+              border:       "1px solid rgba(201,53,43,0.25)",
               borderRadius: 8,
               padding:      "6px 16px",
               letterSpacing: "1px",
@@ -113,7 +113,7 @@ export default async function OgImage() {
             style={{
               fontSize:      72,
               fontWeight:    800,
-              color:         "#f5f5f5",
+              color:         "#17110f",
               lineHeight:    1.05,
               letterSpacing: "-3px",
               display:       "flex",
@@ -128,15 +128,13 @@ export default async function OgImage() {
               fontWeight:    800,
               lineHeight:    1.05,
               letterSpacing: "-3px",
-              background:    "linear-gradient(135deg, #818cf8, #a78bfa, #c4b5fd)",
-              WebkitBackgroundClip: "text",
-              color:         "transparent",
+              color:         "#c9352b",
               display:       "flex",
             }}
           >
             {headline2}
           </div>
-          <div style={{ fontSize: 22, color: "#71717a", marginTop: 8, display: "flex" }}>
+          <div style={{ fontSize: 22, color: "#74675f", marginTop: 8, display: "flex" }}>
             {tagline}
           </div>
         </div>
@@ -156,14 +154,14 @@ export default async function OgImage() {
                   display:      "flex",
                   flexDirection: "column",
                   gap:          4,
-                  background:   "#141414",
-                  border:       "1px solid #262626",
+                  background:   "#ffffff",
+                  border:       "1px solid rgba(23,17,15,0.1)",
                   borderRadius: 12,
                   padding:      "14px 20px",
                 }}
               >
-                <span style={{ fontSize: 28, fontWeight: 800, color: "#818cf8", lineHeight: 1 }}>{val}</span>
-                <span style={{ fontSize: 13, color: "#71717a" }}>{label}</span>
+                <span style={{ fontSize: 28, fontWeight: 800, color: "#c9352b", lineHeight: 1 }}>{val}</span>
+                <span style={{ fontSize: 13, color: "#74675f" }}>{label}</span>
               </div>
             ))}
           </div>
@@ -174,15 +172,15 @@ export default async function OgImage() {
               display:      "flex",
               alignItems:   "center",
               gap:          10,
-              background:   "#141414",
+              background:   "#ffffff",
               border:       "1px solid #333",
               borderRadius: 12,
               padding:      "16px 24px",
               fontSize:     16,
-              color:        "#f5f5f5",
+              color:        "#17110f",
             }}
           >
-            <span style={{ color: "#818cf8" }}>$</span>
+            <span style={{ color: "#c9352b" }}>$</span>
             <span>npm install -g aurict</span>
           </div>
         </div>

@@ -43,8 +43,8 @@ const englishPrinciples = [
 
 const englishEcosystem = [
   {
-    title: "MicroTarget.one Integration",
-    body:  "MicroTarget.one is an independent project that uses on-device ML to reduce server load and make customer engagement workflows more efficient. On the Aurict side, the goal is to connect it over time to dashboarding, process management, optimization, and decision support.",
+    title: "Aurict Decision",
+    body:  "Aurict Decision is a privacy-native, on-device decision engine that turns live first-party behavior into one governed next-best action in under 10 ms. Over time it connects to Aurict dashboarding, process management, optimization, and decision support.",
   },
   {
     title: "Visual and interface layer",
@@ -65,7 +65,7 @@ export default async function AboutPage() {
     { label: "03", title: "Radikal Nesnellik", body: "Aurict, pohpohlayan olanı değil yararlı olanı söylemek için tasarlanmıştır. Yapay övgü ve belirsiz yönlendirmeler yerine soğuk, net ve rasyonel çıktıyı hedefler." },
   ] : englishPrinciples
   const ecosystem = tr ? [
-    { title: "MicroTarget.one entegrasyonu", body: "MicroTarget.one, sunucu yükünü azaltmak ve müşteri etkileşimi iş akışlarını verimli kılmak için cihaz üzerinde ML kullanan bağımsız bir projedir. Aurict tarafındaki hedef; zamanla bunu dashboard, süreç yönetimi, optimizasyon ve karar desteğine bağlamaktır." },
+    { title: "Aurict Decision", body: "Aurict Decision, canlı birinci taraf davranışlarını 10 ms altında, cihaz içinde tek ve kontrollü bir sonraki en iyi eyleme dönüştüren gizlilik odaklı bir karar motorudur. Zamanla Aurict dashboard, süreç yönetimi, optimizasyon ve karar desteğine bağlanır." },
     { title: "Görsel ve arayüz katmanı", body: "Ekosistem içinde Aurict; yapay zekânın arayüz, kod bileşeni ve tasarım sistemi üretebildiği canlı ve işlevsel bir üretim katmanını desteklemeyi hedefler." },
     { title: "Siber güvenlik dikeyi", body: "Siber analiz, savunma, sızma testi ve güvenlik iş akışları için bağımsız bir dikey, Aurict vizyonunun temel parçalarından biri olarak konumlanır." },
   ] : englishEcosystem

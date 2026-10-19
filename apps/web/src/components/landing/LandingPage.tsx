@@ -3,7 +3,7 @@
 import { Nav } from "@/components/Nav"
 import { Footer } from "@/components/sections/Footer"
 import { LandingFaq } from "./LandingFaq"
-import { LandingHero } from "./LandingHero"
+import { HubHero } from "./HubHero"
 import { LandingSections } from "./LandingSections"
 import styles from "./LandingPage.module.css"
 
@@ -12,7 +12,7 @@ export function LandingPage() {
     <div className={styles.page}>
       <Nav />
       <main>
-        <LandingHero />
+        <HubHero />
         <LandingSections />
         <LandingFaq />
       </main>

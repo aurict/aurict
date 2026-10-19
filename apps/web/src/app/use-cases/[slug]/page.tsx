@@ -211,7 +211,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
                 fontFamily: "var(--font-geist-mono)",
                 color: "var(--accent)",
                 background: "var(--accent-glow)",
-                border: "1px solid rgba(129,140,248,0.3)",
+                border: "1px solid var(--accent-line)",
                 borderRadius: 4,
                 padding: "3px 8px",
               }}

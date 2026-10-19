@@ -10,7 +10,7 @@ import styles from "./RoadmapPage.module.css"
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale() as AppLocale
-  return localizedMetadata(locale, "/roadmap", locale === "tr" ? "Aurict Yol Haritası — Ürün Yönü" : "Aurict Roadmap — Product Direction", locale === "tr" ? "Terminal ajanı, mobil BYOK asistanı, web platformu ve uzun vadeli yapay zekâ araştırmaları için Aurict yol haritası." : "Aurict roadmap across the terminal agent, mobile BYOK assistant, web platform, MicroTarget.one integration, security vertical, and long-term AI research.")
+  return localizedMetadata(locale, "/roadmap", locale === "tr" ? "Aurict Yol Haritası — Ürün Yönü" : "Aurict Roadmap — Product Direction", locale === "tr" ? "Terminal ajanı, mobil BYOK asistanı, web platformu ve uzun vadeli yapay zekâ araştırmaları için Aurict yol haritası." : "Aurict roadmap across the terminal agent, mobile BYOK assistant, web platform, Aurict Decision integration, security vertical, and long-term AI research.")
 }
 
 const breadcrumbJsonLd = {
@@ -41,9 +41,9 @@ const statusStyle: Record<RoadmapStatus, { color: string; background: string; bo
     border:     "color-mix(in oklch, var(--warning) 28%, transparent)",
   },
   research: {
-    color:      "oklch(0.76 0.12 290)",
-    background: "oklch(0.76 0.12 290 / 0.12)",
-    border:     "oklch(0.76 0.12 290 / 0.28)",
+    color:      "#6d4fc7",
+    background: "rgb(109 79 199 / 0.1)",
+    border:     "rgb(109 79 199 / 0.28)",
   },
 }
 
@@ -78,7 +78,7 @@ const englishPhases = [
     title: "Ecosystem Expansion",
     status: "planned" as const,
     items: [
-      "MicroTarget.one dashboard and process management integration",
+      "Aurict Decision dashboard and process management integration",
       "AI-assisted optimization and decision support layer",
       "Design and interface generation layer",
       "Independent platform foundation for the cybersecurity vertical",
@@ -100,7 +100,7 @@ const englishPhases = [
 const englishSignals = [
   ["Now", "Web, CLI, and mobile are converging under one brand system."],
   ["Next", "Mobile auth, key management, and browser login flows are being hardened."],
-  ["Later", "MicroTarget.one and new verticals connect into the Aurict operations brain."],
+  ["Later", "Aurict Decision and new verticals connect into the Aurict operations brain."],
 ]
 
 export default async function RoadmapPage() {
@@ -109,10 +109,10 @@ export default async function RoadmapPage() {
   const phases = tr ? [
     { label: "Faz 01", title: "Çalışan çekirdek", status: "live" as const, items: ["Terminal odaklı Aurict CLI", "BYOK sağlayıcı modeli", "Firebase tabanlı web kimlik doğrulaması", "CLI oturumları için tarayıcı tabanlı giriş", "Mobil BYOK sohbeti, araştırma ve PDF üretimi", "GitHub Releases ile otomatik değişiklik günlüğü"] },
     { label: "Faz 02", title: "Ürün sağlamlaştırma", status: "active" as const, items: ["Mobil ve web marka dilinin tam hizalanması", "Gerçek cihaz kimlik doğrulama ve sağlayıcı anahtarı akışları", "CLI uzaktan onay ve oturum yönetimi", "Üretim ortam değişkeni kontrolleri", "Sürüm, değişiklik günlüğü ve yol haritası yayınlama disiplini"] },
-    { label: "Faz 03", title: "Ekosistem genişlemesi", status: "planned" as const, items: ["MicroTarget.one dashboard ve süreç yönetimi entegrasyonu", "Yapay zekâ destekli optimizasyon ve karar desteği katmanı", "Tasarım ve arayüz üretim katmanı", "Siber güvenlik dikeyi için bağımsız platform temeli"] },
+    { label: "Faz 03", title: "Ekosistem genişlemesi", status: "planned" as const, items: ["Aurict Decision dashboard ve süreç yönetimi entegrasyonu", "Yapay zekâ destekli optimizasyon ve karar desteği katmanı", "Tasarım ve arayüz üretim katmanı", "Siber güvenlik dikeyi için bağımsız platform temeli"] },
     { label: "Faz 04", title: "Araştırma hattı", status: "research" as const, items: ["Model orkestrasyonu için alternatif mimari yaklaşımlar", "Daha düşük maliyetli çıkarım ve bağlam stratejileri", "Daha erişilebilir ve daha doğru LLM deneyleri", "Aurict ekosisteminden beslenen uzun vadeli model araştırması"] },
   ] : englishPhases
-  const signals = tr ? [["Şimdi", "Web, CLI ve mobil tek bir marka sistemi altında yakınsıyor."], ["Sırada", "Mobil kimlik doğrulama, anahtar yönetimi ve tarayıcı giriş akışları sağlamlaştırılıyor."], ["Sonrasında", "MicroTarget.one ve yeni dikeyler Aurict operasyon beynine bağlanıyor."]] : englishSignals
+  const signals = tr ? [["Şimdi", "Web, CLI ve mobil tek bir marka sistemi altında yakınsıyor."], ["Sırada", "Mobil kimlik doğrulama, anahtar yönetimi ve tarayıcı giriş akışları sağlamlaştırılıyor."], ["Sonrasında", "Aurict Decision ve yeni dikeyler Aurict operasyon beynine bağlanıyor."]] : englishSignals
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
@@ -124,7 +124,7 @@ export default async function RoadmapPage() {
           <p className="marketing-eyebrow">{tr ? "Herkese açık yol haritası" : "Public roadmap"}</p>
           <h1 className="marketing-title">{tr ? "Ürün rotası, net fazlara ayrılmış halde." : "The product route, organized into clear phases."}</h1>
           <p className="marketing-lede">
-            {tr ? "Aurict yol haritası yalnızca bir özellik listesi değildir. Terminal ajanından mobil BYOK asistana, web platformundan MicroTarget.one entegrasyonuna ve oradan uzun vadeli model araştırmasına uzanan kontrollü bir ilerlemedir." : "The Aurict roadmap is not just a feature list. It is a controlled progression from terminal agent to mobile BYOK assistant, from web platform to MicroTarget.one integration, and from there into long-term model research."}
+            {tr ? "Aurict yol haritası yalnızca bir özellik listesi değildir. Terminal ajanından mobil BYOK asistana, web platformundan Aurict Decision entegrasyonuna ve oradan uzun vadeli model araştırmasına uzanan kontrollü bir ilerlemedir." : "The Aurict roadmap is not just a feature list. It is a controlled progression from terminal agent to mobile BYOK assistant, from web platform to Aurict Decision integration, and from there into long-term model research."}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 30 }}>
             <Link className="aur-button aur-button-primary" href="/changelog">{tr ? "son değişiklikler" : "latest changes"}</Link>

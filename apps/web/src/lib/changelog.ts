@@ -59,7 +59,7 @@ const FALLBACK_RELEASES: ChangelogRelease[] = [
     version: FALLBACK_VERSION,
     date: new Date().toISOString().slice(0, 10),
     tag: "Latest release",
-    tagColor: "#818cf8",
+    tagColor: "#4f46e5",
     changes: [
       {
         type: "new",
@@ -249,7 +249,7 @@ function inferReleaseTag(changes: ChangelogChange[]) {
 }
 
 function colorForVersion(version: string) {
-  const colors = ["#818cf8", "#a78bfa", "#06b6d4", "#4eba65", "#f59e0b"]
+  const colors = ["#4f46e5", "#7c3aed", "#0e7490", "#1f8a4c", "#b45309"]
   const sum = version.split("").reduce((total, char) => total + char.charCodeAt(0), 0)
   return colors[sum % colors.length]
 }

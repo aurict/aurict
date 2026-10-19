@@ -3,6 +3,24 @@
   gap: 28px;
 }
 
+.heroSplit {
+  align-items: center;
+  display: grid;
+  gap: 40px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+}
+
+.heroCopy {
+  display: grid;
+  gap: 24px;
+}
+
+@media (max-width: 960px) {
+  .heroSplit {
+    grid-template-columns: 1fr;
+  }
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -12,20 +30,22 @@
 .actionPrimary,
 .actionSecondary {
   align-items: center;
-  border-radius: 6px;
+  border-radius: 999px;
+  cursor: pointer;
   display: inline-flex;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  min-height: 42px;
-  padding: 0 16px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  min-height: 48px;
+  padding: 0 22px;
   text-decoration: none;
 }
 
 .actionPrimary {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: var(--bg-deep);
+  box-shadow: 0 10px 24px rgb(201 53 43 / 0.26);
+  color: var(--accent-ink);
 }
 
 .actionSecondary {
@@ -35,21 +55,19 @@
 }
 
 .proof {
-  border: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .proof span {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
   color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 14px;
-  text-align: center;
-}
-
-.proof span + span {
-  border-left: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
 }
 
 .section {
@@ -63,7 +81,7 @@
 
 .sectionHeader p:last-child {
   color: var(--text-dim);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 17px;
   line-height: 1.7;
   margin-top: 14px;
@@ -77,7 +95,7 @@
 
 .definition p {
   color: var(--text-dim);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 17px;
   line-height: 1.78;
 }
@@ -93,13 +111,18 @@
 }
 
 .evidenceGrid {
+  background: transparent !important;
+  border: 0 !important;
   display: grid;
-  gap: 1px;
+  gap: 16px;
   grid-template-columns: repeat(3, 1fr);
 }
 
 .evidenceCard {
   background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
   color: inherit;
   min-height: 210px;
   padding: 26px;
@@ -113,7 +136,7 @@
 
 .evidenceCard h3 {
   color: var(--text);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 21px;
   margin: 0 0 12px;
 }
@@ -127,13 +150,15 @@
 .evidenceCard span {
   color: var(--accent);
   display: block;
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
+  font-weight: 700;
   margin-top: 22px;
 }
 
 .card {
   background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
   min-height: 190px;
   padding: 26px;
 }
@@ -150,7 +175,7 @@
 .step h3,
 .useCase h3 {
   color: var(--text);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 21px;
   margin: 18px 0 10px;
 }
@@ -183,7 +208,10 @@
 }
 
 .useCase {
+  background: var(--bg-card);
   border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
   color: inherit;
   padding: 24px;
   text-decoration: none;
@@ -212,16 +240,19 @@
   align-items: center;
   background: color-mix(in oklch, var(--accent) 7%, var(--bg-card));
   border: 1px solid color-mix(in oklch, var(--accent) 28%, var(--border));
+  border-radius: 28px;
   display: grid;
   gap: 28px;
   grid-template-columns: 1fr auto;
-  padding: 32px;
+  padding: 36px;
 }
 
 .compare h2 {
   color: var(--text);
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   margin: 10px 0;
 }
 
@@ -254,8 +285,10 @@
 
 .final h2 {
   color: var(--text);
-  font-family: var(--font-serif);
-  font-size: 34px;
+  font-family: var(--font-sans);
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
   margin-bottom: 8px;
 }
 

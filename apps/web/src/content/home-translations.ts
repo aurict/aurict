@@ -157,7 +157,7 @@ const jsonLdEn = {
       "name":                "Aurict",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem":     "macOS, Linux, Windows",
-      "description":         "Open-source terminal runtime for multi-agent coding, MCP, local context, and explicit command approvals. Aurict also ships Hoprel, its local-first desktop workspace, Aurict Mobile, and Bondley.one fixed-income intelligence.",
+      "description":         "Open-source terminal runtime for multi-agent coding, MCP, local context, and explicit command approvals. Aurict also ships Hoprel, its local-first desktop workspace, the Aurict Mobile app studio, and the Aurict Decision engine.",
       "url":                 "https://aurict.com",
       "downloadUrl":         "https://www.npmjs.com/package/aurict",
       "installUrl":          "https://www.npmjs.com/package/aurict",
@@ -203,17 +203,17 @@ const jsonLdEn = {
     },
     {
       "@type":               "WebApplication",
-      "name":                "Bondley.one",
-      "applicationCategory": "FinanceApplication",
-      "description":         "Fixed-income intelligence for researching bonds, yields, and spreads through clear, comparable analysis.",
-      "url":                 "https://bondley.one",
+      "name":                "Aurict Decision",
+      "applicationCategory": "BusinessApplication",
+      "description":         "A privacy-native, on-device decision engine that turns live first-party behavior into one governed next-best action in under 10 ms.",
+      "url":                 "https://decision.aurict.com",
       "author": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.com" },
     },
     {
       "@type":       "WebSite",
       "url":         "https://aurict.com",
       "name":        "Aurict",
-      "description": "Agentic workspaces across Hoprel desktop, Aurict Mobile, the terminal runtime, and Bondley.one fixed-income intelligence",
+      "description": "The Aurict ecosystem: Aurict CLI, Hoprel desktop, the Aurict Mobile studio, and Aurict Decision",
     },
     {
       "@type":  "Organization",
@@ -235,7 +235,7 @@ const jsonLdTr = {
       "name":                "Aurict",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem":     "macOS, Linux, Windows",
-      "description":         "Çoklu ajan kodlama, MCP, yerel bağlam ve açık komut onayları için açık kaynaklı terminal çalışma zamanı. Aurict ayrıca yerel öncelikli masaüstü çalışma alanı olan Hoprel'i, Aurict Mobile'ı ve sabit getirili piyasa zekâsı ürünü Bondley.one'ı sunar.",
+      "description":         "Çoklu ajan kodlama, MCP, yerel bağlam ve açık komut onayları için açık kaynaklı terminal çalışma zamanı. Aurict ayrıca yerel öncelikli masaüstü çalışma alanı Hoprel'i, Aurict Mobile uygulama stüdyosunu ve Aurict Decision karar motorunu sunar.",
       "url":                 "https://aurict.com",
       "downloadUrl":         "https://www.npmjs.com/package/aurict",
       "installUrl":          "https://www.npmjs.com/package/aurict",
@@ -281,17 +281,17 @@ const jsonLdTr = {
     },
     {
       "@type":               "WebApplication",
-      "name":                "Bondley.one",
-      "applicationCategory": "FinanceApplication",
-      "description":         "Tahvilleri, getirileri ve spreadleri açık ve karşılaştırılabilir analizlerle araştırmak için sabit getirili piyasa zekâsı.",
-      "url":                 "https://bondley.one",
+      "name":                "Aurict Decision",
+      "applicationCategory": "BusinessApplication",
+      "description":         "Canlı birinci taraf davranışlarını 10 ms altında, cihaz içinde tek ve kontrollü bir sonraki en iyi eyleme dönüştüren gizlilik odaklı karar motoru.",
+      "url":                 "https://decision.aurict.com",
       "author": { "@type": "Organization", "name": "Aurict", "url": "https://aurict.com" },
     },
     {
       "@type":       "WebSite",
       "url":         "https://aurict.com",
       "name":        "Aurict",
-      "description": "Hoprel masaüstü, Aurict Mobile, terminal çalışma zamanı ve Bondley.one sabit getirili piyasa zekâsı arasında ajan tabanlı çalışma alanları",
+      "description": "Aurict ekosistemi: Aurict CLI, Hoprel masaüstü, Aurict Mobile stüdyosu ve Aurict Decision",
     },
     {
       "@type":  "Organization",
@@ -414,7 +414,7 @@ const FEATURES_EN: FeatureItem[] = [
     description:
       "9 specialist agents running in isolated worker threads. Explore, code, review, test, docs, security, debug, performance, analytics — each a domain expert.",
     tag: "Architecture",
-    color: "#818cf8",
+    color: "#4f46e5",
   },
   {
     icon: "skills",
@@ -422,7 +422,7 @@ const FEATURES_EN: FeatureItem[] = [
     description:
       "Aurict scans your project before you say a word — framework, language, config, conventions. The right context is injected automatically.",
     tag: "Intelligence",
-    color: "#a78bfa",
+    color: "#7c3aed",
   },
   {
     icon: "classifier",
@@ -430,7 +430,7 @@ const FEATURES_EN: FeatureItem[] = [
     description:
       "Every shell command is analyzed before execution. Safe commands run instantly. Dangerous ones (rm -rf, format) trigger strict confirmation with red warnings.",
     tag: "Security",
-    color: "#f59e0b",
+    color: "#b45309",
   },
   {
     icon: "sandbox",
@@ -438,7 +438,7 @@ const FEATURES_EN: FeatureItem[] = [
     description:
       "Risky executables run through a low-overhead policy sandbox: command classification, approvals, protected paths, scrubbed env, timeouts, output limits, and audit trails. Docker remains optional for heavier isolation.",
     tag: "Security",
-    color: "#ff6b6b",
+    color: "#c62828",
   },
   {
     icon: "mcp",
@@ -446,7 +446,7 @@ const FEATURES_EN: FeatureItem[] = [
     description:
       "Import compatible claude_desktop_config.json entries, then inspect each connected MCP server and its tools before relying on it.",
     tag: "Integration",
-    color: "#4eba65",
+    color: "#1f8a4c",
   },
   {
     icon: "design",
@@ -454,7 +454,7 @@ const FEATURES_EN: FeatureItem[] = [
     description:
       "150+ design systems, 111 skill templates. Describe your UI idea, pick a system and skill, and a complete implementation prompt is built for you.",
     tag: "Design",
-    color: "#06b6d4",
+    color: "#0e7490",
   },
   {
     icon: "windows",
@@ -462,7 +462,7 @@ const FEATURES_EN: FeatureItem[] = [
     description:
       "A real compiled binary for Windows x64 — no WSL, no extra runtime, no PowerShell gymnastics. Shell detection auto-picks Git Bash, MSYS2, or PowerShell as fallback.",
     tag: "Platform",
-    color: "#38bdf8",
+    color: "#0369a1",
   },
   {
     icon: "memory",
@@ -470,7 +470,7 @@ const FEATURES_EN: FeatureItem[] = [
     description:
       "Project decisions, coding preferences, and team conventions stored in a local DB and recalled per-session. The AI remembers what you told it — across every restart.",
     tag: "Intelligence",
-    color: "#fb7185",
+    color: "#be123c",
   },
 ]
 
@@ -481,7 +481,7 @@ const FEATURES_TR: FeatureItem[] = [
     description:
       "Yalıtılmış worker thread'lerinde çalışan 9 uzman ajan. Keşfet, kodla, incele, test et, dokümanla, güvenliği sağla, hataları ayıkla, performansı ölç ve analiz et — her biri bir uzmanlık alanı.",
     tag: "Mimari",
-    color: "#818cf8",
+    color: "#4f46e5",
   },
   {
     icon: "skills",
@@ -489,7 +489,7 @@ const FEATURES_TR: FeatureItem[] = [
     description:
       "Aurict, tek kelime etmeden önce projeni tarar — framework, dil, yapılandırma, kurallar. Doğru bağlam otomatik olarak enjekte edilir.",
     tag: "Zeka",
-    color: "#a78bfa",
+    color: "#7c3aed",
   },
   {
     icon: "classifier",
@@ -497,7 +497,7 @@ const FEATURES_TR: FeatureItem[] = [
     description:
       "Her kabuk komutu çalıştırılmadan önce analiz edilir. Güvenli komutlar anında çalışır. Tehlikeli olanlar (rm -rf, format) kırmızı uyarılarla sıkı onay gerektirir.",
     tag: "Güvenlik",
-    color: "#f59e0b",
+    color: "#b45309",
   },
   {
     icon: "sandbox",
@@ -505,7 +505,7 @@ const FEATURES_TR: FeatureItem[] = [
     description:
       "Riskli çalıştırılabilirler düşük yük maliyetli bir politika sandbox'ından geçer: komut sınıflandırma, onaylar, korunan yollar, temizlenmiş ortam, zaman aşımı, çıktı sınırları ve denetim izleri. Docker, daha ağır izolasyon için isteğe bağlı kalır.",
     tag: "Güvenlik",
-    color: "#ff6b6b",
+    color: "#c62828",
   },
   {
     icon: "mcp",
@@ -513,7 +513,7 @@ const FEATURES_TR: FeatureItem[] = [
     description:
       "Uyumlu claude_desktop_config.json girdilerini içe aktarın; ardından güvenmeden önce bağlı her MCP sunucusunu ve araçlarını inceleyin.",
     tag: "Entegrasyon",
-    color: "#4eba65",
+    color: "#1f8a4c",
   },
   {
     icon: "design",
@@ -521,7 +521,7 @@ const FEATURES_TR: FeatureItem[] = [
     description:
       "150+ tasarım sistemi, 111 beceri şablonu. UI fikrini anlat, bir sistem ve beceri seç; senin için eksiksiz bir uygulama prompt'u oluşturulsun.",
     tag: "Tasarım",
-    color: "#06b6d4",
+    color: "#0e7490",
   },
   {
     icon: "windows",
@@ -529,7 +529,7 @@ const FEATURES_TR: FeatureItem[] = [
     description:
       "Windows x64 için gerçek bir derlenmiş ikili — WSL yok, ek runtime yok, PowerShell cambazlığı yok. Kabuk tespiti yedek olarak Git Bash, MSYS2 veya PowerShell'i otomatik seçer.",
     tag: "Platform",
-    color: "#38bdf8",
+    color: "#0369a1",
   },
   {
     icon: "memory",
@@ -537,7 +537,7 @@ const FEATURES_TR: FeatureItem[] = [
     description:
       "Proje kararları, kodlama tercihleri ve ekip kuralları yerel bir veritabanında saklanır ve oturum bazında hatırlanır. Yapay zeka, söylediklerini her yeniden başlatmada hatırlar.",
     tag: "Zeka",
-    color: "#fb7185",
+    color: "#be123c",
   },
 ]
 

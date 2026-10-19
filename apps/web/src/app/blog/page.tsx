@@ -58,12 +58,12 @@ export default async function BlogPage() {
               className="marketing-card"
               style={{ display: "block", padding: "28px 30px", position: "relative", textDecoration: "none" }}
             >
-              <span className="mono aur-corner" style={{ color: "oklch(1 0 0/.18)", left: 8, position: "absolute", top: 8 }}>┌</span>
+              <span className="mono aur-corner" style={{ color: "rgb(23 17 15 / .18)", left: 8, position: "absolute", top: 8 }}>┌</span>
               <div style={{ alignItems: "center", display: "flex", gap: 12, marginBottom: 12 }}>
                 <span className="marketing-tag">{post.category}</span>
                 <span className="marketing-meta">{post.date} · {post.readTime}</span>
               </div>
-              <h2 style={{ color: "var(--text)", fontFamily: "var(--font-serif)", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 8 }}>
+              <h2 style={{ color: "var(--text)", fontFamily: "var(--font-sans)", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 8 }}>
                 {post.title}
               </h2>
               <p className="marketing-copy" style={{ fontSize: 15.5 }}>

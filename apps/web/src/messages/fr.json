@@ -25,7 +25,19 @@
     "changelog": "nouveautés",
     "site": "site",
     "openMenu": "Ouvrir le menu",
-    "closeMenu": "Fermer le menu"
+    "closeMenu": "Fermer le menu",
+    "products": "produits",
+    "resources": "ressources",
+    "cli": "CLI",
+    "hoprel": "Hoprel",
+    "blog": "blog",
+    "download": "Télécharger",
+    "compare": "comparer",
+    "useCases": "cas d’usage",
+    "cliDesc": "Agent de code IA open source pour le terminal",
+    "hoprelDesc": "Espace d’agents IA local-first pour le bureau",
+    "mobileDesc": "Notre studio d’applis et de jeux grand public",
+    "decisionDesc": "Décisions privées sur l’appareil en moins de 10 ms"
   },
   "Footer": {
     "product": "produit",
@@ -43,7 +55,9 @@
     "legal": "juridique",
     "privacy": "confidentialité",
     "terms": "conditions",
-    "openSource": "open source"
+    "openSource": "open source",
+    "resources": "ressources",
+    "tagline": "Une entreprise. Des produits connectés. Pensés pour vous."
   },
   "Auth": {
     "login": "connexion",

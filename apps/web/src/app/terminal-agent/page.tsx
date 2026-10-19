@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { getLocale } from "next-intl/server"
 import { Nav } from "@/components/Nav"
 import { CopyCommand } from "@/components/CopyCommand"
+import { TerminalWindow } from "@/components/terminal/TerminalWindow"
 import { JsonLd } from "@/components/seo/JsonLd"
 import { Footer } from "@/components/sections/Footer"
 import { Breadcrumb } from "@/components/ui/Breadcrumb"
@@ -90,17 +91,20 @@ export default async function TerminalAgentPage() {
       <main className="marketing-main">
         <Breadcrumb items={[{ label: "Aurict", href: "/" }, { label: copy.breadcrumb, href: "/terminal-agent" }]} />
 
-        <header className={`marketing-hero ${styles.hero}`}>
-          <div>
-            <p className="marketing-eyebrow">{copy.hero.eyebrow}</p>
-            <h1 className="marketing-title">{copy.hero.title}</h1>
-            <p className="marketing-lede">{copy.hero.lede}</p>
+        <header className={`marketing-hero ${styles.hero} ${styles.heroSplit}`}>
+          <div className={styles.heroCopy}>
+            <div>
+              <p className="marketing-eyebrow">{copy.hero.eyebrow}</p>
+              <h1 className="marketing-title">{copy.hero.title}</h1>
+              <p className="marketing-lede">{copy.hero.lede}</p>
+            </div>
+            <div className={styles.actions}>
+              <CopyCommand className={styles.actionPrimary} command="npm install -g aurict" copiedLabel="✓" label={`$ ${copy.hero.install}`} />
+              <a className={styles.actionSecondary} href="https://github.com/aurict/aurict" rel="noopener noreferrer" target="_blank">★ {copy.hero.github}</a>
+            </div>
+            <div className={styles.proof}>{copy.hero.proof.map((item) => <span key={item}>{item}</span>)}</div>
           </div>
-          <div className={styles.actions}>
-            <CopyCommand className={styles.actionPrimary} command="npm install -g aurict" copiedLabel="✓" label={`$ ${copy.hero.install}`} />
-            <a className={styles.actionSecondary} href="https://github.com/aurict/aurict" rel="noopener noreferrer" target="_blank">★ {copy.hero.github}</a>
-          </div>
-          <div className={styles.proof}>{copy.hero.proof.map((item) => <span key={item}>{item}</span>)}</div>
+          <TerminalWindow />
         </header>
 
         <section className={`${styles.section} ${styles.definition}`}>

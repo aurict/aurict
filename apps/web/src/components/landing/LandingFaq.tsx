@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { TightPeriods } from "@/components/ui/TightPeriods"
 import { useLocale } from "next-intl"
 import { localizeFaqs } from "@/content/landing-translations"
 import { localizeLandingUi } from "@/content/landing-ui"
@@ -17,7 +18,7 @@ export function LandingFaq() {
     <section className={styles.faq} id="faq">
       <div className={styles.eyebrow}>{copy.eyebrow}</div>
       <div className={styles.faqHeading}>
-        <h2>{copy.title}</h2>
+        <h2><TightPeriods text={copy.title} /></h2>
         <p>{copy.body}</p>
       </div>
       <div className={styles.faqList}>

@@ -98,7 +98,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
               <span>{tr ? "Konu" : "Area"}</span><span style={{ color: "var(--accent)" }}>Aurict</span><span>{comparison.competitor}</span>
             </div>
             {comparison.rows.map((row, index) => (
-              <div key={row.name} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, .9fr) minmax(0, .9fr)", gap: 16, padding: "15px 20px", borderBottom: index < comparison.rows.length - 1 ? "1px solid var(--border)" : "none", font: "15px/1.5 var(--font-serif)" }}>
+              <div key={row.name} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, .9fr) minmax(0, .9fr)", gap: 16, padding: "15px 20px", borderBottom: index < comparison.rows.length - 1 ? "1px solid var(--border)" : "none", font: "15px/1.5 var(--font-sans)" }}>
                 <span style={{ color: "var(--text)" }}>{row.name}</span><span style={{ color: "var(--text-dim)" }}>{row.aurict}</span><span style={{ color: "var(--text-dim)" }}>{row.competitor}</span>
               </div>
             ))}
@@ -111,14 +111,14 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             {tr ? "Alternatif seçimi yalnızca özellik sayısıyla yapılmamalıdır. Aşağıdaki güçlü yönler, resmî ürün dokümanlarına göre bu aracın daha uygun olabileceği iş akışlarını gösterir." : "Choosing an alternative is not a feature-counting exercise. These documented strengths show workflows where the other product may be the better fit."}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {comparison.theirStrengths.map((strength) => <div key={strength} className="marketing-card" style={{ display: "flex", gap: 12, padding: "12px 16px" }}><span style={{ color: "var(--accent-alt)", fontSize: 16 }}>◇</span><span style={{ font: "15px/1.5 var(--font-serif)", color: "var(--text-dim)" }}>{strength}</span></div>)}
+            {comparison.theirStrengths.map((strength) => <div key={strength} className="marketing-card" style={{ display: "flex", gap: 12, padding: "12px 16px" }}><span style={{ color: "var(--accent-alt)", fontSize: 16 }}>◇</span><span style={{ font: "15px/1.5 var(--font-sans)", color: "var(--text-dim)" }}>{strength}</span></div>)}
           </div>
         </section>
 
         <section style={{ marginBottom: 56 }}>
           <h2 className="marketing-section-title">{tr ? "Aurict nerede ayrışır?" : "Where Aurict differs"}</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {comparison.ourStrengths.map((strength) => <div key={strength} className="marketing-card" style={{ display: "flex", gap: 12, padding: "12px 16px" }}><span style={{ color: "var(--success)", fontSize: 16 }}>✓</span><span style={{ font: "15px/1.5 var(--font-serif)", color: "var(--text-dim)" }}>{strength}</span></div>)}
+            {comparison.ourStrengths.map((strength) => <div key={strength} className="marketing-card" style={{ display: "flex", gap: 12, padding: "12px 16px" }}><span style={{ color: "var(--success)", fontSize: 16 }}>✓</span><span style={{ font: "15px/1.5 var(--font-sans)", color: "var(--text-dim)" }}>{strength}</span></div>)}
           </div>
         </section>
 

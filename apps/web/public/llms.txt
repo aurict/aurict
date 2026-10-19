@@ -1,13 +1,15 @@
 # Aurict
 
-> Open-source terminal agent, AI coding assistant, BYOK mobile AI workspace, and fixed-income intelligence through Bondley.one. Aurict focuses on provider flexibility, specialist agents, local-first workflows, objective assistance, research, document generation, and terminal-native developer productivity.
+> Aurict is the center of an AI product ecosystem: the open-source Aurict CLI terminal agent, the Hoprel desktop agent workspace, the Aurict Mobile app studio (Jelly Paradox, Duckley, Mind Grid), and the Aurict Decision on-device decision engine. Aurict focuses on provider flexibility, specialist agents, local-first workflows, objective assistance, research, document generation, and terminal-native developer productivity.
 
 ## Core Pages
 
 - [Aurict — Terminal AI Coding Assistant](https://aurict.com/): Open-source terminal agent and AI coding assistant with specialist agents, contextual skills, multi-provider support, and a BYOK mobile assistant.
 - [Aurict Terminal Agent](https://aurict.com/terminal-agent): Detailed overview of the open-source terminal agent, its multi-agent workflow, command controls, MCP support, provider choice, verification model, use cases, and frequently asked questions.
 - [Aurict AI Coding Agent](https://aurict.com/ai-coding-agent): In-depth guide to AI coding agents, the difference between agents and assistants, evaluation criteria, engineering workflows, alternatives, and adoption questions.
-- [Bondley.one](https://bondley.one): Aurict sub-product for researching bonds, yields, and spreads through clear, comparable analysis.
+- [Hoprel downloads](https://aurict.com/downloads): Download Hoprel, the local-first desktop AI agent workspace, and install Aurict CLI.
+- [Aurict Mobile](https://mobile.aurict.com): Aurict's mobile app studio — Jelly Paradox, Duckley and Mind Grid.
+- [Aurict Decision](https://decision.aurict.com): Privacy-native on-device decision engine.
 - [Documentation](https://aurict.com/docs): Install Aurict, configure providers and API keys, connect tools, use agent workflows, and understand the runtime.
 - [About Aurict](https://aurict.com/about): The Aurict manifesto, architecture philosophy, BYOK model, objectivity principle, and long-term product vision.
 - [Roadmap](https://aurict.com/roadmap): Product direction across the terminal agent, mobile BYOK assistant, web platform, security workflows, and future AI research.
