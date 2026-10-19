@@ -34,11 +34,12 @@ const STRINGS = {
           "Cihaz ve teknik veriler: platform (Android/iOS), uygulama sürümü, saat dilimi, IP adresi ve sunucu kayıtları. Güvenlik, dolandırıcılığı önleme ve hizmetin çalışması için kullanılır.",
           "Reklam verileri (reklam gösterilen sürümde): reklam ortağımız Google AdMob cihazınızın reklam kimliğini, IP adresinizi ve reklam etkileşimlerini toplayabilir. Kişiselleştirilmiş reklamlar yalnızca izin verirseniz gösterilir.",
           "Analitik ve hata raporları (yalnızca izninizle): Google Firebase Analytics ve Crashlytics üzerinden anonim kullanım olayları (ör. hangi bölümün oynandığı) ve çökme raporları.",
+          "Bildirim kimliği (yalnızca bildirimlere izin verirseniz): cihazınıza bildirim gönderebilmek için Firebase Cloud Messaging'in verdiği cihaz adresi ve oyun diliniz.",
         ],
       },
       {
         title: "Toplamadığımız bilgiler",
-        body: "Konum, rehber, fotoğraf/video, kamera, mikrofon, dosyalar, takvim, mesajlar ve telefon numarası toplamıyoruz. Oyunda sohbet veya kullanıcılar arası mesajlaşma yoktur.",
+        body: "Kesin konum (GPS), rehber, fotoğraf/video, kamera, mikrofon, dosyalar, takvim, mesajlar ve telefon numarası toplamıyoruz. Reklam ortağımız Google AdMob, IP adresinden yaklaşık konum (ülke/şehir düzeyi) çıkarabilir. Oyunda sohbet veya kullanıcılar arası mesajlaşma yoktur.",
       },
       {
         title: "Bilgileri nasıl kullanırız",
@@ -48,6 +49,7 @@ const STRINGS = {
           "Bölüm sonuçlarını doğrulamak; hileyi, dolandırıcılığı ve hesap kötüye kullanımını tespit etmek",
           "Hesapları güvende tutmak (ör. çalınmış oturumları tespit edip engellemek)",
           "Seçimlerinize göre reklam göstermek ve ölçmek",
+          "İzin verdiyseniz can, günlük hediye ve geri dönüş hatırlatmaları göndermek (günde en fazla bir, gece asla)",
           "İzin verdiyseniz oyunun nasıl kullanıldığını anlamak ve hataları düzeltmek",
         ],
       },
@@ -67,7 +69,7 @@ const STRINGS = {
       },
       {
         title: "Paylaşım ve hizmet sağlayıcılar",
-        body: "Kişisel verilerinizi satmayız. Yalnızca oyunu çalıştırmak için bizim adımıza çalışan sağlayıcıları kullanırız: Google Cloud (sunucu barındırma, AB), Cloudflare (ağ güvenliği ve iletim), Google (Google ile Giriş, AdMob, Firebase Analytics ve Crashlytics, Google Play Faturalandırma) ve Apple (App Store Faturalandırma). Liderlik tablolarında yalnızca görünen adınız (yoksa \"Oyuncu\") ve puanınız görünür. Yasal zorunluluk halinde veya kullanıcılarımızı dolandırıcılığa karşı korumak için bilgi paylaşabiliriz.",
+        body: "Kişisel verilerinizi satmayız. Yalnızca oyunu çalıştırmak için bizim adımıza çalışan sağlayıcıları kullanırız: Google Cloud (sunucu barındırma, AB), Cloudflare (ağ güvenliği ve iletim), Google (Google ile Giriş, AdMob, Firebase Analytics, Crashlytics ve Cloud Messaging, Google Play Faturalandırma) ve Apple (App Store Faturalandırma). Liderlik tablolarında yalnızca görünen adınız (yoksa \"Oyuncu\") ve puanınız görünür. Yasal zorunluluk halinde veya kullanıcılarımızı dolandırıcılığa karşı korumak için bilgi paylaşabiliriz.",
       },
       {
         title: "Yurt dışına aktarım",
@@ -89,6 +91,7 @@ const STRINGS = {
           "Web'de: Google ile bağladığınız hesabı aşağıdaki bağlantıdan silebilirsiniz.",
           `Oyuna erişemiyorsanız ${CONTACT} adresine Google hesabınızın e-postasından ya da Ayarlar'da görünen Oyuncu Kimliği'nizle yazın; 30 gün içinde sileriz.`,
           "Reklam ve analitik izinlerinizi istediğiniz zaman değiştirin: Ayarlar → Gizlilik seçenekleri. Kişiselleştirilmiş reklamları cihaz ayarlarından da kapatabilirsiniz.",
+          "Bildirimleri telefonunuzun ayarlarından istediğiniz zaman kapatabilirsiniz; bildirim kimliğiniz hesabınızla birlikte silinir.",
           `KVKK ve GDPR kapsamında verilerinize erişme, düzeltme, silme, taşıma, işlemeye itiraz etme ve veri koruma otoritesine (ör. KVKK Kurulu) şikâyet etme haklarınız vardır. Talepleriniz için ${CONTACT} adresine yazın.`,
         ],
       },
@@ -125,11 +128,12 @@ const STRINGS = {
           "Device and technical data: platform (Android/iOS), app version, time zone, IP address and server logs, used for security, fraud prevention and to keep the service running.",
           "Advertising data (in versions that show ads): our ad partner Google AdMob may collect your device's advertising ID, IP address and ad interactions. Personalized ads are shown only if you agree.",
           "Analytics and crash reports (only with your consent): anonymous usage events (for example, which level was played) and crash reports through Google Firebase Analytics and Crashlytics.",
+          "Notification token (only if you allow notifications): the device address issued by Firebase Cloud Messaging and your game language, so we can send notifications to your device.",
         ],
       },
       {
         title: "Information we don't collect",
-        body: "We do not collect location, contacts, photos/videos, camera, microphone, files, calendar, messages or phone number. The game has no chat or messaging between players.",
+        body: "We do not collect precise location (GPS), contacts, photos/videos, camera, microphone, files, calendar, messages or phone number. Our ad partner Google AdMob may derive an approximate location (country or city level) from your IP address. The game has no chat or messaging between players.",
       },
       {
         title: "How we use information",
@@ -139,6 +143,7 @@ const STRINGS = {
           "To verify level results and detect cheating, fraud and account abuse",
           "To keep accounts secure (for example, to detect and block stolen sessions)",
           "To show and measure ads according to your choices",
+          "To send reminders about full lives, the daily gift and coming back, if you allow notifications (at most one a day, never at night)",
           "To understand how the game is used and fix problems, if you consent",
         ],
       },
@@ -158,7 +163,7 @@ const STRINGS = {
       },
       {
         title: "Sharing and service providers",
-        body: "We do not sell your personal data. We only use providers that act on our behalf to run the game: Google Cloud (server hosting, EU), Cloudflare (network security and delivery), Google (Google Sign-In, AdMob, Firebase Analytics and Crashlytics, Google Play Billing) and Apple (App Store billing). Leaderboards show only your display name (or \"Player\") and score. We may disclose information when required by law or to protect our players against fraud.",
+        body: "We do not sell your personal data. We only use providers that act on our behalf to run the game: Google Cloud (server hosting, EU), Cloudflare (network security and delivery), Google (Google Sign-In, AdMob, Firebase Analytics, Crashlytics and Cloud Messaging, Google Play Billing) and Apple (App Store billing). Leaderboards show only your display name (or \"Player\") and score. We may disclose information when required by law or to protect our players against fraud.",
       },
       {
         title: "International transfers",
@@ -180,6 +185,7 @@ const STRINGS = {
           "On the web: delete an account linked to Google using the link below.",
           `If you can't open the game, write to ${CONTACT} from your Google account's email or include the Player ID shown in Settings; we will delete your data within 30 days.`,
           "Change ad and analytics consent at any time in Settings → Privacy choices. You can also turn off personalized ads in your device settings.",
+          "Turn off notifications at any time in your phone's settings; your notification token is deleted with your account.",
           `Under the GDPR and KVKK you have the right to access, correct, delete and export your data, to object to processing, and to complain to your data protection authority. Write to ${CONTACT} for any request.`,
         ],
       },
