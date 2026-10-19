@@ -38,17 +38,17 @@ beforeAll(() => {
       return new Response(null, { status: 404 })
     },
   })
-  process.env['AURICT_MODULES_URL'] = `http://127.0.0.1:${server.port}`
+  process.env['AURICT_BACKEND_URL'] = `http://127.0.0.1:${server.port}`
 })
 
 afterAll(() => {
   server.stop(true)
-  delete process.env['AURICT_MODULES_URL']
+  delete process.env['AURICT_BACKEND_URL']
 })
 
 describe('callAurictApi', () => {
   it('returns not_authenticated without making a request when token is missing', async () => {
-    const result = await callAurictApi(fakeCtx({ backendAccessToken: undefined }), 'modules', '/success')
+    const result = await callAurictApi(fakeCtx({ backendAccessToken: undefined }), '/success')
     expect(result.kind).toBe('not_authenticated')
   })
 
@@ -60,7 +60,7 @@ describe('callAurictApi', () => {
         calls++
         return 'resolved-token'
       },
-    }), 'modules', '/success')
+    }), '/success')
     expect(calls).toBe(1)
     expect(result.kind).toBe('success')
     if (result.kind === 'success') expect((result.data as { auth: string }).auth).toBe('Bearer resolved-token')
@@ -70,32 +70,32 @@ describe('callAurictApi', () => {
     const result = await callAurictApi(fakeCtx({
       backendAccessToken: undefined,
       backendAccessTokenResolver: async () => { throw new Error('request_timeout') },
-    }), 'modules', '/success')
+    }), '/success')
     expect(result).toEqual({ kind: 'unavailable', detail: 'request_timeout' })
   })
 
   it('distinguishes an HTTP 401 from a missing local session token', async () => {
-    const result = await callAurictApi(fakeCtx(), 'modules', '/unauthorized')
-    expect(result).toEqual({ kind: 'authorization_rejected', target: 'modules' })
+    const result = await callAurictApi(fakeCtx(), '/unauthorized')
+    expect(result).toEqual({ kind: 'authorization_rejected' })
   })
 
   it('returns unavailable on 502/503/504', async () => {
-    const result = await callAurictApi(fakeCtx(), 'modules', '/unavailable')
+    const result = await callAurictApi(fakeCtx(), '/unavailable')
     expect(result.kind).toBe('unavailable')
   })
 
   it('returns unavailable when the network request fails', async () => {
-    const result = await callAurictApi(fakeCtx(), 'modules', 'http://127.0.0.1:1/unreachable')
+    const result = await callAurictApi(fakeCtx(), 'http://127.0.0.1:1/unreachable')
     expect(result.kind).toBe('unavailable')
   })
 
   it('returns error for non-JSON success-range responses', async () => {
-    const result = await callAurictApi(fakeCtx(), 'modules', '/broken-json')
+    const result = await callAurictApi(fakeCtx(), '/broken-json')
     expect(result.kind).toBe('error')
   })
 
   it('returns error with the server-provided detail for other failure statuses', async () => {
-    const result = await callAurictApi(fakeCtx(), 'modules', '/error-with-body')
+    const result = await callAurictApi(fakeCtx(), '/error-with-body')
     expect(result.kind).toBe('error')
     if (result.kind === 'error') {
       expect(result.status).toBe(400)
@@ -103,8 +103,8 @@ describe('callAurictApi', () => {
     }
   })
 
-  it('extracts FastAPI-style {"detail": "..."} error bodies (bonds/rates)', async () => {
-    const result = await callAurictApi(fakeCtx(), 'modules', '/fastapi-error')
+  it('extracts FastAPI-style {"detail": "..."} error bodies', async () => {
+    const result = await callAurictApi(fakeCtx(), '/fastapi-error')
     expect(result.kind).toBe('error')
     if (result.kind === 'error') {
       expect(result.status).toBe(404)
@@ -113,7 +113,7 @@ describe('callAurictApi', () => {
   })
 
   it('extracts Hono-style {"error":{"message":"..."}} error bodies (legal)', async () => {
-    const result = await callAurictApi(fakeCtx(), 'modules', '/hono-error')
+    const result = await callAurictApi(fakeCtx(), '/hono-error')
     expect(result.kind).toBe('error')
     if (result.kind === 'error') {
       expect(result.detail).toBe('Legal unit not found.')
@@ -121,7 +121,7 @@ describe('callAurictApi', () => {
   })
 
   it('returns success with the parsed body and forwards the Bearer token', async () => {
-    const result = await callAurictApi(fakeCtx({ backendAccessToken: 'abc123' }), 'modules', '/success')
+    const result = await callAurictApi(fakeCtx({ backendAccessToken: 'abc123' }), '/success')
     expect(result.kind).toBe('success')
     if (result.kind === 'success') {
       const data = result.data as { auth: string; items: number[] }
@@ -134,7 +134,7 @@ describe('callAurictApi', () => {
 describe('describeAurictApiFailure', () => {
   it('produces a distinct, human-readable message per failure kind', () => {
     const notAuth = describeAurictApiFailure({ kind: 'not_authenticated' })
-    const rejected = describeAurictApiFailure({ kind: 'authorization_rejected', target: 'modules' })
+    const rejected = describeAurictApiFailure({ kind: 'authorization_rejected' })
     const unavailable = describeAurictApiFailure({ kind: 'unavailable', detail: 'timeout' })
     const error = describeAurictApiFailure({ kind: 'error', status: 500, detail: 'oops' })
     expect(notAuth).toContain('giriş yapmamış')

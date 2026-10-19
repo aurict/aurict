@@ -29,7 +29,7 @@ export interface AgentPolicyComparison {
 
 const AVAILABLE_TOOLS = [
   "read", "grep", "edit", "bash", "verify", "websearch",
-  "security_scan", "document_extract", "request_tools",
+  "security_scan", "render_pdf", "request_tools",
 ]
 
 export function runAgentPolicyEval(profile: AgentPolicyProfile): AgentPolicyEvalResult {

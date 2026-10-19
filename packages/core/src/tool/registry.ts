@@ -57,10 +57,7 @@ import { securityAttackGraphTool } from "./built-in/security-attack-graph.js"
 import { securityLogAnalyzeTool }  from "./built-in/security-log-analyze.js"
 import { securityThreatModelTool } from "./built-in/security-threat-model.js"
 import { calculatorTool } from "./built-in/calculator.js"
-import { marketDataTool } from "./built-in/market-data.js"
 import { legalSearchTool } from "./built-in/legal-search.js"
-import { documentExtractTool } from "./built-in/document-extract.js"
-import { structuredDataTool } from "./built-in/structured-data.js"
 import { readToolOutputTool } from "./built-in/read-tool-output.js"
 import { requestToolsTool } from "./built-in/request-tools.js"
 import { readImageTool } from "./built-in/read-image.js"
@@ -94,10 +91,7 @@ for (const t of [
   securityReconTool, securityScanTool, securityReportTool, securityVerifyTool,
   securityAttackGraphTool, securityLogAnalyzeTool, securityThreatModelTool,
   calculatorTool,
-  marketDataTool,
   legalSearchTool,
-  documentExtractTool,
-  structuredDataTool,
 ]) {
   tools.set(t.id, t)
 

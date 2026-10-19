@@ -275,7 +275,7 @@ export async function runIpcServer(workdir: string): Promise<void> {
         workdir,
         sessionId,
         backendAccessTokenResolver: resolveBackendAccessToken,
-        ...(payload.financeResearchId ? { requiredToolIds: ['market_data', 'calculator'] } : {}),
+        ...(payload.financeResearchId ? { requiredToolIds: ['calculator'] } : {}),
         ...(agentDef.system ? { system: agentDef.system } : {}),
         messages: nextHistory,
         runtime: { profile: "desktop-sidecar" },

@@ -42,14 +42,14 @@ const PACKS: Record<ToolCapability, string[]> = {
   change: ["edit", "write", "apply_patch", "ast_edit", "notebook_edit", "undo", "atomic_patch_and_test", "patch_test", "checkpoint"],
   execute: ["bash", "eval", "process_monitor", "inspect_live_process", "env_inspect"],
   verify: ["verify", "critique", "patch_test", "blast_radius", "lsp", "browser"],
-  research: ["websearch", "webfetch", "http_request", "legal_search", "market_data"],
+  research: ["websearch", "webfetch", "http_request", "legal_search"],
   coordinate: ["orchestrate", "subagent", "send_message", "todo", "task_create", "task_update", "task_complete", "plan_enter", "plan_verify", "worktree"],
   memory: ["memory", "scratchpad", "load_skill"],
-  document: ["document_extract", "render_pdf", "pptx", "chart", "mermaid"],
+  document: ["render_pdf", "pptx", "chart", "mermaid"],
   source_control: ["git", "git_context", "diff_view", "svn", "perforce", "worktree"],
   security: ["security_recon", "security_scan", "security_report", "security_verify", "security_attack_graph", "security_log_analyze", "security_threat_model", "track_variable_taint", "jwt_decode"],
-  finance: ["calculator", "market_data"],
-  data: ["jq", "structured_data", "regex_test", "chart"],
+  finance: ["calculator"],
+  data: ["jq", "regex_test", "chart"],
 }
 
 const INTENTS: Array<{ capability: ToolCapability; pattern: RegExp }> = [

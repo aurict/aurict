@@ -34,7 +34,7 @@ export const legalSearchTool: ToolDef = {
     if (action === 'get_unit' && !unitId) return { output: '', error: '"get_unit" requires a "unitId" argument.' }
 
     const path = buildPath(action, { query, jurisdiction, identifier, unitId, expandCitations })
-    const result = await callAurictApi(ctx, 'backend', path)
+    const result = await callAurictApi(ctx, path)
     if (result.kind !== 'success') {
       if (result.kind === 'error' && result.status === 404) {
         return { output: 'Not found. Tell the user honestly — do not invent statute or article text.' }

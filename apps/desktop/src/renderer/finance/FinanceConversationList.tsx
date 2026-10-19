@@ -31,7 +31,7 @@ export function FinanceConversationList({ conversations, activeId, pending, onCr
         </div>;
       })}
     </div>
-    <p style={noteStyle}>Finance Desk conversations are separate from workspace sessions. Calculations use calculator; BIST/TLREF data uses market_data.</p>
+    <p style={noteStyle}>Finance Desk conversations are separate from workspace sessions. Calculations use calculator; BIST/TLREF data comes from cited web sources.</p>
   </aside>;
 }
 
