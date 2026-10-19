@@ -104,7 +104,7 @@ export function DecisionLab() {
   const active = scenarios[activeIndex];
 
   return (
-    <div className={styles.lab}>
+    <div className={`${styles.lab} surface-dark`}>
       <div className={styles.scenarioList}>
         <div className={styles.panelLabel}>
           <span>{tr ? "Bağlam seç" : "Select context"}</span>

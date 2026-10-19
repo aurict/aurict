@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Footer } from "@/components/Footer";
@@ -20,7 +21,7 @@ export default function UseCasesPage() {
             </div>
             <div>
               <h1 className="page-h1">
-                {tr ? "Karar Motorunun parladığı senaryolar." : "Where the Decision Engine shines."}
+                <TightPeriods text={tr ? "Karar Motorunun parladığı senaryolar." : "Where the Decision Engine shines."} />
               </h1>
               <p className="page-lead">
                 {tr
@@ -47,15 +48,15 @@ export default function UseCasesPage() {
                 <div key={uc.slug} className="content-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                      <span style={{ color: uc.color, font: "600 11px var(--font-mono)", letterSpacing: "0.06em" }}>
+                      <span style={{ color: uc.color, font: "700 12.5px var(--font-sans)", letterSpacing: "0.06em" }}>
                         {uc.eyebrow}
                       </span>
                       <span
                         style={{
-                          background: `color-mix(in oklch, ${uc.color} 12%, transparent)`,
-                          border: `1px solid color-mix(in oklch, ${uc.color} 30%, transparent)`,
+                          background: `color-mix(in srgb, ${uc.color} 12%, transparent)`,
+                          border: `1px solid color-mix(in srgb, ${uc.color} 30%, transparent)`,
                           color: uc.color,
-                          font: "600 10px var(--font-mono)",
+                          font: "700 12.5px var(--font-sans)",
                           padding: "3px 8px",
                           borderRadius: 3,
                         }}
@@ -70,7 +71,7 @@ export default function UseCasesPage() {
                           width: 34,
                           height: 34,
                           borderRadius: 6,
-                          background: `color-mix(in oklch, ${uc.color} 14%, transparent)`,
+                          background: `color-mix(in srgb, ${uc.color} 14%, transparent)`,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -94,7 +95,7 @@ export default function UseCasesPage() {
                       href={`/use-cases/${uc.slug}`}
                       style={{
                         color: uc.color,
-                        font: "600 11px var(--font-mono)",
+                        font: "700 12.5px var(--font-sans)",
                         textDecoration: "none",
                         letterSpacing: "0.05em",
                         textTransform: "uppercase",
@@ -114,19 +115,19 @@ export default function UseCasesPage() {
           {/* Quick Implementation Example */}
           <div
             style={{
-              background: "color-mix(in oklch, var(--bg-card) 85%, var(--bg))",
+              background: "color-mix(in srgb, var(--bg-card) 85%, var(--bg))",
               border: "1px solid var(--border)",
               padding: "40px 32px",
               marginBottom: 80,
             }}
           >
-            <div style={{ color: "var(--accent)", font: "600 11px var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+            <div style={{ color: "var(--accent)", font: "700 12.5px var(--font-sans)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
               {tr ? "KOD ÖRNEĞİ" : "CODE EXAMPLE"}
             </div>
-            <h3 style={{ color: "var(--text)", font: "600 24px var(--font-serif)", marginBottom: 12 }}>
+            <h3 style={{ color: "var(--text)", font: "800 24px var(--font-sans)", marginBottom: 12 }}>
               {tr ? "Tüm senaryolar tek bir SDK fonksiyonuyla tetiklenir." : "Every use case is triggered with one uniform SDK function."}
             </h3>
-            <p style={{ color: "var(--text-dim)", font: "15px var(--font-serif)", maxWidth: 720, marginBottom: 20 }}>
+            <p style={{ color: "var(--text-dim)", font: "15px var(--font-sans)", maxWidth: 720, marginBottom: 20 }}>
               {tr
                 ? "Aurict Decision SDK'sı oturum içi sinyalleri yerel olarak toplar ve tek bir evaluation çağrısında en uygun kararı döndürür."
                 : "The Aurict Decision SDK computes local signal vectors and resolves the optimal decision in a single async evaluation."}

@@ -54,21 +54,21 @@ export default function BlogPostPage({
           {/* Article Header */}
           <div style={{ marginBottom: 32 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
-              <span className="tag" style={{ background: "color-mix(in oklch, var(--accent) 15%, transparent)", color: "var(--accent)" }}>
+              <span className="tag" style={{ background: "color-mix(in srgb, var(--accent) 15%, transparent)", color: "var(--accent)" }}>
                 {post.tag}
               </span>
-              <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)" }}>
+              <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>
                 {post.date}
               </span>
-              <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)" }}>•</span>
-              <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)" }}>
+              <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>•</span>
+              <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>
                 {post.readTime}
               </span>
             </div>
 
             <h1
               style={{
-                fontFamily: "var(--font-serif), 'Source Serif 4', Georgia, serif",
+                fontFamily: "var(--font-sans)",
                 fontSize: "clamp(32px, 5vw, 52px)",
                 fontWeight: 600,
                 color: "var(--text)",
@@ -82,7 +82,7 @@ export default function BlogPostPage({
 
             <p
               style={{
-                fontFamily: "var(--font-serif), 'Source Serif 4', Georgia, serif",
+                fontFamily: "var(--font-sans)",
                 fontSize: 20,
                 lineHeight: 1.55,
                 color: "var(--text-dim)",
@@ -108,7 +108,7 @@ export default function BlogPostPage({
                   width: 40,
                   height: 40,
                   borderRadius: "50%",
-                  background: "color-mix(in oklch, var(--accent) 20%, var(--bg-card))",
+                  background: "color-mix(in srgb, var(--accent) 20%, var(--bg-card))",
                   border: "1px solid var(--accent)",
                   display: "flex",
                   alignItems: "center",
@@ -123,7 +123,7 @@ export default function BlogPostPage({
                 <div style={{ color: "var(--text)", font: "600 13px var(--font-mono)" }}>
                   {post.author}
                 </div>
-                <div style={{ color: "var(--text-muted)", font: "11px var(--font-mono)" }}>
+                <div style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)" }}>
                   Aurict Decision Core Team
                 </div>
               </div>
@@ -155,8 +155,8 @@ export default function BlogPostPage({
             {/* Key Takeaways Box */}
             <div
               style={{
-                background: "color-mix(in oklch, var(--accent) 8%, var(--bg-card))",
-                border: "1px solid color-mix(in oklch, var(--accent) 30%, transparent)",
+                background: "color-mix(in srgb, var(--accent) 8%, var(--bg-card))",
+                border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)",
                 padding: "24px 28px",
                 borderRadius: 4,
                 margin: "12px 0",
@@ -177,7 +177,7 @@ export default function BlogPostPage({
                 <CheckCircle2 size={16} />
                 {tr ? "ÖNEMLİ ÇIKARIMLAR" : "KEY TAKEAWAYS"}
               </div>
-              <ul style={{ margin: 0, paddingLeft: 20, color: "var(--text)", font: "15px / 1.6 var(--font-serif)" }}>
+              <ul style={{ margin: 0, paddingLeft: 20, color: "var(--text)", font: "15px / 1.6 var(--font-sans)" }}>
                 <li>{tr ? "Cihaz üstünde çıkarım (on-device inference) gecikmeyi 10ms altına indirir." : "On-device inference lowers evaluation latency to under 10ms."}</li>
                 <li>{tr ? "Ham davranış verisi istemciden ayrılmaz; KVKK ve GDPR uyumu %100 doğaldır." : "Zero raw behavioral data leaves the device, guaranteeing native GDPR/KVKK compliance."}</li>
                 <li>{tr ? "SHAP özellikleri ile her karar anında açıklanabilir ve denetlenebilirdir." : "SHAP explainability vector log ensures every decision is fully deterministic."}</li>

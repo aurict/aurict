@@ -1,73 +1,58 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, Cpu } from "lucide-react";
 import { useLocale } from "next-intl";
+import Image from "next/image";
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import styles from "./LandingHero.module.css";
 
 const COPY = {
   en: {
-    eyebrow: "Aurict Decision / On-device Decision Engine",
+    eyebrow: "The on-device decision engine",
     titleLead: "Every signal.",
     titleAccent: "One decision.",
-    body: "Aurict Decision is a privacy-native Decision Engine that turns live, first-party behavior into one governed next-best action — before the next screen renders.",
-    primary: "Start building",
-    secondary: "Explore the engine",
-    live: "Engine live",
-    field: "live decision field",
-    signals: [
-      ["intent", "0.86"],
-      ["propensity", "0.72"],
-      ["affinity", "0.91"],
-      ["context", "checkout"],
-    ],
-    outputLabel: "selected action",
-    output: "recover_cart",
-    confidence: "94.2% confidence",
-    trace: [
-      ["01", "capture", "first-party signals"],
-      ["02", "score", "intent vector"],
-      ["03", "govern", "policy + consent"],
-      ["04", "decide", "one action"],
-    ],
-    metrics: [
-      ["<10ms", "decision latency"],
-      ["100%", "on-device inference"],
-      ["01", "action per session"],
-      ["0 B", "raw data exported"],
-    ],
+    body: "Live behavior. One governed next-best action. All on-device.",
+    primary: "Get started",
+    privacyTitle: "Private by design",
+    privacyValue: "0 B exported",
+    latencyValue: "<10 ms",
+    latencyLabel: "Decision latency",
+    pipelineTitle: "Governed from signal to action",
+    pipelineSub: "Consent · Budget · Safety",
+    actionTitle: "One next-best action",
+    actionValue: "recover_cart · 94%",
+    sdkTitle: "Build where your users are.",
+    sdkSub: "SDKs & commerce connectors",
+    onDevice: "100% on-device inference",
+    ecosystem: "Part of the Aurict ecosystem",
   },
   tr: {
-    eyebrow: "Aurict Decision / Cihaz İçi Decision Engine",
+    eyebrow: "Cihaz içi karar motoru",
     titleLead: "Her sinyal.",
     titleAccent: "Tek karar.",
-    body: "Aurict Decision; canlı, birinci taraf davranışlarını bir sonraki ekran çizilmeden önce tek ve kontrollü bir sonraki en iyi eyleme dönüştüren gizlilik odaklı bir Decision Engine'dir.",
+    body: "Canlı davranış. Tek ve kontrollü bir sonraki en iyi eylem. Tamamı cihazda.",
     primary: "Hemen başla",
-    secondary: "Motoru keşfet",
-    live: "Motor canlı",
-    field: "canlı karar alanı",
-    signals: [
-      ["niyet", "0.86"],
-      ["eğilim", "0.72"],
-      ["ilgi", "0.91"],
-      ["bağlam", "ödeme"],
-    ],
-    outputLabel: "seçilen eylem",
-    output: "sepeti_kurtar",
-    confidence: "%94.2 güven",
-    trace: [
-      ["01", "yakala", "birinci taraf sinyal"],
-      ["02", "skorla", "niyet vektörü"],
-      ["03", "yönet", "politika + rıza"],
-      ["04", "karar ver", "tek eylem"],
-    ],
-    metrics: [
-      ["<10ms", "karar gecikmesi"],
-      ["%100", "cihaz içi çıkarım"],
-      ["01", "oturum başına eylem"],
-      ["0 B", "dışa çıkan ham veri"],
-    ],
+    privacyTitle: "Tasarım gereği gizli",
+    privacyValue: "0 B dışa çıkış",
+    latencyValue: "<10 ms",
+    latencyLabel: "Karar gecikmesi",
+    pipelineTitle: "Sinyalden eyleme kontrollü",
+    pipelineSub: "Rıza · Bütçe · Güvenlik",
+    actionTitle: "Tek sonraki en iyi eylem",
+    actionValue: "sepeti_kurtar · %94",
+    sdkTitle: "Kullanıcılarınız neredeyse orada çalışın.",
+    sdkSub: "SDK'lar ve e-ticaret bağlayıcıları",
+    onDevice: "%100 cihaz içi çıkarım",
+    ecosystem: "Aurict ekosisteminin parçası",
   },
 } as const;
+
+const SDKS = [
+  { name: "Web", icon: <GlobeIcon /> },
+  { name: "iOS", icon: <AppleIcon /> },
+  { name: "Android", icon: <AndroidIcon /> },
+  { name: "React Native", icon: <ReactIcon /> },
+];
 
 export function LandingHero() {
   const locale = useLocale();
@@ -75,117 +60,111 @@ export function LandingHero() {
 
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
-      <div className={styles.frame}>
-        <header className={styles.metaBar}>
-          <span className={styles.live}>
-            <i />
-            {copy.live}
-          </span>
-          <span>{copy.eyebrow}</span>
-          <a href="https://aurict.com" rel="noopener noreferrer" target="_blank">
-            by Aurict <span aria-hidden="true">↗</span>
-          </a>
-        </header>
-
-        <div className={styles.field}>
-          <div className={styles.fieldGrid} aria-hidden="true" />
-
-          <svg
-            aria-hidden="true"
-            className={styles.network}
-            preserveAspectRatio="none"
-            viewBox="0 0 1400 660"
-          >
-            <path d="M85 122 C340 122 535 330 905 330" />
-            <path d="M330 64 C540 64 610 330 905 330" />
-            <path d="M225 575 C500 575 615 330 905 330" />
-            <path d="M650 600 C740 515 765 330 905 330" />
-            <path className={styles.outputPath} d="M905 330 C1080 330 1185 330 1340 330" />
-            <circle cx="905" cy="330" r="4" />
-          </svg>
-
-          <div className={styles.lens} aria-hidden="true">
-            <span className={styles.lensRing} />
-            <span className={styles.lensRing} />
-            <span className={styles.lensRing} />
-            <div className={styles.lensCore}>
-              <small>decision</small>
-              <strong>01</strong>
-              <i>7.4ms</i>
-            </div>
-          </div>
-
-          <div className={styles.titleBlock}>
-            <p>
-              <span>↳</span>
-              {copy.field}
-            </p>
+      <div className={styles.bento}>
+        <article className={`${styles.tile} ${styles.main}`}>
+          <div className={styles.mainCopy}>
+            <p className={styles.eyebrow}>{copy.eyebrow}</p>
             <h1 id="hero-title">
-              <span>{copy.titleLead}</span>
-              <em>{copy.titleAccent}</em>
+              <span><TightPeriods text={copy.titleLead} /></span>
+              <em><TightPeriods text={copy.titleAccent} /></em>
             </h1>
+            <p className={styles.lead}>{copy.body}</p>
+            <a className={styles.primary} href="https://decision.aurict.com/register">
+              {copy.primary}
+              <ArrowRight aria-hidden="true" size={20} strokeWidth={2.4} />
+            </a>
           </div>
+          <Image alt="" aria-hidden="true" className={styles.phone} height={760} priority src="/bento/phone.webp" width={589} />
+        </article>
 
-          <div className={styles.signalCloud} aria-label={locale === "tr" ? "Canlı oturum sinyalleri" : "Live session signals"}>
-            {copy.signals.map(([label, value], index) => (
-              <div className={styles[`signal${index + 1}`]} key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
+        <article className={`${styles.tile} ${styles.privacy}`}>
+          <h2>{copy.privacyTitle}</h2>
+          <p className={styles.value}>{copy.privacyValue}</p>
+          <Image alt="" aria-hidden="true" className={styles.shield} height={760} src="/bento/shield.webp" width={635} />
+        </article>
+
+        <article className={`${styles.tile} ${styles.latency}`}>
+          <Image alt="" aria-hidden="true" className={styles.stopwatch} height={760} src="/bento/stopwatch.webp" width={614} />
+          <div>
+            <p className={styles.bigValue}>{copy.latencyValue}</p>
+            <p className={styles.label}>{copy.latencyLabel}</p>
           </div>
+        </article>
 
-          <div className={styles.output}>
-            <span>{copy.outputLabel}</span>
-            <strong>{copy.output}</strong>
-            <small>{copy.confidence}</small>
+        <article className={`${styles.tile} ${styles.pipeline}`}>
+          <h2>{copy.pipelineTitle}</h2>
+          <p className={styles.label}>{copy.pipelineSub}</p>
+          <Image alt="capture → score → govern → decide" className={styles.pipelineArt} height={230} src="/bento/pipeline.webp" width={976} />
+        </article>
+
+        <article className={`${styles.tile} ${styles.action}`}>
+          <h2>{copy.actionTitle}</h2>
+          <p className={styles.value}>{copy.actionValue}</p>
+          <Image alt="" aria-hidden="true" className={styles.arrow} height={607} src="/bento/arrow.webp" width={897} />
+        </article>
+
+        <article className={`${styles.tile} ${styles.sdk}`}>
+          <div>
+            <h2><TightPeriods text={copy.sdkTitle} /></h2>
+            <p className={styles.label}>{copy.sdkSub}</p>
           </div>
-
-          <div className={styles.axis} aria-hidden="true">
-            <span>context / now</span>
-            <i />
-            <span>action / next</span>
-          </div>
-        </div>
-
-        <div className={styles.lower}>
-          <div className={styles.intro}>
-            <p>{copy.body}</p>
-            <div className={styles.actions}>
-              <a className={styles.primaryAction} href="https://decision.aurict.com/register">
-                {copy.primary}
-                <ArrowUpRight aria-hidden="true" size={16} strokeWidth={1.8} />
-              </a>
-              <a className={styles.secondaryAction} href="#decision-lab">
-                <span aria-hidden="true">↳</span>
-                {copy.secondary}
-              </a>
-            </div>
-          </div>
-
-          <ol className={styles.trace}>
-            {copy.trace.map(([index, label, detail], step) => (
-              <li className={step === 3 ? styles.traceActive : ""} key={index}>
-                <span>{index}</span>
-                <div>
-                  <strong>{label}</strong>
-                  <small>{detail}</small>
-                </div>
+          <ul className={styles.sdkList}>
+            {SDKS.map((sdk) => (
+              <li key={sdk.name}>
+                {sdk.icon}
+                {sdk.name}
               </li>
             ))}
-          </ol>
-        </div>
+          </ul>
+        </article>
+      </div>
 
-        <div className={styles.metrics}>
-          {copy.metrics.map(([value, label], index) => (
-            <div key={label}>
-              <span>0{index + 1}</span>
-              <strong>{value}</strong>
-              <p>{label}</p>
-            </div>
-          ))}
-        </div>
+      <div className={styles.strip}>
+        <span>
+          <Cpu aria-hidden="true" size={18} strokeWidth={2} />
+          {copy.onDevice}
+        </span>
+        <a href="https://aurict.com" rel="noopener noreferrer" target="_blank">
+          {copy.ecosystem}
+          <span aria-hidden="true" className={styles.aurictDot} />
+        </a>
       </div>
     </section>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="26" stroke="#0b7b86" strokeLinecap="round" strokeWidth="2" viewBox="0 0 24 24" width="26">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18" />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg aria-hidden="true" fill="#1f9e74" height="26" viewBox="0 0 24 24" width="26">
+      <path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.9-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.5-1-2.5-3.8ZM14.1 5.8c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.8 1.4-.6.7-1.1 1.8-1 2.9 1.1.1 2.1-.5 2.8-1.3Z" />
+    </svg>
+  );
+}
+
+function AndroidIcon() {
+  return (
+    <svg aria-hidden="true" fill="#3ddc84" height="26" viewBox="0 0 24 24" width="26">
+      <path d="M6 9h12v8a1.5 1.5 0 0 1-1.5 1.5H16V21a1.25 1.25 0 0 1-2.5 0v-2.5h-3V21A1.25 1.25 0 0 1 8 21v-2.5h-.5A1.5 1.5 0 0 1 6 17V9Zm-2.5 0A1.25 1.25 0 0 1 4.75 10.25v5a1.25 1.25 0 0 1-2.5 0v-5A1.25 1.25 0 0 1 3.5 9Zm17 0a1.25 1.25 0 0 1 1.25 1.25v5a1.25 1.25 0 0 1-2.5 0v-5A1.25 1.25 0 0 1 20.5 9ZM8.2 3.3l1 1.7A6 6 0 0 1 12 4.4c1 0 2 .2 2.8.6l1-1.7a.4.4 0 1 1 .7.4l-1 1.7A5.6 5.6 0 0 1 18 8H6a5.6 5.6 0 0 1 2.5-4.6l-1-1.7a.4.4 0 1 1 .7-.4ZM9.5 6.2a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2Zm5 0a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2Z" />
+    </svg>
+  );
+}
+
+function ReactIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="26" stroke="#0b7b86" strokeWidth="1.6" viewBox="0 0 24 24" width="26">
+      <circle cx="12" cy="12" fill="#0b7b86" r="1.8" stroke="none" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" />
+    </svg>
   );
 }

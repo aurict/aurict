@@ -23,19 +23,7 @@ export function LocaleSwitcher() {
       value={locale}
       onChange={(e) => switchLocale(e.target.value)}
       disabled={isPending}
-      style={{
-        fontFamily: "var(--font-mono), 'IBM Plex Mono', monospace",
-        fontSize: 11,
-        color: "var(--text-dim)",
-        background: "var(--bg-card)",
-        border: "1px solid var(--border-bright)",
-        borderRadius: 5,
-        padding: "5px 8px",
-        cursor: "pointer",
-        outline: "none",
-        transition: "border-color 0.2s ease",
-        minHeight: 32,
-      }}
+      className="locale-select"
       aria-label={t("label")}
     >
       <option value="en">{t("en")}</option>

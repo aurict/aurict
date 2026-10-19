@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { Suspense, useState } from "react";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -36,7 +37,7 @@ function ContactForm() {
       <main className="inner-main">
         <div className="page-intro">
           <div className="page-intro-eyebrow">{type === "SELF_HOST" ? "self-host" : "enterprise"}</div>
-          <h1 className="page-h1">{tr ? "Teknik görüşme planlayın" : "Plan a technical conversation"}</h1>
+          <h1 className="page-h1"><TightPeriods text={tr ? "Teknik görüşme planlayın" : "Plan a technical conversation"} /></h1>
           <p className="page-lead">{tr ? "Mimari, veri yerleşimi, trafik ve güvenlik ihtiyaçlarını birlikte netleştirelim." : "We will align architecture, data residency, traffic and security requirements."}</p>
           <p className="mono" style={{ marginTop: 16, color: "var(--text-muted)", fontSize: 12 }}>
             {tr ? "Doğrudan e-posta: " : "Email us directly: "}
@@ -45,7 +46,7 @@ function ContactForm() {
             </a>
           </p>
         </div>
-        {state === "sent" ? <div style={{ border: "1px solid var(--success)", padding: 24 }}>{tr ? "Talebiniz alındı. Ekibimiz sizinle iletişime geçecek." : "Request received. Our team will contact you."}</div> : (
+        {state === "sent" ? <div style={{ border: "1px solid var(--success)", borderRadius: 22, background: "var(--bg-card)", padding: 24 }}>{tr ? "Talebiniz alındı. Ekibimiz sizinle iletişime geçecek." : "Request received. Our team will contact you."}</div> : (
           <form onSubmit={submit} style={{ display: "grid", gap: 16, maxWidth: 720, marginBottom: 64 }}>
             <select value={type} onChange={(event) => setType(event.target.value as "SELF_HOST" | "ENTERPRISE")}><option value="SELF_HOST">Self-host</option><option value="ENTERPRISE">Enterprise</option></select>
             <input required placeholder={tr ? "Şirket adı" : "Company name"} value={form.companyName} onChange={(event) => setForm({ ...form, companyName: event.target.value })} />

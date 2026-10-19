@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useLocale } from "next-intl";
 import { Footer } from "@/components/Footer";
 import {
@@ -149,9 +150,9 @@ export default function SecurityPage() {
             </div>
             <div>
               <h1 className="page-h1">
-                {tr
+                <TightPeriods text={tr
                   ? "Mimari olarak güvenli. Varsayılan olarak gizli."
-                  : "Secure by architecture. Private by default."}
+                  : "Secure by architecture. Private by default."} />
               </h1>
               <p className="page-lead">
                 {tr
@@ -166,7 +167,7 @@ export default function SecurityPage() {
             <p
               style={{
                 color: "var(--accent)",
-                font: "10px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: 24,
@@ -208,7 +209,7 @@ export default function SecurityPage() {
                         <span
                           style={{
                             color: "var(--accent)",
-                            font: "11px var(--font-mono)",
+                            font: "700 12.5px var(--font-sans)",
                             letterSpacing: "0.06em",
                           }}
                         >
@@ -220,9 +221,9 @@ export default function SecurityPage() {
                             height: 36,
                             borderRadius: 6,
                             background:
-                              "color-mix(in oklch, var(--accent) 12%, transparent)",
+                              "color-mix(in srgb, var(--accent) 12%, transparent)",
                             border:
-                              "1px solid color-mix(in oklch, var(--accent) 25%, transparent)",
+                              "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -248,7 +249,7 @@ export default function SecurityPage() {
             <p
               style={{
                 color: "var(--accent)",
-                font: "10px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: 24,
@@ -333,7 +334,7 @@ export default function SecurityPage() {
             <p
               style={{
                 color: "var(--accent)",
-                font: "10px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: 24,
@@ -374,7 +375,7 @@ export default function SecurityPage() {
                   <div
                     style={{
                       color: "var(--text)",
-                      font: "600 16px var(--font-serif)",
+                      font: "800 16px var(--font-sans)",
                       marginBottom: 6,
                     }}
                   >
@@ -383,7 +384,7 @@ export default function SecurityPage() {
                   <div
                     style={{
                       color: "var(--success)",
-                      font: "11px var(--font-mono)",
+                      font: "700 12.5px var(--font-sans)",
                       marginBottom: 12,
                       textTransform: "uppercase",
                       letterSpacing: "0.04em",
@@ -399,16 +400,7 @@ export default function SecurityPage() {
 
           {/* Reports & Audits */}
           <div
-            style={{
-              background: "color-mix(in oklch, var(--bg-card) 85%, var(--bg))",
-              border: "1px solid var(--border)",
-              padding: "40px 36px",
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 32,
-              alignItems: "center",
-              marginBottom: 80,
-            }}
+            className="cta-box"
           >
             <div>
               <div
@@ -423,7 +415,7 @@ export default function SecurityPage() {
                 <h3
                   style={{
                     color: "var(--text)",
-                    font: "600 24px var(--font-serif)",
+                    font: "800 24px var(--font-sans)",
                   }}
                 >
                   {tr
@@ -431,7 +423,7 @@ export default function SecurityPage() {
                     : "Security Audits & Penetration Tests"}
                 </h3>
               </div>
-              <p style={{ color: "var(--text-dim)", font: "15px / 1.6 var(--font-serif)", maxWidth: 680 }}>
+              <p style={{ color: "var(--text-dim)", font: "15px / 1.6 var(--font-sans)", maxWidth: 680 }}>
                 {tr
                   ? "Sistemlerimiz bağımsız siber güvenlik firmaları tarafından düzenli olarak sızma testine tabi tutulur. Kurumsal müşterilerimiz güncel pentest ve SOC 2 raporlarını talep edebilir."
                   : "Our infrastructure undergoes regular third-party penetration testing. Enterprise customers can request our latest SOC 2 Type II and penetration test reports under NDA."}

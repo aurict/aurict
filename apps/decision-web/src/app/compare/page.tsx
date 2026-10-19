@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Footer } from "@/components/Footer";
@@ -31,7 +32,7 @@ export default function ComparePage() {
             </div>
             <div>
               <h1 className="page-h1">
-                {tr ? "Aurict Decision ve alternatifler." : "Aurict Decision vs the alternatives."}
+                <TightPeriods text={tr ? "Aurict Decision ve alternatifler." : "Aurict Decision vs the alternatives."} />
               </h1>
               <p className="page-lead">
                 {tr
@@ -46,7 +47,7 @@ export default function ComparePage() {
             <p
               style={{
                 color: "var(--accent)",
-                font: "10px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: 20,
@@ -65,7 +66,7 @@ export default function ComparePage() {
                         background: "var(--bg-card)",
                         borderBottom: "1px solid var(--border)",
                         color: "var(--text-muted)",
-                        font: "10px var(--font-mono)",
+                        font: "700 12.5px var(--font-sans)",
                         textTransform: "uppercase",
                         letterSpacing: "0.06em",
                         width: "40%",
@@ -77,11 +78,11 @@ export default function ComparePage() {
                       style={{
                         padding: "16px 20px",
                         textAlign: "left",
-                        background: "color-mix(in oklch, var(--accent) 10%, var(--bg-card))",
+                        background: "color-mix(in srgb, var(--accent) 10%, var(--bg-card))",
                         borderBottom: "1px solid var(--border)",
                         borderLeft: "1px solid var(--border)",
                         color: "var(--accent)",
-                        font: "600 11px var(--font-mono)",
+                        font: "700 12.5px var(--font-sans)",
                         textTransform: "uppercase",
                         letterSpacing: "0.06em",
                         width: "30%",
@@ -97,7 +98,7 @@ export default function ComparePage() {
                         borderBottom: "1px solid var(--border)",
                         borderLeft: "1px solid var(--border)",
                         color: "var(--text-muted)",
-                        font: "10px var(--font-mono)",
+                        font: "700 12.5px var(--font-sans)",
                         textTransform: "uppercase",
                         letterSpacing: "0.06em",
                         width: "30%",
@@ -114,7 +115,7 @@ export default function ComparePage() {
                       style={{
                         background:
                           idx % 2 === 0
-                            ? "color-mix(in oklch, var(--bg-card) 60%, var(--bg))"
+                            ? "color-mix(in srgb, var(--bg-card) 60%, var(--bg))"
                             : "var(--bg)",
                       }}
                     >
@@ -135,7 +136,7 @@ export default function ComparePage() {
                           borderLeft: "1px solid var(--border)",
                           color: "var(--accent)",
                           font: "600 13px var(--font-mono)",
-                          background: "color-mix(in oklch, var(--accent) 4%, transparent)",
+                          background: "color-mix(in srgb, var(--accent) 4%, transparent)",
                         }}
                       >
                         {row.mt}
@@ -163,7 +164,7 @@ export default function ComparePage() {
             <p
               style={{
                 color: "var(--accent)",
-                font: "10px var(--font-mono)",
+                font: "700 12.5px var(--font-sans)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: 20,
@@ -193,7 +194,7 @@ export default function ComparePage() {
                       href={`/compare/${c.slug}`}
                       style={{
                         color: "var(--accent)",
-                        font: "600 11px var(--font-mono)",
+                        font: "700 12.5px var(--font-sans)",
                         textDecoration: "none",
                         letterSpacing: "0.05em",
                         textTransform: "uppercase",
@@ -210,7 +211,7 @@ export default function ComparePage() {
           {/* Architecture Comparison Banner */}
           <div
             style={{
-              background: "color-mix(in oklch, var(--bg-card) 85%, var(--bg))",
+              background: "color-mix(in srgb, var(--bg-card) 85%, var(--bg))",
               border: "1px solid var(--border)",
               padding: "40px 36px",
               display: "grid",
@@ -222,11 +223,11 @@ export default function ComparePage() {
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", marginBottom: 12 }}>
                 <Cpu size={20} />
-                <span style={{ font: "600 11px var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                <span style={{ font: "700 12.5px var(--font-sans)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Aurict Decision (On-Device)
                 </span>
               </div>
-              <p style={{ color: "var(--text)", font: "15px / 1.6 var(--font-serif)" }}>
+              <p style={{ color: "var(--text)", font: "15px / 1.6 var(--font-sans)" }}>
                 {tr
                   ? "Kullanıcı cihazında 10ms altında bağımsız çıkarım. Ağ gecikmesi yok, sunucu bağımlılığı yok, veri sızıntısı yok."
                   : "Standalone inference computed on-device in under 10ms. No network lag, no server dependency, no privacy leaks."}
@@ -236,11 +237,11 @@ export default function ComparePage() {
             <div style={{ borderLeft: "1px solid var(--border)", paddingLeft: 32 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", marginBottom: 12 }}>
                 <Server size={20} />
-                <span style={{ font: "600 11px var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                <span style={{ font: "700 12.5px var(--font-sans)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Geleneksel Cloud SaaS
                 </span>
               </div>
-              <p style={{ color: "var(--text-muted)", font: "15px / 1.6 var(--font-serif)" }}>
+              <p style={{ color: "var(--text-muted)", font: "15px / 1.6 var(--font-sans)" }}>
                 {tr
                   ? "Bulut sunucularına 150-500ms ağ çağrıları. Yüksek gecikme, KVKK/GDPR riskleri ve kilitli kapalı kod yapısı."
                   : "Requires 150-500ms network roundtrips to central cloud. Higher latency, compliance risk, and closed proprietary lock-in."}

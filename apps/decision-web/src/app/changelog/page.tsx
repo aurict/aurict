@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useState } from "react";
 import { useLocale } from "next-intl";
 import { Footer } from "@/components/Footer";
@@ -34,7 +35,7 @@ export default function ChangelogPage() {
             </div>
             <div>
               <h1 className="page-h1">
-                {tr ? "Değişiklik Günlüğü" : "Changelog"}
+                <TightPeriods text={tr ? "Değişiklik Günlüğü" : "Changelog"} />
               </h1>
               <p className="page-lead">
                 {tr
@@ -56,7 +57,7 @@ export default function ChangelogPage() {
               flexWrap: "wrap",
             }}
           >
-            <span style={{ color: "var(--text-muted)", font: "11px var(--font-mono)", marginRight: 8, textTransform: "uppercase" }}>
+            <span style={{ color: "var(--text-muted)", font: "700 12.5px var(--font-sans)", marginRight: 8, textTransform: "uppercase" }}>
               {tr ? "Filtrele:" : "Filter:"}
             </span>
             {filterTags.map((tag) => (
@@ -67,13 +68,13 @@ export default function ChangelogPage() {
                 style={{
                   background:
                     selectedTag === tag
-                      ? "color-mix(in oklch, var(--accent) 15%, transparent)"
+                      ? "color-mix(in srgb, var(--accent) 15%, transparent)"
                       : "transparent",
                   border: `1px solid ${selectedTag === tag ? "var(--accent)" : "var(--border)"}`,
                   color: selectedTag === tag ? "var(--accent)" : "var(--text-dim)",
                   padding: "5px 14px",
                   borderRadius: 4,
-                  font: "11px var(--font-mono)",
+                  font: "700 12.5px var(--font-sans)",
                   cursor: "pointer",
                   textTransform: "uppercase",
                   transition: "all 0.16s ease",
@@ -124,7 +125,7 @@ export default function ChangelogPage() {
           {/* RSS Card */}
           <div
             style={{
-              background: "color-mix(in oklch, var(--bg-card) 85%, var(--bg))",
+              background: "color-mix(in srgb, var(--bg-card) 85%, var(--bg))",
               border: "1px solid var(--border)",
               padding: "32px 28px",
               display: "flex",
@@ -138,7 +139,7 @@ export default function ChangelogPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Rss size={20} style={{ color: "var(--accent)" }} />
               <div>
-                <div style={{ color: "var(--text)", font: "600 16px var(--font-serif)" }}>
+                <div style={{ color: "var(--text)", font: "800 16px var(--font-sans)" }}>
                   {tr ? "Değişiklik Günlüğünü Takip Edin" : "Subscribe to Release Updates"}
                 </div>
                 <div style={{ color: "var(--text-muted)", font: "12px var(--font-mono)" }}>

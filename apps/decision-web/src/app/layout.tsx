@@ -79,7 +79,7 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#111418",
+  themeColor: "#f6faf9",
 };
 
 export default async function RootLayout({
@@ -91,12 +91,17 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font -- runtime link keeps offline builds stable */}
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      </head>
       <body>
         <ServiceWorkerRetirement />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ScrollProgress />
           <div className="site-grain" aria-hidden="true" />
-          <div className="top-accent" aria-hidden="true" />
           <Nav />
           {children}
         </NextIntlClientProvider>

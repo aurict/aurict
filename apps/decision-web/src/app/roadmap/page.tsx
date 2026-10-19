@@ -1,5 +1,6 @@
 "use client";
 
+import { TightPeriods } from "@/components/ui/TightPeriods";
 import { useLocale } from "next-intl";
 import { Footer } from "@/components/Footer";
 import { Lightbulb } from "lucide-react";
@@ -158,7 +159,7 @@ export default function RoadmapPage() {
             </div>
             <div>
               <h1 className="page-h1">
-                {tr ? "Ürün Yol Haritası" : "Product Roadmap"}
+                <TightPeriods text={tr ? "Ürün Yol Haritası" : "Product Roadmap"} />
               </h1>
               <p className="page-lead">
                 {tr
@@ -178,7 +179,7 @@ export default function RoadmapPage() {
                     <span className={statusInfo.cls}>
                       {tr ? statusInfo.label_tr : statusInfo.label_en}
                     </span>
-                    <span style={{ color: "var(--accent)", font: "600 11px var(--font-mono)" }}>
+                    <span style={{ color: "var(--accent)", font: "700 12.5px var(--font-sans)" }}>
                       {phase.quarter}
                     </span>
                     <div className="roadmap-phase-title" style={{ width: "100%", marginTop: 4 }}>
@@ -196,7 +197,7 @@ export default function RoadmapPage() {
                         style={{ width: phase.progress }}
                       />
                     </div>
-                    <span style={{ color: "var(--accent)", font: "600 11px var(--font-mono)", minWidth: 40 }}>
+                    <span style={{ color: "var(--accent)", font: "700 12.5px var(--font-sans)", minWidth: 40 }}>
                       {phase.progress}
                     </span>
                   </div>
@@ -228,28 +229,19 @@ export default function RoadmapPage() {
 
           {/* Feedback Box */}
           <div
-            style={{
-              background: "color-mix(in oklch, var(--bg-card) 85%, var(--bg))",
-              border: "1px solid var(--border)",
-              padding: "36px 32px",
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 24,
-              alignItems: "center",
-              marginBottom: 80,
-            }}
+            className="cta-box"
           >
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", marginBottom: 8 }}>
                 <Lightbulb size={18} />
-                <span style={{ font: "600 11px var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                <span style={{ font: "700 12.5px var(--font-sans)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   {tr ? "Özellik İsteği" : "Feature Request"}
                 </span>
               </div>
-              <h3 style={{ color: "var(--text)", font: "600 22px var(--font-serif)", marginBottom: 4 }}>
+              <h3 style={{ color: "var(--text)", font: "800 22px var(--font-sans)", marginBottom: 4 }}>
                 {tr ? "Görmek istediğiniz bir özellik mi var?" : "Have a feature request or integration idea?"}
               </h3>
-              <p style={{ color: "var(--text-dim)", font: "14px var(--font-serif)" }}>
+              <p style={{ color: "var(--text-dim)", font: "14px var(--font-sans)" }}>
                 {tr ? "Yol haritamızı topluluğumuzun ve müşterilerimizin geri bildirimleriyle şekillendiriyoruz." : "We prioritize our engineering backlog based on direct feedback from our customers and partners."}
               </p>
             </div>
