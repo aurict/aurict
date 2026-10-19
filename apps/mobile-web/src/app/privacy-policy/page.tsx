@@ -1,11 +1,11 @@
 "use client";
 
 import { type ReactNode } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AmbientBackground from "@/components/AmbientBackground";
 import PageHeader from "@/components/PageHeader";
-import Corners from "@/components/ui/Corners";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -15,7 +15,6 @@ const itemVariants = {
 function Section({ title, color, children }: { title: string; color: string; children: ReactNode }) {
   return (
     <motion.div variants={itemVariants} className="aur-card p-8">
-      <Corners />
       <h2 className="eyebrow mb-4" style={{ color }}>{title}</h2>
       {children}
     </motion.div>
@@ -28,7 +27,7 @@ const SERVER_KEYS = ["server1", "server2", "server3", "server4", "server5"] as c
 const RIGHTS_KEYS = ["rights1", "rights2", "rights3", "rights4", "rights5"] as const;
 
 export default function PrivacyPolicyPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -43,8 +42,19 @@ export default function PrivacyPolicyPage() {
       <motion.main variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 py-16 px-6">
         <div className="max-w-3xl mx-auto space-y-6">
           <motion.div variants={itemVariants} className="text-center mb-10">
-            <h1 className="font-serif text-5xl md:text-6xl font-semibold" style={{ color: "var(--text)" }}>{t("privacyPolicy.title")}</h1>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl hyphens-auto font-extrabold tracking-tight" style={{ color: "var(--text)" }}>{t("privacyPolicy.title")}</h1>
           </motion.div>
+
+          <Section title={language === "tr" ? "Duckley uygulaması" : "Duckley app"} color="var(--accent)">
+            <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
+              {language === "tr"
+                ? "Google Play'de benLothe geliştirici adıyla yayınlanan Duckley uygulamasının (com.aurict.duckley) gizlilik politikası: "
+                : "The privacy policy for the Duckley app (com.aurict.duckley), published on Google Play by developer benLothe, is here: "}
+              <Link href="/duckley/privacy-policy" style={{ color: "var(--accent)" }}>
+                {language === "tr" ? "Duckley Gizlilik Politikası" : "Duckley Privacy Policy"}
+              </Link>
+            </p>
+          </Section>
 
           <Section title={t("privacyPolicy.infoWeCollect")} color="var(--accent)">
             <p className="leading-relaxed mb-4" style={{ color: "var(--text-dim)" }}>
@@ -115,7 +125,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           <motion.div variants={itemVariants} className="text-center">
-            <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>{t("privacyPolicy.lastUpdated")}: {t("privacyPolicy.lastUpdatedDate")}</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("privacyPolicy.lastUpdated")}: {t("privacyPolicy.lastUpdatedDate")}</p>
           </motion.div>
         </div>
       </motion.main>

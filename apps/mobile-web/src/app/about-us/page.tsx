@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AmbientBackground from "@/components/AmbientBackground";
 import PageHeader from "@/components/PageHeader";
-import Corners from "@/components/ui/Corners";
 
 const ROADMAP_KEYS = ["1", "2", "3", "4", "5"] as const;
 const ITEM_KEYS = ["mindgrid", "aurictmobile", "account", "support"] as const;
@@ -29,46 +28,43 @@ export default function AboutUsPage() {
       <motion.main variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 py-16 px-6">
         <div className="max-w-3xl mx-auto">
           <motion.div variants={itemVariants} className="text-center mb-16">
-            <h1 className="font-serif text-5xl md:text-6xl font-semibold mb-4" style={{ color: "var(--text)" }}>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl hyphens-auto font-extrabold tracking-tight mb-4" style={{ color: "var(--text)" }}>
               {t("aboutUs.title")}
             </h1>
-            <p className="font-serif text-xl md:text-2xl leading-relaxed max-w-2xl mx-auto" style={{ color: "var(--text-dim)" }}>
+            <p className="text-xl md:text-2xl leading-relaxed max-w-2xl mx-auto" style={{ color: "var(--text-dim)" }}>
               {t("aboutUs.intro")}
             </p>
           </motion.div>
 
           <motion.div variants={itemVariants} className="aur-card p-8 mb-6">
-            <Corners />
             <h2 className="eyebrow mb-4" style={{ color: "var(--accent)" }}>
               {t("aboutUs.vision")}
             </h2>
-            <p className="font-serif text-lg leading-relaxed" style={{ color: "var(--text-dim)" }}>
+            <p className="text-lg leading-relaxed" style={{ color: "var(--text-dim)" }}>
               {t("aboutUs.visionBody")}
             </p>
           </motion.div>
 
           <motion.div variants={itemVariants} className="aur-card p-8 mb-6">
-            <Corners />
             <h2 className="eyebrow mb-4" style={{ color: "var(--accent)" }}>
               {t("aboutUs.aligned")}
             </h2>
-            <p className="font-serif text-lg leading-relaxed" style={{ color: "var(--text-dim)" }}>
+            <p className="text-lg leading-relaxed" style={{ color: "var(--text-dim)" }}>
               {t("aboutUs.alignedBody")}
             </p>
           </motion.div>
 
           <motion.div variants={itemVariants} className="aur-card p-8 mb-6">
-            <Corners />
             <h2 className="eyebrow mb-6" style={{ color: "var(--accent)" }}>
               {t("aboutUs.roadmapTitle")}
             </h2>
             <div className="grid md:grid-cols-2 gap-6">
               {ROADMAP_KEYS.map((key, i) => (
                 <div key={key}>
-                  <span className="font-mono text-xs mb-2 block" style={{ color: "var(--accent)" }}>
+                  <span className="text-xs mb-2 block" style={{ color: "var(--accent)" }}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>
+                  <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>
                     {t(`aboutUs.roadmap.${key}.title`)}
                   </h3>
                   <p className="text-sm" style={{ color: "var(--text-dim)" }}>
@@ -80,12 +76,11 @@ export default function AboutUsPage() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="aur-card p-8 mb-6">
-            <Corners />
             <h2 className="eyebrow mb-6" style={{ color: "var(--accent)" }}>{t("aboutUs.whatWeDo")}</h2>
             <div className="grid md:grid-cols-2 gap-6">
               {ITEM_KEYS.map((key) => (
                 <div key={key}>
-                  <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>
+                  <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>
                     {t(`aboutUs.items.${key}.title`)}
                   </h3>
                   <p className="text-sm" style={{ color: "var(--text-dim)" }}>
@@ -97,15 +92,14 @@ export default function AboutUsPage() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="aur-card p-8">
-            <Corners />
             <h2 className="eyebrow mb-6" style={{ color: "var(--accent)" }}>{t("aboutUs.contactInfo")}</h2>
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-mono text-xs mb-2 uppercase" style={{ color: "var(--text-muted)" }}>{t("aboutUs.website")}</h3>
+                <h3 className="text-xs mb-2 uppercase" style={{ color: "var(--text-muted)" }}>{t("aboutUs.website")}</h3>
                 <a href="https://aurict.com" style={{ color: "var(--text)" }}>aurict.com</a>
               </div>
               <div>
-                <h3 className="font-mono text-xs mb-2 uppercase" style={{ color: "var(--text-muted)" }}>{t("aboutUs.email")}</h3>
+                <h3 className="text-xs mb-2 uppercase" style={{ color: "var(--text-muted)" }}>{t("aboutUs.email")}</h3>
                 <a href="mailto:contact@aurict.com" style={{ color: "var(--text)" }}>contact@aurict.com</a>
               </div>
             </div>

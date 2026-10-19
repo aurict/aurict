@@ -1,53 +1,125 @@
 export const fr = {
 	hero: {
-		title: `Aurict Mobile.`,
-		subtitle: `Conçu pour demain.`,
-		slogan: `Découvrez la prochaine génération d'intégration technologique fluide.`,
-		exploreApps: `Explorer les applications`,
-		learnMore: `En savoir plus`,
-		scrollDown: `Défiler`,
-	},
-	about: {
-		title: `À propos d'Aurict Mobile`,
-		mission: `Nous sommes une équipe de créateurs dévoués, qui s'efforce de construire les applications les plus élégantes et puissantes au monde.`,
-		features: {
-			innovation: {
-				title: `Innovation`,
-				description: `Nous repoussons les limites du possible en créant des outils qui définissent l'avenir.`,
-			},
-			fun: {
-				title: `Précision`,
-				description: `Chaque détail compte. Nous concevons des expériences avec un soin méticuleux du design.`,
-			},
-			growth: {
-				title: `Performance`,
-				description: `Ultra rapide et extrêmement réactive. Conçue pour une efficacité maximale.`,
-			},
-		},
-		stats: {
-			apps: `Applications`,
-			downloads: `Téléchargements`,
-			countries: `Pays`,
-			innovation: `Innovation`,
-		},
+		title: `Petites apps.`,
+		titleAccent: `Grande joie.`,
+		slogan: `Jouez un peu. Apprenez un peu. Trouvez votre nouveau favori du quotidien.`,
+		exploreApps: `Découvrir nos apps`,
 	},
 	apps: {
-		title: `Nos applications.`,
-		subtitle: `Conçues avec Aurict, pour le mobile.`,
-		mindgrid: {
-			category: `Cerveau et mémoire`,
-			description: `Defiez votre esprit avec Mind Grid — un jeu de mémoire magnifiquement conçu qui entraîne votre cerveau grâce à des puzzles basés sur une grille. Améliorez vos capacités cognitives et suivez vos progrès.`,
-		},
-		aurictmobile: {
-			category: `Compagnon de codage IA`,
-			description: `Le client iOS/Android de l'assistant de codage IA terminal d'Aurict — discutez avec vos agents et contrôlez à distance votre CLI de bureau où que vous soyez.`,
-		},
-		comingSoon: {
-			title: `Bientôt disponible`,
-			button: `Être informé`,
-		},
-		developedWithAurict: `Conçu avec Aurict`,
+		title: `Découvrez vos nouveaux favoris`,
+		jelly: { tagline: `Une aventure de puzzle délicieusement gélatineuse.` },
+		duckley: { tagline: `Petites leçons. Journées plus lumineuses.` },
+		mindgrid: { tagline: `Plus calme et plus vif, une case à la fois.` },
+		comingSoon: { title: `Bientôt disponible` },
 		googlePlay: `Google Play`,
+	},
+	marquee: {
+		play: `Jouer`,
+		learn: `Apprendre`,
+		focus: `Se concentrer`,
+		madeBy: `Fait par Aurict`,
+	},
+	spotlight: {
+		eyebrow: `Dans le studio`,
+		title: `Trois apps. Trois petits mondes.`,
+		getOnPlay: `Disponible sur Google Play`,
+		jelly: {
+			kicker: `Jeu de réflexion`,
+			body: `Un puzzle de gelées en 2.5D sur un radeau, au cœur d’un lagon tropical. Fais glisser des gelées tremblotantes, réunis les mêmes couleurs et nourris le tourbillon avant la fin du temps.`,
+			f1: `Des gelées moelleuses qui tremblent, s’empilent et fusionnent au contact`,
+			f2: `Marteau, mélange et gelée arc-en-ciel pour les plateaux corsés`,
+			f3: `Le caneton Juki applaudit chaque gros combo`,
+			f4: `En anglais, turc, espagnol, allemand et portugais du Brésil`,
+		},
+		duckley: {
+			kicker: `Apprentissage`,
+			body: `Des leçons courtes et des mini-quiz pour les adultes curieux. Choisis un sujet, lis quelques cartes, puis ancre tes acquis avec un quiz rapide.`,
+			f1: `200 leçons courtes en sciences, histoire, économie, arts et plus`,
+			f2: `Révisions intelligentes à 1, 3, 7, 14 et 30 jours pour bien retenir`,
+			f3: `Tes leçons et ta progression restent accessibles hors ligne`,
+			f4: `Duki le canard fête chaque réussite avec toi`,
+		},
+		mindgrid: {
+			kicker: `Jeu cérébral`,
+			body: `Un jeu de mémoire soigné qui entraîne ton cerveau avec des puzzles captivants sur grille.`,
+			f1: `Des puzzles de mémoire captivants sur une grille épurée`,
+			f2: `Conçu pour aiguiser la mémoire et la concentration`,
+			f3: `Suis ta progression au fil de tes progrès`,
+		},
+	},
+	studio: {
+		eyebrow: `À propos d’Aurict Mobile`,
+		title: `Un petit studio au sein d’Aurict.`,
+		body: `Aurict Mobile est le studio d’applications grand public d’Aurict. Nous créons de petits jeux et applis d’apprentissage soignés, faciles à prendre en main et qu’on a envie de rouvrir.`,
+		v1: {
+			title: `Sessions courtes, vrais progrès`,
+			body: `Pensé pour les quelques minutes dont tu disposes : un niveau, une leçon ou un puzzle à la fois.`,
+		},
+		v2: {
+			title: `Des détails soignés`,
+			body: `Des gelées brillantes, un canard joyeux, de petits moments satisfaisants. Les petites applis méritent un grand soin.`,
+		},
+		v3: {
+			title: `Ton compte, ton choix`,
+			body: `Gère ou supprime ton compte et tes données ici, quand tu veux.`,
+		},
+		v4: {
+			title: `Créé avec Aurict`,
+			body: `Nous développons nos applis avec Aurict, les mêmes outils d’IA que nous créons pour les développeurs.`,
+		},
+	},
+	hub: {
+		eyebrow: `Centre d’aide`,
+		title: `Compte et assistance`,
+		subtitle: `Tout ce qu’il faut pour tes applis Aurict Mobile, au même endroit.`,
+		deleteDuckley: {
+			title: `Supprimer ton compte Duckley`,
+			body: `Supprime ton compte Duckley et tes données d’apprentissage.`,
+		},
+		deleteMindGrid: {
+			title: `Supprimer ton compte Mind Grid`,
+			body: `Supprime ton compte Mind Grid et tes données de jeu.`,
+		},
+		privacy: {
+			title: `Politique de confidentialité`,
+			body: `Comment nous collectons, utilisons et protégeons tes informations.`,
+		},
+		duckleyPrivacy: {
+			title: `Confidentialité de Duckley`,
+			body: `La politique de confidentialité de l’appli Duckley.`,
+		},
+		terms: {
+			title: `Conditions d’utilisation`,
+			body: `Les règles d’utilisation de nos applis et de ce site.`,
+		},
+		contact: {
+			title: `Contacter l’assistance`,
+			body: `Écris à contact@aurict.com. Nous essayons de répondre sous 24 heures.`,
+		},
+	},
+	homeFaq: {
+		eyebrow: `FAQ`,
+		title: `Vos questions, nos réponses`,
+		q1: {
+			q: `Qu’est-ce qu’Aurict Mobile ?`,
+			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley et Mind Grid, et hébergeons ici leurs pages de compte et d’assistance.`,
+		},
+		q2: {
+			q: `Où télécharger les applis ?`,
+			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox arrive bientôt.`,
+		},
+		q3: {
+			q: `Comment supprimer mon compte ?`,
+			a: `Ouvre le menu Compte en haut de cette page, choisis ton appli et suis les étapes de vérification pour confirmer la suppression.`,
+		},
+		q4: {
+			q: `Comment contacter l’assistance ?`,
+			a: `Écris à contact@aurict.com. Nous essayons de répondre sous 24 heures.`,
+		},
+		q5: {
+			q: `Quelles langues ce site prend-il en charge ?`,
+			a: `Anglais, turc, allemand, français et chinois. Change à tout moment depuis le menu des langues.`,
+		},
 	},
 	contact: {
 		title: `Contactez-nous.`,
@@ -340,6 +412,11 @@ export const fr = {
 		product: `produit`,
 		site: `site`,
 		aurictOnX: `aurict sur x`,
+		ourApps: `nos apps`,
+		support: `assistance`,
+		account: `Compte`,
+		duckleyAccount: `Compte Duckley`,
+		mindgridAccount: `Compte Mind Grid`,
 		language: `Langue`,
 	},
 };

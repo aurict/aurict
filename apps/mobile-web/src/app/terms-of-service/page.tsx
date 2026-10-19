@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AmbientBackground from "@/components/AmbientBackground";
 import PageHeader from "@/components/PageHeader";
-import Corners from "@/components/ui/Corners";
 
 type SectionDef = {
   title: string;
@@ -41,16 +40,15 @@ export default function TermsOfServicePage() {
         className="relative z-10 py-16 px-6"
       >
         <div className="max-w-3xl mx-auto">
-          <h1 className="font-serif text-5xl md:text-6xl font-semibold mb-4" style={{ color: "var(--text)" }}>{t("tos.title")}</h1>
-          <p className="font-mono text-xs mb-12 pb-8" style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border)" }}>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl hyphens-auto font-extrabold tracking-tight mb-4" style={{ color: "var(--text)" }}>{t("tos.title")}</h1>
+          <p className="text-xs mb-12 pb-8" style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border)" }}>
             {t("tos.lastUpdated")}
           </p>
 
           <div className="space-y-6">
             {SECTIONS.map((section) => (
               <div key={section.title} className="aur-card p-8">
-                <Corners />
-                <h2 className="font-serif text-xl font-semibold mb-4" style={{ color: "var(--text)" }}>{t(section.title)}</h2>
+                <h2 className="text-xl font-semibold mb-4" style={{ color: "var(--text)" }}>{t(section.title)}</h2>
                 {section.body.map((key) => (
                   <p key={key} className="leading-relaxed mb-4 text-sm" style={{ color: "var(--text-dim)" }}>{t(key)}</p>
                 ))}
@@ -59,13 +57,13 @@ export default function TermsOfServicePage() {
                     {section.list.map((key) => <li key={key}>{t(key)}</li>)}
                   </ul>
                 )}
-                {section.email && <p className="font-mono text-sm" style={{ color: "var(--accent)" }}>{t("tos.sec9Email")}</p>}
+                {section.email && <p className="text-sm" style={{ color: "var(--accent)" }}>{t("tos.sec9Email")}</p>}
               </div>
             ))}
           </div>
 
           <div className="mt-14 pt-8 text-center" style={{ borderTop: "1px solid var(--border)" }}>
-            <Link href="/" className="inline-flex items-center font-mono text-xs" style={{ color: "var(--accent)" }}>
+            <Link href="/" className="inline-flex items-center text-xs" style={{ color: "var(--accent)" }}>
               <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>

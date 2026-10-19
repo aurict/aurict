@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AmbientBackground from "@/components/AmbientBackground";
 import PageHeader from "@/components/PageHeader";
-import Corners from "@/components/ui/Corners";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 14 },
@@ -15,8 +14,7 @@ const itemVariants = {
 function Section({ title, color = "var(--accent)", children }: { title: string; color?: string; children: ReactNode }) {
   return (
     <motion.div variants={itemVariants} className="aur-card p-8 mb-6">
-      <Corners />
-      <h2 className="font-serif text-2xl font-semibold mb-4" style={{ color }}>{title}</h2>
+      <h2 className="text-2xl font-semibold mb-4" style={{ color }}>{title}</h2>
       {children}
     </motion.div>
   );
@@ -44,11 +42,11 @@ export default function CCPAPolicyPage() {
       <motion.main variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 py-16 px-6">
         <div className="max-w-4xl mx-auto">
           <motion.div variants={itemVariants} className="text-center mb-16">
-            <h1 className="font-serif text-5xl md:text-6xl font-semibold mb-4" style={{ color: "var(--text)" }}>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl hyphens-auto font-extrabold tracking-tight mb-4" style={{ color: "var(--text)" }}>
               {t("ccpa.title")}
             </h1>
             <p className="text-lg mb-2" style={{ color: "var(--text-dim)" }}>{t("ccpa.subtitle")}</p>
-            <p className="font-mono text-xs mt-2" style={{ color: "var(--text-muted)" }}>{t("ccpa.lastUpdated")}</p>
+            <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>{t("ccpa.lastUpdated")}</p>
           </motion.div>
 
           <Section title={t("ccpa.sec1Title")}>
@@ -61,13 +59,13 @@ export default function CCPAPolicyPage() {
           </Section>
 
           <Section title={t("ccpa.sec2Title")} color="var(--accent-alt)">
-            <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>{t("ccpa.sec2PiTitle")}</h3>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>{t("ccpa.sec2PiTitle")}</h3>
             <ul className="space-y-2 ml-5 text-sm mb-4" style={{ color: "var(--text-dim)" }}>
               {COLLECT_KEYS.map((k) => (
                 <li key={k}>• {t(`ccpa.sec2Pi${k.toUpperCase()}`)}</li>
               ))}
             </ul>
-            <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>{t("ccpa.sec2SaleTitle")}</h3>
+            <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>{t("ccpa.sec2SaleTitle")}</h3>
             <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
               {t("ccpa.sec2SaleBody")}
             </p>
@@ -80,7 +78,7 @@ export default function CCPAPolicyPage() {
             <div className="space-y-4">
               {COLLECT_KEYS.map((k) => (
                 <div key={k} className="pl-4" style={{ borderLeft: "2px solid var(--accent)" }}>
-                  <h3 className="font-serif text-base font-semibold mb-1" style={{ color: "var(--text)" }}>{t(`ccpa.sec3${k.toUpperCase()}Label`)}</h3>
+                  <h3 className="text-base font-semibold mb-1" style={{ color: "var(--text)" }}>{t(`ccpa.sec3${k.toUpperCase()}Label`)}</h3>
                   <p className="text-sm" style={{ color: "var(--text-dim)" }}>{t(`ccpa.sec3${k.toUpperCase()}Desc`)}</p>
                 </div>
               ))}
@@ -99,7 +97,7 @@ export default function CCPAPolicyPage() {
             <div className="space-y-4 mb-6">
               {SHARE_KEYS.map((k) => (
                 <div key={k} className="pl-4" style={{ borderLeft: "2px solid var(--error)" }}>
-                  <h3 className="font-serif text-base font-semibold mb-1" style={{ color: "var(--text)" }}>{t(`ccpa.sec5${k.toUpperCase()}Label`)}</h3>
+                  <h3 className="text-base font-semibold mb-1" style={{ color: "var(--text)" }}>{t(`ccpa.sec5${k.toUpperCase()}Label`)}</h3>
                   <p className="text-sm" style={{ color: "var(--text-dim)" }}>{t(`ccpa.sec5${k.toUpperCase()}Desc`)}</p>
                 </div>
               ))}
@@ -116,7 +114,7 @@ export default function CCPAPolicyPage() {
             <div className="space-y-4">
               {RIGHTS_KEYS.map((k) => (
                 <div key={k} className="pl-4" style={{ borderLeft: "2px solid var(--accent)" }}>
-                  <h3 className="font-serif text-base font-semibold mb-1" style={{ color: "var(--text)" }}>{t(`ccpa.sec6${k.toUpperCase()}Label`)}</h3>
+                  <h3 className="text-base font-semibold mb-1" style={{ color: "var(--text)" }}>{t(`ccpa.sec6${k.toUpperCase()}Label`)}</h3>
                   <p className="text-sm" style={{ color: "var(--text-dim)" }}>{t(`ccpa.sec6${k.toUpperCase()}Desc`)}</p>
                 </div>
               ))}
@@ -152,8 +150,7 @@ export default function CCPAPolicyPage() {
           </Section>
 
           <motion.div variants={itemVariants} className="aur-card p-6 text-center">
-            <Corners />
-            <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               {t("ccpa.effective")}
             </p>
           </motion.div>

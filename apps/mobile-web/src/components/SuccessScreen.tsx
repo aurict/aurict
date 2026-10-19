@@ -29,7 +29,7 @@ export default function SuccessScreen({ title, message, color = "var(--accent)" 
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="font-serif text-3xl font-semibold mb-4" style={{ color }}>
+          <h1 className="text-3xl font-extrabold tracking-tight mb-4" style={{ color }}>
             {title}
           </h1>
           <p style={{ color: "var(--text-dim)" }} className="leading-relaxed">
