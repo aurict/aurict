@@ -1,53 +1,125 @@
 export const en = {
 	hero: {
-		title: `Aurict Mobile.`,
-		subtitle: `Designed for tomorrow.`,
-		slogan: `Experience the next generation of seamless technology integration.`,
-		exploreApps: `Explore Apps`,
-		learnMore: `Learn more`,
-		scrollDown: `Scroll`,
-	},
-	about: {
-		title: `About Aurict Mobile`,
-		mission: `We are a team of dedicated creators, striving to build the most elegant and powerful applications in the world.`,
-		features: {
-			innovation: {
-				title: `Innovation`,
-				description: `We push the boundaries of what is possible, creating tools that define the future.`,
-			},
-			fun: {
-				title: `Precision`,
-				description: `Every detail matters. We craft experiences with meticulous attention to design.`,
-			},
-			growth: {
-				title: `Performance`,
-				description: `Lightning fast and incredibly responsive. Engineered for maximum efficiency.`,
-			},
-		},
-		stats: {
-			apps: `Apps`,
-			downloads: `Downloads`,
-			countries: `Countries`,
-			innovation: `Innovation`,
-		},
+		title: `Tiny apps.`,
+		titleAccent: `Big joy.`,
+		slogan: `Play a little. Learn a little. Find your next everyday favorite.`,
+		exploreApps: `Explore our apps`,
 	},
 	apps: {
-		title: `Our Apps.`,
-		subtitle: `Built with Aurict, for mobile.`,
-		mindgrid: {
-			category: `Brain & Memory`,
-			description: `Challenge your mind with Mind Grid — a beautifully designed memory game that trains your brain through engaging grid-based puzzles. Boost your cognitive skills and track your progress.`,
-		},
-		aurictmobile: {
-			category: `AI Coding Companion`,
-			description: `The iOS/Android client for Aurict's terminal AI coding assistant — chat with your agents and remote-control your desktop CLI on the go.`,
-		},
-		comingSoon: {
-			title: `Coming Soon`,
-			button: `Get Notified`,
-		},
-		developedWithAurict: `Developed with Aurict`,
+		title: `Meet your new favorites`,
+		jelly: { tagline: `A wonderfully wobbly puzzle adventure.` },
+		duckley: { tagline: `Bite-sized lessons. Brighter days.` },
+		mindgrid: { tagline: `A calmer, sharper you, one tile at a time.` },
+		comingSoon: { title: `Coming Soon` },
 		googlePlay: `Google Play`,
+	},
+	marquee: {
+		play: `Play`,
+		learn: `Learn`,
+		focus: `Focus`,
+		madeBy: `Made by Aurict`,
+	},
+	spotlight: {
+		eyebrow: `Inside the studio`,
+		title: `Three apps. Three little worlds.`,
+		getOnPlay: `Get it on Google Play`,
+		jelly: {
+			kicker: `Puzzle game`,
+			body: `A 2.5D jelly puzzle on a raft in a tropical lagoon. Drag wobbly jellies, merge matching colors and feed the swirling vortex before time runs out.`,
+			f1: `Squishy jellies that wobble, stack and merge on contact`,
+			f2: `Hammer, shuffle and rainbow-jelly boosters for tricky boards`,
+			f3: `Juki the duckling cheers on every big combo`,
+			f4: `Plays in English, Turkish, Spanish, German and Brazilian Portuguese`,
+		},
+		duckley: {
+			kicker: `Learning`,
+			body: `Bite-sized lessons and mini quizzes for curious adults. Pick a topic, read a few short cards, then lock it in with a quick quiz.`,
+			f1: `200 short lessons across science, history, economics, the arts and more`,
+			f2: `Smart review at 1, 3, 7, 14 and 30 days so ideas stick`,
+			f3: `Your lessons and progress stay available offline`,
+			f4: `Duki the duck celebrates every win with you`,
+		},
+		mindgrid: {
+			kicker: `Brain game`,
+			body: `A beautifully designed memory game that trains your brain with engaging grid-based puzzles.`,
+			f1: `Engaging memory puzzles on a clean tile grid`,
+			f2: `Built to sharpen memory and focus`,
+			f3: `Track your progress as you improve`,
+		},
+	},
+	studio: {
+		eyebrow: `About Aurict Mobile`,
+		title: `A small studio inside Aurict.`,
+		body: `Aurict Mobile is the consumer app studio of Aurict. We build small, polished games and learning apps that are easy to pick up and worth coming back to.`,
+		v1: {
+			title: `Short sessions, real progress`,
+			body: `Made for the minutes you actually have: one level, one lesson or one puzzle at a time.`,
+		},
+		v2: {
+			title: `Crafted details`,
+			body: `Glossy jellies, a cheerful duck, satisfying little moments. Small apps deserve big care.`,
+		},
+		v3: {
+			title: `Your account, your call`,
+			body: `Manage or delete your account and data right here, whenever you want.`,
+		},
+		v4: {
+			title: `Built with Aurict`,
+			body: `We make our apps with Aurict, the same AI tools we build for developers.`,
+		},
+	},
+	hub: {
+		eyebrow: `Help center`,
+		title: `Account & support`,
+		subtitle: `Everything you need for your Aurict Mobile apps, in one place.`,
+		deleteDuckley: {
+			title: `Delete your Duckley account`,
+			body: `Remove your Duckley account and learning data.`,
+		},
+		deleteMindGrid: {
+			title: `Delete your Mind Grid account`,
+			body: `Remove your Mind Grid account and game data.`,
+		},
+		privacy: {
+			title: `Privacy policy`,
+			body: `How we collect, use and protect your information.`,
+		},
+		duckleyPrivacy: {
+			title: `Duckley privacy policy`,
+			body: `The privacy policy for the Duckley app.`,
+		},
+		terms: {
+			title: `Terms of service`,
+			body: `The rules for using our apps and this site.`,
+		},
+		contact: {
+			title: `Contact support`,
+			body: `Write to contact@aurict.com. We aim to reply within 24 hours.`,
+		},
+	},
+	homeFaq: {
+		eyebrow: `FAQ`,
+		title: `Questions, answered`,
+		q1: {
+			q: `What is Aurict Mobile?`,
+			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley and Mind Grid, and host the account and support pages for them here.`,
+		},
+		q2: {
+			q: `Where can I download the apps?`,
+			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox is coming soon.`,
+		},
+		q3: {
+			q: `How do I delete my account?`,
+			a: `Open the Account menu at the top of this page, choose your app and follow the verification steps to confirm the deletion.`,
+		},
+		q4: {
+			q: `How can I contact support?`,
+			a: `Email contact@aurict.com. We aim to reply within 24 hours.`,
+		},
+		q5: {
+			q: `Which languages does this site support?`,
+			a: `English, Turkish, German, French and Chinese. Switch any time from the language menu.`,
+		},
 	},
 	contact: {
 		title: `Get in Touch.`,
@@ -340,6 +412,11 @@ export const en = {
 		product: `product`,
 		site: `site`,
 		aurictOnX: `aurict on x`,
+		ourApps: `our apps`,
+		support: `support`,
+		account: `Account`,
+		duckleyAccount: `Duckley account`,
+		mindgridAccount: `Mind Grid account`,
 		language: `Language`,
 	},
 };

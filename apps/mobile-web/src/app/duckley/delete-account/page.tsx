@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AmbientBackground from "@/components/AmbientBackground";
 import SuccessScreen from "@/components/SuccessScreen";
-import Corners from "@/components/ui/Corners";
 
 declare global {
   interface Window {
@@ -27,7 +26,7 @@ declare global {
   }
 }
 
-const BRAND = "#22b07d";
+const BRAND = "var(--duck)";
 
 const STRINGS = {
   tr: {
@@ -209,7 +208,7 @@ export default function DuckleyDeleteAccountPage() {
       >
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <span className="font-serif text-lg font-semibold" style={{ color: BRAND }}>
+            <span className="text-lg font-semibold" style={{ color: BRAND }}>
               🦆 Duckley
             </span>
           </Link>
@@ -231,7 +230,7 @@ export default function DuckleyDeleteAccountPage() {
       >
         <div className="max-w-xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="font-serif text-5xl font-semibold mb-3" style={{ color: BRAND }}>
+            <h1 className="text-4xl sm:text-5xl hyphens-auto font-extrabold tracking-tight mb-3" style={{ color: BRAND }}>
               {s.title}
             </h1>
             <p className="text-sm" style={{ color: "var(--text-dim)" }}>
@@ -240,8 +239,7 @@ export default function DuckleyDeleteAccountPage() {
           </div>
 
           <div className="aur-card p-6 mb-6" style={{ borderLeft: "2px solid var(--error)" }}>
-            <Corners />
-            <h2 className="font-serif text-lg font-semibold mb-3" style={{ color: "var(--error)" }}>
+            <h2 className="text-lg font-semibold mb-3" style={{ color: "var(--error)" }}>
               {s.cannotUndo}
             </h2>
             <ul className="text-sm space-y-1" style={{ color: "var(--text-dim)" }}>
@@ -256,8 +254,7 @@ export default function DuckleyDeleteAccountPage() {
 
           {step === "signin" && (
             <div className="aur-card p-8">
-              <Corners />
-              <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: BRAND }}>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: BRAND }}>
                 {s.step1Title}
               </h3>
               <p className="text-sm mb-6" style={{ color: "var(--text-dim)" }}>
@@ -279,8 +276,7 @@ export default function DuckleyDeleteAccountPage() {
 
           {step === "confirm" && (
             <div className="aur-card p-8">
-              <Corners />
-              <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: BRAND }}>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: BRAND }}>
                 {s.step2Title}
               </h3>
               <p className="text-sm mb-6" style={{ color: "var(--text-dim)" }}>
@@ -326,8 +322,7 @@ export default function DuckleyDeleteAccountPage() {
           )}
 
           <div className="aur-card p-6 mt-6">
-            <Corners />
-            <h3 className="font-serif font-semibold mb-2" style={{ color: BRAND }}>
+            <h3 className="font-semibold mb-2" style={{ color: BRAND }}>
               {s.needHelp}
             </h3>
             <p className="text-sm" style={{ color: "var(--text-dim)" }}>

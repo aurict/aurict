@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AmbientBackground from "@/components/AmbientBackground";
 import SuccessScreen from "@/components/SuccessScreen";
-import Corners from "@/components/ui/Corners";
 
 const API_URL = "https://mind.fexiolabs.com/api/v1";
 const MG1 = "#7C4DFF";
@@ -88,7 +87,7 @@ export default function MindGridDeleteAccountPage() {
       <motion.header initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10 py-8 px-6">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <span className="font-serif text-lg font-semibold" style={{ color: MG1 }}>🧠 Mind Grid</span>
+            <span className="text-lg font-semibold" style={{ color: MG1 }}>🧠 Mind Grid</span>
           </Link>
           <button onClick={() => window.history.back()} className="aur-btn-secondary text-xs py-2 px-4" style={{ borderColor: MG1, color: MG1 }}>
             {t("delete.backButton")}
@@ -99,18 +98,17 @@ export default function MindGridDeleteAccountPage() {
       <motion.main initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="relative z-10 py-10 px-6">
         <div className="max-w-xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="font-serif text-5xl font-semibold mb-3" style={{ color: MG1 }}>{t("delete.title")}</h1>
+            <h1 className="text-4xl sm:text-5xl hyphens-auto font-extrabold tracking-tight mb-3" style={{ color: MG1 }}>{t("delete.title")}</h1>
             <div className="flex items-center justify-center gap-2">
               <span className="aur-status-dot" style={{ background: "var(--accent)" }} />
-              <span className="font-mono text-[11px] uppercase tracking-wider" style={{ color: "var(--accent)" }}>
+              <span className="text-[11px] uppercase tracking-wider" style={{ color: "var(--accent)" }}>
                 {t("delete.developedWithAurict")}
               </span>
             </div>
           </div>
 
           <div className="aur-card p-6 mb-6" style={{ borderLeft: "2px solid var(--error)" }}>
-            <Corners />
-            <h2 className="font-serif text-lg font-semibold mb-3" style={{ color: "var(--error)" }}>{t("delete.cannotUndo")}</h2>
+            <h2 className="text-lg font-semibold mb-3" style={{ color: "var(--error)" }}>{t("delete.cannotUndo")}</h2>
             <ul className="text-sm space-y-1" style={{ color: "var(--text-dim)" }}>
               {WILL_DELETE_KEYS.map((k) => <li key={k}>• {t(`delete.${k}`)}</li>)}
             </ul>
@@ -118,8 +116,7 @@ export default function MindGridDeleteAccountPage() {
 
           {step === "email" && (
             <div className="aur-card p-8">
-              <Corners />
-              <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: MG1 }}>{t("delete.step1Title")}</h3>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: MG1 }}>{t("delete.step1Title")}</h3>
               <p className="text-sm mb-6" style={{ color: "var(--text-dim)" }}>
                 {t("delete.step1Body")}
               </p>
@@ -138,8 +135,7 @@ export default function MindGridDeleteAccountPage() {
 
           {step === "code" && (
             <div className="aur-card p-8">
-              <Corners />
-              <h3 className="font-serif text-lg font-semibold mb-2" style={{ color: MG1 }}>{t("delete.step2Title")}</h3>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: MG1 }}>{t("delete.step2Title")}</h3>
               <p className="text-sm mb-6" style={{ color: "var(--text-dim)" }}>{t("delete.step2Body").replace("{email}", email)}</p>
               <form onSubmit={handleDeleteAccount} className="space-y-5">
                 <div>
@@ -157,7 +153,7 @@ export default function MindGridDeleteAccountPage() {
                     {loading ? t("delete.deleting") : t("delete.permanentlyDelete")}
                   </button>
                 </div>
-                <p className="text-center font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-center text-[11px]" style={{ color: "var(--text-muted)" }}>
                   {t("delete.noCode")}
                 </p>
               </form>
@@ -165,8 +161,7 @@ export default function MindGridDeleteAccountPage() {
           )}
 
           <div className="aur-card p-6 mt-6">
-            <Corners />
-            <h3 className="font-serif font-semibold mb-2" style={{ color: MG1 }}>{t("delete.needHelp")}</h3>
+            <h3 className="font-semibold mb-2" style={{ color: MG1 }}>{t("delete.needHelp")}</h3>
             <p className="text-sm" style={{ color: "var(--text-dim)" }}>
               {t("delete.needHelpBody")}
               <a href="mailto:contact@aurict.com" style={{ color: MG1 }}>contact@aurict.com</a>

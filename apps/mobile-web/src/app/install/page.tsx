@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AmbientBackground from "@/components/AmbientBackground";
 import PageHeader from "@/components/PageHeader";
-import Corners from "@/components/ui/Corners";
 
 const INSTALL_KEYS = ["platforms", "appStores", "localRun"] as const;
 
@@ -28,19 +27,18 @@ export default function InstallPage() {
       <motion.main variants={containerVariants} initial="hidden" animate="visible" className="relative z-10 py-16 px-6">
         <div className="max-w-3xl mx-auto">
           <motion.div variants={itemVariants} className="text-center mb-16">
-            <h1 className="font-serif text-5xl md:text-6xl font-semibold mb-4" style={{ color: "var(--text)" }}>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl hyphens-auto font-extrabold tracking-tight mb-4" style={{ color: "var(--text)" }}>
               {t("install.title")}
             </h1>
-            <p className="font-serif text-xl md:text-2xl leading-relaxed max-w-2xl mx-auto" style={{ color: "var(--text-dim)" }}>
+            <p className="text-xl md:text-2xl leading-relaxed max-w-2xl mx-auto" style={{ color: "var(--text-dim)" }}>
               {t("install.subtitle")}
             </p>
           </motion.div>
 
           {INSTALL_KEYS.map((key) => (
             <motion.div key={key} variants={itemVariants} className="aur-card p-8 mb-6">
-              <Corners />
               <h2 className="eyebrow mb-4" style={{ color: "var(--accent)" }}>{t(`install.${key}.title`)}</h2>
-              <p className="font-serif text-lg leading-relaxed" style={{ color: "var(--text-dim)" }}>{t(`install.${key}.body`)}</p>
+              <p className="text-lg leading-relaxed" style={{ color: "var(--text-dim)" }}>{t(`install.${key}.body`)}</p>
             </motion.div>
           ))}
         </div>

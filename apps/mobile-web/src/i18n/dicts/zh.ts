@@ -1,53 +1,125 @@
 export const zh = {
 	hero: {
-		title: `Aurict Mobile.`,
-		subtitle: `为明天而设计。`,
-		slogan: `体验下一代无缝技术集成。`,
-		exploreApps: `浏览应用`,
-		learnMore: `了解更多`,
-		scrollDown: `滚动`,
-	},
-	about: {
-		title: `关于 Aurict Mobile`,
-		mission: `我们是一支专注的创造团队，致力于打造全球最优雅、最强大的应用程序。`,
-		features: {
-			innovation: {
-				title: `创新`,
-				description: `我们突破可能的边界，创造定义未来的工具。`,
-			},
-			fun: {
-				title: `精密`,
-				description: `每个细节都至关重要。我们以对设计的极致专注打造体验。`,
-			},
-			growth: {
-				title: `性能`,
-				description: `极速且高度灵敏。为最高效率而构建。`,
-			},
-		},
-		stats: {
-			apps: `应用`,
-			downloads: `下载`,
-			countries: `国家`,
-			innovation: `创新`,
-		},
+		title: `小应用。`,
+		titleAccent: `大快乐。`,
+		slogan: `玩一点，学一点，找到你的日常新宠。`,
+		exploreApps: `探索我们的应用`,
 	},
 	apps: {
-		title: `我们的应用。`,
-		subtitle: `由 Aurict 构建，为移动而生。`,
-		mindgrid: {
-			category: `大脑与记忆`,
-			description: `用 Mind Grid 挑战你的大脑——一款精美设计的记忆游戏，通过基于网格的谜题训练你的大脑。提升认知技能并追踪你的进度。`,
-		},
-		aurictmobile: {
-			category: `AI 编程助手`,
-			description: `Aurict 终端 AI 编程助手的 iOS/Android 客户端——与你的智能体对话，并随时随地远程控制你的桌面 CLI。`,
-		},
-		comingSoon: {
-			title: `即将推出`,
-			button: `通知我`,
-		},
-		developedWithAurict: `由 Aurict 构建`,
+		title: `认识你的新宠`,
+		jelly: { tagline: `一场妙趣横生的果冻解谜冒险。` },
+		duckley: { tagline: `小小课程，更亮的每一天。` },
+		mindgrid: { tagline: `一格一格，更平静、更敏锐的你。` },
+		comingSoon: { title: `即将推出` },
 		googlePlay: `Google Play`,
+	},
+	marquee: {
+		play: `玩`,
+		learn: `学`,
+		focus: `专注`,
+		madeBy: `Aurict 出品`,
+	},
+	spotlight: {
+		eyebrow: `走进工作室`,
+		title: `三款应用，三个小世界。`,
+		getOnPlay: `在 Google Play 下载`,
+		jelly: {
+			kicker: `解谜游戏`,
+			body: `热带泻湖木筏上的 2.5D 果冻解谜。拖动晃动的果冻，合并相同颜色，在时间耗尽前喂饱旋转的漩涡。`,
+			f1: `软弹的果冻会晃动、堆叠，并在接触时融合`,
+			f2: `锤子、洗牌和彩虹果冻道具，助你破解难关`,
+			f3: `小鸭 Juki 为每一次大连击欢呼`,
+			f4: `支持英语、土耳其语、西班牙语、德语和巴西葡萄牙语`,
+		},
+		duckley: {
+			kicker: `学习`,
+			body: `为好奇的成年人准备的小课程和小测验。选一个主题，读几张短卡片，再用一个快速小测验巩固。`,
+			f1: `200 节短课程，涵盖科学、历史、经济、艺术等`,
+			f2: `在第 1、3、7、14 和 30 天智能复习，让知识更牢固`,
+			f3: `课程和学习进度离线也能使用`,
+			f4: `小鸭 Duki 和你一起庆祝每一次成功`,
+		},
+		mindgrid: {
+			kicker: `益智游戏`,
+			body: `一款精心设计的记忆游戏，用有趣的网格谜题训练你的大脑。`,
+			f1: `简洁网格上的趣味记忆谜题`,
+			f2: `专为提升记忆力和专注力而设计`,
+			f3: `随时跟踪你的进步`,
+		},
+	},
+	studio: {
+		eyebrow: `关于 Aurict Mobile`,
+		title: `Aurict 里的一个小工作室。`,
+		body: `Aurict Mobile 是 Aurict 的消费级应用工作室。我们打造小巧精致、上手容易、让人想再打开的游戏和学习应用。`,
+		v1: {
+			title: `短时间，真进步`,
+			body: `为你真正拥有的几分钟而设计：一次一关、一课或一道谜题。`,
+		},
+		v2: {
+			title: `用心的细节`,
+			body: `闪亮的果冻、开心的小鸭、令人满足的小瞬间。小应用也值得大用心。`,
+		},
+		v3: {
+			title: `你的账户，你做主`,
+			body: `随时在这里管理或删除你的账户和数据。`,
+		},
+		v4: {
+			title: `用 Aurict 打造`,
+			body: `我们用 Aurict 开发自己的应用，也就是我们为开发者打造的同一套 AI 工具。`,
+		},
+	},
+	hub: {
+		eyebrow: `帮助中心`,
+		title: `账户与支持`,
+		subtitle: `Aurict Mobile 应用所需的一切，都在这里。`,
+		deleteDuckley: {
+			title: `删除 Duckley 账户`,
+			body: `删除你的 Duckley 账户和学习数据。`,
+		},
+		deleteMindGrid: {
+			title: `删除 Mind Grid 账户`,
+			body: `删除你的 Mind Grid 账户和游戏数据。`,
+		},
+		privacy: {
+			title: `隐私政策`,
+			body: `我们如何收集、使用和保护你的信息。`,
+		},
+		duckleyPrivacy: {
+			title: `Duckley 隐私政策`,
+			body: `Duckley 应用的隐私政策。`,
+		},
+		terms: {
+			title: `服务条款`,
+			body: `使用我们的应用和本网站的规则。`,
+		},
+		contact: {
+			title: `联系支持`,
+			body: `发送邮件至 contact@aurict.com。我们力争在 24 小时内回复。`,
+		},
+	},
+	homeFaq: {
+		eyebrow: `常见问题`,
+		title: `常见问题解答`,
+		q1: {
+			q: `Aurict Mobile 是什么？`,
+			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley 和 Mind Grid，并在这里提供它们的账户和支持页面。`,
+		},
+		q2: {
+			q: `在哪里下载这些应用？`,
+			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox 即将推出。`,
+		},
+		q3: {
+			q: `如何删除我的账户？`,
+			a: `打开页面顶部的账户菜单，选择你的应用，然后按照验证步骤确认删除。`,
+		},
+		q4: {
+			q: `如何联系支持？`,
+			a: `发送邮件至 contact@aurict.com。我们力争在 24 小时内回复。`,
+		},
+		q5: {
+			q: `本网站支持哪些语言？`,
+			a: `英语、土耳其语、德语、法语和中文。可随时通过语言菜单切换。`,
+		},
 	},
 	contact: {
 		title: `联系我们。`,
@@ -340,6 +412,11 @@ export const zh = {
 		product: `产品`,
 		site: `网站`,
 		aurictOnX: `x 上的 aurict`,
+		ourApps: `我们的应用`,
+		support: `支持`,
+		account: `账户`,
+		duckleyAccount: `Duckley 账户`,
+		mindgridAccount: `Mind Grid 账户`,
 		language: `语言`,
 	},
 };

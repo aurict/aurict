@@ -1,53 +1,125 @@
 export const tr = {
 	hero: {
-		title: `Aurict Mobile.`,
-		subtitle: `Yarın için tasarlandı.`,
-		slogan: `Sorunsuz teknoloji entegrasyonunun bir sonraki neslini deneyimleyin.`,
-		exploreApps: `Uygulamaları Keşfet`,
-		learnMore: `Daha fazla öğren`,
-		scrollDown: `Kaydır`,
-	},
-	about: {
-		title: `Aurict Mobile Hakkında`,
-		mission: `Dünyadaki en zarif ve güçlü uygulamaları oluşturmak için çaba gösteren adanmış bir yaratıcı ekibiz.`,
-		features: {
-			innovation: {
-				title: `Yenilik`,
-				description: `Mümkün olanın sınırlarını zorlayarak geleceği şekillendiren araçlar oluşturuyoruz.`,
-			},
-			fun: {
-				title: `Hassasiyet`,
-				description: `Her ayrıntı önemlidir. Tasarıma titiz bir özen göstererek deneyimler yaratıyoruz.`,
-			},
-			growth: {
-				title: `Performans`,
-				description: `Işık hızında ve son derece duyarlı. Maksimum verimlilik için mühendislikle üretildi.`,
-			},
-		},
-		stats: {
-			apps: `Uygulama`,
-			downloads: `İndirme`,
-			countries: `Ülke`,
-			innovation: `Yenilik`,
-		},
+		title: `Küçük uygulamalar.`,
+		titleAccent: `Büyük keyif.`,
+		slogan: `Biraz oyna. Biraz öğren. Her güne yeni bir favori bul.`,
+		exploreApps: `Uygulamalarımızı keşfet`,
 	},
 	apps: {
-		title: `Uygulamalarımız.`,
-		subtitle: `Aurict ile, mobil için.`,
-		mindgrid: {
-			category: `Beyin ve Hafıza`,
-			description: `Zihninizi Mind Grid ile zorlayın — etkileyici biçimde tasarlanmış bir hafıza oyunu; ızgaraya dayalı bulmacalarla beyninizi eğitir. Bilişsel becerilerinizi geliştirin ve ilerlemenizi takip edin.`,
-		},
-		aurictmobile: {
-			category: `Yapay Zeka Kodlama Yardımcısı`,
-			description: `Aurict'in terminal yapay zeka kodlama asistanının iOS/Android istemcisi — ajanlarınızla sohbet edin ve masaüstü CLI'yi hareket halindeyken uzaktan kontrol edin.`,
-		},
-		comingSoon: {
-			title: `Yakında`,
-			button: `Haberdar Ol`,
-		},
-		developedWithAurict: `Aurict ile Geliştirildi`,
+		title: `Yeni favorilerinle tanış`,
+		jelly: { tagline: `Harika titrek bir bulmaca macerası.` },
+		duckley: { tagline: `Kısa dersler. Daha parlak günler.` },
+		mindgrid: { tagline: `Taş taş, daha sakin ve daha keskin bir sen.` },
+		comingSoon: { title: `Yakında` },
 		googlePlay: `Google Play`,
+	},
+	marquee: {
+		play: `Oyna`,
+		learn: `Öğren`,
+		focus: `Odaklan`,
+		madeBy: `Aurict yapımı`,
+	},
+	spotlight: {
+		eyebrow: `Stüdyonun içinden`,
+		title: `Üç uygulama. Üç küçük dünya.`,
+		getOnPlay: `Google Play'den indir`,
+		jelly: {
+			kicker: `Bulmaca oyunu`,
+			body: `Tropik bir lagünde, salın üstünde 2.5D bir jöle bulmacası. Titrek jöleleri sürükle, aynı renkleri birleştir ve süre bitmeden dönen girdabı besle.`,
+			f1: `Sallanan, üst üste binen ve değince birleşen yumuşacık jöleler`,
+			f2: `Zor tahtalar için çekiç, karıştır ve gökkuşağı jöle güçlendiricileri`,
+			f3: `Ördek yavrusu Juki her büyük komboda seni alkışlar`,
+			f4: `İngilizce, Türkçe, İspanyolca, Almanca ve Brezilya Portekizcesi`,
+		},
+		duckley: {
+			kicker: `Öğrenme`,
+			body: `Meraklı yetişkinler için kısa dersler ve mini quizler. Bir konu seç, birkaç kısa kart oku, sonra hızlı bir quizle pekiştir.`,
+			f1: `Bilim, tarih, ekonomi, sanat ve daha fazlasında 200 kısa ders`,
+			f2: `Bilgiler kalıcı olsun diye 1, 3, 7, 14 ve 30 günlük akıllı tekrar`,
+			f3: `Derslerin ve ilerlemen çevrimdışı da elinin altında`,
+			f4: `Ördek Duki her başarını seninle kutlar`,
+		},
+		mindgrid: {
+			kicker: `Zekâ oyunu`,
+			body: `Izgara tabanlı keyifli bulmacalarla beynini çalıştıran, özenle tasarlanmış bir hafıza oyunu.`,
+			f1: `Sade bir taş ızgarasında keyifli hafıza bulmacaları`,
+			f2: `Hafızanı ve odağını keskinleştirmek için tasarlandı`,
+			f3: `Geliştikçe ilerlemeni takip et`,
+		},
+	},
+	studio: {
+		eyebrow: `Aurict Mobile hakkında`,
+		title: `Aurict'in içinde küçük bir stüdyo.`,
+		body: `Aurict Mobile, Aurict'in tüketici uygulamaları stüdyosu. Açması kolay, dönüp yeniden açmaya değer, özenli küçük oyunlar ve öğrenme uygulamaları yapıyoruz.`,
+		v1: {
+			title: `Kısa oturumlar, gerçek ilerleme`,
+			body: `Elindeki birkaç dakika için: bir bölüm, bir ders ya da bir bulmaca.`,
+		},
+		v2: {
+			title: `İşlenmiş detaylar`,
+			body: `Parlak jöleler, neşeli bir ördek, tatmin edici küçük anlar. Küçük uygulamalar büyük özeni hak eder.`,
+		},
+		v3: {
+			title: `Hesabın, kararın`,
+			body: `Hesabını ve verilerini istediğin zaman buradan yönet ya da sil.`,
+		},
+		v4: {
+			title: `Aurict ile yapıldı`,
+			body: `Uygulamalarımızı, geliştiriciler için yaptığımız Aurict yapay zekâ araçlarıyla geliştiriyoruz.`,
+		},
+	},
+	hub: {
+		eyebrow: `Yardım merkezi`,
+		title: `Hesap ve destek`,
+		subtitle: `Aurict Mobile uygulamaların için ihtiyacın olan her şey tek yerde.`,
+		deleteDuckley: {
+			title: `Duckley hesabını sil`,
+			body: `Duckley hesabını ve öğrenme verilerini kaldır.`,
+		},
+		deleteMindGrid: {
+			title: `Mind Grid hesabını sil`,
+			body: `Mind Grid hesabını ve oyun verilerini kaldır.`,
+		},
+		privacy: {
+			title: `Gizlilik politikası`,
+			body: `Bilgilerini nasıl topladığımız, kullandığımız ve koruduğumuz.`,
+		},
+		duckleyPrivacy: {
+			title: `Duckley gizlilik politikası`,
+			body: `Duckley uygulamasının gizlilik politikası.`,
+		},
+		terms: {
+			title: `Hizmet şartları`,
+			body: `Uygulamalarımızı ve bu siteyi kullanma kuralları.`,
+		},
+		contact: {
+			title: `Destek ekibine yaz`,
+			body: `contact@aurict.com adresine yaz. 24 saat içinde yanıt vermeye çalışıyoruz.`,
+		},
+	},
+	homeFaq: {
+		eyebrow: `SSS`,
+		title: `Sık sorulan sorular`,
+		q1: {
+			q: `Aurict Mobile nedir?`,
+			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley ve Mind Grid'i yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
+		},
+		q2: {
+			q: `Uygulamaları nereden indirebilirim?`,
+			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox çok yakında.`,
+		},
+		q3: {
+			q: `Hesabımı nasıl silerim?`,
+			a: `Sayfanın üstündeki Hesap menüsünü aç, uygulamanı seç ve silmeyi onaylamak için doğrulama adımlarını izle.`,
+		},
+		q4: {
+			q: `Destek ekibine nasıl ulaşırım?`,
+			a: `contact@aurict.com adresine e-posta gönder. 24 saat içinde yanıt vermeye çalışıyoruz.`,
+		},
+		q5: {
+			q: `Bu site hangi dilleri destekliyor?`,
+			a: `İngilizce, Türkçe, Almanca, Fransızca ve Çince. Dil menüsünden istediğin zaman değiştirebilirsin.`,
+		},
 	},
 	contact: {
 		title: `Bize Ulaşın.`,
@@ -340,6 +412,11 @@ export const tr = {
 		product: `ürün`,
 		site: `site`,
 		aurictOnX: `x'te aurict`,
+		ourApps: `uygulamalarımız`,
+		support: `destek`,
+		account: `Hesap`,
+		duckleyAccount: `Duckley hesabı`,
+		mindgridAccount: `Mind Grid hesabı`,
 		language: `Dil`,
 	},
 };

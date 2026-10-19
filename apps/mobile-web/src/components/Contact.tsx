@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
-import Corners from "./ui/Corners";
+import TightPeriod from "./TightPeriod";
 
 const socialLinks = [
   {
@@ -51,56 +51,58 @@ export default function Contact() {
   };
 
   return (
-    <section className="relative pt-28 pb-16 px-6 overflow-hidden z-10" style={{ borderTop: "1px solid var(--border)" }}>
+    <section id="contact" className="relative pt-8 pb-16 px-6 overflow-hidden z-10" style={{ scrollMarginTop: 72 }}>
       <div className="relative z-10 max-w-5xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.6, ease: [0.16, 0.8, 0.2, 1] as const }}
-          className="text-center mb-20"
+          className="text-center mb-14"
         >
-          <div className="eyebrow mb-4">{t("contact.title") || "Get in Touch."}</div>
-          <p className="font-serif text-xl max-w-2xl mx-auto leading-relaxed" style={{ color: "var(--text-dim)" }}>
+          <h2
+            className="font-extrabold tracking-tight mb-4"
+            style={{ fontSize: "clamp(2.1rem, 4.4vw, 3.4rem)", letterSpacing: "-0.035em", lineHeight: 1.05, color: "var(--text)" }}
+          >
+            <TightPeriod text={t("contact.title")} />
+          </h2>
+          <p className="text-xl max-w-2xl mx-auto leading-relaxed" style={{ color: "var(--text-dim)" }}>
             {t("contact.subtitle") || "We're here to help. Reach out to us anytime."}
           </p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8 mb-28">
           <motion.div variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="space-y-3">
-            <motion.h3 variants={itemVariants} className="font-serif text-xl font-semibold mb-4" style={{ color: "var(--text)" }}>
+            <motion.h3 variants={itemVariants} className="text-xl font-extrabold tracking-tight mb-4" style={{ color: "var(--text)" }}>
               {t("contact.info.title") || "Contact Information"}
             </motion.h3>
 
             <motion.div variants={itemVariants} className="aur-card p-6">
-              <Corners />
               <h4 className="eyebrow mb-2">{t("contact.info.email") || "Email"}</h4>
-              <a href="mailto:contact@aurict.com" className="font-serif text-lg" style={{ color: "var(--text)" }}>
+              <a href="mailto:contact@aurict.com" className="text-lg" style={{ color: "var(--text)" }}>
                 contact@aurict.com
               </a>
             </motion.div>
 
             <motion.div variants={itemVariants} className="aur-card p-6">
-              <Corners />
               <h4 className="eyebrow mb-2">{t("contact.info.responseTime") || "Response Time"}</h4>
-              <p className="font-serif text-lg" style={{ color: "var(--text)" }}>Within 24 hours</p>
+              <p className="text-lg" style={{ color: "var(--text)" }}>Within 24 hours</p>
             </motion.div>
           </motion.div>
 
           <motion.div variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="space-y-3">
-            <motion.h4 variants={itemVariants} className="font-serif text-xl font-semibold mb-4" style={{ color: "var(--text)" }}>
+            <motion.h4 variants={itemVariants} className="text-xl font-extrabold tracking-tight mb-4" style={{ color: "var(--text)" }}>
               {t("contact.info.followUs") || "Connect"}
             </motion.h4>
 
             {socialLinks.map((social) => (
               <motion.a key={social.name} href={social.url} target="_blank" rel="noopener noreferrer" variants={itemVariants} className="aur-card p-5 flex items-center gap-5 group">
-                <Corners />
-                <div className="w-11 h-11 flex items-center justify-center transition-colors duration-300" style={{ border: "1px solid var(--border-bright)", color: "var(--text-dim)" }}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-300" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
                   {social.icon}
                 </div>
                 <div>
-                  <div className="font-serif text-lg font-semibold" style={{ color: "var(--text)" }}>{social.name}</div>
-                  <div className="font-mono text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{social.handle}</div>
+                  <div className="text-lg font-semibold" style={{ color: "var(--text)" }}>{social.name}</div>
+                  <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{social.handle}</div>
                 </div>
               </motion.a>
             ))}
@@ -116,11 +118,11 @@ export default function Contact() {
           style={{ borderTop: "1px solid var(--border)" }}
         >
           <div className="eyebrow mb-4">Aurict Mobile</div>
-          <p className="text-sm mb-8 font-serif" style={{ color: "var(--text-muted)" }}>
+          <p className="text-sm mb-8" style={{ color: "var(--text-muted)" }}>
             {t("contact.footer.tagline") || "Mobile apps, built and run by Aurict."}
           </p>
 
-          <div className="flex flex-wrap justify-center gap-6 mb-8 font-mono text-xs uppercase tracking-wide">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 mb-8 text-sm font-semibold">
             <a href="/about-us" style={{ color: "var(--text-dim)" }}>{t("contact.footer.aboutUs") || "About Us"}</a>
             <a href="/privacy-policy" style={{ color: "var(--text-dim)" }}>{t("contact.footer.privacyPolicy") || "Privacy Policy"}</a>
             <a href="/terms-of-service" style={{ color: "var(--text-dim)" }}>{t("contact.footer.termsOfService") || "Terms of Service"}</a>
@@ -128,7 +130,7 @@ export default function Contact() {
             <a href="/mindgrid/delete-account" style={{ color: "var(--text-dim)" }}>{t("contact.footer.deleteAccount") || "Delete Account"}</a>
           </div>
 
-          <div className="font-mono text-[11px] space-y-2" style={{ color: "var(--text-muted)" }}>
+          <div className="text-[11px] space-y-2" style={{ color: "var(--text-muted)" }}>
             <div>{t("contact.footer.copyright") || "© 2026 Aurict Mobile. All rights reserved."}</div>
             <div>
               Developed by <a href="https://aurict.com" style={{ color: "var(--text)" }}>Aurict</a>

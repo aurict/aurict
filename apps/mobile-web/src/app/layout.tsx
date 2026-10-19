@@ -10,11 +10,11 @@ const BASE_URL = "https://mobile.aurict.com";
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "Aurict Mobile — mobile.aurict.com",
+    default: "Aurict Mobile — Jelly Paradox, Duckley & Mind Grid",
     template: "%s | Aurict Mobile",
   },
   description:
-    "Aurict Mobile — account management, support, and legal pages for the mobile apps built with and by Aurict, including Mind Grid.",
+    "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley and Mind Grid. Account management, support and legal pages.",
   applicationName: "Aurict Mobile",
   authors: [{ name: "Aurict" }],
   robots: { index: true, follow: true },
@@ -29,23 +29,25 @@ export const metadata: Metadata = {
     type: "website",
     url: BASE_URL,
     siteName: "Aurict Mobile",
-    title: "Aurict Mobile — mobile.aurict.com",
+    title: "Aurict Mobile — Jelly Paradox, Duckley & Mind Grid",
     description:
-      "Aurict Mobile — account management, support, and legal pages for the mobile apps built with and by Aurict, including Mind Grid.",
+      "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley and Mind Grid. Account management, support and legal pages.",
     locale: "en_US",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Aurict Mobile — Tiny apps. Big joy." }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Aurict Mobile — mobile.aurict.com",
+    images: ["/og.png"],
+    title: "Aurict Mobile — Jelly Paradox, Duckley & Mind Grid",
     description:
-      "Aurict Mobile — account management, support, and legal pages for the mobile apps built with and by Aurict, including Mind Grid.",
+      "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley and Mind Grid. Account management, support and legal pages.",
   },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#211416",
+  themeColor: "#fff8f0",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -63,7 +65,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- next/font fetches Google Fonts during build; runtime link keeps offline builds stable. */}
         <link
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
       </head>

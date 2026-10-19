@@ -47,7 +47,7 @@ export function LanguageMenu() {
       <button
         type="button"
         className="dim-link"
-        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 15, minHeight: 44, background: "none", border: 0, cursor: "pointer" }}
         aria-label={t("nav.language")}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -71,11 +71,10 @@ export function LanguageMenu() {
               right: 0,
               minWidth: 180,
               padding: "6px",
-              background: "color-mix(in oklch, var(--bg) 92%, transparent)",
+              background: "var(--bg-card)",
               border: "1px solid var(--border)",
-              borderRadius: 12,
-              boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
-              backdropFilter: "blur(14px)",
+              borderRadius: 18,
+              boxShadow: "var(--shadow-soft)",
               zIndex: 60,
             }}
           >
@@ -96,13 +95,14 @@ export function LanguageMenu() {
                     alignItems: "center",
                     gap: 10,
                     width: "100%",
-                    padding: "8px 10px",
-                    borderRadius: 8,
+                    padding: "10px 12px",
+                    borderRadius: 12,
                     border: "none",
-                    background: active ? "color-mix(in oklch, var(--accent) 18%, transparent)" : "transparent",
+                    background: active ? "var(--accent-soft)" : "transparent",
                     color: active ? "var(--accent)" : "var(--text)",
                     cursor: "pointer",
-                    fontSize: 13,
+                    fontSize: 14,
+                    fontWeight: 600,
                     textAlign: "left",
                   }}
                 >
