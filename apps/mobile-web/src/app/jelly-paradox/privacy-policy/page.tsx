@@ -7,7 +7,7 @@ import PageHeader from "@/components/PageHeader";
 
 const BRAND = "var(--jelly)";
 const APP_NAME = "Jelly Paradox";
-const PACKAGE_NAME = "com.jellyparadox.game";
+const PACKAGE_NAME = "com.aurict.jelly";
 const DEVELOPER = "benLothe";
 const CONTACT = "contact@aurict.com";
 

@@ -59,8 +59,8 @@ export default function PrivacyPolicyPage() {
           <Section title={language === "tr" ? "Jelly Paradox oyunu" : "Jelly Paradox game"} color="var(--accent)">
             <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
               {language === "tr"
-                ? "benLothe tarafından yayınlanan Jelly Paradox oyununun (com.jellyparadox.game) gizlilik politikası: "
-                : "The privacy policy for the Jelly Paradox game (com.jellyparadox.game), published by developer benLothe, is here: "}
+                ? "benLothe tarafından yayınlanan Jelly Paradox oyununun (com.aurict.jelly) gizlilik politikası: "
+                : "The privacy policy for the Jelly Paradox game (com.aurict.jelly), published by developer benLothe, is here: "}
               <Link href="/jelly-paradox/privacy-policy" style={{ color: "var(--accent)" }}>
                 {language === "tr" ? "Jelly Paradox Gizlilik Politikası" : "Jelly Paradox Privacy Policy"}
               </Link>
