@@ -12,6 +12,7 @@ const ITEMS = [
   { key: "deleteMindGrid", href: "/mindgrid/delete-account", color: "var(--grid)", soft: "var(--grid-soft)" },
   { key: "privacy", href: "/privacy-policy", color: "var(--jelly)", soft: "var(--jelly-soft)" },
   { key: "duckleyPrivacy", href: "/duckley/privacy-policy", color: "var(--duck)", soft: "var(--duck-soft)" },
+  { key: "duckleyTerms", href: "/duckley/terms-of-service", color: "var(--duck)", soft: "var(--duck-soft)" },
   { key: "deleteJelly", href: "/jelly-paradox/delete-account", color: "var(--jelly)", soft: "var(--jelly-soft)" },
   { key: "jellyPrivacy", href: "/jelly-paradox/privacy-policy", color: "var(--jelly)", soft: "var(--jelly-soft)" },
   { key: "terms", href: "/terms-of-service", color: "var(--accent-alt)", soft: "#fff0e2" },
