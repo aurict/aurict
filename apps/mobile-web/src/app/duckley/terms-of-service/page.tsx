@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 const BRAND = "var(--duck)";
 const APP_NAME = "Duckley";
 const PACKAGE_NAME = "com.aurict.duckley";
-const DEVELOPER = "benLothe";
+const DEVELOPER = "Aurict";
 const CONTACT = "contact@aurict.com";
 
 type Section = { title: string; body?: string; items?: string[] };
@@ -21,7 +21,7 @@ const STRINGS = {
     packageLabel: "Paket adı / Bundle ID",
     developerLabel: "Geliştirici (App Store ve Google Play'deki adı)",
     contactLabel: "İletişim",
-    identityBody: `Bu kullanım koşulları (son kullanıcı lisans sözleşmesi), App Store ve Google Play'de ${DEVELOPER} geliştirici adıyla yayınlanan ${APP_NAME} mobil uygulaması ve ona bağlı hizmetler için geçerlidir. "Biz" ifadesi ${APP_NAME}'yi geliştiren ve yayınlayan ${DEVELOPER}'ı, "sen" ifadesi uygulamayı kullanan kişiyi ifade eder. Uygulamayı indirerek veya kullanarak bu koşulları kabul etmiş olursun.`,
+    identityBody: `Bu kullanım koşulları (son kullanıcı lisans sözleşmesi), App Store ve Google Play'de ${DEVELOPER} geliştirici adıyla yayınlanan ${APP_NAME} mobil uygulaması ve ona bağlı hizmetler için geçerlidir. "Biz" ifadesi ${APP_NAME}'yi geliştiren ve yayınlayan ${DEVELOPER}'i, "sen" ifadesi uygulamayı kullanan kişiyi ifade eder. Uygulamayı indirerek veya kullanarak bu koşulları kabul etmiş olursun.`,
     sections: [
       {
         title: "Hizmet",
@@ -69,7 +69,7 @@ const STRINGS = {
       },
       {
         title: "Lisans ve fikri mülkiyet",
-        body: `${APP_NAME} uygulaması, dersler, Duki karakteri, görseller, sesler ve diğer tüm içerik ${DEVELOPER}'a veya lisans verenlerine aittir. Sana, uygulamayı sahibi olduğun veya kontrol ettiğin cihazlarda, kişisel ve ticari olmayan amaçla kullanman için kişisel, münhasır olmayan, devredilemez ve geri alınabilir bir lisans veririz. Bu koşullarda açıkça verilmeyen tüm haklar saklıdır.`,
+        body: `${APP_NAME} uygulaması, dersler, Duki karakteri, görseller, sesler ve diğer tüm içerik ${DEVELOPER}'e veya lisans verenlerine aittir. Sana, uygulamayı sahibi olduğun veya kontrol ettiğin cihazlarda, kişisel ve ticari olmayan amaçla kullanman için kişisel, münhasır olmayan, devredilemez ve geri alınabilir bir lisans veririz. Bu koşullarda açıkça verilmeyen tüm haklar saklıdır.`,
       },
       {
         title: "Değişiklikler, kesintiler ve sona erme",
@@ -107,7 +107,7 @@ const STRINGS = {
       },
       {
         title: "İletişim",
-        body: `Sorular, destek talepleri, içerik bildirimleri ve hukuki talepler için ${DEVELOPER}'a ${CONTACT} adresinden ulaşabilirsin.`,
+        body: `Sorular, destek talepleri, içerik bildirimleri ve hukuki talepler için ${DEVELOPER}'e ${CONTACT} adresinden ulaşabilirsin.`,
       },
     ] as Section[],
     privacyLink: "Duckley gizlilik politikası",

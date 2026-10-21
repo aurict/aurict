@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Duckley Terms of Use",
   description:
-    "Terms of use and subscription terms for the Duckley app (com.aurict.duckley) on the App Store and Google Play, published by developer benLothe.",
+    "Terms of use and subscription terms for the Duckley app (com.aurict.duckley) on the App Store and Google Play, published by developer Aurict.",
   alternates: { canonical: "/duckley/terms-of-service" },
 };
 

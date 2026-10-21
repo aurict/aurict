@@ -100,6 +100,14 @@ export const en = {
 			title: `Jelly Paradox privacy policy`,
 			body: `The privacy policy for the Jelly Paradox game.`,
 		},
+		deleteDungeon: {
+			title: `Delete your Dungeon Lord account`,
+			body: `Remove your Dungeon Lord account and game data.`,
+		},
+		dungeonPrivacy: {
+			title: `Dungeon Lord privacy policy`,
+			body: `The privacy policy for the Dungeon Lord: Rise of the Boss game.`,
+		},
 		terms: {
 			title: `Terms of service`,
 			body: `The rules for using our apps and this site.`,

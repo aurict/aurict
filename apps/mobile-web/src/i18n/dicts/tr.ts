@@ -100,6 +100,14 @@ export const tr = {
 			title: `Jelly Paradox gizlilik politikası`,
 			body: `Jelly Paradox oyununun gizlilik politikası.`,
 		},
+		deleteDungeon: {
+			title: `Dungeon Lord hesabını sil`,
+			body: `Dungeon Lord hesabını ve oyun verilerini kaldır.`,
+		},
+		dungeonPrivacy: {
+			title: `Dungeon Lord gizlilik politikası`,
+			body: `Dungeon Lord: Rise of the Boss oyununun gizlilik politikası.`,
+		},
 		terms: {
 			title: `Hizmet şartları`,
 			body: `Uygulamalarımızı ve bu siteyi kullanma kuralları.`,

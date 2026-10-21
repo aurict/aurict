@@ -100,6 +100,14 @@ export const fr = {
 			title: `Confidentialité de Jelly Paradox`,
 			body: `La politique de confidentialité du jeu Jelly Paradox.`,
 		},
+		deleteDungeon: {
+			title: `Supprimer ton compte Dungeon Lord`,
+			body: `Supprime ton compte Dungeon Lord et tes données de jeu.`,
+		},
+		dungeonPrivacy: {
+			title: `Confidentialité de Dungeon Lord`,
+			body: `La politique de confidentialité du jeu Dungeon Lord: Rise of the Boss.`,
+		},
 		terms: {
 			title: `Conditions d’utilisation`,
 			body: `Les règles d’utilisation de nos applis et de ce site.`,

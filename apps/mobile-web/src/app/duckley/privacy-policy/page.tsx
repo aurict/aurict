@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 const BRAND = "var(--duck)";
 const APP_NAME = "Duckley";
 const PACKAGE_NAME = "com.aurict.duckley";
-const DEVELOPER = "benLothe";
+const DEVELOPER = "Aurict";
 const CONTACT = "contact@aurict.com";
 
 type Section = { title: string; body?: string; items?: string[] };
@@ -21,7 +21,7 @@ const STRINGS = {
     packageLabel: "Paket adı / Bundle ID",
     developerLabel: "Geliştirici (App Store ve Google Play'deki adı)",
     contactLabel: "İletişim",
-    identityBody: `Bu gizlilik politikası, App Store ve Google Play'de ${DEVELOPER} geliştirici adıyla yayınlanan ${APP_NAME} mobil uygulaması için geçerlidir. "Biz" ifadesi ${APP_NAME}'yi geliştiren ve yayınlayan ${DEVELOPER}'ı ifade eder.`,
+    identityBody: `Bu gizlilik politikası, App Store ve Google Play'de ${DEVELOPER} geliştirici adıyla yayınlanan ${APP_NAME} mobil uygulaması için geçerlidir. "Biz" ifadesi ${APP_NAME}'yi geliştiren ve yayınlayan ${DEVELOPER}'i ifade eder.`,
     sections: [
       {
         title: "Topladığımız bilgiler",
