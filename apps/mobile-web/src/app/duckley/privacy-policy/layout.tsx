@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Duckley Privacy Policy",
   description:
-    "Privacy policy for the Duckley app (com.aurict.duckley) on Google Play, published by developer benLothe.",
+    "Privacy policy for the Duckley app (com.aurict.duckley) on the App Store and Google Play, published by developer benLothe.",
   alternates: { canonical: "/duckley/privacy-policy" },
 };
 

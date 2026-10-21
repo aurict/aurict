@@ -18,10 +18,10 @@ const STRINGS = {
     title: "Duckley Gizlilik Politikası",
     identityTitle: "Bu politika kimin, hangi uygulama için",
     appLabel: "Uygulama",
-    packageLabel: "Google Play paket adı",
-    developerLabel: "Geliştirici (Google Play'deki adı)",
+    packageLabel: "Paket adı / Bundle ID",
+    developerLabel: "Geliştirici (App Store ve Google Play'deki adı)",
     contactLabel: "İletişim",
-    identityBody: `Bu gizlilik politikası, Google Play'de ${DEVELOPER} geliştirici adıyla yayınlanan ${APP_NAME} mobil uygulaması için geçerlidir. "Biz" ifadesi ${APP_NAME}'yi geliştiren ve yayınlayan ${DEVELOPER}'ı ifade eder.`,
+    identityBody: `Bu gizlilik politikası, App Store ve Google Play'de ${DEVELOPER} geliştirici adıyla yayınlanan ${APP_NAME} mobil uygulaması için geçerlidir. "Biz" ifadesi ${APP_NAME}'yi geliştiren ve yayınlayan ${DEVELOPER}'ı ifade eder.`,
     sections: [
       {
         title: "Topladığımız bilgiler",
@@ -29,9 +29,10 @@ const STRINGS = {
           "Uygulama içi etkinlik: ders ilerlemesi, quiz cevapları, günlük plan, tekrarlar, rozetler ve XP.",
           "Cihaz ve kurulum kimlikleri: misafir hesap kimliği, hatırlatıcılar açıksa bildirim (FCM) token'ı ve Firebase uygulama örneği kimliği.",
           "Google ile giriş yaparsanız: e-posta adresiniz ve Google hesap kimliğiniz.",
+          "Apple ile giriş yaparsanız: Apple hesap kimliğiniz, paylaşmayı seçtiğiniz e-posta adresi (Apple'ın gizli yönlendirme adresi olabilir) ve adınız.",
           "Görünen ad: çalışma grupları ve hikâyelerde göstermek için seçtiğiniz ad.",
           "Kullanıcı içeriği: çalışma hikâyeleri, tepkiler ve çalışma grubu üyeliği.",
-          "Satın alma geçmişi: Google Play üzerinden yapılan satın almaların kayıtları. Kart ve ödeme bilgileriniz Google Play tarafından işlenir, bize ulaşmaz.",
+          "Satın alma geçmişi: App Store veya Google Play üzerinden yapılan satın almaların kayıtları. Kart ve ödeme bilgileriniz Apple veya Google tarafından işlenir, bize ulaşmaz.",
         ],
       },
       {
@@ -55,11 +56,11 @@ const STRINGS = {
       },
       {
         title: "Paylaşım ve hizmet sağlayıcılar",
-        body: "Kişisel verilerinizi satmayız ve reklam amacıyla paylaşmayız. Hizmeti sunmak için yalnızca bizim adımıza çalışan sağlayıcıları kullanırız: Google (Google ile Giriş, Google Play Faturalandırma, Firebase Analytics, Firebase Cloud Messaging) ve sunucu barındırma sağlayıcımız. Bir hikâyeyi başka bir uygulamayla paylaştığınızda, o uygulamanın gizlilik kuralları geçerli olur. Çalışma grubundaki görünen adınız ve hikâyeleriniz grubun diğer üyelerine görünür.",
+        body: "Kişisel verilerinizi satmayız ve reklam amacıyla paylaşmayız. Hizmeti sunmak için yalnızca bizim adımıza çalışan sağlayıcıları kullanırız: Google (Google ile Giriş, Google Play Faturalandırma, Firebase Analytics, Firebase Cloud Messaging), Apple (Apple ile Giriş, App Store satın almaları, iOS bildirimleri için Apple Push Notification service) ve sunucu barındırma sağlayıcımız. Bir hikâyeyi başka bir uygulamayla paylaştığınızda, o uygulamanın gizlilik kuralları geçerli olur. Çalışma grubundaki görünen adınız ve hikâyeleriniz grubun diğer üyelerine görünür.",
       },
       {
         title: "Saklama ve hesap silme",
-        body: "Verilerinizi hesabınız açık olduğu sürece saklarız. Hesabınızı uygulama içinden veya web üzerinden silebilirsiniz. Silme işleminde Google hesap bağlantınız, ilerlemeniz, hikâyeleriniz, grup üyelikleriniz, bildirim token'larınız ve oturumlarınız silinir. Satın alma kayıtları yasal yükümlülükler ve denetim için kimliksizleştirilerek saklanır.",
+        body: "Verilerinizi hesabınız açık olduğu sürece saklarız. Hesabınızı uygulama içinden veya web üzerinden silebilirsiniz. Silme işleminde Google veya Apple hesap bağlantınız, ilerlemeniz, hikâyeleriniz, grup üyelikleriniz, bildirim token'larınız ve oturumlarınız silinir; Apple ile giriş yaptıysanız Apple'daki uygulama yetkiniz de iptal edilir. Satın alma kayıtları yasal yükümlülükler ve denetim için kimliksizleştirilerek saklanır.",
       },
       {
         title: "Güvenlik",
@@ -79,17 +80,17 @@ const STRINGS = {
       },
     ] as Section[],
     deleteLink: "Duckley hesabını web üzerinden sil",
-    lastUpdated: "Yürürlük ve son güncelleme: 18 Ekim 2026",
+    lastUpdated: "Yürürlük ve son güncelleme: 21 Ekim 2026",
     backButton: "Geri",
   },
   en: {
     title: "Duckley Privacy Policy",
     identityTitle: "Who this policy is from and which app it covers",
     appLabel: "App",
-    packageLabel: "Google Play package name",
-    developerLabel: "Developer (name on Google Play)",
+    packageLabel: "Package name / Bundle ID",
+    developerLabel: "Developer (name on the App Store and Google Play)",
     contactLabel: "Contact",
-    identityBody: `This privacy policy applies to the ${APP_NAME} mobile app, published on Google Play under the developer name ${DEVELOPER}. "We", "us" and "our" refer to ${DEVELOPER}, the developer and publisher of ${APP_NAME}.`,
+    identityBody: `This privacy policy applies to the ${APP_NAME} mobile app, published on the App Store and Google Play under the developer name ${DEVELOPER}. "We", "us" and "our" refer to ${DEVELOPER}, the developer and publisher of ${APP_NAME}.`,
     sections: [
       {
         title: "Information we collect",
@@ -97,9 +98,10 @@ const STRINGS = {
           "App activity: lesson progress, quiz answers, daily plan, reviews, badges and XP.",
           "Device and install IDs: a guest account ID, a notification (FCM) token if reminders are on, and the Firebase app instance ID.",
           "If you sign in with Google: your email address and Google account ID.",
+          "If you sign in with Apple: your Apple account ID, the email address you choose to share (which may be an Apple private relay address) and your name.",
           "Display name: the name you choose to show in study circles and stories.",
           "User content: study stories, reactions and study circle membership.",
-          "Purchase history: records of purchases made through Google Play. Your card and payment details are handled by Google Play and never reach us.",
+          "Purchase history: records of purchases made through the App Store or Google Play. Your card and payment details are handled by Apple or Google and never reach us.",
         ],
       },
       {
@@ -123,11 +125,11 @@ const STRINGS = {
       },
       {
         title: "Sharing and service providers",
-        body: "We do not sell your personal data or share it for advertising. We only use providers that act on our behalf to run the service: Google (Google Sign-In, Google Play Billing, Firebase Analytics, Firebase Cloud Messaging) and our server hosting provider. When you share a story to another app, that app's privacy practices apply. Your display name and stories in a study circle are visible to the other members of that circle.",
+        body: "We do not sell your personal data or share it for advertising. We only use providers that act on our behalf to run the service: Google (Google Sign-In, Google Play Billing, Firebase Analytics, Firebase Cloud Messaging), Apple (Sign in with Apple, App Store purchases, Apple Push Notification service for iOS notifications) and our server hosting provider. When you share a story to another app, that app's privacy practices apply. Your display name and stories in a study circle are visible to the other members of that circle.",
       },
       {
         title: "Retention and account deletion",
-        body: "We keep your data while your account exists. You can delete your account in the app or on the web. Deletion removes your Google account link, progress, stories, circle memberships, notification tokens and sessions. Purchase records are kept in anonymized form for legal and audit obligations.",
+        body: "We keep your data while your account exists. You can delete your account in the app or on the web. Deletion removes your Google or Apple account link, progress, stories, circle memberships, notification tokens and sessions; if you signed in with Apple, the app's authorization in your Apple account is also revoked. Purchase records are kept in anonymized form for legal and audit obligations.",
       },
       {
         title: "Security",
@@ -147,7 +149,7 @@ const STRINGS = {
       },
     ] as Section[],
     deleteLink: "Delete your Duckley account on the web",
-    lastUpdated: "Effective and last updated: 18 October 2026",
+    lastUpdated: "Effective and last updated: 21 October 2026",
     backButton: "Back",
   },
 } as const;
