@@ -100,6 +100,14 @@ export const zh = {
 			title: `Jelly Paradox 隐私政策`,
 			body: `Jelly Paradox 游戏的隐私政策。`,
 		},
+		deleteDungeon: {
+			title: `删除 Dungeon Lord 账户`,
+			body: `删除你的 Dungeon Lord 账户和游戏数据。`,
+		},
+		dungeonPrivacy: {
+			title: `Dungeon Lord 隐私政策`,
+			body: `Dungeon Lord: Rise of the Boss 游戏的隐私政策。`,
+		},
 		terms: {
 			title: `服务条款`,
 			body: `使用我们的应用和本网站的规则。`,

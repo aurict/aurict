@@ -100,6 +100,14 @@ export const de = {
 			title: `Jelly-Paradox-Datenschutzerklärung`,
 			body: `Die Datenschutzerklärung des Spiels Jelly Paradox.`,
 		},
+		deleteDungeon: {
+			title: `Dungeon Lord-Konto löschen`,
+			body: `Entferne dein Dungeon Lord-Konto und deine Spieldaten.`,
+		},
+		dungeonPrivacy: {
+			title: `Dungeon-Lord-Datenschutzerklärung`,
+			body: `Die Datenschutzerklärung des Spiels Dungeon Lord: Rise of the Boss.`,
+		},
 		terms: {
 			title: `Nutzungsbedingungen`,
 			body: `Die Regeln für unsere Apps und diese Website.`,

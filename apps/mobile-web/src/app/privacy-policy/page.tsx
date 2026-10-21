@@ -48,8 +48,8 @@ export default function PrivacyPolicyPage() {
           <Section title={language === "tr" ? "Duckley uygulaması" : "Duckley app"} color="var(--accent)">
             <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
               {language === "tr"
-                ? "Google Play'de benLothe geliştirici adıyla yayınlanan Duckley uygulamasının (com.aurict.duckley) gizlilik politikası: "
-                : "The privacy policy for the Duckley app (com.aurict.duckley), published on Google Play by developer benLothe, is here: "}
+                ? "Google Play'de Aurict geliştirici adıyla yayınlanan Duckley uygulamasının (com.aurict.duckley) gizlilik politikası: "
+                : "The privacy policy for the Duckley app (com.aurict.duckley), published on Google Play by developer Aurict, is here: "}
               <Link href="/duckley/privacy-policy" style={{ color: "var(--accent)" }}>
                 {language === "tr" ? "Duckley Gizlilik Politikası" : "Duckley Privacy Policy"}
               </Link>
@@ -59,10 +59,21 @@ export default function PrivacyPolicyPage() {
           <Section title={language === "tr" ? "Jelly Paradox oyunu" : "Jelly Paradox game"} color="var(--accent)">
             <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
               {language === "tr"
-                ? "benLothe tarafından yayınlanan Jelly Paradox oyununun (com.aurict.jelly) gizlilik politikası: "
-                : "The privacy policy for the Jelly Paradox game (com.aurict.jelly), published by developer benLothe, is here: "}
+                ? "Aurict tarafından yayınlanan Jelly Paradox oyununun (com.aurict.jelly) gizlilik politikası: "
+                : "The privacy policy for the Jelly Paradox game (com.aurict.jelly), published by developer Aurict, is here: "}
               <Link href="/jelly-paradox/privacy-policy" style={{ color: "var(--accent)" }}>
                 {language === "tr" ? "Jelly Paradox Gizlilik Politikası" : "Jelly Paradox Privacy Policy"}
+              </Link>
+            </p>
+          </Section>
+
+          <Section title={language === "tr" ? "Dungeon Lord oyunu" : "Dungeon Lord game"} color="var(--accent)">
+            <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
+              {language === "tr"
+                ? "Aurict tarafından yayınlanan Dungeon Lord: Rise of the Boss oyununun (com.aurict.dungeonlord) gizlilik politikası: "
+                : "The privacy policy for the Dungeon Lord: Rise of the Boss game (com.aurict.dungeonlord), published by developer Aurict, is here: "}
+              <Link href="/dungeon-lord/privacy-policy" style={{ color: "var(--accent)" }}>
+                {language === "tr" ? "Dungeon Lord Gizlilik Politikası" : "Dungeon Lord Privacy Policy"}
               </Link>
             </p>
           </Section>

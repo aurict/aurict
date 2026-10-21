@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 const BRAND = "var(--jelly)";
 const APP_NAME = "Jelly Paradox";
 const PACKAGE_NAME = "com.aurict.jelly";
-const DEVELOPER = "benLothe";
+const DEVELOPER = "Aurict";
 const CONTACT = "contact@aurict.com";
 
 type Section = { title: string; body?: string; items?: string[] };
@@ -21,7 +21,7 @@ const STRINGS = {
     packageLabel: "Paket adı (Google Play / App Store)",
     developerLabel: "Geliştirici",
     contactLabel: "İletişim",
-    identityBody: `Bu gizlilik politikası, ${DEVELOPER} tarafından Android ve iOS için yayınlanan ${APP_NAME} mobil oyunu için geçerlidir. "Biz" ifadesi ${APP_NAME}'u geliştiren ve yayınlayan ${DEVELOPER}'ı ifade eder.`,
+    identityBody: `Bu gizlilik politikası, ${DEVELOPER} tarafından Android ve iOS için yayınlanan ${APP_NAME} mobil oyunu için geçerlidir. "Biz" ifadesi ${APP_NAME}'u geliştiren ve yayınlayan ${DEVELOPER}'i ifade eder.`,
     sections: [
       {
         title: "Topladığımız bilgiler",
