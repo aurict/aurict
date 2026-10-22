@@ -44,9 +44,8 @@ import {
   recordSkillUsed,
   readAttachmentFromPath,
   memoryStore,
-  runFinanceCalculation,
+  mcpManager,
   type CoreMessage,
-  type FinanceCalculationRequest,
   type PermissionRequest,
   type PermissionDecision,
   type ModelInfo,
@@ -54,8 +53,8 @@ import {
   type Category,
   type Scope,
 } from "@aurict/core"
-import { parseFinanceResearchAudit } from './finance-research-audit.js'
 import { desktopSessionMetadata } from './session-metadata.js'
+import { createRuntimeRpc, TurnCheckpoints, type RuntimeEvent } from './desktop/runtime-rpc.js'
 import { CliRemoteRuntime } from './remote/runtime.js'
 import { WebRtcCliTransport } from './remote/webrtc-transport.js'
 import { ensureAccessToken, getAuthStatus, loginWithBrowser, logout as remoteLogout } from './remote/auth.js'
@@ -75,7 +74,7 @@ async function resolveBackendAccessToken(signal: AbortSignal): Promise<string | 
 }
 
 interface ChatAttachment { path: string; content?: string }
-interface ChatSubmitPayload { turnId: string; text: string; attachments?: ChatAttachment[]; agentId?: string; artifactId?: string; artifactIntent?: "create" | "iterate" | "promote"; displayText?: string; financeResearchId?: string; financeHistory?: Array<{ role: "user" | "assistant"; content: string }> }
+interface ChatSubmitPayload { turnId: string; text: string; attachments?: ChatAttachment[]; agentId?: string; artifactId?: string; artifactIntent?: "create" | "iterate" | "promote"; displayText?: string }
 interface CustomProviderDef { name: string; baseUrl: string; apiKey: string; defaultModel: string }
 
 
@@ -117,10 +116,12 @@ type SidecarCommand =
   | { type: "memory:add"; content: string; category: Category; scope: Scope; requestId: string }
   | { type: "memory:remove"; id: string; requestId: string }
   | { type: "memory:clear"; scope?: Scope; requestId: string }
-  | { type: "finance:calculate"; request: FinanceCalculationRequest; requestId: string }
   | { type: "remote:action"; action: "login" | "start" | "stop" | "logout" | "status" }
+  | { type: "rpc"; method: string; params: unknown; requestId: string }
 
 type SidecarMessage =
+  | { type: "rpc-result"; requestId: string; result?: unknown; error?: string }
+  | { type: "runtime:event"; event: RuntimeEvent }
   | { type: "chat:event"; event: unknown }
   | { type: "permission:request"; request: PermissionRequest }
   | { type: "provider:list-result"; providers: Array<{ id: string; name: string; hasKey: boolean }>; requestId: string }
@@ -150,7 +151,6 @@ type SidecarMessage =
   | { type: "memory:add-result"; memory: Memory; requestId: string }
   | { type: "memory:remove-result"; ok: boolean; requestId: string }
   | { type: "memory:clear-result"; removed: number; requestId: string }
-  | { type: "finance:calculate-result"; result?: ReturnType<typeof runFinanceCalculation>; error?: string; requestId: string }
   | { type: "remote:status"; status: string; message: string; email?: string; sessionId?: string; verificationUriComplete?: string; userCode?: string }
   
 function send(msg: SidecarMessage): void {
@@ -225,6 +225,18 @@ export async function runIpcServer(workdir: string): Promise<void> {
   if (omniCfg.defaults?.provider && ProviderRegistry.has(omniCfg.defaults.provider)) currentProvider = omniCfg.defaults.provider
   if (omniCfg.defaults?.model) currentModel = omniCfg.defaults.model
 
+  const checkpoints = new TurnCheckpoints(workdir)
+  const runtimeRpc = createRuntimeRpc({
+    workdir,
+    sessionId: () => sessionId,
+    history: () => history,
+    emit: (event) => send({ type: "runtime:event", event }),
+  }, checkpoints)
+
+  // The terminal UI starts MCP in its bootstrap; the desktop runtime must too,
+  // or MCP tools are missing from desktop turns.
+  void mcpManager.init(workdir).catch((error: unknown) => console.error("[aurict] MCP startup failed", error))
+
   // Single, process-lifetime subscription — permission_ask events forward to
   // the Electron main process; PermissionGate.respond() is invoked below when
   // the corresponding permission:respond command comes back.
@@ -244,8 +256,7 @@ export async function runIpcServer(workdir: string): Promise<void> {
       : ""
     const userMessage: CoreMessage = { role: "user", content: payload.text + artifactContext }
     const historyMessage: CoreMessage = { role: "user", content: payload.displayText?.trim() || payload.text }
-    const financeHistory = payload.financeHistory?.map((message): CoreMessage => ({ role: message.role, content: message.content }))
-    const nextHistory = [...(financeHistory ?? history), userMessage]
+    const nextHistory = [...history, userMessage]
 
     // Matches App.tsx's handleSubmit: the session agent (omni by default, or
     // whichever mode the composer's agent selector picked) supplies the base
@@ -262,6 +273,16 @@ export async function runIpcServer(workdir: string): Promise<void> {
     const controller = new AbortController()
     activeController = controller
     activeTurnId = payload.turnId
+    const turnSessionId = sessionId
+    const checkpoint = checkpoints.begin(turnSessionId, historyMessage.content as string)
+    // The agent loop persists only the assistant reply; store the prompt so a
+    // reopened or branched session shows both sides of the conversation.
+    try {
+      SessionManager.ensureExists(turnSessionId, { provider: currentProvider, model: currentModel, workdir })
+      SessionManager.addPart({ sessionId: turnSessionId, role: "user", type: "text", content: historyMessage.content as string })
+    } catch (error) {
+      console.error("[aurict] failed to persist the user prompt", error)
+    }
     try {
       send({ type: "chat:event", event: { type: "phase", turnId: payload.turnId, phase: "accepted" } })
       send({ type: "chat:event", event: { type: "phase", turnId: payload.turnId, phase: "preparing_attachments" } })
@@ -275,7 +296,6 @@ export async function runIpcServer(workdir: string): Promise<void> {
         workdir,
         sessionId,
         backendAccessTokenResolver: resolveBackendAccessToken,
-        ...(payload.financeResearchId ? { requiredToolIds: ['calculator'] } : {}),
         ...(agentDef.system ? { system: agentDef.system } : {}),
         messages: nextHistory,
         runtime: { profile: "desktop-sidecar" },
@@ -302,12 +322,10 @@ export async function runIpcServer(workdir: string): Promise<void> {
         onPhase: (phase) => send({ type: "chat:event", event: { type: "phase", turnId: payload.turnId, phase } }),
         onEvent: (runtimeEvent) => send({ type: "chat:event", event: { type: "runtime:event", turnId: payload.turnId, runtimeEvent } }),
         onFinish: (result) => {
-          if (!payload.financeResearchId) {
-            if (result.compactedMessages) {
-              history.splice(0, history.length, ...result.compactedMessages, ...result.newMessages)
-            } else {
-              history.push(historyMessage, ...result.newMessages)
-            }
+          if (result.compactedMessages) {
+            history.splice(0, history.length, ...result.compactedMessages, ...result.newMessages)
+          } else {
+            history.push(historyMessage, ...result.newMessages)
           }
           if (payload.artifactId && payload.artifactIntent !== "promote") {
             try {
@@ -318,13 +336,11 @@ export async function runIpcServer(workdir: string): Promise<void> {
               throw error
             }
           }
-          if (payload.financeResearchId) {
-            send({ type: "chat:event", event: { type: "finance-research-audit", turnId: payload.turnId, researchId: payload.financeResearchId, audit: parseFinanceResearchAudit(result.text) } })
-          }
           if (activeController === controller) {
             activeController = null
             activeTurnId = null
           }
+          send({ type: "chat:event", event: { type: "usage", turnId: payload.turnId, contextTokens: result.contextUsage.effectiveTokens, contextWindow: result.contextUsage.contextWindow } })
           send({ type: "chat:event", event: { type: "finish", turnId: payload.turnId, text: result.text, sessionId: result.sessionId, finishReason: result.finishReason } })
         },
       })
@@ -347,6 +363,9 @@ export async function runIpcServer(workdir: string): Promise<void> {
         activeController = null
         activeTurnId = null
       }
+      // Failed and cancelled turns can still have edited files; record them too.
+      const created = checkpoints.finish(checkpoint)
+      if (created) send({ type: "runtime:event", event: { type: "checkpoint:created", checkpoint: created } })
     }
   }
 
@@ -354,6 +373,11 @@ export async function runIpcServer(workdir: string): Promise<void> {
     switch (cmd.type) {
       case "chat:submit":
         void handleChatSubmit(cmd.payload)
+        return
+      case "rpc":
+        runtimeRpc(cmd.method, cmd.params)
+          .then((result) => send({ type: "rpc-result", requestId: cmd.requestId, result }))
+          .catch((error: unknown) => send({ type: "rpc-result", requestId: cmd.requestId, error: error instanceof Error ? error.message : String(error) }))
         return
       case "chat:cancel":
         if (activeTurnId === cmd.turnId) activeController?.abort()
@@ -533,7 +557,8 @@ export async function runIpcServer(workdir: string): Promise<void> {
         return
       }
       case "agents:list": {
-        const agents = getAllSessionAgents(workdir).map((a) => ({
+        // The desktop app no longer has a Finance surface; the agent stays available to the CLI.
+        const agents = getAllSessionAgents(workdir).filter((a) => a.id !== "finance").map((a) => ({
           id: a.id, name: a.name, description: a.description, color: a.color,
         }))
         send({ type: "agents:list-result", agents, requestId: cmd.requestId })
@@ -634,14 +659,6 @@ export async function runIpcServer(workdir: string): Promise<void> {
       }
       case "memory:clear": {
         send({ type: "memory:clear-result", removed: memoryStore.clear(cmd.scope, workdir), requestId: cmd.requestId })
-        return
-      }
-      case "finance:calculate": {
-        try {
-          send({ type: "finance:calculate-result", result: runFinanceCalculation(cmd.request), requestId: cmd.requestId })
-        } catch (error) {
-          send({ type: "finance:calculate-result", error: error instanceof Error ? error.message : String(error), requestId: cmd.requestId })
-        }
         return
       }
       }
