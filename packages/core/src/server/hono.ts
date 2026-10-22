@@ -12,7 +12,7 @@ import type { MCPServerConfig } from "../mcp/types.js"
 import { acquireSessionRun } from "./run-lock.js"
 import { createSessionSchema, mcpServerSchema, messageSchema, storedSessionConfigSchema } from "./validation.js"
 
-const CORE_VERSION = "1.2.25"
+const CORE_VERSION = "1.2.26"
 
 async function jsonBody(c: Context): Promise<unknown> {
   try {
