@@ -206,8 +206,6 @@ const TOOL_USAGE_MAIN_EXTRAS = Object.values(PROMPT_MODULES)
   .map(s => s.trim())
   .join("\n\n")
 
-export const TOOL_USAGE = [TOOL_USAGE_CORE.trim(), TOOL_USAGE_MAIN_EXTRAS.trim()].join("\n\n")
-
 export const ERROR_RECOVERY = `
 # Error Recovery
 

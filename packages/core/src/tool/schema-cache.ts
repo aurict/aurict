@@ -28,15 +28,6 @@ export function getCachedToolSchema(def: ToolDef): CachedToolSchema {
   return schema
 }
 
-export function clearToolSchemaCache(): void {
-  schemaCache.clear()
-  schemaTokenCache.clear()
-}
-
-export function toolSchemaCacheStats(): { entries: number } {
-  return { entries: schemaCache.size }
-}
-
 export async function countToolSchemaTokens(
   toolIds: string[],
   modelId: string,

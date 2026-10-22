@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { readFile } from "fs/promises"
-import { resolve, dirname } from "path"
+import { dirname } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { semanticCache } from "../semantic-cache.js"
 import { resolveAuthorizedFilesystemPath } from "../../security/filesystem-grants.js"

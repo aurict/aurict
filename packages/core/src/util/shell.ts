@@ -54,8 +54,3 @@ export function getShell(): ShellConfig {
   // Son çare: PowerShell
   return (_cache = { executable: "powershell", flag: "-Command", isUnix: false })
 }
-
-/** Önbelleği temizle — test ortamı için */
-export function resetShellCache(): void {
-  _cache = null
-}

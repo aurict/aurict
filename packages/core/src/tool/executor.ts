@@ -2,7 +2,7 @@ import { resolve } from "path";
 import { readFile } from "fs/promises";
 import { hooks } from "../hook/emitter.js";
 import { PermissionEvaluator } from "../permission/evaluator.js";
-import { PermissionStore } from "../permission/store.js";
+import { PermissionStore, suggestCommandPrefix } from "../permission/store.js";
 import { gateGuard } from "../permission/gateguard.js";
 import { SessionManager } from "../session/manager.js";
 import { classifyCommand } from "../terminal/classifier.js";
@@ -441,7 +441,9 @@ export async function executeTool(
     const sandbox = chooseSandboxBackend(command, analysis);
     level = analysis.level;
     reason = analysis.reason;
+    const prefixRule = suggestCommandPrefix(command);
     permissionMetadata = {
+      ...(prefixRule ? { prefixRule } : {}),
       sandbox: {
         backend: sandbox.backend,
         reason: sandbox.reason,
@@ -557,6 +559,11 @@ export async function executeTool(
       }
       if (userResponse.decision === "allow_directory") {
         approvePermission(def.id, pattern, patchSummary, true, ctx.workdir, permissionScope);
+      }
+      // allow_prefix → remember every command that starts with the offered prefix
+      if (userResponse.decision === "allow_prefix") {
+        const prefix = suggestCommandPrefix(pattern);
+        if (prefix) PermissionStore.approvePrefix(def.id, prefix, permissionScope);
       }
     }
   }

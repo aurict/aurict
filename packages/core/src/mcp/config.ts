@@ -78,3 +78,49 @@ export function enabledServers(cfg: MCPConfig): Record<string, MCPServerConfig> 
   }
   return result
 }
+
+// ── Desktop management of the global server list ─────────────────────────────
+// The user-level ~/.aurict/mcp.json is the only file these touch; project files
+// stay read-only so a repository can never be edited from the settings UI.
+
+const NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/i
+
+export function globalMCPConfigPath(): string {
+  return join(homedir(), ".aurict", "mcp.json")
+}
+
+function readGlobal(path: string): MCPConfig {
+  if (!existsSync(path)) return { mcpServers: {} }
+  const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<MCPConfig>
+  return { mcpServers: parsed.mcpServers ?? {} }
+}
+
+function writeGlobal(path: string, cfg: MCPConfig): void {
+  mkdirSync(join(path, ".."), { recursive: true })
+  writeFileSync(path, JSON.stringify(cfg, null, 2), "utf8")
+}
+
+export function saveMCPServer(name: string, server: MCPServerConfig, path = globalMCPConfigPath()): void {
+  if (!NAME_PATTERN.test(name)) throw new Error("Server names may use letters, numbers, dots, dashes and underscores.")
+  if (Boolean(server.command) === Boolean(server.url)) throw new Error("Set either a command or a URL for the server.")
+  if (server.url && !/^https?:\/\//.test(server.url)) throw new Error("Server URLs must start with http:// or https://.")
+  const cfg = readGlobal(path)
+  cfg.mcpServers[name] = server
+  writeGlobal(path, cfg)
+}
+
+export function removeMCPServer(name: string, path = globalMCPConfigPath()): boolean {
+  const cfg = readGlobal(path)
+  if (!(name in cfg.mcpServers)) return false
+  delete cfg.mcpServers[name]
+  writeGlobal(path, cfg)
+  return true
+}
+
+export function setMCPServerEnabled(name: string, enabled: boolean, path = globalMCPConfigPath()): void {
+  const cfg = readGlobal(path)
+  const server = cfg.mcpServers[name]
+  if (!server) throw new Error(`MCP server "${name}" is not in your global configuration.`)
+  cfg.mcpServers[name] = { ...server, enabled }
+  writeGlobal(path, cfg)
+}

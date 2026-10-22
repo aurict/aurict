@@ -262,9 +262,6 @@ function computeSummary(db: Database, projectDir: string): GraphSummary {
   const nodeKinds = db
     .prepare("SELECT kind, COUNT(*) AS n FROM nodes GROUP BY kind ORDER BY n DESC")
     .all() as Array<{ kind: string; n: number }>
-  const edgeKinds = db
-    .prepare("SELECT kind, COUNT(*) AS n FROM edges GROUP BY kind ORDER BY n DESC")
-    .all() as Array<{ kind: string; n: number }>
   const langKinds = db
     .prepare("SELECT language, COUNT(*) AS n FROM files GROUP BY language ORDER BY n DESC")
     .all() as Array<{ language: string; n: number }>

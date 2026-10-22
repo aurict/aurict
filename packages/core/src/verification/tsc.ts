@@ -138,41 +138,6 @@ export async function runIncrementalTsc(
   }
 }
 
-/**
- * Debounced TSC check.
- * 
- * Ardışık edit'lerde her seferinde TSC çalıştırmak yerine,
- * 2 saniye bekler ve toplu kontrol eder.
- */
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-let pendingFiles: Set<string> = new Set()
-let pendingWorkdir: string | null = null
-let pendingResolve: ((output: string) => void) | null = null
-
-export async function debouncedTscCheck(
-  workdir: string,
-  filePath: string,
-): Promise<string> {
-  return new Promise((resolve) => {
-    pendingFiles.add(filePath)
-    pendingWorkdir = workdir
-    pendingResolve = resolve
-
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-    }
-
-    debounceTimer = setTimeout(async () => {
-      const result = await runIncrementalTsc(pendingWorkdir!, [...pendingFiles])
-      pendingFiles.clear()
-      pendingWorkdir = null
-      const resolveFn = pendingResolve
-      pendingResolve = null
-      resolveFn?.(result)
-    }, 2000)  // 2 saniye debounce
-  })
-}
-
 // ─── Helper Functions ─────────────────────────────────────────────────────────
 
 /**
@@ -223,11 +188,4 @@ export function filterTscForFile(tscOut: string, filePath: string): string {
  */
 export function clearTscCache(): void {
   tscCache.clear()
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-    debounceTimer = null
-  }
-  pendingFiles.clear()
-  pendingWorkdir = null
-  pendingResolve = null
 }

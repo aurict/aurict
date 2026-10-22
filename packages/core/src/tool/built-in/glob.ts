@@ -1,5 +1,5 @@
 import { z }                      from "zod"
-import { resolve, join, relative } from "path"
+import { join, relative } from "path"
 import { readdir }                 from "node:fs/promises"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { resolveAuthorizedFilesystemPath } from "../../security/filesystem-grants.js"
