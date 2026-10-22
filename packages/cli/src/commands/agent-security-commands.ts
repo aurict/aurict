@@ -1,7 +1,7 @@
-import { SECURITY_SANDBOX_PROFILE_DEFAULTS, applySecurityVerification, buildAttackGraphFromFindings, evaluateSecurityOperatorStep, formatAttackGraph, formatSecurityLedgerAnchor, formatSecurityOperatorDecision, getAllSessionAgents, loadConfig, loadCustomAgents, mcpManager, resetSecurityAssessmentLedger, resolveSecuritySandboxConfig, setSecuritySandbox, verifySecurityFinding } from "@aurict/core"
+import { applySecurityVerification, buildAttackGraphFromFindings, evaluateSecurityOperatorStep, formatAttackGraph, formatSecurityLedgerAnchor, formatSecurityOperatorDecision, loadConfig, loadCustomAgents, mcpManager, resetSecurityAssessmentLedger, resolveSecuritySandboxConfig, verifySecurityFinding } from "@aurict/core"
 import { BRAND_PALETTE_IDS, THEMES, THEME_NAMES, isBrandTheme } from "../utils/theme.js"
 import type { CommandDef, CommandResult, PickerItem } from "./types.js"
-import { findLedgerFinding, formatSecurityReportFromLedger, formatSecurityStatus, getOrCreateSecurityLedger, pullSecurityImage, rewriteSecurityLedger } from "./command-helpers.js"
+import { findLedgerFinding, formatSecurityReportFromLedger, formatSecurityStatus, getOrCreateSecurityLedger, rewriteSecurityLedger } from "./command-helpers.js"
 
 export const agentSecurityCommands: CommandDef[] = [
   // ── /agents ───────────────────────────────────────────────────────────────
@@ -179,16 +179,12 @@ export const agentSecurityCommands: CommandDef[] = [
           label: THEMES[n]!.name,
           ...(n === ctx.currentTheme ? { hint: "active" } : {}),
         }))
-      const sep: PickerItem = { id: "__sep__", label: "──────────" }
-      const items: PickerItem[] = [...brandItems, sep, ...legacyItems]
+      const items: PickerItem[] = [...brandItems, ...legacyItems]
       return {
         type:  "picker",
         title: "Select palette",
         items,
-        onSelect: (item) => {
-          if (item.id === "__sep__") return
-          ctx.setTheme(item.id)
-        },
+        onSelect: (item) => ctx.setTheme(item.id),
       }
     },
   },

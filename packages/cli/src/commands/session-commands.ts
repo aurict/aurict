@@ -1,8 +1,11 @@
-import { SessionManager, defaultExportFilename, exportToHtml, exportToMarkdown, gateGuard, getConfigPath, loadConfig, setDefault, snapshotManager } from "@aurict/core"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
+import { SessionManager, gateGuard, snapshotManager } from "@aurict/core"
+import { existsSync, mkdirSync, writeFileSync } from "fs"
 import { join } from "path"
-import type { CommandDef, CommandResult, PickerItem } from "./types.js"
-import { ensureLine, formatRelativeTime, oneLine } from "./command-helpers.js"
+import type { CommandContext, CommandDef, CommandResult, PickerItem } from "./types.js"
+import { ensureLine, formatRelativeTime, oneLine, siCount, tildePath } from "./command-helpers.js"
+import { APPROVAL_MODES } from "../tui/approval-mode.js"
+import { CURRENT_VERSION } from "../version.js"
+import { glyph } from "../tui/terminal-glyphs.js"
 import { workingTreeDiff } from "./git-working-diff.js"
 
 export const sessionCommands: CommandDef[] = [
@@ -26,8 +29,10 @@ export const sessionCommands: CommandDef[] = [
   {
     name:        "status",
     aliases:     ["st"],
-    description: "Show terminal session health, context, checkpoints, and runtime state",
-    handler: (_args, ctx): CommandResult => {
+    description: "Show current session configuration",
+    usage:       "/status [all]",
+    handler: (args, ctx): CommandResult => {
+      if (args[0] !== "all") return { type: "text", content: statusCard(ctx) }
       const persistedParts = SessionManager.getPartsCount(ctx.sessionId)
       const stats = SessionManager.getStats(ctx.sessionId)
       const activeBg = ctx.bgTasks.filter((task) => task.status === "running").length
@@ -38,13 +43,13 @@ export const sessionCommands: CommandDef[] = [
       const tokenTotal = (ctx.tokens?.input ?? 0) + (ctx.tokens?.output ?? 0) + (ctx.tokens?.cacheRead ?? 0) + (ctx.tokens?.cacheWrite ?? 0)
 
       const lines = [
-        "Aurict status",
+        "Aurict status (all)",
         "",
         `Session:      ${ctx.sessionId.slice(0, 12)}  (${persistedParts} persisted parts, ${ctx.messages.length} visible messages)`,
         `Provider:     ${ctx.provider}`,
         `Model:        ${ctx.model}${ctx.effort !== undefined ? `  effort=${ctx.effort}` : ""}`,
         `Agent:        ${ctx.activeAgent}${ctx.coordinatorMode ? "  coordinator=on" : ""}${ctx.autopilotMode ? "  project-auto=on" : ""}`,
-        `Workdir:      ${ctx.workdir}`,
+        `Workdir:      ${tildePath(ctx.workdir)}`,
         `Undercover:   ${ctx.isUndercover ? "on" : "off"}`,
         `Context:      ${ctx.contextWindow.toLocaleString()} tokens window, ${tokenTotal.toLocaleString()} session tokens observed`,
         `Skills:       ${ctx.skills.length > 0 ? ctx.skills.join(", ") : "none loaded"}`,
@@ -304,7 +309,7 @@ export const sessionCommands: CommandDef[] = [
       if (!args[0]) {
         return {
           type:    "text",
-          content: `Provider : ${ctx.provider}\nModel    : ${ctx.model}\nWorkdir  : ${ctx.workdir}`,
+          content: `Provider : ${ctx.provider}\nModel    : ${ctx.model}\nWorkdir  : ${tildePath(ctx.workdir)}`,
         }
       }
       const id      = args[0]
@@ -409,3 +414,38 @@ export const sessionCommands: CommandDef[] = [
     },
   },
 ]
+
+/**
+ * The Codex /status card:
+ *
+ *   aurict█ v1.2.25
+ *
+ *   Model:           claude-sonnet-5-5 (anthropic)
+ *   Directory:       ~/projects/aurict
+ *   Permissions:     Ask for approval
+ *   Agents.md:       AGENTS.md
+ *
+ *   Token usage:     1.9K total  (1K input + 900 output)
+ *   Context window:  99% left (2.25K used / 200K)
+ */
+export function statusCard(ctx: CommandContext): string {
+  const row = (label: string, value: string) => `${`${label}:`.padEnd(17)}${value}`
+  const input = (ctx.tokens?.input ?? 0) + (ctx.tokens?.cacheRead ?? 0) + (ctx.tokens?.cacheWrite ?? 0)
+  const output = ctx.tokens?.output ?? 0
+  const window = ctx.contextUsage?.contextWindow ?? ctx.contextWindow
+  const used = ctx.contextUsage?.effectiveTokens ?? 0
+  const left = window > 0 ? Math.max(0, Math.round(100 - (used / window) * 100)) : 100
+  const agentsFiles = ["AGENTS.md", "CLAUDE.md"].filter((file) => existsSync(join(ctx.workdir, file)))
+  const details = [ctx.provider, ...(ctx.effort !== undefined ? [`effort ${ctx.effort}`] : [])].join(", ")
+  return [
+    `aurict${glyph("cursor")} v${CURRENT_VERSION}`,
+    "",
+    row("Model", `${ctx.model} (${details})`),
+    row("Directory", tildePath(ctx.workdir)),
+    row("Permissions", APPROVAL_MODES.find((mode) => mode.id === ctx.approvalMode)?.label ?? ctx.approvalMode),
+    row("Agents.md", agentsFiles.length > 0 ? agentsFiles.join(", ") : "<none>"),
+    "",
+    row("Token usage", `${siCount(input + output)} total  (${siCount(input)} input + ${siCount(output)} output)`),
+    row("Context window", `${left}% left (${siCount(used)} used / ${siCount(window)})`),
+  ].join("\n")
+}

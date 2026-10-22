@@ -53,5 +53,3 @@ export function loadCustomAgents(workdir: string): CustomAgentDef[] {
 export function getCustomAgent(workdir: string, id: string): CustomAgentDef | undefined {
   return loadCustomAgents(workdir).find((a) => a.id === id)
 }
-
-export function clearCustomAgentCache(): void { cache.clear() }

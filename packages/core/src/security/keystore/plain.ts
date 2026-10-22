@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, unlinkSync, accessSync, constants } from "node:fs"
+import { existsSync, mkdirSync, accessSync, constants } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type { KeyStore, KeystoreCapability } from "./types.js"
@@ -92,13 +92,4 @@ export async function plainKeystoreCapability(): Promise<KeystoreCapability> {
       reason:    err instanceof Error ? err.message : String(err),
     }
   }
-}
-
-export function __plainFilePathForTests(): string {
-  return filepath()
-}
-
-export function __plainCleanupForTests(): void {
-  const p = filepath()
-  if (existsSync(p)) unlinkSync(p)
 }

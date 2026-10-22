@@ -289,13 +289,3 @@ export function useMouseEvents(handler: MouseHandler, active = true): void {
     }
   }, [active])
 }
-
-export function useMouseClick(
-  button: MouseButton | MouseButton[],
-  handler: (e: MouseEvent) => void,
-): void {
-  const buttons = Array.isArray(button) ? button : [button]
-  useMouseEvents((e) => {
-    if (e.type === "click" && buttons.includes(e.button)) handler(e)
-  })
-}

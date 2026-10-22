@@ -342,7 +342,7 @@ if (needsSetup) {
             renderOptions,
           )
           startServicesAfterFirstFrame()
-          wait().then(resolve)
+          void wait().then(() => resolve())
         },
       }),
       renderOptions,

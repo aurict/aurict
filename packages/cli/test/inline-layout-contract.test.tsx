@@ -44,8 +44,8 @@ describe("inline layout contract", () => {
         expect(resets).toBe(0);
         expect(committed.map((row) => row.id)).toEqual(final.map((row) => row.id));
         expect(new Set(committed.map((row) => row.id)).size).toBe(committed.length);
-        // Rail ("│ ") plus the shell inset on both sides never truncates content.
-        const room = size.columns - inset * 2 - 2;
+        // Codex cells have no rail: only the shell inset on both sides is reserved.
+        const room = size.columns - inset * 2;
         expect(committed.every((row) => displayWidth(rowText(row)) <= room)).toBe(true);
       });
     }

@@ -2,7 +2,7 @@ import React from "react";
 import { describe, expect, mock, test } from "bun:test";
 import { render } from "ink-testing-library";
 import { MultilineInput } from "../src/tui/MultilineInput.js";
-import { RunStatusLine } from "../src/tui/RunStatusLine.js";
+import { RUN_PHRASES, RunStatusLine, runPhrase } from "../src/tui/RunStatusLine.js";
 import { SessionFooter } from "../src/tui/SessionChrome.js";
 import { cancelActiveTurn, openBacktrackPicker } from "../src/tui/app/app-keyboard-actions.js";
 import type { AppKeyboardParams } from "../src/tui/app/app-keyboard-types.js";
@@ -47,15 +47,30 @@ describe("composer paste placeholders", () => {
 });
 
 describe("run status line", () => {
-  test("reports work, elapsed time, the interrupt key, and the current action", async () => {
+  test("titles the line with the latest reasoning heading, then elapsed time and the interrupt key", async () => {
     const view = render(
       <RunStatusLine loading activity="thinking" reasoning="**Mapping the call graph**" queued={2} columns={120} />,
     );
     await flush();
     const frame = view.lastFrame()!;
-    expect(frame).toContain("Working (0s · esc to interrupt)");
-    expect(frame).toContain("thinking · Mapping the call graph · 2 queued");
+    expect(frame).toContain("Mapping the call graph (0s • esc to interrupt)");
+    expect(frame).toContain("· thinking · 2 queued");
+    expect(frame).not.toContain("Working");
     view.unmount();
+  });
+
+  test("falls back to a run phrase without a reasoning heading", async () => {
+    const view = render(<RunStatusLine loading activity="responding" columns={120} />);
+    await flush();
+    const frame = view.lastFrame()!;
+    expect(RUN_PHRASES.some((phrase) => frame.includes(`${phrase} (0s • esc to interrupt) · responding`))).toBe(true);
+    view.unmount();
+  });
+
+  test("rotates the run phrase every ten seconds", () => {
+    expect(runPhrase(0, 0)).toBe(RUN_PHRASES[0]);
+    expect(runPhrase(0, 10_000)).toBe(RUN_PHRASES[1]);
+    expect(runPhrase(RUN_PHRASES.length - 1, 10_000)).toBe(RUN_PHRASES[0]);
   });
 
   test("renders nothing while idle", () => {
@@ -66,7 +81,7 @@ describe("run status line", () => {
 });
 
 describe("inline footer", () => {
-  test("carries model, context, and a non-default approval mode", () => {
+  test("shows the Codex shortcut hint and the context left", () => {
     const view = render(
       <SessionFooter
         cols={120}
@@ -76,9 +91,9 @@ describe("inline footer", () => {
       />,
     );
     const frame = view.lastFrame()!;
-    expect(frame).toContain("anthropic/sonnet-5-5");
-    expect(frame).toContain("ctx 25%");
-    expect(frame).toContain("full access");
+    expect(frame).toContain("? for shortcuts");
+    expect(frame).toContain("75% context left");
+    expect(frame).not.toContain("sonnet");
     view.unmount();
   });
 

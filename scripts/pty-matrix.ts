@@ -393,7 +393,7 @@ const scenarios: Scenario[] = [
     steps: [...START, { send: "short ascii" }, { send: ENTER }, { until: "Short answer: yes.", timeout: 20_000 }, { wait: 600 }],
     expect: (result) => {
       const conversation = result.lines.slice(result.lines.findIndex((line) => line.includes("short ascii")))
-      const offenders = conversation.filter((line) => /[◆◇▸›●○◌∴│─✗…]/u.test(line))
+      const offenders = conversation.filter((line) => /[◆◇▸›●○◌∴│─✗…•└⋮✔□◦■↳]/u.test(line))
       return [...inlineBasics(result), ...(offenders.length > 0 ? [`non-ASCII glyphs under AURICT_ASCII: ${JSON.stringify(offenders.slice(0, 3))}`] : [])]
     },
   },

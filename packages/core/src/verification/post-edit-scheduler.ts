@@ -39,11 +39,6 @@ export function getPostEditVerificationJobs(sessionId: string): PostEditVerifica
   return (jobs.get(sessionId) ?? []).map(job => ({ ...job }))
 }
 
-export function clearPostEditVerificationJobs(sessionId?: string): void {
-  if (sessionId) jobs.delete(sessionId)
-  else jobs.clear()
-}
-
 async function runJob(
   job: PostEditVerificationJob,
   options: { sessionId: string; workdir: string; filePath: string },

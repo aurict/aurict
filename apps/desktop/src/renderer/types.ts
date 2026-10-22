@@ -1,6 +1,6 @@
 export type AssistantBlock =
   | { type: 'text'; content: string }
-  | { type: 'tool'; id: string; tool: string; argsSummary: string; pending: boolean; result?: string; durationMs?: number };
+  | { type: 'tool'; id: string; tool: string; argsSummary: string; pending: boolean; result?: string; durationMs?: number; liveOutput?: string };
 
 export interface DisplayMessage {
   id: string;
@@ -8,14 +8,6 @@ export interface DisplayMessage {
   content: string;
   blocks?: AssistantBlock[];
   pending?: boolean;
-}
-
-export function displayMessageText(message: DisplayMessage): string {
-  if (message.content.trim()) return message.content;
-  return (message.blocks ?? []).map((block) => {
-    if (block.type === 'text') return block.content;
-    return block.result ?? `${block.tool}: ${block.argsSummary}`;
-  }).filter(Boolean).join('\n\n');
 }
 
 /** Best-effort one-line summary of a tool call's args, for display next to the tool name. */

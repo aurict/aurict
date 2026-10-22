@@ -18,13 +18,12 @@ export function inputPointFromTerminal(
   const localRow = y - 1 - bounds.row
   const rawCol = x - 1 - bounds.col
   if (localRow < 0 || localRow >= bounds.height || rawCol < 0 || rawCol > bounds.width) return null
-  const showLineNum = lines.length > 1
-  const gutterWidth = showLineNum ? String(lines.length).length + 3 : 0
+  // The composer has no line-number gutter (Codex layout), so columns map directly.
   const row = Math.min(localRow, lines.length - 1)
   const line = lines[row] ?? ""
   return {
     row,
-    col: displayColumnToOffset(line, Math.max(0, rawCol - gutterWidth)),
+    col: displayColumnToOffset(line, Math.max(0, rawCol)),
   }
 }
 

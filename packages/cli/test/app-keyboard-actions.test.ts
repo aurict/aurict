@@ -6,29 +6,44 @@ import type { AppKeyboardParams } from "../src/tui/app/app-keyboard-types.js"
 
 afterEach(() => PermissionGate.cancelPending())
 
+function keyboardParams(request: PermissionRequest, queue: { current: PermissionRequest[] }, messages: string[]) {
+  return {
+    focusLayer: "permission",
+    permission: request,
+    loadingRef: { current: false },
+    abortControllerRef: { current: null },
+    setPermissionQueue: (update: PermissionRequest[] | ((current: PermissionRequest[]) => PermissionRequest[])) => {
+      queue.current = typeof update === "function" ? update(queue.current) : update
+    },
+    addSystemMsg: (message: string) => messages.push(message),
+    overlay: {},
+  } as unknown as AppKeyboardParams
+}
+
 describe("terminal permission keyboard handling", () => {
-  test("closing the permission layer denies and removes the request", async () => {
-    const request: PermissionRequest = {
-      id: "permission-enter-escape",
-      tool: "bash",
-      pattern: "example",
-    }
-    let queue = [request]
+  test("esc on a command request cancels it and clears the queue, as Codex does", async () => {
+    const request: PermissionRequest = { id: "permission-escape-shell", tool: "bash", pattern: "example" }
+    const other: PermissionRequest = { id: "permission-escape-queued", tool: "bash", pattern: "later" }
+    const queue = { current: [request, other] }
     const messages: string[] = []
     const wait = PermissionGate.wait(request.id, { timeoutMs: 1_000 })
-    const params = {
-      focusLayer: "permission",
-      permission: request,
-      setPermissionQueue: (update: typeof queue | ((current: typeof queue) => typeof queue)) => {
-        queue = typeof update === "function" ? update(queue) : update
-      },
-      addSystemMsg: (message: string) => messages.push(message),
-      overlay: {},
-    } as unknown as AppKeyboardParams
 
-    expect(closeFocusedLayer(params)).toBe(true)
+    expect(closeFocusedLayer(keyboardParams(request, queue, messages))).toBe(true)
     expect((await wait).decision).toBe("deny")
-    expect(queue).toEqual([])
-    expect(messages).toEqual(["Permission denied: bash"])
+    expect(queue.current).toEqual([])
+    expect(messages).toEqual(["You canceled the request to run example"])
+  })
+
+  test("esc on a permission grant only declines that request", async () => {
+    const request: PermissionRequest = { id: "permission-escape-grant", tool: "mcp", pattern: "github.search" }
+    const other: PermissionRequest = { id: "permission-escape-next", tool: "bash", pattern: "later" }
+    const queue = { current: [request, other] }
+    const messages: string[] = []
+    const wait = PermissionGate.wait(request.id, { timeoutMs: 1_000 })
+
+    expect(closeFocusedLayer(keyboardParams(request, queue, messages))).toBe(true)
+    expect((await wait).decision).toBe("deny")
+    expect(queue.current).toEqual([other])
+    expect(messages).toEqual(["You did not grant additional permissions"])
   })
 })

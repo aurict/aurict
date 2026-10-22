@@ -23,17 +23,10 @@ const DEFAULTS: TruncationConfig = {
   headRatio: 0.6,
 }
 
-let _global: GlobalTruncationConfig = {}
-
-/** loop.ts config yükledikten sonra çağırır */
-export function setTruncationConfig(cfg: GlobalTruncationConfig): void {
-  _global = cfg
-}
-
 /** Tool adına göre efektif konfigürasyonu çözer */
 export function resolveTruncationConfig(
   toolName: string,
-  config: GlobalTruncationConfig = _global,
+  config: GlobalTruncationConfig = {},
   contextWindow?: number,
 ): TruncationConfig {
   const override = config.perTool?.[toolName] ?? {}

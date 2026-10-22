@@ -11,8 +11,11 @@ export {
   Text,
   measureElement,
   useApp,
+  useAnimation,
+  useCursor,
   useInput,
   useStdout,
+  useWindowSize,
 } from "ink";
 
 export type {

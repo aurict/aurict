@@ -19,7 +19,7 @@
  */
 
 import { existsSync, readFileSync, statSync } from "node:fs"
-import { join, dirname, normalize, relative, sep } from "node:path"
+import { join, dirname, normalize, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadGraphForViewer, loadGraphSummary, type GraphJson } from "./graph-data.js"
 

@@ -169,7 +169,8 @@ export function VSpacer({ minSize = 1 }: { minSize?: number }) {
 
 export interface CenterProps extends Omit<DesignBoxProps, "alignItems" | "justifyContent"> {
   minHeight?: number | string
-  minWidth?:  number | string
+  /** Ink 8 accepts only a column count here. */
+  minWidth?:  number
 }
 
 export function Center({ minHeight, minWidth, children, ...rest }: CenterProps) {

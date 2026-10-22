@@ -1,0 +1,39 @@
+.hero {
+  padding-top: 96px;
+}
+
+.panel {
+  margin: 0 var(--gutter);
+  border-radius: var(--radius-panel);
+  background:
+    radial-gradient(120% 140% at 100% 0%, #7d6ff0 0%, transparent 55%),
+    var(--violet);
+  color: var(--on-violet);
+}
+
+.inner {
+  padding-top: clamp(56px, 8vw, 96px);
+  padding-bottom: clamp(56px, 8vw, 96px);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--on-violet-dim);
+}
+
+.hero h1 {
+  margin-top: 16px;
+  max-width: 15ch;
+  color: #fff;
+  font-size: clamp(40px, 7vw, 88px);
+}
+
+.lead {
+  margin-top: 22px;
+  max-width: 58ch;
+  font-size: clamp(17px, 1.7vw, 21px);
+  color: var(--on-violet-dim);
+}

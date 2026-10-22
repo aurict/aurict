@@ -23,6 +23,7 @@ function toneColor(tone: TranscriptTone | undefined, theme: SemanticTheme): stri
   if (tone === "diff-remove") return theme.diff.removed;
   if (tone === "diff-context") return theme.diff.context;
   if (tone === "diff-hunk") return theme.diff.hunk;
+  if (tone === "accent") return theme.activity.running;
   return theme.foreground.secondary;
 }
 
@@ -56,7 +57,7 @@ export function TranscriptRows({ rows, rail = false }: { rows: TranscriptRow[]; 
             {row.segments.map((segment, index) => (
               <Text
                 key={`${row.id}:${index}`}
-                color={(segment.syntax && syntax?.[segment.syntax]) || toneColor(segment.tone, theme)}
+                {...segmentColor(segment, theme, syntax)}
                 {...(segment.bold ? { bold: true } : {})}
                 {...(segment.italic ? { italic: true } : {})}
                 {...(segment.underline ? { underline: true } : {})}
@@ -69,6 +70,14 @@ export function TranscriptRows({ rows, rail = false }: { rows: TranscriptRow[]; 
       );
     })}
   </>;
+}
+
+// Dimmed muted text is the terminal's own colour, faint — gray plus faint is
+// unreadable on many palettes. An empty colour means the terminal default.
+function segmentColor(segment: TranscriptRow["segments"][number], theme: SemanticTheme, syntax: Readonly<Record<SyntaxKind, string>> | null): { color?: string } {
+  if (segment.dim && segment.tone === "muted") return {};
+  const color = (segment.syntax && syntax?.[segment.syntax]) || toneColor(segment.tone, theme);
+  return color ? { color } : {};
 }
 
 function rowBackground(row: TranscriptRow, theme: SemanticTheme, diff: DiffPalette): string | undefined {

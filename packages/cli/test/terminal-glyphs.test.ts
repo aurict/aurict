@@ -32,6 +32,18 @@ describe("terminal glyph fallback", () => {
     })
   })
 
+  it("covers the Codex cell glyphs in both sets", () => {
+    withEnv("TERM", "xterm-256color", () => {
+      withEnv("AURICT_ASCII", undefined, () => {
+        expect([glyph("prompt"), glyph("bullet"), glyph("close"), glyph("check"), glyph("box"), glyph("stop")]).toEqual(["›", "•", "└", "✔", "□", "■"])
+      })
+    })
+    withEnv("AURICT_ASCII", "1", () => {
+      expect([glyph("prompt"), glyph("bullet"), glyph("gap"), glyph("box"), glyph("stop"), glyph("running")]).toEqual([">", "-", ":", "[ ]", "#", "o"])
+      expect(terminalText("└ ⋮ ✔ □ ■ ◦")).toBe("` : v [ ] # o")
+    })
+  })
+
   it("falls back for dumb terminals and non-UTF locales", () => {
     withEnv("AURICT_ASCII", undefined, () => {
       withEnv("TERM", "dumb", () => expect(prefersAsciiGlyphs()).toBe(true))

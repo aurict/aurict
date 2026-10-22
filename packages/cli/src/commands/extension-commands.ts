@@ -1,5 +1,6 @@
 import { PLUGIN_DIR, fetchRegistry, findInRegistry, getLoadedPlugins, installRemotePlugin, installRemoteSkill, listInstalledPlugins, listInstalledSkills, memoryStore, searchRegistry, uninstallPlugin, uninstallSkill } from "@aurict/core"
 import type { CommandDef, CommandResult, PickerItem } from "./types.js"
+import { tildePath } from "./command-helpers.js"
 
 export const extensionCommands: CommandDef[] = [
   // ── /plugin ───────────────────────────────────────────────────────────────
@@ -54,12 +55,12 @@ export const extensionCommands: CommandDef[] = [
               "Browse the marketplace:  /plugin search",
               "Install by name:         /plugin add <name>",
               "Install from URL:        /plugin add <url>",
-              `Plugin dir:              ${PLUGIN_DIR}`,
+              `Plugin dir:              ${tildePath(PLUGIN_DIR)}`,
             ].join("\n"),
           }
         }
 
-        lines.push(`Plugin dir: ${PLUGIN_DIR}`)
+        lines.push(`Plugin dir: ${tildePath(PLUGIN_DIR)}`)
         return { type: "text", content: lines.join("\n") }
       }
 

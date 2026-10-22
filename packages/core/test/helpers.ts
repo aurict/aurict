@@ -111,36 +111,6 @@ export function createMockProvider(opts: MockProviderOptions = {}): ProviderPlug
 
 // ─── Assertion Helpers ────────────────────────────────────────────────────────
 
-/** ExecuteResult'un başarılı olduğunu doğrular. */
-export function expectSuccess(result: ExecuteResult): void {
-  expect(result.error).toBeUndefined()
-  expect(result.output).toBeTruthy()
-}
-
-/** ExecuteResult'un hata içerdiğini doğrular. */
-export function expectError(result: ExecuteResult, pattern?: string | RegExp): void {
-  expect(result.error).toBeTruthy()
-  if (pattern) {
-    if (typeof pattern === "string") {
-      expect(result.error).toContain(pattern)
-    } else {
-      expect(result.error).toMatch(pattern)
-    }
-  }
-}
-
-/** Belirli bir süre içinde tamamlanacağını doğrular. */
-export async function expectCompletesWithin<T>(
-  fn: () => Promise<T>,
-  maxMs: number,
-): Promise<T> {
-  const start = Date.now()
-  const result = await fn()
-  const elapsed = Date.now() - start
-  expect(elapsed).toBeLessThan(maxMs)
-  return result
-}
-
 // ─── Temp Directory Helpers ───────────────────────────────────────────────────
 
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs"

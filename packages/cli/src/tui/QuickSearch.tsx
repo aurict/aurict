@@ -69,7 +69,6 @@ function isThisWeek(ts: number): boolean {
 
 function fmtDate(ts: number): string {
   const d = new Date(ts)
-  const now = new Date()
   if (isToday(ts)) {
     return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`
   }

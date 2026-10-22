@@ -315,9 +315,3 @@ export function Icon({ name, set, color, bold }: IconProps) {
     </Text>
   )
 }
-
-// ── Test/override hook ─────────────────────────────────────────────────────────
-
-export function _setIconSetForTesting(set: IconSet | null) {
-  cachedIconSet = set
-}

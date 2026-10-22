@@ -16,15 +16,11 @@ describe("inline change diffs", () => {
       resultContent: "Created src/new.ts\n__UNIFIED_DIFF__\n--- /dev/null\n+++ b/src/new.ts\n@@ -0,0 +1,3 @@\n+one\n+two\n+three",
     }], 80, null, null, null)
     const visible = lines.map((line) => line.text)
-    expect(visible).toEqual(expect.arrayContaining([
-      expect.stringContaining("◆ src/new.ts  +3 −0"),
-      expect.stringContaining("1 + one"),
-      expect.stringContaining("2 + two"),
-      expect.stringContaining("3 + three"),
-    ]))
+    expect(visible[0]).toMatch(/^• \w+ src\/new\.ts \(\+3 -0\)$/)
+    expect(visible.slice(1, 4)).toEqual(["    1 +one", "    2 +two", "    3 +three"])
   })
 
-  it("renders all change artifacts inside one adjacent activity cluster", () => {
+  it("gives each change its own Edited cell followed by its diff", () => {
     const message: DisplayMessage = {
       id: "changes",
       role: "assistant",
@@ -35,31 +31,37 @@ describe("inline change diffs", () => {
       ],
     }
     const visible = buildTranscriptLines([message], 80, null, null, null).map((line) => line.text)
-    expect(visible[0]).toBe("┌ activity")
-    expect(visible).toEqual(expect.arrayContaining([
-      expect.stringContaining("│ change"),
-      expect.stringContaining("◆ a.ts"),
-      expect.stringContaining("− old-a"),
-      expect.stringContaining("+ new-a"),
-      expect.stringContaining("◆ b.ts"),
-      expect.stringContaining("− old-b"),
-      expect.stringContaining("+ new-b"),
-      "└ completed",
-    ]))
+    expect(visible).toEqual([
+      "• Edited a.ts (+1 -1)",
+      "    1 -old-a",
+      "    1 +new-a",
+      "",
+      "• Edited b.ts (+1 -1)",
+      "    1 -old-b",
+      "    1 +new-b",
+      "",
+    ])
   })
 
-  it("keeps non-change diff tools compact", () => {
+  it("shows diff output from non-change tools as plain command output", () => {
     const output = "--- a/a.ts\n+++ b/a.ts\n@@ -1,1 +1,1 @@\n-old\n+new"
-    const visible = buildTranscriptLines([{
+    const message = {
       id: "git-diff",
-      role: "tool_call",
+      role: "tool_call" as const,
       tool: "bash",
       content: JSON.stringify({ command: "git diff" }),
       resultContent: output,
-    }], 80, null, null, null).map((line) => line.text)
-    expect(visible.some((line) => line.includes("− old"))).toBe(false)
-    expect(visible.some((line) => line.includes("+ new"))).toBe(false)
-    expect(visible.some((line) => /\+1 −1\s+details \^O/.test(line))).toBe(true)
+    }
+    const visible = buildTranscriptLines([message], 80, null, null, null).map((line) => line.text)
+    expect(visible.slice(0, 6)).toEqual([
+      "• Ran git diff",
+      "  └ --- a/a.ts",
+      "    +++ b/a.ts",
+      "    @@ -1,1 +1,1 @@",
+      "    -old",
+      "    +new",
+    ])
+    expect(projectStableTranscript([message], 80).some((row) => row.surface === "diff-add" || row.surface === "diff-remove")).toBe(false)
   })
 
   it("keeps wrapped change content complete and styled", () => {
@@ -73,7 +75,7 @@ describe("inline change diffs", () => {
     }], 32)
     const added = rows.filter((row) => row.id.includes(":line:1:"))
     expect(added.length).toBeGreaterThan(1)
-    expect(added.map((row) => row.segments.slice(1).map((segment) => segment.text).join("")).join(""))
+    expect(added.map((row) => row.segments.slice(2).map((segment) => segment.text).join("")).join(""))
       .toBe(long)
     expect(added.every((row) => row.surface === "diff-add")).toBe(true)
   })
@@ -97,9 +99,6 @@ describe("inline change diffs", () => {
         outputLines: 1,
       },
     }], 80, null, null, null).map((line) => line.text)
-    expect(visible).toEqual(expect.arrayContaining([
-      expect.stringContaining("− old"),
-      expect.stringContaining("+ new"),
-    ]))
+    expect(visible).toEqual(expect.arrayContaining(["• Edited a.ts (+1 -1)", "    1 -old", "    1 +new"]))
   })
 })

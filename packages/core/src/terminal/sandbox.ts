@@ -128,5 +128,3 @@ export async function startDockerSandboxedProcess(
   // Bunu normal ptyManager üzerinden Docker çalıştıracak şekilde sarmalıyoruz
   return ptyManager.create("docker", dockerArgs, workdir, {}, processOptions)
 }
-
-export const startSandboxedProcess = startDockerSandboxedProcess

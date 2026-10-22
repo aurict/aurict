@@ -262,8 +262,8 @@ describe("Session chrome", () => {
         sandboxBackend="none"
       />,
     );
-    expect(lastFrame()).toContain("paused");
-    expect(lastFrame()).toContain("no sandbox");
+    expect(lastFrame()).toContain("output paused");
+    expect(lastFrame()).toContain("ctrl+l resume");
     expect(lastFrame()).not.toContain("opus-4");
   });
 
@@ -290,7 +290,7 @@ describe("StartupBanner", () => {
     expect(lastFrame()).toContain("0.0.1");
   });
 
-  it("renders AURICT letters", () => {
+  it("renders the aurict wordmark title", () => {
     const { lastFrame } = render(
       <StartupBanner
         version="1.0.0"
@@ -300,31 +300,20 @@ describe("StartupBanner", () => {
       />,
     );
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("AURICT");
+    expect(frame).toContain("aurict█ 1.0.0");
   });
 
-  it("renders provider name", () => {
-    const { lastFrame } = render(
-      <StartupBanner
-        version="0.0.1"
-        provider="openai"
-        model="gpt-4o"
-        workdir="/tmp"
-      />,
-    );
-    expect(lastFrame()).toContain("openai");
-  });
-
-  it("renders model name", () => {
-    const { lastFrame } = render(
+  it("leaves provider and model out of the header, as Codex does", () => {
+    const frame = render(
       <StartupBanner
         version="0.0.1"
         provider="anthropic"
         model="claude-sonnet-4-6"
         workdir="/tmp"
       />,
-    );
-    expect(lastFrame()).toContain("claude-sonnet-4-6");
+    ).lastFrame() ?? "";
+    expect(frame).not.toContain("anthropic");
+    expect(frame).not.toContain("claude-sonnet-4-6");
   });
 
   it("shows ~/shorthand for home dir", () => {
@@ -350,7 +339,9 @@ describe("StartupBanner", () => {
       />,
     );
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("/help");
+    expect(frame).toContain("To get started, describe a task or try one of these commands:");
+    expect(frame).toContain("/init");
+    expect(frame).toContain("/status");
   });
 });
 
@@ -387,12 +378,14 @@ describe("PermissionPrompt", () => {
       />,
     );
 
-    const frame = lastFrame() ?? "";
-    expect(frame).toContain("Bash command");
-    expect(frame).toContain("destructive operation");
+    const frame = stripAnsi(lastFrame());
+    expect(frame).toContain("Would you like to run the following command?");
+    expect(frame).toContain("Reason: Destructive recursive remove (rm -rf) detected!");
     expect(frame).toContain("$ rm -rf dist");
-    expect(frame).toContain("Edit command");
-    expect(stripAnsi(frame).split("\n").length).toBeLessThanOrEqual(9);
+    // Danger requests default to the safest choice.
+    expect(frame).toContain("  1. Yes, proceed (y)");
+    expect(frame).toContain("› 2. No, and tell Aurict what to do differently (esc)");
+    expect(stripAnsi(frame).split("\n").length).toBeLessThanOrEqual(12);
   });
 
   it("offers directory approval for write requests", () => {
@@ -409,10 +402,11 @@ describe("PermissionPrompt", () => {
       />,
     );
 
-    const frame = lastFrame() ?? "";
-    expect(frame).toContain("Allow directory");
-    expect(frame).toContain("just this time");
-    expect(stripAnsi(frame).split("\n").length).toBeLessThanOrEqual(9);
+    const frame = stripAnsi(lastFrame());
+    expect(frame).toContain("Would you like to make the following edits?");
+    expect(frame).toContain("› 1. Yes, proceed (y)");
+    expect(frame).toContain("Yes, and don't ask again for these files");
+    expect(stripAnsi(frame).split("\n").length).toBeLessThanOrEqual(12);
   });
 });
 
@@ -442,7 +436,7 @@ describe("MultilineInput", () => {
 // ── Tool Output Rendering ────────────────────────────────────────────────────
 
 describe("Tool output rendering", () => {
-  it("reduces long tool output to one semantic result row", () => {
+  it("shows the head and tail of long command output under a Ran cell", () => {
     const output = Array.from({ length: 12 }, (_, i) => `line-${i + 1}`).join(
       "\n",
     );
@@ -458,11 +452,13 @@ describe("Tool output rendering", () => {
       />,
     );
 
-    const frame = lastFrame() ?? "";
-    expect(frame).toMatch(/12 lines\s+details \^O/);
-    expect(frame).not.toContain("line-1");
-    expect(frame).not.toContain("line-12");
-    expect(frame).toContain("details ^O");
+    const frame = stripAnsi(lastFrame());
+    expect(frame).toContain("• Ran bun test");
+    expect(frame).toContain("  └ line-1");
+    expect(frame).toContain("line-2");
+    expect(frame).toContain("… +8 lines (^O to view details)");
+    expect(frame).toContain("line-12");
+    expect(frame).not.toContain("line-6");
   });
 
   it("renders empty expanded output explicitly", () => {
@@ -574,7 +570,7 @@ describe("Command UX", () => {
     expect(frame).toContain("Ctrl+Enter run");
   });
 
-  it("renders slash command suggestions with category and usage", () => {
+  it("renders slash command suggestions as name and description rows", () => {
     const { lastFrame } = render(
       <CommandSuggest
         filter="mem"
@@ -587,9 +583,10 @@ describe("Command UX", () => {
 
     const frame = lastFrame() ?? "";
     expect(frame).toContain("/memory");
-    expect(frame).toContain("Memory");
-    expect(frame).toContain("/mem");
     expect(frame).toContain("Manage persistent memory");
+    // Codex popups have no frame or category column.
+    expect(frame).not.toContain("┌");
+    expect(frame).not.toContain("commands");
   });
 
   it("prioritizes exact aliases and command names in slash suggestions", () => {

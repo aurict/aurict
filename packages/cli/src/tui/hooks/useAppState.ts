@@ -16,9 +16,10 @@ import {
 import { CliRemoteRuntime, type CliRemoteStatus } from "../../remote/runtime.js";
 import type { UpdateInfo } from "../../util/update-check.js";
 import { DEFAULT_THEME, THEMES } from "../../utils/theme.js";
+import { isTrusted } from "../project-trust.js";
 import { persistThemePreference } from "../../config/theme-preference.js";
 import type { ComposerQueueItem } from "../composer-queue.js";
-import type { DisplayMessage } from "../conversation/types.js";
+import type { DisplayMessage, TranscriptNotice } from "../conversation/types.js";
 import type { RunActivity } from "../run-status.js";
 import type { AutoContinueState, LatestToolCall } from "../app/app-agent-submit-types.js";
 import {
@@ -54,10 +55,10 @@ export function useAppState(options: AppStateOptions) {
   const termRows = termSize.rows;
   const [terminalMeasured, setTerminalMeasured] = useState(false);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
-  const addSystemMsg = useCallback((content: string) => {
+  const addSystemMsg = useCallback((content: string, notice?: TranscriptNotice) => {
     setMessages((previous) => [
       ...previous,
-      { role: "system", content, id: crypto.randomUUID() },
+      { role: "system", content, id: crypto.randomUUID(), ...(notice ? { notice } : {}) },
     ]);
   }, []);
   const [input, setInput] = useState("");
@@ -109,9 +110,11 @@ export function useAppState(options: AppStateOptions) {
   const [promptCacheHealth, setPromptCacheHealth] = useState<PromptCacheHealthResult>();
   const [activeAgentCount, setActiveAgentCount] = useState(() => agentPool.active.length);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-  const [autopilotMode, setAutopilotMode] = useState(false);
+  // A folder trusted earlier starts in "Ask for approval" without asking again.
+  const [startTrusted] = useState(() => isTrusted(options.workdir));
+  const [autopilotMode, setAutopilotMode] = useState(startTrusted);
   const [fullAccess, setFullAccess] = useState(false);
-  const [projectAutoPromptOpen, setProjectAutoPromptOpen] = useState(true);
+  const [projectAutoPromptOpen, setProjectAutoPromptOpen] = useState(!startTrusted);
   const [recentCmds, setRecentCmds] = useState<string[]>([]);
   const [designInitialBrief, setDesignInitialBrief] = useState<string>();
   const [watchedPaths, setWatchedPaths] = useState<WatchedPath[]>([]);
@@ -126,7 +129,7 @@ export function useAppState(options: AppStateOptions) {
   const submitRef = useRef<(value: string) => void>(() => {
     throw new Error("Submit controller is not initialized");
   });
-  const autopilotRef = useRef(false);
+  const autopilotRef = useRef(startTrusted);
   const fullAccessRef = useRef(false);
   const watchCleanupRef = useRef<Map<string, () => void>>(new Map());
   const mainSessionId = useRef(crypto.randomUUID());

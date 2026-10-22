@@ -39,8 +39,7 @@ describe("unseen conversation summaries", () => {
 });
 
 describe("turn cancellation feedback", () => {
-  it("states both the cancellation and session preservation guarantee", () => {
-    expect(TURN_CANCELLED_NOTICE).toContain("cancelled");
-    expect(TURN_CANCELLED_NOTICE).toContain("state preserved");
+  it("uses the Codex interrupt line", () => {
+    expect(TURN_CANCELLED_NOTICE).toBe("Conversation interrupted - tell the model what to do differently");
   });
 });

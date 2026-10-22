@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "./design-system/renderer.js"
 import { readdirSync } from "node:fs"
 import { join } from "node:path"
 import { useTheme } from "../utils/theme.js"
+import { useTerminalSize } from "./TerminalSizeContext.js"
 import { fileIndexVersion, projectPaths, subscribeFileIndex } from "./file-index.js"
 import { rankPaths } from "./file-search.js"
 
@@ -61,6 +62,7 @@ interface Props {
 
 export function FileMention({ filter, workdir, isActive, onSelect }: Props) {
   const theme   = useTheme()
+  const { columns } = useTerminalSize()
   const [idx, setIdx] = useState(0)
   useFileIndexVersion(workdir)
   const matches = listFileMentionMatches(workdir, filter)
@@ -76,22 +78,21 @@ export function FileMention({ filter, workdir, isActive, onSelect }: Props) {
 
   if (!isActive || !matches.length) return null
 
+  // Codex popup: plain rows, the selection filled in the accent colour.
   return (
-    <Box flexDirection="column" borderStyle="single" borderColor={theme.borderActive} paddingX={1} marginX={1}>
-      <Text color={theme.accent} dimColor bold>@path</Text>
-      {matches.map((m, i) => {
-        const sel = i === idx
-        return (
-          <Box key={m.full}>
-            <Text color={sel ? theme.accent : theme.textDim}>{sel ? "▸ " : "  "}</Text>
-            <Text color={theme.textDim}>{parentOf(m.display)}</Text>
-            <Text color={m.isDir ? theme.warning : theme.textPrimary} bold={sel}>
-              {baseOf(m.display)}
-            </Text>
+    <Box flexDirection="column" paddingLeft={2} width={Math.max(1, columns - 2)}>
+      {matches.map((m, i) => i === idx
+        ? (
+          <Box key={m.full} backgroundColor={theme.accent}>
+            <Text color={theme.accentInk ?? "black"} bold wrap="truncate-start">{m.display}</Text>
           </Box>
         )
-      })}
-      <Text color={theme.textDim} dimColor>  up/down  tab/enter select</Text>
+        : (
+          <Text key={m.full} wrap="truncate-start">
+            <Text color={theme.textDim}>{parentOf(m.display)}</Text>
+            <Text>{baseOf(m.display)}</Text>
+          </Text>
+        ))}
     </Box>
   )
 }

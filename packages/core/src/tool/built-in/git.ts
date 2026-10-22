@@ -24,9 +24,11 @@ function checkGitLock(cwd: string): void {
   }
 }
 
-// Asenkron git komutu çalıştırma — timeout ve progress desteği
+// Asenkron git komutu çalıştırma — timeout ve progress desteği.
+// Arguments stay an array so messages, paths and branch names with spaces or
+// quotes reach git verbatim instead of being split on whitespace.
 async function git(
-  cmd: string,
+  args: string[],
   cwd: string,
   timeoutMs = 10000,
   onChunk?: (chunk: string) => void,
@@ -36,11 +38,11 @@ async function git(
 
   // Progress reporting — uzun süren komutlar için
   if (onChunk) {
-    onChunk(`⏳ Running git ${cmd.split(" ")[0]}...\n`)
+    onChunk(`⏳ Running git ${args[0]}...\n`)
   }
 
   try {
-    const { stdout } = await execFileAsync("git", cmd.split(/\s+/), {
+    const { stdout } = await execFileAsync("git", args, {
       cwd,
       encoding: "utf8",
       timeout: timeoutMs,
@@ -88,14 +90,14 @@ Use status before diff to understand the scope. Use log to understand context.`,
     try {
       switch (action) {
         case "status": {
-          const out = await git("status --short", cwd, 10000, ctx.onChunk)
+          const out = await git(["status", "--short"], cwd, 10000, ctx.onChunk)
           return { output: out || "Working tree clean." }
         }
 
         case "diff": {
-          const target = file ? `-- "${file}"` : ""
-          const staged = await git(`diff --cached ${target}`, cwd, 10000, ctx.onChunk)
-          const unstaged = await git(`diff ${target}`, cwd, 10000, ctx.onChunk)
+          const target = file ? ["--", file] : []
+          const staged = await git(["diff", "--cached", ...target], cwd, 10000, ctx.onChunk)
+          const unstaged = await git(["diff", ...target], cwd, 10000, ctx.onChunk)
           const combined = [
             staged    ? `=== Staged ===\n${staged}`    : "",
             unstaged  ? `=== Unstaged ===\n${unstaged}` : "",
@@ -104,38 +106,39 @@ Use status before diff to understand the scope. Use log to understand context.`,
         }
 
         case "log": {
-          const out = await git(`log --oneline -${count}`, cwd, 10000, ctx.onChunk)
+          const out = await git(["log", "--oneline", `-${count}`], cwd, 10000, ctx.onChunk)
           return { output: out || "No commits yet." }
         }
 
         case "commit": {
           if (!message) return { output: "", error: "Commit message required." }
-          await git("add -A", cwd, 10000, ctx.onChunk)
-          const out = await git(`commit -m "${message.replace(/"/g, "'")}"`, cwd, 10000, ctx.onChunk)
+          await git(["add", "-A"], cwd, 10000, ctx.onChunk)
+          const out = await git(["commit", "-m", message], cwd, 10000, ctx.onChunk)
           return { output: out }
         }
 
         case "branch": {
           if (name) {
+            if (name.startsWith("-")) return { output: "", error: "Branch names cannot start with '-'." }
             try {
-              await git(`checkout -b "${name}"`, cwd, 10000, ctx.onChunk)
+              await git(["checkout", "-b", name], cwd, 10000, ctx.onChunk)
               return { output: `Created and switched to branch: ${name}` }
             } catch {
-              await git(`checkout "${name}"`, cwd, 10000, ctx.onChunk)
+              await git(["checkout", name], cwd, 10000, ctx.onChunk)
               return { output: `Switched to branch: ${name}` }
             }
           }
-          const out = await git("branch -a", cwd, 10000, ctx.onChunk)
+          const out = await git(["branch", "-a"], cwd, 10000, ctx.onChunk)
           return { output: out }
         }
 
         case "stash": {
           const sub = file ?? "push"
           if (sub === "pop") {
-            const out = await git("stash pop", cwd, 10000, ctx.onChunk)
+            const out = await git(["stash", "pop"], cwd, 10000, ctx.onChunk)
             return { output: out }
           }
-          const out = await git("stash push", cwd, 10000, ctx.onChunk)
+          const out = await git(["stash", "push"], cwd, 10000, ctx.onChunk)
           return { output: out }
         }
 

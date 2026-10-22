@@ -21,8 +21,6 @@ export interface ChatSubmitPayload {
   artifactId?: string;
   artifactIntent?: 'create' | 'iterate' | 'promote';
   displayText?: string;
-  financeResearchId?: string;
-  financeHistory?: SessionMessage[];
 }
 
 export type ChatTurnEvent = { turnId: string } & (
@@ -35,7 +33,7 @@ export type ChatTurnEvent = { turnId: string } & (
   | { type: 'compaction'; beforeTokens: number; afterTokens: number; threshold: number; reason: 'history_limit' | 'message_limit' | 'effective_context_limit' }
   | { type: 'provider-fallback'; from: string; to: string }
   | { type: 'stream-restart' }
-  | { type: 'finance-research-audit'; researchId: string; audit: FinanceResearchAudit }
+  | { type: 'usage'; contextTokens: number; contextWindow: number }
   | { type: 'finish'; text: string; sessionId?: string; finishReason?: string }
   | { type: 'error'; message: string }
 );
@@ -132,9 +130,9 @@ export interface SidecarStatus {
 }
 export interface RemoteStatus { status: string; message: string; email?: string; sessionId?: string; verificationUriComplete?: string; userCode?: string; }
 
-export type UserType = 'general' | 'developer' | 'product' | 'designer' | 'operator' | 'finance';
-export type ExperienceLayout = 'home' | 'developer' | 'product' | 'design' | 'operations' | 'finance';
-export type ExperienceTheme = 'oxblood' | 'paper' | 'slate' | 'studio' | 'forest' | 'ledger' | 'contrast';
+export type UserType = 'general' | 'developer' | 'product' | 'operator';
+export type ExperienceLayout = 'home' | 'developer' | 'product' | 'operations';
+export type ExperienceTheme = 'oxblood' | 'paper' | 'slate' | 'studio' | 'forest' | 'contrast';
 export type ColorMode = 'system' | 'light' | 'dark';
 export type FontPair = 'editorial' | 'modern' | 'technical' | 'friendly' | 'system';
 
@@ -148,94 +146,6 @@ export interface UserProfile {
   preferredModelId: string | null;
   onboardingVersion: number;
   completedAt: number;
-}
-
-export interface FinanceResearchEntry {
-  id: string;
-  question: string;
-  createdAt: number;
-  dataAsOf?: string;
-  status: 'researching' | 'complete' | 'needs-review';
-  completedAt?: number;
-  audit?: FinanceResearchAudit;
-}
-
-export interface FinanceResearchSource {
-  title: string;
-  url: string;
-  publishedAt?: string;
-  accessedAt: string;
-}
-
-export interface FinanceResearchAudit {
-  summary: string;
-  dataAsOf?: string;
-  sources: FinanceResearchSource[];
-  assumptions: string[];
-  uncertainties: string[];
-  warning?: string;
-}
-
-export type FinanceConversationStatus = 'active' | 'complete' | 'needs-review' | 'failed' | 'cancelled';
-
-export type FinanceMessageBlock =
-  | { type: 'text'; content: string }
-  | { type: 'tool'; id: string; tool: string; argsSummary: string; pending: boolean; result?: string; durationMs?: number };
-
-export interface FinanceConversationMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'error';
-  content: string;
-  createdAt: number;
-  blocks?: FinanceMessageBlock[];
-}
-
-export interface FinanceConversation {
-  id: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  status: FinanceConversationStatus;
-  messages: FinanceConversationMessage[];
-  audit?: FinanceResearchAudit;
-  error?: string;
-}
-
-export type FinanceCalculationKind =
-  | 'net_present_value'
-  | 'internal_rate_of_return'
-  | 'extended_internal_rate_of_return'
-  | 'compound_annual_growth_rate'
-  | 'discounted_cash_flow'
-  | 'amortization_schedule'
-  | 'fixed_coupon_bond_metrics'
-  | 'fixed_coupon_bond_yield_shock';
-
-export interface FinanceCalculationRequest {
-  calculation: FinanceCalculationKind;
-  input: Record<string, unknown>;
-}
-
-export interface FinanceCalculationResult {
-  calculation: FinanceCalculationKind;
-  formulaVersion: string;
-  calculatedAt: string;
-  precision: { decimalPlaces: number; rounding: string };
-  inputs: Record<string, unknown>;
-  outputs: Record<string, unknown>;
-  assumptions: string[];
-  warnings: FinanceWarning[];
-}
-
-export interface FinanceWarning {
-  code: string;
-  message: string;
-}
-
-export interface FinanceCalculationEntry {
-  id: string;
-  savedAt: number;
-  result: FinanceCalculationResult;
 }
 
 export interface DesignSystemInfo {
@@ -307,6 +217,43 @@ export interface MemoryInfo {
   tags?: string[];
 }
 
+// ── Runtime RPC (features added with the 2026 redesign) ─────────────────────
+// Method names follow the planned app-server protocol (docs/app-server-plan.md)
+// so they can move over unchanged.
+
+export interface CheckpointInfo { id: string; prompt: string; createdAt: number; files: string[] }
+export type ChangeStatus = 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked';
+export interface ChangedFile { path: string; status: ChangeStatus; additions: number; deletions: number; binary: boolean }
+export interface WorkspaceStatus { repository: boolean; branch: string | null; files: ChangedFile[] }
+export interface McpServerConfigInfo { command?: string; args?: string[]; env?: Record<string, string>; url?: string; headers?: Record<string, string>; enabled?: boolean }
+export interface McpServerInfo { name: string; scope: 'global' | 'project'; enabled: boolean; status: 'connected' | 'connecting' | 'disconnected' | 'error' | 'disabled'; toolCount: number; error?: string; target: string }
+
+export interface RpcMethods {
+  'checkpoint/list': { params: Record<string, never>; result: CheckpointInfo[] };
+  'checkpoint/restore': { params: { id: string }; result: { restored: string[] } };
+  'git/status': { params: Record<string, never>; result: WorkspaceStatus };
+  'git/fileDiff': { params: { path: string }; result: { patch: string } };
+  'git/revertFile': { params: { path: string }; result: Record<string, never> };
+  'git/commit': { params: { message: string; paths?: string[] }; result: { commit: string } };
+  'git/createBranch': { params: { name: string }; result: Record<string, never> };
+  'git/pullRequest': { params: { title: string; body: string }; result: { url: string } };
+  'mcpServer/list': { params: Record<string, never>; result: McpServerInfo[] };
+  'mcpServer/save': { params: { name: string; server: McpServerConfigInfo }; result: Record<string, never> };
+  'mcpServer/remove': { params: { name: string }; result: { removed: boolean } };
+  'mcpServer/setEnabled': { params: { name: string; enabled: boolean }; result: Record<string, never> };
+  'session/export': { params: { format: 'markdown' | 'html' }; result: { content: string; filename: string } };
+  'shell/run': { params: { command: string }; result: { id: string } };
+  'shell/kill': { params: { id: string }; result: Record<string, never> };
+}
+export type RpcMethod = keyof RpcMethods;
+export const RPC_METHODS = ['checkpoint/list', 'checkpoint/restore', 'git/status', 'git/fileDiff', 'git/revertFile', 'git/commit', 'git/createBranch', 'git/pullRequest', 'mcpServer/list', 'mcpServer/save', 'mcpServer/remove', 'mcpServer/setEnabled', 'session/export', 'shell/run', 'shell/kill'] as const satisfies readonly RpcMethod[];
+
+// Pushed by the runtime outside a chat turn.
+export type RuntimeEvent =
+  | { type: 'shell:output'; id: string; text: string }
+  | { type: 'shell:exit'; id: string; code: number | null }
+  | { type: 'checkpoint:created'; checkpoint: CheckpointInfo };
+
 export interface FileTreeEntry {
   name: string;
   path: string;
@@ -365,6 +312,14 @@ export interface AurictWindowApi {
     delete(path: string): Promise<{ ok: boolean; error?: string }>;
     rename(oldPath: string, newPath: string): Promise<{ ok: boolean; error?: string }>;
     pickImages(): Promise<ChatAttachment[]>;
+    pathForFile(file: File): string;
+  };
+  rpc<M extends RpcMethod>(method: M, params: RpcMethods[M]['params']): Promise<RpcMethods[M]['result']>;
+  runtimeEvents: {
+    on(cb: (event: RuntimeEvent) => void): () => void;
+  };
+  transcript: {
+    export(format: 'markdown' | 'html'): Promise<boolean>;
   };
   workdir(): Promise<string>;
   workspace: {
@@ -385,20 +340,6 @@ export interface AurictWindowApi {
     get(): Promise<UserProfile | null>;
     save(profile: UserProfile): Promise<void>;
     reset(): Promise<void>;
-  };
-  finance: {
-    listConversations(): Promise<FinanceConversation[]>;
-    createConversation(): Promise<FinanceConversation>;
-    removeConversation(id: string): Promise<boolean>;
-    appendConversationMessage(id: string, message: FinanceConversationMessage): Promise<FinanceConversation>;
-    completeConversation(id: string, message: FinanceConversationMessage): Promise<FinanceConversation>;
-    failConversation(id: string, message: string, cancelled?: boolean): Promise<FinanceConversation>;
-    listResearch(): Promise<FinanceResearchEntry[]>;
-    createResearch(question: string): Promise<FinanceResearchEntry>;
-    removeResearch(id: string): Promise<boolean>;
-    calculate(request: FinanceCalculationRequest): Promise<FinanceCalculationResult>;
-    listCalculations(): Promise<FinanceCalculationEntry[]>;
-    removeCalculation(id: string): Promise<boolean>;
   };
   policy: {
     get(): Promise<Policy>;
@@ -473,10 +414,12 @@ export type SidecarCommand =
   | { type: 'memory:add'; content: string; category: MemoryCategory; scope: MemoryScope; requestId: string }
   | { type: 'memory:remove'; id: string; requestId: string }
   | { type: 'memory:clear'; scope?: MemoryScope; requestId: string }
-  | { type: 'finance:calculate'; request: FinanceCalculationRequest; requestId: string }
-  | { type: 'remote:action'; action: 'login' | 'start' | 'stop' | 'logout' | 'status' };
+  | { type: 'remote:action'; action: 'login' | 'start' | 'stop' | 'logout' | 'status' }
+  | { type: 'rpc'; method: RpcMethod; params: unknown; requestId: string };
 
 export type SidecarMessage =
+  | { type: 'rpc-result'; requestId: string; result?: unknown; error?: string }
+  | { type: 'runtime:event'; event: RuntimeEvent }
   | { type: 'chat:event'; event: ChatEvent }
   | { type: 'permission:request'; request: PermissionRequestPayload }
   | { type: 'provider:list-result'; providers: ProviderInfo[]; requestId: string }
@@ -506,5 +449,4 @@ export type SidecarMessage =
   | { type: 'memory:add-result'; memory: MemoryInfo; requestId: string }
   | { type: 'memory:remove-result'; ok: boolean; requestId: string }
   | { type: 'memory:clear-result'; removed: number; requestId: string }
-  | { type: 'finance:calculate-result'; result?: FinanceCalculationResult; error?: string; requestId: string }
   | { type: 'remote:status'; status: string; message: string; email?: string; sessionId?: string; verificationUriComplete?: string; userCode?: string };

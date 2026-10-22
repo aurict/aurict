@@ -1,0 +1,29 @@
+.panel {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(40px, 7vw, 88px);
+  border-radius: var(--radius-panel);
+  background:
+    radial-gradient(90% 120% at 100% 100%, #8b7ff3 0%, transparent 60%),
+    var(--violet);
+  color: var(--on-violet-dim);
+}
+
+.panel h2 {
+  max-width: 14ch;
+  color: #fff;
+  font-size: clamp(34px, 5.4vw, 68px);
+}
+
+.panel p {
+  margin-top: 20px;
+  max-width: 52ch;
+  font-size: 18px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}

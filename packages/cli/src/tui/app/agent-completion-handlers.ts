@@ -86,6 +86,7 @@ function finishTurn(
     durationMs: Date.now() - startTime,
     tokens: result.tokens.input + result.tokens.output + result.tokens.cacheRead + result.tokens.cacheWrite,
     costUsd: calculateCostUsd(params.model, result.tokens),
+    completedAt: Date.now(),
   };
   params.setMessages((previous) => withTurnStats(mergeFinishedAssistantMessage(
     previous,

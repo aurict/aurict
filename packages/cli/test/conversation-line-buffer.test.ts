@@ -1,13 +1,13 @@
 import { describe, expect, it } from "bun:test"
 import {
   buildTranscriptLines,
+  projectLiveTranscript,
   projectStableTranscript,
   wrapTranscriptText,
 } from "../src/tui/conversation/line-buffer.js"
 import { wrapLine } from "../src/tui/event-system/wrap-line.js"
 import type { DisplayMessage } from "../src/tui/conversation/types.js"
 import { coalesceInterruptedAssistantBlocks } from "../src/tui/conversation/block-flow.js"
-import { proseLayout } from "../src/tui/conversation/readability.js"
 
 describe("conversation line buffer", () => {
   it("uses Ink's exact hard-wrap algorithm for every transcript line", () => {
@@ -38,7 +38,7 @@ describe("conversation line buffer", () => {
     expect(visible).not.toContain("~~legacy~~")
   })
 
-  it("keeps ordered assistant text and tool output as individual visual rows", () => {
+  it("keeps ordered assistant text and tool output as individual Codex cells", () => {
     const messages: DisplayMessage[] = [
       { id: "user", role: "user", content: "write a report" },
       {
@@ -51,50 +51,51 @@ describe("conversation line buffer", () => {
             type: "tool",
             id: "tool-1",
             tool: "write",
-            args: "report.md",
+            args: JSON.stringify({ path: "report.md" }),
             pending: false,
-            resultContent: "saved report.md",
+            resultContent: "Created report.md",
           },
           { type: "text", content: "The report is ready." },
         ],
       },
     ]
 
-    const lines = buildTranscriptLines(messages, 48, null, null, null)
-    expect(lines.map((line) => line.text)).toEqual(expect.arrayContaining([
-      "▸ You",
-      "write a report",
-      "◇ Aurict",
-      "I will prepare it.",
-      "› change",
-      "    report.md",
-      expect.stringMatching(/  └ saved report\.md\s+\^O/),
-      "The report is ready.",
+    const visible = buildTranscriptLines(messages, 48, null, null, null).map((line) => line.text)
+    expect(visible).toEqual(expect.arrayContaining([
+      "❯ write a report",
+      "• I will prepare it.",
+      expect.stringMatching(/^• Edited report\.md/),
+      "• The report is ready.",
     ]))
-    expect(lines.findIndex((line) => line.text === "I will prepare it."))
-      .toBeLessThan(lines.findIndex((line) => line.text === "› change"))
+    const prose = visible.indexOf("• I will prepare it.")
+    const tool = visible.findIndex((line) => line.startsWith("• Edited report.md"))
+    expect(prose).toBeLessThan(tool)
+    expect(tool).toBeLessThan(visible.indexOf("• The report is ready."))
   })
 
-  it("adds one breathing row at prose and tool boundaries", () => {
+  it("separates every cell with exactly one blank row", () => {
     const lines = buildTranscriptLines([{
       id: "rhythm",
       role: "assistant",
       content: "",
       blocks: [
         { type: "text", content: "I will inspect it." },
-        { type: "tool", id: "read", tool: "read", args: "src/app.ts", pending: false, resultContent: "source" },
+        { type: "tool", id: "read", tool: "read", args: JSON.stringify({ path: "src/app.ts" }), pending: false, resultContent: "source" },
         { type: "text", content: "The implementation is clear." },
       ],
     }], 80, null, null, null)
     const visible = lines.map((line) => line.text)
-    const tool = visible.findIndex((line) => /› read\s+src\/app\.ts/.test(line))
-    const response = visible.indexOf("The implementation is clear.")
+    const tool = visible.indexOf("• Explored")
+    const response = visible.indexOf("• The implementation is clear.")
 
+    expect(visible[0]).toBe("• I will inspect it.")
     expect(visible[tool - 1]).toBe("")
+    expect(visible[tool + 1]).toBe("  └ Read app.ts")
     expect(visible[response - 1]).toBe("")
+    expect(visible[response - 2]).toBe("  └ Read app.ts")
   })
 
-  it("keeps adjacent tool calls in one tight activity cluster", () => {
+  it("gives every shell command its own Ran cell with an output tree", () => {
     const lines = buildTranscriptLines([{
       id: "tool-cluster",
       role: "assistant",
@@ -107,16 +108,37 @@ describe("conversation line buffer", () => {
       ],
     }], 80, null, null, null)
     const visible = lines.map((line) => line.text)
-    const tool = visible.findIndex((line) => /│ git\s+status, diff/.test(line))
+    const status = visible.indexOf("• Ran git status")
+    const diff = visible.indexOf("• Ran git diff")
 
-    expect(visible[tool - 1]).toBe("┌ activity")
-    expect(visible[tool + 1]).toBe("└ completed")
-    expect(lines[tool]?.detailId).toBe("tool-cluster:tool:1")
-    expect(visible.some((line) => /› git\s+status/.test(line))).toBe(false)
-    expect(visible.some((line) => /› git\s+diff/.test(line))).toBe(false)
+    expect(visible[status - 1]).toBe("")
+    expect(visible[status + 1]).toBe("  └ (no output)")
+    expect(visible[status + 2]).toBe("")
+    expect(diff).toBe(status + 3)
+    expect(lines[status]?.detailId).toBe("tool-cluster:tool:1")
+    expect(lines[diff]?.detailId).toBe("tool-cluster:tool:2")
   })
 
-  it("adds breathing room around consecutive tool failures", () => {
+  it("collapses adjacent reads and searches into one Explored cell", () => {
+    const visible = buildTranscriptLines([{
+      id: "explore",
+      role: "assistant",
+      content: "",
+      blocks: [
+        { type: "tool", id: "a", tool: "read", args: JSON.stringify({ path: "src/a.ts" }), pending: false, resultContent: "a" },
+        { type: "tool", id: "b", tool: "read", args: JSON.stringify({ path: "src/b.ts" }), pending: false, resultContent: "b" },
+        { type: "tool", id: "c", tool: "grep", args: JSON.stringify({ pattern: "TODO", path: "src" }), pending: false, resultContent: "c" },
+      ],
+    }], 80, null, null, null).map((line) => line.text)
+
+    expect(visible.slice(0, 3)).toEqual([
+      "• Explored",
+      "  └ Read a.ts, b.ts",
+      "    Search TODO in src",
+    ])
+  })
+
+  it("keeps a blank row between consecutive tool failures", () => {
     const rows = projectStableTranscript([{
       id: "error-spacing",
       role: "assistant",
@@ -135,21 +157,25 @@ describe("conversation line buffer", () => {
     const visible = rows.map((row) => row.segments.map((segment) => segment.text).join(""))
     const firstError = rows.findIndex((row) => row.id.startsWith("error-spacing:tool:2:summary"))
     const secondError = rows.findIndex((row) => row.id.startsWith("error-spacing:tool:3:summary"))
-    const followingActivity = rows.findIndex((row) => row.id.startsWith("error-spacing:activity:4:header"))
+    const followingActivity = rows.findIndex((row) => row.id.startsWith("error-spacing:explore:4:header"))
 
+    expect(visible[firstError]).toBe("• Ran first")
+    expect(rows[firstError]?.segments[0]).toMatchObject({ text: "• ", tone: "error", bold: true })
     expect(visible[firstError - 1]).toBe("")
-    expect(visible[secondError - 1]).toContain("first failure")
+    expect(visible[secondError - 1]).toBe("")
+    expect(visible[secondError - 2]).toBe("  └ first failure")
     expect(visible[followingActivity - 1]).toBe("")
   })
 
-  it("marks user rows for a quiet raised transcript surface", () => {
+  it("marks user rows, including their padding, for the tinted prompt surface", () => {
     const rows = projectStableTranscript([
       { id: "user-surface", role: "user", content: "Modern terminal" },
       { id: "assistant-surface", role: "assistant", content: "Borderless response" },
     ], 80)
-    expect(rows
-      .filter((row) => row.id.startsWith("user-surface") && row.segments.some((segment) => segment.text))
-      .every((row) => row.surface === "user")).toBe(true)
+    const user = rows.filter((row) => row.id.startsWith("user-surface:") && row.id !== "user-surface:end")
+    expect(user.map((row) => row.segments.map((segment) => segment.text).join(""))).toEqual(["", "❯ Modern terminal", ""])
+    expect(user.every((row) => row.surface === "user")).toBe(true)
+    expect(rows.find((row) => row.id === "user-surface:end")?.surface).toBeUndefined()
     expect(rows
       .filter((row) => row.id.startsWith("assistant-surface") && row.segments.some((segment) => segment.text))
       .every((row) => row.surface === undefined)).toBe(true)
@@ -200,10 +226,10 @@ describe("conversation line buffer", () => {
       content: "",
       blocks: rawBlocks,
     }], 100, null, null, null)
-    const visible = lines.map(line => line.text)
+    const prose = lines.map(line => line.text.replace(/^(?:• | {2})/, ""))
 
-    expect(visible.filter(line => line === "Önemli bulgular!")).toHaveLength(1)
-    expect(visible).toContain("Müthiş bulgular: escalation vector confirmed.")
+    expect(prose.filter(line => line === "Önemli bulgular!")).toHaveLength(1)
+    expect(prose).toContain("Müthiş bulgular: escalation vector confirmed.")
     expect(rawBlocks).toHaveLength(6)
   })
 
@@ -220,149 +246,134 @@ describe("conversation line buffer", () => {
     }], 100, null, null, null)
 
     const visible = lines.map((line) => line.text)
-    expect(visible.findIndex((line) => /› git\s+status/.test(line)))
+    expect(visible.indexOf("• Ran git status"))
       .toBeLessThan(visible.findIndex((line) => line.includes("var mı diye. İyidir")))
-    expect(lines.find((line) => /› git\s+status/.test(line.text))?.detailId)
+    expect(lines.find((line) => line.text === "• Ran git status")?.detailId)
       .toBe("assistant:tool:1")
   })
 
-  it("uses distinct identity markers and preserves message timestamps", () => {
-    const lines = buildTranscriptLines(
+  it("prefixes user and assistant cells with Codex gutters instead of headers", () => {
+    const visible = buildTranscriptLines(
       [
         { id: "user", role: "user", content: "Hello", timestamp: new Date(2026, 0, 1, 9, 5).getTime() },
-        { id: "assistant", role: "assistant", content: "Hi", timestamp: new Date(2026, 0, 1, 9, 6).getTime() },
+        { id: "assistant", role: "assistant", content: "Hi\nthere", timestamp: new Date(2026, 0, 1, 9, 6).getTime() },
       ],
       80,
       null,
       null,
       null,
-    )
+    ).map((line) => line.text)
 
-    expect(lines.map((line) => line.text)).toEqual(expect.arrayContaining([
-      "▸ You · 09:05",
-      "◇ Aurict · 09:06",
-    ]))
+    expect(visible).toEqual(["", "❯ Hello", "", "", "• Hi", "  there", ""])
 
     const rows = projectStableTranscript([
       { id: "timed", role: "assistant", content: "Done", timestamp: new Date(2026, 0, 1, 9, 6).getTime() },
     ], 80)
     expect(rows[0]?.segments).toEqual([
-      expect.objectContaining({ text: "◇ Aurict", tone: "assistant", bold: true }),
-      expect.objectContaining({ text: " · 09:06", tone: "muted" }),
+      expect.objectContaining({ text: "• ", tone: "muted", dim: true }),
+      expect.objectContaining({ text: "Done", tone: "assistant" }),
     ])
   })
 
-  it("preserves Markdown structure without delegating row height to Ink", () => {
-    const lines = buildTranscriptLines(
-      [
-        {
-          id: "markdown",
-          role: "assistant",
-          content: "# Plan\n- [x] Complete\n- Review next\n> Review this\n```ts\nconst ready = true\n```",
-        },
-      ],
-      48,
-      null,
-      null,
-      null,
-    )
-
-    expect(lines).toEqual(expect.arrayContaining([
-      expect.objectContaining({ text: "◆ Plan", tone: "heading", bold: true }),
-      expect.objectContaining({ text: "● Complete", tone: "success" }),
-      expect.objectContaining({ text: "• Review next", tone: "bullet" }),
-      expect.objectContaining({ text: "│ Review this", tone: "quote", italic: true }),
-      expect.objectContaining({ text: "┌ ts", tone: "code" }),
-      expect.objectContaining({ text: "const ready = true", tone: "code" }),
-    ]))
+  it("renders Markdown structure inside the cell gutter", () => {
+    const rows = projectStableTranscript([{
+      id: "markdown",
+      role: "assistant",
+      content: "# Plan\n- [x] Complete\n- [ ] Pending\n- Review next\n> Review this\n```ts\nconst ready = true\n```",
+    }], 48)
+    const visible = rows.map((row) => row.segments.map((segment) => segment.text).join(""))
+    expect(visible).toEqual([
+      "• Plan",
+      "  ✔ Complete",
+      "  □ Pending",
+      "  - Review next",
+      "  > Review this",
+      "  const ready = true",
+      "",
+    ])
+    expect(rows[0]!.segments[1]).toMatchObject({ text: "Plan", bold: true, underline: true })
+    expect(rows[1]!.segments[1]).toMatchObject({ text: "✔ ", tone: "success" })
+    expect(rows[1]!.segments[2]).toMatchObject({ text: "Complete", strikethrough: true })
+    expect(rows[4]!.segments[1]).toMatchObject({ text: "> ", tone: "success" })
+    expect(rows[5]!.segments[1]).toMatchObject({ text: "const ready = true", tone: "code" })
   })
 
-  it("gives fenced code one surrounding row without loosening its body", () => {
-    const lines = buildTranscriptLines([{
+  it("hides code fences and keeps code lines tight with the surrounding prose", () => {
+    const visible = buildTranscriptLines([{
       id: "code-rhythm",
       role: "assistant",
       content: "Before.\n```ts\nconst ready = true\n```\nAfter.",
-    }], 80, null, null, null)
-    const visible = lines.map((line) => line.text)
-    const open = visible.indexOf("┌ ts")
-    const body = visible.indexOf("const ready = true")
-    const close = visible.indexOf("└")
+    }], 80, null, null, null).map((line) => line.text)
 
-    expect(visible[open - 1]).toBe("")
-    expect(body).toBe(open + 1)
-    expect(close).toBe(body + 1)
-    expect(visible[close + 1]).toBe("")
+    expect(visible).toEqual(["• Before.", "  const ready = true", "  After.", ""])
   })
 
-  it("gives Markdown and bold-only section headings one readable row above and below", () => {
+  it("renders headings as bold text without extra rows, like Codex", () => {
     const lines = buildTranscriptLines([{
       id: "readability",
       role: "assistant",
       content: "Intro paragraph.\n**Changes:**\n- First item\n## Verification\nAll checks passed.",
     }], 80, null, null, null)
-    const visible = lines.map((line) => line.text)
-    const boldSection = visible.indexOf("Changes:")
-    const markdownSection = visible.indexOf("◆ Verification")
-
-    expect(visible[boldSection - 1]).toBe("")
-    expect(visible[boldSection + 1]).toBe("")
-    expect(visible[markdownSection - 1]).toBe("")
-    expect(visible[markdownSection + 1]).toBe("")
-    expect(lines[boldSection]).toMatchObject({ tone: "heading", bold: true })
+    expect(lines.map((line) => line.text)).toEqual([
+      "• Intro paragraph.",
+      "  Changes:",
+      "  - First item",
+      "  Verification",
+      "  All checks passed.",
+      "",
+    ])
+    expect(lines[1]).toMatchObject({ bold: true })
+    expect(lines[3]).toMatchObject({ bold: true })
   })
 
-  it("does not add section spacing around inline emphasis or bold sentences", () => {
-    const lines = buildTranscriptLines([{
+  it("keeps inline emphasis inline", () => {
+    const rows = projectStableTranscript([{
       id: "inline",
       role: "assistant",
       content: "Use **semantic color** here.\n**This is a complete sentence.**",
-    }], 80, null, null, null)
-    const visible = lines.map((line) => line.text)
-    expect(visible).toContain("Use semantic color here.")
-    expect(lines.find((line) => line.text === "This is a complete sentence.")?.tone).toBe("assistant")
+    }], 80)
+    const visible = rows.map((row) => row.segments.map((segment) => segment.text).join(""))
+    expect(visible.slice(0, 2)).toEqual(["• Use semantic color here.", "  This is a complete sentence."])
+    expect(rows[0]!.segments).toContainEqual(expect.objectContaining({ text: "semantic color", bold: true }))
+    expect(rows[1]!.segments[1]).toMatchObject({ text: "This is a complete sentence.", tone: "assistant", bold: true })
   })
 
-  it("caps wide prose with a small inset while leaving compact terminals fluid", () => {
-    expect(proseLayout(78)).toEqual({ contentWidth: 78, leftInset: 0 })
-    expect(proseLayout(138)).toEqual({ contentWidth: 110, leftInset: 2 })
-
+  it("wraps prose at the full width behind the two-column gutter", () => {
     const lines = buildTranscriptLines([{
       id: "wide",
       role: "assistant",
       content: "word ".repeat(60),
     }], 140, null, null, null)
-    const prose = lines.filter((line) => line.text.trim().startsWith("word"))
+    const prose = lines.filter((line) => line.text.trim().startsWith("word") || line.text.startsWith("• word"))
     expect(prose.length).toBeGreaterThan(1)
-    expect(prose.every((line) => line.text.startsWith("  ") && line.text.length <= 112)).toBe(true)
+    expect(prose[0]!.text.startsWith("• word")).toBe(true)
+    expect(prose.slice(1).every((line) => line.text.startsWith("  word"))).toBe(true)
+    expect(prose.every((line) => line.text.length <= 138)).toBe(true)
   })
 
-  it("steps down weight and tone for deeper heading levels", () => {
-    const lines = buildTranscriptLines([{
+  it("steps heading emphasis down by level", () => {
+    const rows = projectStableTranscript([{
       id: "levels",
       role: "assistant",
       content: "# Primary\n### Tertiary\n#### Detail",
-    }], 80, null, null, null)
-    expect(lines.find((line) => line.text === "◆ Primary")).toMatchObject({ tone: "heading", bold: true })
-    expect(lines.find((line) => line.text === "▸ Tertiary")).toMatchObject({ tone: "assistant", bold: true })
-    expect(lines.find((line) => line.text === "▸ Detail")).toMatchObject({ tone: "assistant" })
-    expect(lines.find((line) => line.text === "▸ Detail")?.bold).toBeUndefined()
+    }], 80)
+    const segment = (text: string) => rows.flatMap((row) => row.segments).find((item) => item.text === text)
+    expect(segment("Primary")).toMatchObject({ bold: true, underline: true })
+    expect(segment("Tertiary")).toMatchObject({ bold: true, italic: true })
+    expect(segment("Detail")).toMatchObject({ italic: true })
+    expect(segment("Detail")?.bold).toBeUndefined()
   })
 
-  it("keeps list items tight while giving the list one surrounding row", () => {
-    const lines = buildTranscriptLines([{
+  it("keeps list items tight with the prose around them", () => {
+    const visible = buildTranscriptLines([{
       id: "list-rhythm",
       role: "assistant",
       content: "Before\n- First\n- Second\nAfter",
-    }], 80, null, null, null)
-    const visible = lines.map((line) => line.text)
-    const first = visible.indexOf("• First")
-    const second = visible.indexOf("• Second")
-    expect(visible[first - 1]).toBe("")
-    expect(second).toBe(first + 1)
-    expect(visible[second + 1]).toBe("")
+    }], 80, null, null, null).map((line) => line.text)
+    expect(visible).toEqual(["• Before", "  - First", "  - Second", "  After", ""])
   })
 
-  it("keeps message and block thinking summaries visible", () => {
+  it("keeps reasoning out of the transcript, as Codex does", () => {
     const lines = buildTranscriptLines(
       [
         {
@@ -385,20 +396,16 @@ describe("conversation line buffer", () => {
       null,
     )
 
-    expect(lines.filter((line) => line.tone === "thinking")).toEqual([
-      expect.objectContaining({ text: "∴ planning · Ctrl+O inspect", detailId: "reasoning:thinking" }),
-      expect.objectContaining({ text: "∴ thinking · Ctrl+O inspect", detailId: "reasoning:text:0:thinking" }),
-    ])
+    expect(lines.map((line) => line.text)).toEqual(["• Answer", ""])
+    expect(lines.some((line) => line.tone === "thinking")).toBe(false)
   })
 
-  it("renders live reasoning independently of live answer text", () => {
+  it("shows live reasoning only when no status line reports it", () => {
     const lines = buildTranscriptLines([], 80, null, "Checking the test output", null)
-    expect(lines).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        text: "∴ thinking…",
-        tone: "thinking",
-      }),
-    ]))
+    expect(lines).toEqual([
+      expect.objectContaining({ text: "◦ Thinking", italic: true }),
+    ])
+    expect(projectLiveTranscript({ width: 80, streamingText: null, streamingReason: "Checking", streamingError: null, statusLine: true })).toEqual([])
   })
 
   it("rebuilds a deterministic, bounded row list after a terminal resize", () => {
@@ -413,35 +420,37 @@ describe("conversation line buffer", () => {
     expect(narrow.filter((line) => line.text !== "").every((line) => line.text.length > 0)).toBe(true)
   })
 
-  it("summarizes emitted workspace diffs while retaining their detail identity", () => {
-    const lines = buildTranscriptLines([
-      {
-        id: "change",
-        role: "assistant",
-        content: "",
-        blocks: [{
-          type: "tool",
-          id: "edit-1",
-          tool: "edit",
-          args: JSON.stringify({ path: "src/file.ts" }),
-          pending: false,
-          resultContent: [
-            "Updated src/file.ts",
-            "__UNIFIED_DIFF__",
-            "--- a/src/file.ts",
-            "+++ b/src/file.ts",
-            "@@ -1 +1 @@",
-            "-old",
-            "+new",
-          ].join("\n"),
-        }],
-      },
-    ], 80, null, null, null)
+  it("shows emitted workspace diffs under an Edited header with detail identity", () => {
+    const message: DisplayMessage = {
+      id: "change",
+      role: "assistant",
+      content: "",
+      blocks: [{
+        type: "tool",
+        id: "edit-1",
+        tool: "edit",
+        args: JSON.stringify({ path: "src/file.ts" }),
+        pending: false,
+        resultContent: [
+          "Updated src/file.ts",
+          "__UNIFIED_DIFF__",
+          "--- a/src/file.ts",
+          "+++ b/src/file.ts",
+          "@@ -1 +1 @@",
+          "-old",
+          "+new",
+        ].join("\n"),
+      }],
+    }
+    const lines = buildTranscriptLines([message], 80, null, null, null)
 
     expect(lines).toEqual(expect.arrayContaining([
-      expect.objectContaining({ text: "  ◆ src/file.ts  +1 −1  · details ^O", detailId: "change:tool:0" }),
-      expect.objectContaining({ text: "   1      − old", tone: "diff-remove", detailId: "change:tool:0" }),
-      expect.objectContaining({ text: "        1 + new", tone: "diff-add", detailId: "change:tool:0" }),
+      expect.objectContaining({ text: "• Edited src/file.ts (+1 -1)", detailId: "change:tool:0" }),
+      expect.objectContaining({ text: "    1 -old", detailId: "change:tool:0" }),
+      expect.objectContaining({ text: "    1 +new", detailId: "change:tool:0" }),
     ]))
+    const rows = projectStableTranscript([message], 80)
+    expect(rows.find((row) => row.segments.map((segment) => segment.text).join("") === "    1 -old")?.surface).toBe("diff-remove")
+    expect(rows.find((row) => row.segments.map((segment) => segment.text).join("") === "    1 +new")?.surface).toBe("diff-add")
   })
 })

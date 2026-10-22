@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChatAttachment, ChatEvent, FinanceResearchSource, SessionMessage } from '../../shared/ipc-types.js';
+import type { ChatAttachment, ChatEvent, SessionMessage } from '../../shared/ipc-types.js';
 import type { DisplayMessage, AssistantBlock } from '../types.js';
 import { summarizeToolArgs } from '../types.js';
 
 export type ChatActivity = { id: string; label: string; detail?: string; status: 'active' | 'complete' | 'notice' | 'failed' };
+export type ContextUsage = { tokens: number; window: number };
+
+// Streamed command output is kept short so long-running tools stay cheap to render.
+const LIVE_OUTPUT_LIMIT = 4_000;
 
 function formatContextTokens(value: number): string {
   return value >= 1_000 ? `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}k` : String(value);
@@ -15,7 +19,7 @@ export function useChat() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [activities, setActivities] = useState<ChatActivity[]>([]);
   const [contextAttachments, setContextAttachments] = useState<ChatAttachment[]>([]);
-  const [contextSources, setContextSources] = useState<FinanceResearchSource[]>([]);
+  const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
   const streamTextRef = useRef('');
   const turnIdRef = useRef<string | null>(null);
   const activeRequestIdRef = useRef<string | null>(null);
@@ -147,10 +151,6 @@ export function useChat() {
           addActivity({ label: 'Context condensed', detail, status: 'notice' });
           return;
         }
-        case 'finance-research-audit':
-          setContextSources(event.audit.sources);
-          addActivity({ label: 'Sources recorded', detail: `${event.audit.sources.length} source${event.audit.sources.length === 1 ? '' : 's'} added to this task`, status: 'complete' });
-          return;
         case 'provider-fallback':
           setStatusMessage(`Continuing with ${event.to}; ${event.from} was unavailable.`);
           addActivity({ label: 'Model fallback', detail: `Continuing with ${event.to}`, status: 'notice' });
@@ -160,6 +160,19 @@ export function useChat() {
           addActivity({ label: 'Reconnecting response', status: 'active' });
           return;
         case 'chunk':
+          // Chunks carry no tool id; tools run one at a time, so the running one owns them.
+          updateTurn((m) => {
+            const blocks = m.blocks ?? [];
+            const index = blocks.map((block) => block.type === 'tool' && block.pending).lastIndexOf(true);
+            const running = blocks[index];
+            if (!running || running.type !== 'tool') return m;
+            const liveOutput = `${running.liveOutput ?? ''}${event.text}`.slice(-LIVE_OUTPUT_LIMIT);
+            return { ...m, blocks: blocks.map((block, position) => (position === index ? { ...running, liveOutput } : block)) };
+          });
+          return;
+        case 'usage':
+          setContextUsage({ tokens: event.contextTokens, window: event.contextWindow });
+          return;
         case 'step-finish':
         case 'artifact:updated':
           return; // not surfaced in Faz 3's MVP UI
@@ -178,7 +191,7 @@ export function useChat() {
     return () => clearTimeout(timer);
   }, [addActivity, pending]);
 
-  const submit = useCallback((text: string, agentId?: string, artifactId?: string, displayText?: string, artifactIntent?: 'create' | 'iterate' | 'promote', attachments?: ChatAttachment[], financeResearchId?: string) => {
+  const submit = useCallback((text: string, agentId?: string, artifactId?: string, displayText?: string, artifactIntent?: 'create' | 'iterate' | 'promote', attachments?: ChatAttachment[]) => {
     const trimmed = text.trim();
     if (!trimmed || pending) return;
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'user', content: displayText?.trim() || trimmed }]);
@@ -188,12 +201,11 @@ export function useChat() {
     activeRequestIdRef.current = requestId;
     reasoningNotedRef.current = false;
     setPending(true);
-    setStatusMessage('Aurict is preparing the task…');
+    setStatusMessage('Hoprel is preparing the task…');
     setActivities([{ id: crypto.randomUUID(), label: 'Preparing the task', detail: 'Setting up the requested work', status: 'active' }]);
     setContextAttachments(attachments ?? []);
-    setContextSources([]);
-    const payload = { turnId: requestId, text: trimmed, ...(agentId ? { agentId } : {}), ...(artifactId ? { artifactId } : {}), ...(displayText ? { displayText } : {}), ...(artifactIntent ? { artifactIntent } : {}), ...(attachments?.length ? { attachments } : {}), ...(financeResearchId ? { financeResearchId } : {}) };
-    lastSubmissionRef.current = { text: trimmed, ...(agentId ? { agentId } : {}), ...(artifactId ? { artifactId } : {}), ...(displayText ? { displayText } : {}), ...(artifactIntent ? { artifactIntent } : {}), ...(attachments?.length ? { attachments } : {}), ...(financeResearchId ? { financeResearchId } : {}) };
+    const payload = { turnId: requestId, text: trimmed, ...(agentId ? { agentId } : {}), ...(artifactId ? { artifactId } : {}), ...(displayText ? { displayText } : {}), ...(artifactIntent ? { artifactIntent } : {}), ...(attachments?.length ? { attachments } : {}) };
+    lastSubmissionRef.current = { text: trimmed, ...(agentId ? { agentId } : {}), ...(artifactId ? { artifactId } : {}), ...(displayText ? { displayText } : {}), ...(artifactIntent ? { artifactIntent } : {}), ...(attachments?.length ? { attachments } : {}) };
     window.aurict.chat.submit(payload);
   }, [pending]);
 
@@ -207,7 +219,7 @@ export function useChat() {
     setStatusMessage(null);
     setActivities([]);
     setContextAttachments([]);
-    setContextSources([]);
+    setContextUsage(null);
   }, []);
 
   const cancel = useCallback(() => {
@@ -218,8 +230,8 @@ export function useChat() {
   const retryLast = useCallback(() => {
     const submission = lastSubmissionRef.current;
     if (!submission || pending) return false;
-    const { text, agentId, artifactId, displayText, artifactIntent, attachments, financeResearchId } = submission;
-    submit(text, agentId, artifactId, displayText, artifactIntent, attachments, financeResearchId);
+    const { text, agentId, artifactId, displayText, artifactIntent, attachments } = submission;
+    submit(text, agentId, artifactId, displayText, artifactIntent, attachments);
     return true;
   }, [pending, submit]);
 
@@ -230,8 +242,9 @@ export function useChat() {
     setPending(false);
     setStatusMessage(null);
     setActivities([]);
+    setContextUsage(null);
     setMessages(history.map((m) => ({ id: crypto.randomUUID(), role: m.role, content: m.content })));
   }, []);
 
-  return { messages, pending, statusMessage, activities, contextAttachments, contextSources, submit, cancel, retryLast, resetForNewSession, restoreHistory };
+  return { messages, pending, statusMessage, activities, contextAttachments, contextUsage, submit, cancel, retryLast, resetForNewSession, restoreHistory };
 }

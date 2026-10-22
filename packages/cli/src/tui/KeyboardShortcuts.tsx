@@ -1,123 +1,113 @@
 /**
- * KeyboardShortcuts — an overlay showing all keyboard shortcuts
+ * KeyboardShortcuts — the Codex "? for shortcuts" overlay, shown in place of
+ * the footer. Every row is a key Aurict actually binds; rows for Codex
+ * features Aurict lacks are left out rather than pointing at dead keys.
  *
- * Opened with the ? key. Shows a categorized list of shortcuts.
- * Closed with Esc.
+ *   Keyboard shortcuts
+ *
+ *   Compose                  Session                      Transcript (open first)
+ *   /       Commands         ⌃x      Subagents            ⌃t           Open transcript
+ *   …
+ *
+ *   /keys customize
  */
 
 import React from "react"
 import { Box, Text, useInput } from "./design-system/renderer.js"
 import { useTheme } from "../utils/theme.js"
-import { HStack, VStack, Surface, Typo } from "./design-system/index.js"
+import { useTerminalSize } from "./TerminalSizeContext.js"
 
 interface Props {
   onClose: () => void
+  /** While a turn runs, Codex swaps in the queue/interrupt rows. */
+  running?: boolean
 }
 
-interface ShortcutGroup {
-  title: string
-  shortcuts: Array<{ keys: string; description: string }>
+type Row = [key: string, label: string]
+
+const MAC = process.platform === "darwin"
+/** `⌃t` on macOS, `ctrl + t` elsewhere, the way Codex labels keys. */
+export function keyLabel(key: string): string {
+  if (MAC) return key.replace(/ctrl\+/g, "⌃").replace(/alt\+/g, "⌥").replace(/shift\+/g, "⇧")
+  return key.replace(/ctrl\+/g, "ctrl + ").replace(/alt\+/g, "alt + ").replace(/shift\+/g, "shift + ")
 }
 
-const SHORTCUT_GROUPS: ShortcutGroup[] = [
-  {
-    title: "General",
-    shortcuts: [
-      { keys: "Esc",        description: "Close overlay / Interrupt a running turn" },
-      { keys: "Esc Esc",    description: "Rewind to a previous prompt (empty composer)" },
-      { keys: "Ctrl+C",     description: "Abort current task / Exit (twice)" },
-      { keys: "?",          description: "Show this help" },
-      { keys: "Tab",        description: "Cycle through agents" },
-    ],
-  },
-  {
-    title: "Navigation",
-    shortcuts: [
-      { keys: "Ctrl+F",     description: "Find in conversation" },
-      { keys: "Ctrl+Shift+F", description: "Search saved sessions" },
-      { keys: "Ctrl+R",     description: "Reverse history search" },
-      { keys: "Ctrl+P",     description: "Command palette" },
-      { keys: "Ctrl+T",     description: "Transcript (inline) / task panel (fullscreen)" },
-      { keys: "Ctrl+X",     description: "Cycle subagent views" },
-      { keys: "← →",        description: "Navigate subagent views" },
-    ],
-  },
-  {
-    title: "Input",
-    shortcuts: [
-      { keys: "Enter",      description: "Send message" },
-      { keys: "Shift+Enter", description: "New line" },
-      { keys: "Ctrl+V",     description: "Paste from clipboard" },
-      { keys: "Ctrl+A",     description: "Attach file" },
-      { keys: "Ctrl+E",     description: "Edit last user message" },
-      { keys: "Alt+↑",      description: "Edit the newest queued message" },
-      { keys: "↑ ↓",        description: "Navigate input history" },
-      { keys: "Ctrl+← →",   description: "Jump by word" },
-      { keys: "Ctrl+W",     description: "Delete word backward" },
-      { keys: "Ctrl+Z",     description: "Undo input edit" },
-      { keys: "Ctrl+Shift+Z / Alt+Z", description: "Redo input edit" },
-    ],
-  },
-  {
-    title: "Output",
-    shortcuts: [
-      { keys: "Ctrl+O",     description: "Inspect latest tool, diff, or reasoning" },
-      { keys: "Ctrl+Y / Alt+Y", description: "Copy last response / code block" },
-      { keys: "[ / ]",      description: "Browse transcript details while inspecting" },
-      { keys: "v / n / p",  description: "Diff view: toggle side-by-side / next / previous hunk" },
-      { keys: "Ctrl+S",     description: "Open settings" },
-    ],
-  },
-  {
-    title: "Input Modes",
-    shortcuts: [
-      { keys: "/",          description: "Start command (e.g. /help, /clear)" },
-      { keys: "@file.ts",   description: "Attach file context" },
-      { keys: "@file.ts:fn", description: "Attach specific symbol" },
-    ],
-  },
-]
+export function shortcutColumns(running: boolean): Array<{ title: string; rows: Row[] }> {
+  return [
+    {
+      title: "Compose",
+      rows: [
+        ["/", "Commands"],
+        ["@", "Mention files"],
+        [keyLabel("shift+enter"), "New line"],
+        [keyLabel("ctrl+v"), "Paste image"],
+        [keyLabel("ctrl+g"), "External editor"],
+        [keyLabel("ctrl+r"), "Search history"],
+        ...(running ? [] : [["esc esc", "Edit previous"] as Row]),
+      ],
+    },
+    {
+      title: "Session",
+      rows: [
+        ...(running ? [["enter", "Steer"] as Row, ["tab", "Queue message"] as Row] : []),
+        [`${keyLabel("alt+←")} / ${keyLabel("alt+→")}`, "Subagents"],
+        [keyLabel("ctrl+o"), "Inspect activity"],
+        [keyLabel("ctrl+c"), running ? "Interrupt" : "Quit"],
+      ],
+    },
+    {
+      title: "Transcript (open first)",
+      rows: [
+        [keyLabel("ctrl+t"), "Open transcript"],
+        [keyLabel("ctrl+f"), "Find text"],
+        ["pgup / pgdn", "Scroll"],
+        [`${keyLabel("ctrl+b")} / ${keyLabel("ctrl+n")}`, "Top / latest"],
+      ],
+    },
+  ]
+}
 
-export function KeyboardShortcuts({ onClose }: Props) {
+
+export function KeyboardShortcuts({ onClose, running = false }: Props) {
   const theme = useTheme()
-
-  useInput((_input, key) => {
-    if (key.escape || (key.ctrl && _input === "c")) {
-      onClose()
-    }
+  const { columns: width } = useTerminalSize()
+  useInput((input, key) => {
+    if (key.escape || input === "?" || (key.ctrl && input === "c")) onClose()
   })
 
+  const columns = shortcutColumns(running)
+  // Narrower terminals stack columns: transcript under session, then everything in one column.
+  const groups = width >= 100 ? [[columns[0]!], [columns[1]!], [columns[2]!]]
+    : width >= 80 ? [[columns[0]!], [columns[1]!, columns[2]!]]
+    : [[columns[0]!, columns[1]!, columns[2]!]]
+
   return (
-    <Surface variant="raised" tone="accent" paddingX="md" paddingY="sm" marginX="md">
-      <VStack gap="sm">
-        {/* Title */}
-        <HStack gap="sm">
-          <Typo variant="heading" tone="accent">⌨ Keyboard Shortcuts</Typo>
-        </HStack>
-
-        {/* Gruplar */}
-        {SHORTCUT_GROUPS.map((group) => (
-          <VStack key={group.title} gap="none">
-            <Typo variant="bodyEmphasis" tone="secondary">{group.title}</Typo>
-            <VStack gap="none" paddingLeft="md">
-              {group.shortcuts.map((s) => (
-                <HStack key={s.keys} gap="md">
-                  <Box width={16}>
-                    <Text color={theme.accent} bold>{s.keys}</Text>
-                  </Box>
-                  <Typo variant="body" tone="muted">{s.description}</Typo>
-                </HStack>
-              ))}
-            </VStack>
-          </VStack>
+    <Box flexDirection="column" paddingLeft={2}>
+      <Text bold>Keyboard shortcuts</Text>
+      <Text> </Text>
+      <Box flexDirection="row">
+        {groups.map((group, groupIndex) => (
+          <Box key={groupIndex} flexDirection="column" marginRight={4}>
+            {group.map((column, columnIndex) => {
+              // Stacked columns share one key width so their labels line up.
+              const keyWidth = Math.max(...group.flatMap((entry) => entry.rows.map(([key]) => key.length))) + 2
+              return (
+                <Box key={column.title} flexDirection="column" {...(columnIndex > 0 ? { marginTop: 1 } : {})}>
+                  <Text bold>{column.title}</Text>
+                  {column.rows.map(([key, label]) => (
+                    <Text key={key + label} wrap="truncate-end">
+                      <Text bold>{key.padEnd(keyWidth)}</Text>
+                      <Text color={theme.textDim}>{label}</Text>
+                    </Text>
+                  ))}
+                </Box>
+              )
+            })}
+          </Box>
         ))}
-
-        {/* Footer */}
-        <HStack gap="md" paddingLeft="md">
-          <Typo variant="caption" tone="muted" dimColor>Esc close</Typo>
-          <Typo variant="caption" tone="muted" dimColor>type / for commands</Typo>
-        </HStack>
-      </VStack>
-    </Surface>
+      </Box>
+      <Text> </Text>
+      <Text><Text bold>/keys</Text><Text color={theme.textDim}> customize</Text></Text>
+    </Box>
   )
 }

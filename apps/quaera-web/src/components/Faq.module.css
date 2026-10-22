@@ -1,0 +1,68 @@
+.list {
+  display: grid;
+  gap: 12px;
+}
+
+.item {
+  border-radius: 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+}
+
+.item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 26px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.item summary::-webkit-details-marker {
+  display: none;
+}
+
+.item h3 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+}
+
+.sign {
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--violet-soft);
+}
+
+.sign::before,
+.sign::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--violet-ink);
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s ease;
+}
+
+.sign::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.item[open] .sign::after {
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.item p {
+  padding: 0 26px 24px;
+  max-width: 70ch;
+  color: var(--text-dim);
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import crypto from "node:crypto";
+import { keyLabel } from "../KeyboardShortcuts.js";
 import {
   SessionManager,
   agentPool,
@@ -22,6 +22,7 @@ const DOUBLE_ESCAPE_MS = 1500;
 
 /** Returns transient footer guidance produced by key sequences. */
 export function useAppKeyboard(params: AppKeyboardParams): string | undefined {
+  if (params.interruptRef) params.interruptRef.current = () => { cancelActiveTurn(params); };
   const ctrlCCountRef = useRef(0);
   const ctrlCTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const escapeArmedAtRef = useRef(0);
@@ -54,7 +55,7 @@ export function useAppKeyboard(params: AppKeyboardParams): string | undefined {
         return;
       }
       params.setConversationOffsetRows(0);
-      params.addSystemMsg("Press Ctrl+C again to exit.");
+      setHint(`${keyLabel("ctrl+c")} again to quit`);
       ctrlCTimerRef.current = setTimeout(() => {
         ctrlCCountRef.current = 0;
       }, 3000);
@@ -82,11 +83,12 @@ export function useAppKeyboard(params: AppKeyboardParams): string | undefined {
       const now = Date.now();
       if (now - escapeArmedAtRef.current <= DOUBLE_ESCAPE_MS) {
         escapeArmedAtRef.current = 0;
-        setHint(openBacktrackPicker(params) ? undefined : "No previous message to edit");
+        if (!openBacktrackPicker(params)) params.addSystemMsg("No previous message to edit.");
+        setHint(undefined);
         return;
       }
       escapeArmedAtRef.current = now;
-      setHint("Esc again to edit a previous message");
+      setHint("esc again to edit previous message");
       return;
     }
 
@@ -275,7 +277,9 @@ export function useAppKeyboard(params: AppKeyboardParams): string | undefined {
       }
       return;
     }
-    if (key.ctrl && input === "x") {
+    // Codex: ⌥← / ⌥→ on an empty prompt step through subagents; ctrl+x is Aurict's alias.
+    const previousAgent = key.meta && key.leftArrow && params.inputRef.current.length === 0;
+    if ((key.ctrl && input === "x") || previousAgent || (key.meta && key.rightArrow && params.inputRef.current.length === 0)) {
       if (
         params.pickerOpen ||
         params.permission ||
@@ -293,7 +297,8 @@ export function useAppKeyboard(params: AppKeyboardParams): string | undefined {
         const index = sessions.findIndex(
           (session) => session.id === overlay.viewingSubagentId,
         );
-        overlay.setViewingSubagentId(sessions[(index + 1) % sessions.length]!.id);
+        const step = previousAgent ? sessions.length - 1 : 1;
+        overlay.setViewingSubagentId(sessions[(index + step) % sessions.length]!.id);
       }
       return;
     }
@@ -312,8 +317,10 @@ export function useAppKeyboard(params: AppKeyboardParams): string | undefined {
       params.addSystemMsg(`Agent: ${next.name}`);
       return;
     }
-    if (input === "?" && !params.loading && !params.overlayOpen) {
+    // "?" on an empty composer opens the shortcut overlay without typing it.
+    if (input === "?" && !params.overlayOpen && params.inputRef.current.length === 0) {
       overlay.setKeyboardShortcutsOpen(true);
+      queueMicrotask(() => params.setInput((value) => (value === "?" ? "" : value)));
     }
   });
   return hint;

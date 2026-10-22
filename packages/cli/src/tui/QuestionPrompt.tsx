@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react"
+import React, { useState } from "react"
 import { Box, Text, useInput } from "./design-system/renderer.js"
 import type { QuestionRequest, QuestionAnswer } from "@aurict/core"
 import { useSemanticTheme } from "./theme/semantic-theme.js"

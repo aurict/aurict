@@ -71,7 +71,3 @@ export function rewindChoiceItems(files: readonly string[]): PickerItem[] {
     { id: "cancel", label: "Cancel", hint: "change nothing" },
   ];
 }
-
-export function checkpointTime(checkpoint: Checkpoint): string {
-  return new Date(checkpoint.createdAt).toTimeString().slice(0, 5);
-}

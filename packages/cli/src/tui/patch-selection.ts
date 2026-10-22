@@ -96,7 +96,3 @@ export function patchSelectionResponse(
   })
   return approvedFiles.length > 0 ? { approvedFiles, approvedHunks } : null
 }
-
-export function selectedFileCount(selection: ReadonlySet<string>, files: readonly PatchFile[]): number {
-  return files.filter((_, fileIndex) => rowState(selection, files, { kind: "file", fileIndex }) !== "none").length
-}

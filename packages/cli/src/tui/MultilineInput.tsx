@@ -13,7 +13,7 @@ import {
   sanitizePaste,
 } from "./input-limits.js"
 import { extractRange, splitLines, wordLeft, wordRight, type LocalPoint } from "./multiline-input-model.js"
-import { cursorLineParts, inputPointFromTerminal } from "./multiline-input-layout.js"
+import { inputPointFromTerminal } from "./multiline-input-layout.js"
 import { verticalCursorOffset } from "./terminal-text/cursor-map.js"
 import {
   clampGraphemeBoundary,
@@ -23,6 +23,7 @@ import {
 } from "./terminal-text/graphemes.js"
 import { useInputUndo } from "./hooks/useInputUndo.js"
 import { usePastePlaceholders } from "./hooks/usePastePlaceholders.js"
+import { useTerminalCursor } from "./hooks/useTerminalCursor.js"
 
 export { extractRange, type LocalPoint } from "./multiline-input-model.js"
 
@@ -391,7 +392,7 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     // Ink normalizes Ctrl/Alt+Backspace differently across terminal families;
     // keep both parsed-key and defensive raw-sequence variants.
     if (
-      (key.backspace && key.ctrl) || (key.delete && key.meta) || (key.ctrl && input === "w") ||
+      (key.backspace && (key.ctrl || key.meta)) || (key.delete && key.meta) || (key.ctrl && input === "w") ||
       input === "\x17" || input === "\x1b\x7f" || input === "\x08" || input === "\x1b[127;5u"
     ) {
       inputUndo.checkpoint()
@@ -461,40 +462,15 @@ export function MultilineInput({ value, onChange, onSubmit, onQueue, disabled, h
     }
   }, { isActive: !disabled })
 
+  // Codex composer: plain wrapped rows and the real terminal cursor (IME-safe).
+  useTerminalCursor({ boxRef, lines, cursor, active: !disabled })
   return (
     <Box ref={boxRef} flexDirection="column" flexGrow={1} flexShrink={1}>
-      {lines.map((line, i) => {
-        // Show line numbers in a multi-line input
-        const showLineNum = lines.length > 1
-        const lineNumWidth = String(lines.length).length
-        const lineNum = showLineNum ? String(i + 1).padStart(lineNumWidth, " ") : ""
-
-        if (i !== cursor.row || disabled) {
-          return (
-            <Box key={i} flexDirection="row">
-              {showLineNum && (
-                <Text color={theme.textDim} dimColor>{lineNum} │ </Text>
-              )}
-              <Text wrap="wrap">{line || " "}</Text>
-            </Box>
-          )
-        }
-        // Cursor line
-        // Note: nested <Text> inside <Text wrap="wrap"> creates a separate Yoga node,
-        // breaking inline flow and causing stacked rendering after history navigation.
-        // Instead, use three sibling <Text> components in a flexDirection="row" Box.
-        const { before, at, after } = cursorLineParts(line, cursor.col)
-        return (
-          <Box key={i} flexDirection="row">
-            {showLineNum && (
-              <Text color={theme.accent} dimColor>{lineNum} │ </Text>
-            )}
-            <Text>{before}</Text>
-            <Text backgroundColor={theme.accent} color={theme.accentInk ?? theme.bgHighlight}>{at}</Text>
-            {after ? <Text>{after}</Text> : !line && placeholder ? <Text color={theme.textDim} dimColor>{placeholder}</Text> : null}
-          </Box>
-        )
-      })}
+      {lines.map((line, i) => (
+        <Text key={i} wrap="wrap">
+          {line || (lines.length === 1 && placeholder ? <Text color={theme.textDim}>{placeholder}</Text> : " ")}
+        </Text>
+      ))}
     </Box>
   )
 }

@@ -15,7 +15,8 @@ import type {
   QuestionRequest,
 } from "@aurict/core";
 import type { PermissionPromptDecision } from "../PermissionPrompt.js";
-import { permissionTranscriptFeedback } from "../permission-feedback.js";
+import { approvalNotice } from "../permission-feedback.js";
+import type { TranscriptNotice } from "../conversation/types.js";
 import { PERMISSION_STORE_FILE } from "../app/app-environment.js";
 
 interface Params {
@@ -30,7 +31,9 @@ interface Params {
   setAttachInput: Dispatch<SetStateAction<boolean>>;
   setAttachPath: Dispatch<SetStateAction<string>>;
   setAttachments: Dispatch<SetStateAction<Attachment[]>>;
-  addSystemMsg: (content: string) => void;
+  addSystemMsg: (content: string, notice?: TranscriptNotice) => void;
+  /** Interrupts the running turn exactly like Ctrl+C. */
+  interruptTurn: () => void;
 }
 
 export function useSystemRequestHandlers(params: Params) {
@@ -48,6 +51,8 @@ export function useSystemRequestHandlers(params: Params) {
     params.addSystemMsg(`Model changed: ${model}`);
   }, [params.addSystemMsg]);
 
+  // Codex decisions: y once, a for the session, p for a command prefix
+  // (the only rule that persists), esc cancels the request and interrupts the turn.
   const handlePermission = useCallback(
     (decision: PermissionPromptDecision) => {
       const permission = params.permission;
@@ -55,37 +60,25 @@ export function useSystemRequestHandlers(params: Params) {
       const response: PermissionResponse | null =
         typeof decision === "string" ? null : decision;
       const action = typeof decision === "string" ? decision : decision.decision;
+      const notice = approvalNotice(action, permission);
+      if (notice) params.addSystemMsg(notice.parts.map((part) => part.text).join(""), notice);
 
-      if (action === "edit") {
+      if (action === "deny_abort") {
         PermissionGate.respond(permission.id, "deny");
-        params.setInput(permission.pattern);
-        params.setPermissionQueue((queue) => queue.slice(1));
-      } else if (action === "deny_abort") {
-        PermissionGate.respond(permission.id, "deny");
-        params.setPermissionQueue((queue) => queue.slice(1));
-        params.abortControllerRef.current?.abort();
-        params.abortControllerRef.current = null;
-      } else {
-        PermissionGate.respond(
-          permission.id,
-          response ?? (action === "allow_once" ? "allow_once" : action),
-        );
-        if (action === "allow") {
-          PermissionStore.approve(permission.tool, permission.pattern);
-          PermissionStore.savePersisted(PERMISSION_STORE_FILE);
-        } else if (action === "allow_directory") {
-          PermissionStore.approveDirectory(permission.tool, permission.pattern);
-          PermissionStore.savePersisted(PERMISSION_STORE_FILE);
-        }
-        params.setPermissionQueue((queue) =>
-          queue.filter((item) => item.id !== permission.id),
-        );
+        params.setPermissionQueue([]);
+        params.interruptTurn();
+        return;
       }
-
-      const feedback = permissionTranscriptFeedback(action, permission.tool);
-      if (feedback) params.addSystemMsg(feedback);
+      PermissionGate.respond(permission.id, response ?? action);
+      if (action === "allow_prefix" && permission.prefixRule) {
+        PermissionStore.approvePrefix(permission.tool, permission.prefixRule);
+        PermissionStore.savePersisted(PERMISSION_STORE_FILE);
+      }
+      params.setPermissionQueue((queue) =>
+        queue.filter((item) => item.id !== permission.id),
+      );
     },
-    [params.permission, params.addSystemMsg],
+    [params.permission, params.addSystemMsg, params.interruptTurn],
   );
 
   const handleQuestionAnswer = useCallback((answers: QuestionAnswer[]) => {

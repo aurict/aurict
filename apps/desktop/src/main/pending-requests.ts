@@ -12,7 +12,6 @@ import type {
   DesignArtifactInfo,
   DesignArtifactLaunch,
   MemoryInfo,
-  FinanceCalculationResult,
 } from '../shared/ipc-types.js';
 
 export interface PendingRequest<T> {
@@ -126,7 +125,6 @@ export interface PendingRequestRegistry {
   memoryAdd: PendingQueue<MemoryInfo>;
   memoryRemove: PendingQueue<boolean>;
   memoryClear: PendingQueue<number>;
-  financeCalculations: PendingQueue<FinanceCalculationResult>;
 }
 
 export function createPendingRequestRegistry(): PendingRequestRegistry {
@@ -137,12 +135,6 @@ export function createPendingRequestRegistry(): PendingRequestRegistry {
     agentsList: [], skillsInstall: [], skillsUninstall: [], designSystems: [],
     designSkills: [], designMatch: [], designBuildPrompt: [], designArtifactList: [],
     designArtifactCreate: [], designArtifactRetry: [], memoryList: [], memoryAdd: [],
-    memoryRemove: [], memoryClear: [], financeCalculations: [],
+    memoryRemove: [], memoryClear: [],
   };
-}
-
-export function rejectAllPending(registry: PendingRequestRegistry, error: Error): void {
-  for (const queue of Object.values(registry)) {
-    rejectQueue(queue, error);
-  }
 }

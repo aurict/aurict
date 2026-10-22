@@ -2,7 +2,7 @@
  * RunStatusLine — the single "what is Aurict doing right now" row shown above
  * the composer while a turn runs:
  *
- *   ◌ Working (12s · esc to interrupt) · running read · Planning the refactor
+ *   • Planning the refactor (12s • esc to interrupt) · running read
  *
  * It owns its one-second clock so only this row re-renders while time passes.
  */
@@ -34,6 +34,65 @@ export function reasoningHeadline(reasoning: string | null | undefined): string 
   return headings.at(-1)?.[1]?.trim();
 }
 
+/** Shown in place of Codex's "Working" while no reasoning heading is available. */
+export const RUN_PHRASES = [
+  "Wubba lubba dub dub",
+  "Getting schwifty",
+  "Pickle Rick-ing",
+  "Squanching",
+  "Summoning a Meeseeks",
+  "Portal hopping",
+  "Polishing the plumbus",
+  "Riggity riggity wrecking",
+  "Refilling portal fluid",
+  "Consulting the Council of Ricks",
+  "Flipping through interdimensional cable",
+  "Aw geez, thinking",
+  "Ooh-wee",
+  "Peace among worlds",
+] as const;
+
+/** One phrase per turn (random start), rotating every 10 seconds. */
+export function runPhrase(seed: number, elapsedMs: number): string {
+  return RUN_PHRASES[(seed + Math.floor(elapsedMs / 10_000)) % RUN_PHRASES.length]!;
+}
+
+export type ShimmerLevel = "dim" | "normal" | "bold";
+
+/**
+ * Codex's shimmer: a band ten cells wide sweeps across the title every two
+ * seconds. This is its no-RGB fallback (dim / normal / bold), grouped into runs.
+ */
+export function shimmerRuns(text: string, timeMs: number): Array<{ text: string; level: ShimmerLevel }> {
+  const chars = [...text];
+  const padding = 10;
+  const period = chars.length + padding * 2;
+  const position = Math.floor(((timeMs / 1000) % 2) / 2 * period);
+  const runs: Array<{ text: string; level: ShimmerLevel }> = [];
+  chars.forEach((char, index) => {
+    const distance = Math.abs(index + padding - position);
+    const intensity = distance <= 5 ? 0.5 * (1 + Math.cos(Math.PI * (distance / 5))) : 0;
+    const level: ShimmerLevel = intensity < 0.2 ? "dim" : intensity < 0.6 ? "normal" : "bold";
+    const last = runs.at(-1);
+    if (last?.level === level) last.text += char;
+    else runs.push({ text: char, level });
+  });
+  return runs;
+}
+
+const SHIMMER_TICK_MS = 120;
+
+/** Wall-clock milliseconds, refreshed every shimmer tick while active. */
+function useShimmerClock(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active || !motionEnabled()) return;
+    const timer = setInterval(() => setNow(Date.now()), SHIMMER_TICK_MS);
+    return () => clearInterval(timer);
+  }, [active]);
+  return now;
+}
+
 function useElapsed(running: boolean): number {
   const startedAt = useRef<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -51,28 +110,37 @@ export function RunStatusLine(props: RunStatusLineProps) {
   const theme = useSemanticTheme();
   const elapsed = useElapsed(props.loading);
   const pulse = usePulseFrame(props.loading);
+  const shimmerNow = useShimmerClock(props.loading);
+  const seed = useRef<number | null>(null);
+  if (!props.loading) seed.current = null;
+  else if (seed.current === null) seed.current = Math.floor(Math.random() * RUN_PHRASES.length);
   if (!props.loading) return null;
 
+  // Codex shows the latest reasoning heading as the title; a run phrase otherwise.
+  const title = reasoningHeadline(props.reasoning) ?? runPhrase(seed.current ?? 0, elapsed);
   const action = props.activeTool
     ? `${activityLabel("using_tool")} ${props.activeTool}`
     : activityLabel(props.activity);
-  const headline = reasoningHeadline(props.reasoning);
-  const marker = motionEnabled() && pulse % 2 === 1 ? glyph("thinking") : glyph("working");
-  const separator = ` ${glyph("statusTiny")} `;
-  const detail = [action, ...(headline ? [headline] : []), ...(props.queued ? [`${props.queued} queued`] : [])].join(separator);
-  const fixed = `${marker} Working (${formatElapsed(elapsed)}${separator}esc to interrupt)`;
-  const room = Math.max(0, props.columns - fixed.length - separator.length - 4);
+  const marker = motionEnabled() && pulse % 2 === 1 ? glyph("running") : glyph("bullet");
+  const separator = ` ${glyph("bullet")} `;
+  const detail = [action, ...(props.queued ? [`${props.queued} queued`] : [])].join(` ${glyph("statusTiny")} `);
+  const fixed = `${marker} ${title} (${formatElapsed(elapsed)}${separator}esc to interrupt)`;
+  const room = Math.max(0, props.columns - fixed.length - 6);
 
   return (
-    <Box paddingX={1}>
+    <Box>
       <Text wrap="truncate-end">
         <Text color={theme.activity.running}>{marker} </Text>
-        <Text color={theme.foreground.primary} bold>Working</Text>
-        <Text color={theme.foreground.muted}> ({formatElapsed(elapsed)}{separator}</Text>
-        <Text color={theme.foreground.secondary}>esc</Text>
-        <Text color={theme.foreground.muted}> to interrupt)</Text>
-        {props.paused && <Text color={theme.status.warning}>{separator}output paused</Text>}
-        {room > 8 && <Text color={theme.foreground.muted}>{separator}{truncateDisplayWidth(detail, room, glyph("ellipsis"))}</Text>}
+        {motionEnabled()
+          ? shimmerRuns(title, shimmerNow).map((run, index) => (
+            <Text key={index} bold={run.level === "bold"} dimColor={run.level === "dim"}>{run.text}</Text>
+          ))
+          : <Text bold {...(theme.foreground.primary ? { color: theme.foreground.primary } : {})}>{title}</Text>}
+        <Text dimColor> ({formatElapsed(elapsed)}{separator}</Text>
+        <Text bold>esc</Text>
+        <Text dimColor> to interrupt)</Text>
+        {props.paused && <Text color={theme.status.warning}> {glyph("statusTiny")} output paused</Text>}
+        {room > 8 && <Text dimColor> {glyph("statusTiny")} {truncateDisplayWidth(detail, room, glyph("ellipsis"))}</Text>}
       </Text>
     </Box>
   );

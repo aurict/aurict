@@ -97,11 +97,6 @@ export async function loadSkills(defs: SkillDef[]): Promise<LoadedSkill[]> {
   return Promise.all(defs.map(loadSkill))
 }
 
-export function clearLoaderCache(): void {
-  memCache.clear()
-  adaptiveMemCache.clear()
-}
-
 /** Task tipine göre section önceliği değiştirilmiş skill yükle (session-scoped cache) */
 export async function loadSkillAdaptive(def: SkillDef, taskType: TaskType): Promise<LoadedSkill> {
   const cacheKey = `${def.id}:${taskType}`

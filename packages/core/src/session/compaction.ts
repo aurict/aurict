@@ -14,30 +14,9 @@ import { clearToolMessageResults } from "./tool-message-compaction.js"
 import { addProtectedErrors, extractErrorChains } from "./compaction-errors.js"
 import { buildBoundedSummaryTranscript, SUMMARY_SYSTEM_PROMPT } from "./summary-input.js"
 import { createContextCheckpoint, formatContextCheckpoint } from "./context-checkpoint.js"
-import {
-  COMPACTION_TOTAL_TIMEOUT_MS,
-  createCompactionDeadline,
-  ensureStructuredSummary,
-  getCircuitState,
-  isCompactionCircuitOpen,
-  missingSections,
-  recordCompactionFailure,
-  recordCompactionSuccess,
-  runSummaryWithRetry,
-  SESSION_REQUIRED_SECTIONS,
-  SNIP_REQUIRED_SECTIONS,
-} from "./compaction-runtime.js"
-import {
-  ContextCompactionError,
-  type CompactionConfig,
-  type CompactionStrategy,
-} from "./compaction-contract.js"
-import {
-  extractProtectedContextFacts,
-  formatProtectedContextFacts,
-  injectProtectedFacts,
-  PROTECTED_FACTS_MARKER,
-} from "./protected-context.js"
+import { createCompactionDeadline, ensureStructuredSummary, isCompactionCircuitOpen, missingSections, recordCompactionFailure, recordCompactionSuccess, runSummaryWithRetry, SESSION_REQUIRED_SECTIONS, SNIP_REQUIRED_SECTIONS } from "./compaction-runtime.js"
+import { ContextCompactionError, type CompactionConfig } from "./compaction-contract.js"
+import { extractProtectedContextFacts, formatProtectedContextFacts, injectProtectedFacts } from "./protected-context.js"
 export {
   extractProtectedContextFacts,
   formatProtectedContextFacts,

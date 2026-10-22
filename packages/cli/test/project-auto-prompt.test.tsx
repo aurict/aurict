@@ -6,8 +6,9 @@ import { TerminalSizeContext } from "../src/tui/TerminalSizeContext.js";
 import { DEFAULT_THEME, THEMES, ThemeContext } from "../src/utils/theme.js";
 
 afterEach(() => cleanup());
+const tick = () => new Promise((resolve) => setTimeout(resolve, 30));
 
-function renderPrompt(onDecide: (enabled: boolean) => void) {
+function renderPrompt(onDecide: (trusted: boolean) => void) {
   return render(
     <TerminalSizeContext.Provider value={{ columns: 100, rows: 30 }}>
       <ThemeContext.Provider value={THEMES[DEFAULT_THEME]!}>
@@ -17,45 +18,35 @@ function renderPrompt(onDecide: (enabled: boolean) => void) {
   );
 }
 
-describe("Project Auto startup prompt", () => {
-  it("shows the exact project and safety exclusions", () => {
-    const view = renderPrompt(() => {});
-    const frame = view.lastFrame() ?? "";
-
-    expect(frame).toContain("Project Auto");
-    expect(frame).toContain("/work/acme");
-    expect(frame).toContain("Yes · enable Auto");
-    expect(frame).toContain("No · ask each time");
-    expect(frame).toContain("shell, secrets");
+describe("folder trust prompt", () => {
+  it("shows the Codex folder access prompt", () => {
+    const lines = (renderPrompt(() => {}).lastFrame() ?? "").split("\n");
+    expect(lines).toContain("  Folder access");
+    expect(lines).toContain("  /work/acme");
+    expect(lines).toContain("› 1. Trust and continue");
+    expect(lines).toContain("  2. Quit");
+    expect(lines).toContain("  enter continue · esc quit");
+    // Wrapped paragraph lines never start with a stray space.
+    expect(lines.filter((line) => /^ {3}\S/.test(line))).toEqual([]);
   });
 
-  it("accepts direct no and yes choices", async () => {
+  it("picks by number", async () => {
     const decisions: boolean[] = [];
-    const manual = renderPrompt((enabled) => decisions.push(enabled));
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    manual.stdin.write("n");
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(decisions).toEqual([false]);
-    manual.unmount();
-
-    const auto = renderPrompt((enabled) => decisions.push(enabled));
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    auto.stdin.write("y");
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    const first = renderPrompt((trusted) => decisions.push(trusted));
+    await tick(); first.stdin.write("2"); await tick();
+    first.unmount();
+    const second = renderPrompt((trusted) => decisions.push(trusted));
+    await tick(); second.stdin.write("1"); await tick();
     expect(decisions).toEqual([false, true]);
   });
 
-  it("confirms the highlighted Auto choice with Enter", async () => {
+  it("moves to Quit with the arrows and confirms with Enter", async () => {
     const decisions: boolean[] = [];
-    const view = renderPrompt((enabled) => decisions.push(enabled));
-    await new Promise((resolve) => setTimeout(resolve, 30));
-
-    view.stdin.write("\u001B[C");
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(view.lastFrame()).toContain("❯ Yes · enable Auto");
-
-    view.stdin.write("\r");
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(decisions).toEqual([true]);
+    const view = renderPrompt((trusted) => decisions.push(trusted));
+    await tick();
+    view.stdin.write("\u001B[B"); await tick();
+    expect(view.lastFrame()).toContain("› 2. Quit");
+    view.stdin.write("\r"); await tick();
+    expect(decisions).toEqual([false]);
   });
 });

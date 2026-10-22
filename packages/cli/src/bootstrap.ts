@@ -1,7 +1,6 @@
 import { createApp, ProviderRegistry, mcpManager, loadCustomTools, loadUserHooks } from "@aurict/core"
 import { getOrCreateToken, setActiveToken } from "@aurict/core"
 import { ensureDefaultMCPServers } from "@aurict/core"
-import { getMcpActivationMessage, DEFAULT_MCP_SERVERS } from "@aurict/core"
 import { checkStaticDeps, installUv, installCodegraph, initCodegraph, patchAgentsMd } from "@aurict/core"
 import type { MCPSetupResult } from "@aurict/core"
 import type { AurictConfig } from "./config/types.js"

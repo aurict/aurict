@@ -7,6 +7,8 @@ import { readJsonFileSync, writeJsonFileAtomicSync } from "../storage/persisted-
 interface PermissionState {
   approved: Set<string>
   approvedDirs: Set<string>
+  /** `tool:prefix` command rules ("don't ask again for commands that start with …"). */
+  approvedPrefixes: Set<string>
   categoryApprovals: Map<ToolCategory, CategoryPermission>
 }
 
@@ -18,6 +20,7 @@ function state(scope = "global"): PermissionState {
   const created: PermissionState = {
     approved: new Set(),
     approvedDirs: new Set(),
+    approvedPrefixes: new Set(),
     categoryApprovals: new Map(),
   }
   states.set(scope, created)
@@ -28,6 +31,49 @@ interface PersistedData {
   version: 1
   approved:     string[]
   approvedDirs: string[]
+  approvedPrefixes?: string[]
+}
+
+// ── Command prefix rules (Codex exec-policy amendments) ─────────────────────
+// A prefix approves a command only when every chained sub-command starts with
+// an approved prefix. Substitutions, redirections and multi-line input never
+// match, so a rule for `echo` cannot smuggle `$(rm -rf /)` or `> ~/.bashrc`.
+
+const UNSAFE_FOR_PREFIX = /[\n\r`<>]|\$\(/
+const CHAIN_OPERATORS = /&&|\|\||[;|&]/
+// Prefixes that would approve arbitrary code, as Codex refuses to suggest them.
+const BANNED_PREFIXES = new Set(["bash", "bash -c", "bash -lc", "sh", "sh -c", "sh -lc", "zsh", "zsh -c", "zsh -lc", "env", "sudo", "bun", "bun run", "bunx", "npx", "node", "node -e", "python", "python -c", "python3", "python3 -c", "cmd", "cmd /c", "powershell", "pwsh", "eval", "exec", "xargs"])
+
+function commandSegments(command: string): string[] | undefined {
+  if (UNSAFE_FOR_PREFIX.test(command)) return undefined
+  const segments = command.split(CHAIN_OPERATORS).map((segment) => segment.trim())
+  return segments.every(Boolean) ? segments : undefined
+}
+
+function startsWithPrefix(segment: string, prefix: string): boolean {
+  return segment === prefix || segment.startsWith(`${prefix} `)
+}
+
+function isBannedPrefix(prefix: string): boolean {
+  const normalized = prefix.replace(/\s+/g, " ")
+  if (BANNED_PREFIXES.has(normalized)) return true
+  return /^(?:ba|z)?sh\s+-l?c\b/.test(normalized)
+}
+
+/** The rule offered as "Yes, and don't ask again for commands that start with `…`". */
+export function suggestCommandPrefix(command: string): string | undefined {
+  if (/[\n\r]/.test(command.trim())) return undefined
+  const first = command.split(CHAIN_OPERATORS)[0]?.trim().replace(/\s+/g, " ")
+  if (!first || UNSAFE_FOR_PREFIX.test(first) || isBannedPrefix(first)) return undefined
+  return first
+}
+
+function prefixApproved(candidate: PermissionState, tool: string, command: string): boolean {
+  if (candidate.approvedPrefixes.size === 0) return false
+  const segments = commandSegments(command)
+  if (!segments) return false
+  const prefixes = [...candidate.approvedPrefixes].filter((entry) => entry.startsWith(`${tool}:`)).map((entry) => entry.slice(tool.length + 1))
+  return segments.every((segment) => prefixes.some((prefix) => startsWithPrefix(segment, prefix)))
 }
 
 function key(tool: string, pattern: string) {
@@ -64,8 +110,14 @@ export const PermissionStore = {
         const dirPath = dir.slice(idx + 1)
         if (dirTool === tool && dirPath && isInsideDir(pattern, dirPath)) return true
       }
+      if (prefixApproved(candidate, tool, pattern)) return true
     }
     return false
+  },
+  approvePrefix(tool: string, prefix: string, scope = "global"): void {
+    const normalized = prefix.trim().replace(/\s+/g, " ")
+    if (!normalized || isBannedPrefix(normalized)) throw new Error(`Refusing to approve the command prefix "${prefix}".`)
+    state(scope).approvedPrefixes.add(key(tool, normalized))
   },
   approve(tool: string, pattern: string, scope = "global"): void {
     state(scope).approved.add(key(tool, pattern))
@@ -87,6 +139,7 @@ export const PermissionStore = {
     if (!data) return
     for (const entry of data.approved)     state().approved.add(entry)
     for (const entry of data.approvedDirs) state().approvedDirs.add(entry)
+    for (const entry of data.approvedPrefixes ?? []) state().approvedPrefixes.add(entry)
   },
 
   savePersisted(path: string): void {
@@ -94,6 +147,7 @@ export const PermissionStore = {
       version:      1,
       approved:     [...state().approved],
       approvedDirs: [...state().approvedDirs],
+      approvedPrefixes: [...state().approvedPrefixes],
     }
     writeJsonFileAtomicSync(path, data, { backup: true, mode: 0o600 })
   },
@@ -130,6 +184,7 @@ function isPersistedPermissionData(value: unknown): value is PersistedData {
   return data.version === 1
     && Array.isArray(data.approved) && data.approved.every(entry => typeof entry === "string")
     && Array.isArray(data.approvedDirs) && data.approvedDirs.every(entry => typeof entry === "string")
+    && (data.approvedPrefixes === undefined || (Array.isArray(data.approvedPrefixes) && data.approvedPrefixes.every(entry => typeof entry === "string")))
 }
 
 // TUI → executor köprüsü: ask kararlarını bekler

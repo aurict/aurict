@@ -26,6 +26,8 @@ export interface PermissionRequest {
     executables: string[]
     readOnly:    boolean
   }
+  /** Prefix offered as "don't ask again for commands that start with …"; absent when unsafe. */
+  prefixRule?: string
   files?: Array<{
     path: string
     action: "add" | "delete" | "update" | "move"
@@ -47,8 +49,9 @@ export interface PermissionRequest {
 // allow           = bu kez izin ver + session'a kaydet (tekrar sorma)
 // allow_directory = bu kez izin ver + aynı klasör altında session boyunca hatırla
 // allow_once      = sadece bu kez izin ver, kaydetme
+// allow_prefix    = bu kez izin ver + aynı önekle başlayan komutları hatırla (Codex "p")
 // deny            = reddet, agent hata alır ama devam eder
-export type PermissionDecision = "allow" | "allow_directory" | "allow_once" | "allow_partial" | "deny"
+export type PermissionDecision = "allow" | "allow_directory" | "allow_once" | "allow_partial" | "allow_prefix" | "deny"
 
 export interface PermissionResponse {
   decision: PermissionDecision

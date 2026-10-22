@@ -36,7 +36,7 @@ export function viewportTopPadding(contentRows: number, viewportRows: number, of
 export function ConversationViewport(props: ConversationViewportProps) {
   const theme = useTheme();
   const columns = useTerminalSize().columns;
-  const projectionCache = useRef<TranscriptProjectionCache>();
+  const projectionCache = useRef<TranscriptProjectionCache | undefined>(undefined);
   if (!projectionCache.current) projectionCache.current = new TranscriptProjectionCache();
   const stableLines = useMemo(
     () => projectionCache.current!.project(props.messages, props.width),
@@ -107,7 +107,7 @@ export function ConversationViewport(props: ConversationViewportProps) {
         </Text>
       )}
       {topPaddingRows > 0 && <Box height={topPaddingRows} flexShrink={0} />}
-      <TranscriptRows rows={lines.slice(start, start + viewportRows)} rail={columns >= 60} />
+      <TranscriptRows rows={lines.slice(start, start + viewportRows)} />
     </Box>
   );
 }

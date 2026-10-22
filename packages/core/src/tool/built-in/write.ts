@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { writeFile, mkdir, readFile } from "fs/promises"
-import { resolve, dirname, relative } from "path"
+import { dirname, relative } from "path"
 import type { ToolDef, ToolContext, ExecuteResult } from "../types.js"
 import { snapshotManager, sessionSnapshotScope } from "../../snapshot/snapshot.js"
 import { resolveAuthorizedFilesystemPath } from "../../security/filesystem-grants.js"

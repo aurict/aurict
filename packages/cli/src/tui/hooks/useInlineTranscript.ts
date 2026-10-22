@@ -43,7 +43,7 @@ function useSettledWidth(width: number): number {
 export function useInlineTranscript({ messages, width: liveWidth, flushAll, hold }: Params): InlineTranscriptState {
   const { write } = useStdout();
   const width = useSettledWidth(liveWidth);
-  const cache = useRef<TranscriptProjectionCache>();
+  const cache = useRef<TranscriptProjectionCache | undefined>(undefined);
   if (!cache.current) cache.current = new TranscriptProjectionCache();
   const rowsByMessage = useMemo(
     () => cache.current!.projectByMessage(messages, width),

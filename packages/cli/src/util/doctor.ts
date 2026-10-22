@@ -308,8 +308,11 @@ export async function getDoctorReport(workdir: string): Promise<{ text: string; 
   output.push("")
   output.push(`${summary.ok} ok, ${summary.warn} warning(s), ${summary.fail} failure(s)`)
 
+  // Human output prints home paths as ~/…; the JSON report keeps them exact.
+  const home = process.env["HOME"]
+  const text = output.join("\n")
   return {
-    text: output.join("\n"),
+    text: home ? text.replaceAll(`${home}/`, "~/") : text,
     exitCode: summary.fail > 0 ? 1 : 0,
   }
 }
@@ -331,16 +334,4 @@ export async function getDoctorReportJson(workdir: string): Promise<{ json: stri
     json: JSON.stringify(report, null, 2),
     exitCode: report.exitCode,
   }
-}
-
-/** CLI entry — manages both text and JSON modes. The `--json` argument prints the JSON report. */
-export async function runDoctor(workdir: string, opts: DoctorOptions = {}): Promise<number> {
-  if (opts.json) {
-    const report = await getDoctorReportJson(workdir)
-    console.log(report.json)
-    return report.exitCode
-  }
-  const report = await getDoctorReport(workdir)
-  console.log(report.text)
-  return report.exitCode
 }

@@ -65,7 +65,9 @@ describe("TUI responsive regression", () => {
       />,
     ).lastFrame() ?? ""
 
-    expect(stripAnsi(medium)).toContain("Reality compiled. Warnings remain.")
+    // The Codex header has no quip; the passed one is ignored.
+    expect(stripAnsi(medium)).not.toContain("Reality compiled. Warnings remain.")
+    expect(stripAnsi(medium)).toContain("aurict█ v1.1.5")
     expect(stripAnsi(medium).split("\n").length).toBe(11)
     expect(stripAnsi(wide).split("\n").length).toBe(11)
   })
@@ -81,9 +83,8 @@ describe("TUI responsive regression", () => {
         rows={24}
       />,
     ).lastFrame() ?? ""
-    expect(shortWide).toContain("AURICT")
-    expect(shortWide).toContain("v1.1.5")
-    expect(shortWide).toContain("/help")
+    expect(stripAnsi(shortWide)).toContain("aurict█ v1.1.5")
+    expect(stripAnsi(shortWide)).toContain("/init")
     expect(shortWide).not.toContain("SYSTEMS ONLINE")
     expect(shortWide.split("\n").length).toBeLessThanOrEqual(11)
     cleanup()
@@ -98,7 +99,8 @@ describe("TUI responsive regression", () => {
         rows={16}
       />,
     ).lastFrame() ?? ""
-    expect(tiny).toContain("AURICT v1.1.5")
+    expect(stripAnsi(tiny)).toContain("aurict█ v1.1.5")
+    expect(stripAnsi(tiny)).not.toContain("To get started")
     expect(tiny.split("\n").length).toBeLessThanOrEqual(4)
   })
 
@@ -128,11 +130,10 @@ describe("TUI responsive regression", () => {
     expect(wide).toContain("opus-4-5")
     cleanup()
 
-    const footer = render(
+    const footer = stripAnsi(render(
       <StatusBar cols={140} sandboxBackend="policy" />,
-    ).lastFrame() ?? ""
-    expect(footer).toContain("ready")
-    expect(footer).toContain("policy")
+    ).lastFrame() ?? "")
+    expect(footer).toContain("? for shortcuts")
     expect(footer).not.toContain("projects/aurict")
     expect(footer).not.toContain("opus-4-5")
   })
@@ -253,7 +254,7 @@ describe("TUI responsive regression", () => {
 })
 
 describe("TUI stress regression", () => {
-  it("renders long tool output as a bounded summary", () => {
+  it("bounds long command output to its head and tail", () => {
     const output = Array.from({ length: 120 }, (_, i) => `line ${String(i + 1).padStart(3, "0")}`).join("\n")
     const frame = render(
       <Message
@@ -267,9 +268,13 @@ describe("TUI stress regression", () => {
       />,
     ).lastFrame() ?? ""
 
-    expect(frame).toMatch(/120 lines\s+details \^O/)
-    expect(frame).not.toContain("line 001")
-    expect(frame).not.toContain("line 120")
+    const plain = stripAnsi(frame)
+    expect(plain).toContain("• Ran bun test --verbose")
+    expect(plain).toContain("line 001")
+    expect(plain).toContain("line 002")
+    expect(plain).toContain("… +116 lines (^O to view details)")
+    expect(plain).toContain("line 120")
+    expect(plain).not.toContain("line 060")
   })
 
   it("handles small terminal expanded-output paging", () => {

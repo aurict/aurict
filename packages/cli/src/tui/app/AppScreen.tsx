@@ -34,8 +34,8 @@ export function AppScreen(props: AppScreenProps) {
     workdir: workdirState, initialWorkdir: workdir, tokens, contextUsage, completionProof,
     loading, coordinatorMode, autopilotMode, activeTool, runActivity, tasks,
     taskSummary, runningBackgroundTaskCount, localServer, sandboxBackend, activeAgentCount, branch,
-    activeAgent, skillNames, turnSkillNames, isUndercover, wasCompacted,
-    remoteConnected, effort, showStartupBanner, updateInfo, sessionTitle,
+    activeAgent, skillNames, turnSkillNames,
+    remoteConnected, showStartupBanner, updateInfo, sessionTitle,
     history, messages, streamingText, streamingReason, streamingError,
     scrollLocked, conversationOffsetRows, unseenCount, unseenLabel, measuredViewportRows,
     commandHistory, commandDefs, recentCmds, designInitialBrief, picker,
@@ -68,11 +68,11 @@ export function AppScreen(props: AppScreenProps) {
       .find((candidate) => candidate.id === model)?.contextWindow,
     [provider, model],
   );
-  const subSessions = useMemo(() => viewingSubagentId
-    ? SessionManager.list()
-        .filter((session) => session.parentId === mainSessionId.current)
-        .sort((left, right) => left.createdAt - right.createdAt)
-    : [], [activeAgentCount, mainSessionId, viewingSubagentId]);
+  // Also drives the footer's "for agents" hint, so it is listed even when no agent is open.
+  const subSessions = useMemo(() => SessionManager.list()
+    .filter((session) => session.parentId === mainSessionId.current)
+    .sort((left, right) => left.createdAt - right.createdAt),
+  [activeAgentCount, mainSessionId, viewingSubagentId]);
   const subIndex = subSessions.findIndex((session) => session.id === viewingSubagentId);
   const exitTranscript = useMemo(
     () => formatExitTranscript(messages, sessionTitle ?? "Aurict session"),
@@ -109,6 +109,7 @@ export function AppScreen(props: AppScreenProps) {
         workdir={workdir}
         cols={termCols}
         rows={termRows}
+        fullAccess={props.approvalMode === "full"}
       />
     ),
     transcript: {
@@ -185,6 +186,7 @@ export function AppScreen(props: AppScreenProps) {
             workdir,
             cols: termCols,
             rows: termRows,
+            fullAccess: props.approvalMode === "full",
           } : null}
           updateInfo={updateInfo}
           updateDismissed={updateDismissed}
@@ -216,7 +218,7 @@ export function AppScreen(props: AppScreenProps) {
         <AppOverlayContents
           activeLayer={focusLayer}
           theme={activeTheme}
-          keyboardShortcuts={keyboardShortcutsOpen
+          keyboardShortcuts={keyboardShortcutsOpen && props.tuiMode !== "inline"
             ? { onClose: () => setKeyboardShortcutsOpen(false) }
             : null}
           historySearch={historySearchOpen ? {
@@ -338,16 +340,6 @@ export function AppScreen(props: AppScreenProps) {
             onCancel: () => setEditingMsg(null),
             onSubmit: (newText) => handleEditRerun(editingMsg.msgIndex, newText),
           } : null}
-          picker={picker ? {
-            title: picker.title,
-            items: picker.items,
-            onSelect: (item) => {
-              const onSelect = picker.onSelect;
-              setPicker(null);
-              setTimeout(() => onSelect(item), 10);
-            },
-            onCancel: () => setPicker(null),
-          } : null}
           prompt={prompt ? {
             title: prompt.title,
             placeholder: prompt.placeholder,
@@ -395,7 +387,7 @@ export function AppScreen(props: AppScreenProps) {
       }
       bottom={
         <AppBottomBar
-          agentStatus={{
+          agentStatus={props.tuiMode === "inline" ? null : {
             inputActive: composerInputActive,
             viewingSessionId: viewingSubagentId,
             onViewAgent: setViewingSubagentId,
@@ -452,7 +444,23 @@ export function AppScreen(props: AppScreenProps) {
               `📋 Copied (${characters.toLocaleString()} chars)`,
             ),
           }}
+          picker={picker ? {
+            title: picker.title,
+            ...(picker.header ? { header: picker.header } : {}),
+            items: picker.items,
+            onSelect: (item) => {
+              const onSelect = picker.onSelect;
+              setPicker(null);
+              setTimeout(() => onSelect(item), 10);
+            },
+            onCancel: () => setPicker(null),
+          } : null}
+          shortcuts={keyboardShortcutsOpen && props.tuiMode === "inline" ? { onClose: () => setKeyboardShortcutsOpen(false), running: loading } : null}
           status={terminalMeasured ? {
+            running: loading,
+            draft: input.length > 0,
+            agents: subSessions.length > 0,
+            ...(viewingSubagentId ? { activeAgent: subSessions[subIndex]?.title ?? "Agent" } : {}),
             skills: skillNames,
             turnSkills: turnSkillNames,
             sandboxBackend,

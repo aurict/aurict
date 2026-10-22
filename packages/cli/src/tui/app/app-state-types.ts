@@ -1,9 +1,10 @@
 import type { CoreMessage, TokenBreakdown } from "@aurict/core";
 import type { DisplayMessage } from "../conversation/types.js";
-import type { PickerItem } from "../../commands/types.js";
+import type { PickerHeader, PickerItem } from "../../commands/types.js";
 
 export interface PickerRequest {
   title: string;
+  header?: PickerHeader | undefined;
   items: PickerItem[];
   onSelect: (item: PickerItem) => void;
 }

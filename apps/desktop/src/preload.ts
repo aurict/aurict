@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type {
   AurictWindowApi,
   ChatEvent,
@@ -27,15 +27,10 @@ import type {
   SidecarStatus,
   RemoteStatus,
   UserProfile,
-  FinanceResearchEntry,
-  FinanceConversation,
-  FinanceConversationMessage,
-  FinanceCalculationRequest,
-  FinanceCalculationResult,
-  FinanceCalculationEntry,
   DesignArtifactInfo,
   DesignArtifactLaunch,
   ArtifactInfo,
+  RuntimeEvent,
 } from './shared/ipc-types.js';
 
 // Narrow, typed bridge — the renderer never touches ipcRenderer directly.
@@ -97,6 +92,19 @@ const api: AurictWindowApi = {
     delete: (path: string) => ipcRenderer.invoke('files:delete', path) as Promise<{ ok: boolean; error?: string }>,
     rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('files:rename', { oldPath, newPath }) as Promise<{ ok: boolean; error?: string }>,
     pickImages: () => ipcRenderer.invoke('files:pick-images') as Promise<ChatAttachment[]>,
+    // Dropped files no longer expose File.path in sandboxed renderers.
+    pathForFile: (file: File) => webUtils.getPathForFile(file),
+  },
+  rpc: (method, params) => ipcRenderer.invoke('rpc', method, params) as never,
+  runtimeEvents: {
+    on: (cb: (event: RuntimeEvent) => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, event: RuntimeEvent) => cb(event);
+      ipcRenderer.on('runtime:event', listener);
+      return () => ipcRenderer.removeListener('runtime:event', listener);
+    },
+  },
+  transcript: {
+    export: (format: 'markdown' | 'html') => ipcRenderer.invoke('transcript:export', format) as Promise<boolean>,
   },
   workdir: () => ipcRenderer.invoke('workdir') as Promise<string>,
   workspace: {
@@ -125,20 +133,6 @@ const api: AurictWindowApi = {
     get: () => ipcRenderer.invoke('onboarding:get') as Promise<UserProfile | null>,
     save: (profile: UserProfile) => ipcRenderer.invoke('onboarding:save', profile) as Promise<void>,
     reset: () => ipcRenderer.invoke('onboarding:reset') as Promise<void>,
-  },
-  finance: {
-    listConversations: () => ipcRenderer.invoke('finance:conversations:list') as Promise<FinanceConversation[]>,
-    createConversation: () => ipcRenderer.invoke('finance:conversations:create') as Promise<FinanceConversation>,
-    removeConversation: (id: string) => ipcRenderer.invoke('finance:conversations:remove', id) as Promise<boolean>,
-    appendConversationMessage: (id: string, message: FinanceConversationMessage) => ipcRenderer.invoke('finance:conversations:append-message', id, message) as Promise<FinanceConversation>,
-    completeConversation: (id: string, message: FinanceConversationMessage) => ipcRenderer.invoke('finance:conversations:complete', id, message) as Promise<FinanceConversation>,
-    failConversation: (id: string, message: string, cancelled?: boolean) => ipcRenderer.invoke('finance:conversations:fail', id, message, cancelled) as Promise<FinanceConversation>,
-    listResearch: () => ipcRenderer.invoke('finance:research:list') as Promise<FinanceResearchEntry[]>,
-    createResearch: (question: string) => ipcRenderer.invoke('finance:research:create', question) as Promise<FinanceResearchEntry>,
-    removeResearch: (id: string) => ipcRenderer.invoke('finance:research:remove', id) as Promise<boolean>,
-    calculate: (request: FinanceCalculationRequest) => ipcRenderer.invoke('finance:calculate', request) as Promise<FinanceCalculationResult>,
-    listCalculations: () => ipcRenderer.invoke('finance:calculations:list') as Promise<FinanceCalculationEntry[]>,
-    removeCalculation: (id: string) => ipcRenderer.invoke('finance:calculations:remove', id) as Promise<boolean>,
   },
   policy: {
     get: () => ipcRenderer.invoke('policy:get') as Promise<Policy>,

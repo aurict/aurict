@@ -6,9 +6,12 @@ import { validateThemeContrast } from "../src/tui/theme/theme-validation.js";
 
 describe("semantic terminal theme contract", () => {
   test("every built-in palette resolves all user-facing roles", () => {
+    // "" is allowed for foreground roles: it means the terminal's default colour (Codex look).
+    const defined = (value: string) => typeof value === "string";
     for (const theme of Object.values(THEMES)) {
       const semantic = resolveSemanticTheme(theme);
-      expect(Object.values(semantic.foreground).every(Boolean)).toBe(true);
+      expect(Object.values(semantic.foreground).every(defined)).toBe(true);
+      expect(semantic.foreground.muted).toBeTruthy();
       expect(Object.values(semantic.status).every(Boolean)).toBe(true);
       expect(Object.values(semantic.surface).every(Boolean)).toBe(true);
       expect(Object.values(semantic.diff).every(Boolean)).toBe(true);

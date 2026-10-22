@@ -9,7 +9,6 @@ import { ExpandableOutput } from "../ExpandableOutput.js";
 import { HistorySearch } from "../HistorySearch.js";
 import { KeyboardShortcuts } from "../KeyboardShortcuts.js";
 import { MessageEditPanel } from "../MessageEditPanel.js";
-import { Picker } from "../Picker.js";
 import { PlanApprovalModal } from "../PlanApprovalModal.js";
 import { PromptInput } from "../PromptInput.js";
 import { QuestionPrompt } from "../QuestionPrompt.js";
@@ -33,7 +32,6 @@ export interface AppOverlayContentsProps {
   designWizard: ComponentConfig<typeof DesignWizard>;
   planApproval: ComponentConfig<typeof PlanApprovalModal>;
   messageEdit: ComponentConfig<typeof MessageEditPanel>;
-  picker: ComponentConfig<typeof Picker>;
   prompt: ComponentConfig<typeof PromptInput>;
   question: ComponentConfig<typeof QuestionPrompt>;
   attachmentInput: { path: string } | null;
@@ -68,14 +66,13 @@ export function AppOverlayContents(props: AppOverlayContentsProps) {
       return <PlanApprovalModal {...requireConfig(props.activeLayer, props.planApproval)} />;
     case "editing":
       return <MessageEditPanel {...requireConfig(props.activeLayer, props.messageEdit)} />;
-    case "picker":
-      return <Picker {...requireConfig(props.activeLayer, props.picker)} />;
     case "prompt":
       return <PromptInput {...requireConfig(props.activeLayer, props.prompt)} />;
     case "question":
       return <QuestionPrompt {...requireConfig(props.activeLayer, props.question)} />;
     case "permission":
     case "projectAuto":
+    case "picker":
       return null;
     case "attach": {
       const attachmentInput = requireConfig(props.activeLayer, props.attachmentInput);

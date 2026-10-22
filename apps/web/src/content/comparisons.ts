@@ -117,7 +117,3 @@ export const COMPARISONS: Comparison[] = [
     sources: [{ label: "OpenCode providers", url: "https://opencode.ai/docs/providers" }, { label: "OpenCode tools and permissions", url: "https://opencode.ai/docs/tools/" }],
   },
 ]
-
-export function getComparison(slug: string) {
-  return COMPARISONS.find((comparison) => comparison.slug === slug)
-}

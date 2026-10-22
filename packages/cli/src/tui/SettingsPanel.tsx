@@ -10,13 +10,6 @@ import { loadConfig } from "@aurict/core"
 
 type Tab = "general" | "theme" | "keybindings" | "advanced"
 
-interface Setting {
-  key:     string
-  label:   string
-  value:   string
-  hint?:   string
-}
-
 interface Props {
   provider:       string
   model:          string

@@ -8,11 +8,11 @@ import { activityLabel, type RunActivity } from "./run-status.js";
 import { terminalDensity } from "./terminal-density.js";
 import { glyph } from "./terminal-glyphs.js";
 import { useSemanticTheme } from "./theme/semantic-theme.js";
+import { keyLabel } from "./KeyboardShortcuts.js";
 import { CockpitSignal } from "./CockpitSignal.js";
 import { shellHorizontalInset } from "./app-shell/layout-metrics.js";
 import { displayWidth, truncateDisplayWidth } from "./terminal-text/display-width.js";
-import { approvalModeLabel, type ApprovalMode } from "./approval-mode.js";
-import { formatCostUsd } from "@aurict/core";
+import { type ApprovalMode } from "./approval-mode.js";
 
 export interface SessionHeaderProps {
   provider: string; model: string; workdir: string; tokens: TokenBreakdown;
@@ -38,6 +38,12 @@ export interface SessionFooterProps {
   session?: { provider: string; model: string; contextTokens: number; contextWindow?: number | undefined } | undefined;
   /** Transient guidance such as "Esc again to edit a previous message". */
   hint?: string | undefined;
+  /** A turn is running / the composer holds a draft (picks the footer hint). */
+  running?: boolean | undefined;
+  draft?: boolean | undefined;
+  /** Subagent sessions exist (Codex: "alt + ← for agents"); the one being viewed, if any. */
+  agents?: boolean | undefined;
+  activeAgent?: string | undefined;
   /** Inline mode: completion proof and the visible conversation's cost. */
   proof?: CompletionProof | undefined;
   costUsd?: number | undefined;
@@ -148,54 +154,44 @@ export function SessionHeader(props: SessionHeaderProps) {
   );
 }
 
+/**
+ * The Codex footer under the composer: a key hint on the left and the
+ * remaining context on the right.
+ *
+ *   ? for shortcuts                                    82% context left
+ *   alt + ← for agents · ? for shortcuts               82% context left
+ *   Robie [explorer] · alt + ← for agents              82% context left   (viewing an agent)
+ */
 export function SessionFooter(props: SessionFooterProps) {
   const theme = useTheme();
   const semantic = useSemanticTheme();
-  const terminal = useTerminalSize();
-  const columns = props.cols ?? terminal.columns ?? 120;
-  const density = terminalDensity(columns);
-  const compact = density === "tiny" || density === "compact";
   const taskErrors = props.taskSummary?.error ?? 0;
-  const skills = (props.skills?.length ?? 0) + (props.turnSkills?.length ?? 0);
-  const sandbox = props.sandboxBackend === "none" ? "no sandbox" : props.sandboxBackend === "docker" ? "docker" : "policy";
-  const approval = props.approvalMode ?? (props.autopilotMode ? "auto" : "ask");
   const session = props.session;
   const context = session ? contextState(session.contextTokens, session.contextWindow) : undefined;
-  const proof = proofState(props.proof, semantic);
-  const nearLimit = (context?.ratio ?? 0) >= 0.85;
-  // Inline footers carry more state, so compact ones drop the static extras.
-  const showChrome = !(compact && session);
-  const state = props.hint
-    ? props.hint
-    : props.scrollLocked
-    ? "output paused"
-    : taskErrors > 0
-      ? `${taskErrors} task${taskErrors === 1 ? "" : "s"} failed`
-      : (props.bgTaskCount ?? 0) > 0
-        ? `${props.bgTaskCount} background running`
-        : "ready";
+  const left = Math.round((1 - (context?.ratio ?? 0)) * 100);
+  const notice = props.scrollLocked ? "output paused · ctrl+l resume"
+    : taskErrors > 0 ? `${taskErrors} task${taskErrors === 1 ? "" : "s"} failed`
+      : undefined;
+  const key = (value: string) => <Text bold {...(theme.textPrimary ? { color: theme.textPrimary } : {})}>{value}</Text>;
+  const label = (value: string) => <Text color={theme.textDim}>{value}</Text>;
+  const agentsHint = props.agents && <>{key(keyLabel("alt+←"))}{label(" for agents")}</>;
 
   return (
-    <Surface variant="ghost" tone="muted" paddingX="md" paddingY="none">
-      <HStack justify="space-between">
-        <HStack gap="sm">
-          <Text color={theme.borderBright}>{glyph("headingMinor")}</Text>
-          <Text color={props.hint ? semantic.status.info : props.scrollLocked || taskErrors > 0 ? semantic.status.warning : theme.textSecondary}>{state}</Text>
-        </HStack>
-        <HStack gap="sm">
-          {!compact && props.selectionHint && <Text color={theme.textDim}>Shift+drag selects</Text>}
-          {!compact && skills > 0 && <Text color={theme.textDim}>{skills} skills</Text>}
-          {!compact && props.remoteConnected && <Text color={semantic.status.success}>{glyph("statusTiny")} remote</Text>}
-          {session && <Text color={theme.accentAlt}>{compact ? "" : `${short(session.provider, 10)}/`}{short(shortModel(session.model), compact ? 14 : 24)}</Text>}
-          {context && <Text color={nearLimit ? semantic.status.error : context.ratio >= 0.6 ? semantic.status.warning : theme.textDim}>{glyph("statusTiny")} ctx {context.percent}{nearLimit ? " /compact" : ""}</Text>}
-          {proof && <Text color={proof.color}>{glyph("statusTiny")} {proof.icon} {proof.label}</Text>}
-          {session && (props.costUsd ?? 0) > 0 && <Text color={theme.textDim}>{glyph("statusTiny")} {formatCostUsd(props.costUsd!)}</Text>}
-          {approval !== "ask" && (!compact || session) && <Text color={approval === "full" ? semantic.status.error : semantic.status.warning}>{glyph("statusTiny")} {approvalModeLabel(approval)}</Text>}
-          {(showChrome || props.sandboxBackend === "none") && <Text color={props.sandboxBackend === "none" ? semantic.status.warning : semantic.foreground.muted}>{glyph("statusTiny")} {sandbox}</Text>}
-          {showChrome && <Text color={theme.borderDim}>{glyph("separator")}</Text>}
-          {showChrome && <Text color={theme.textDim}>/help</Text>}
-        </HStack>
-      </HStack>
-    </Surface>
+    <Box paddingLeft={2} paddingRight={2} justifyContent="space-between">
+      <Box flexShrink={1} marginRight={2}>
+      <Text wrap="truncate-end">
+        {props.hint
+          ? label(props.hint)
+          : notice
+            ? <Text color={semantic.status.warning}>{notice}</Text>
+            : props.activeAgent
+              ? <>{label(props.activeAgent)}{!props.draft && agentsHint && <>{label(" · ")}{agentsHint}</>}</>
+              : props.running && props.draft
+                ? <>{key("tab")}{label(" to queue message")}</>
+                : <>{agentsHint && <>{agentsHint}{label(" · ")}</>}{key("?")}{label(" for shortcuts")}</>}
+      </Text>
+      </Box>
+      {context && <Box flexShrink={0}>{label(`${left}% context left`)}</Box>}
+    </Box>
   );
 }

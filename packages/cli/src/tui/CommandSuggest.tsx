@@ -3,19 +3,11 @@ import { useTerminalSize } from "./TerminalSizeContext.js"
 import { Box, Text, useInput } from "./design-system/renderer.js"
 import type { CommandDef } from "../commands/types.js"
 import { useTheme } from "../utils/theme.js"
-import {
-  COMMAND_CATEGORY_META,
-  commandCategory,
-  commandIcon,
-  commandSearchText,
-  commandSortKey,
-} from "../commands/ui-metadata.js"
+import { commandSearchText, commandSortKey } from "../commands/ui-metadata.js"
 import { padDisplayEnd, truncateDisplayWidth } from "./terminal-text/display-width.js"
 
 const MAX_SHOW = 6
 const NAME_WIDTH = 14
-const CATEGORY_WIDTH = 9
-const ALIAS_WIDTH = 14
 
 function fit(text: string, width: number): string {
   return padDisplayEnd(truncateDisplayWidth(text, Math.max(0, width)), Math.max(0, width))
@@ -62,11 +54,22 @@ function matchScore(c: CommandDef, filter: string): number {
   return 0
 }
 
+/** Codex's popup order (most used first), mapped to Aurict's equivalents; the rest follow by category. */
+const CODEX_ORDER = [
+  "models", "permissions", "keys", "memory", "skills", "review", "new", "sessions", "fork", "worktree",
+  "init", "compact", "config", "agents", "btw", "export", "diff", "status", "mcp", "exit",
+]
+
+function codexRank(command: CommandDef): number {
+  const rank = CODEX_ORDER.indexOf(command.name)
+  return rank === -1 ? CODEX_ORDER.length : rank
+}
+
 export function getCommandMatches(filter: string, commands: CommandDef[]): CommandDef[] {
   return commands
     .map((c) => ({ cmd: c, score: matchScore(c, filter) }))
     .filter((r) => r.score > 0)
-    .sort((a, b) => b.score - a.score || commandSortKey(a.cmd).localeCompare(commandSortKey(b.cmd)))
+    .sort((a, b) => b.score - a.score || codexRank(a.cmd) - codexRank(b.cmd) || commandSortKey(a.cmd).localeCompare(commandSortKey(b.cmd)))
     .map((r) => r.cmd)
 }
 
@@ -112,7 +115,7 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
   offsetRef.current = winStart
 
   const visible   = allMatches.slice(winStart, winStart + maxShow)
-  const descWidth = Math.max(8, termCols - NAME_WIDTH - CATEGORY_WIDTH - ALIAS_WIDTH - 14)
+  const descWidth = Math.max(8, termCols - NAME_WIDTH - 8)
   const compactWidth = Math.max(4, termCols - 8)
 
   useInput((_char, key) => {
@@ -125,66 +128,24 @@ export function CommandSuggest({ filter, commands, isActive, onExecute, onFill }
 
   if (!isActive || !allMatches.length) return null
 
-  const aboveCount = winStart
-  const belowCount = allMatches.length - (winStart + visible.length)
-
+  // Codex popup: no frame, "/name  description" rows, the selection filled
+  // across the full width in the accent colour.
+  const highlight = theme.accent
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="single"
-      borderColor={theme.borderActive}
-      paddingX={1}
-      marginX={1}
-      width={Math.max(1, termCols - 2)}
-    >
-      <Box gap={1}>
-        <Text color={theme.accent} dimColor bold>commands</Text>
-        {allMatches.length > maxShow && (
-          <Text color={theme.textDim} dimColor>{activeIdx + 1}/{allMatches.length}</Text>
-        )}
-      </Box>
-      {aboveCount > 0 && (
-        <Text color={theme.textDim} dimColor>  ↑ {aboveCount} more</Text>
-      )}
-      <Box flexDirection="column">
-        {visible.map((cmd, i) => {
-          const sel = winStart + i === activeIdx
-          const category = COMMAND_CATEGORY_META[commandCategory(cmd)]
-          if (compact) {
-            const summary = `${sel ? "›" : " "} ${commandIcon(cmd)} /${cmd.name} · ${cmd.description}`
-            return (
-              <Text key={cmd.name} color={sel ? theme.accent : theme.textDim} bold={sel} wrap="truncate-end">
-                {truncateDisplayWidth(summary, compactWidth)}
-              </Text>
-            )
-          }
-          return (
-            <Box key={cmd.name}>
-              <Box>
-                <Text color={sel ? theme.accent : theme.textDim}>{sel ? "› " : "  "}</Text>
-                <Text color={sel ? theme.accent : theme.textDim}>{commandIcon(cmd)}</Text>
-                <Text> </Text>
-                <Text color={sel ? theme.accent : theme.textPrimary} bold={sel}>
-                  {fit("/" + cmd.name, NAME_WIDTH)}
-                </Text>
-                <Text color={theme.textDim} dimColor>{fit(category.label, CATEGORY_WIDTH)}</Text>
-                <Text color={theme.textDim} dimColor>
-                  {fit(cmd.aliases?.slice(0, 2).map(a => `/${a}`).join(" ") ?? "", ALIAS_WIDTH)}
-                </Text>
-                <Text color={sel ? theme.textPrimary : theme.textDim} dimColor={!sel} wrap="truncate-end">
-                  {fit(cmd.description, descWidth)}
-                </Text>
-              </Box>
-            </Box>
-          )
-        })}
-      </Box>
-      {belowCount > 0 && (
-        <Text color={theme.textDim} dimColor>  ↓ {belowCount} more - type to narrow</Text>
-      )}
-      <Text color={theme.textDim} dimColor wrap="truncate-end">
-        {truncateDisplayWidth("  up/down select  tab fill  enter run  esc close", compactWidth)}
-      </Text>
+    <Box flexDirection="column" paddingLeft={2} width={Math.max(1, termCols - 2)}>
+      {visible.map((cmd, i) => {
+        const sel = winStart + i === activeIdx
+        const name = fit("/" + cmd.name, NAME_WIDTH)
+        const description = compact ? truncateDisplayWidth(cmd.description, Math.max(4, compactWidth - NAME_WIDTH)) : fit(cmd.description, descWidth)
+        if (sel) return (
+          <Box key={cmd.name} backgroundColor={highlight}>
+            <Text color={theme.accentInk ?? "black"} bold wrap="truncate-end">{name}  {description}</Text>
+          </Box>
+        )
+        return (
+          <Text key={cmd.name} wrap="truncate-end">{name}  <Text color={theme.textDim}>{description}</Text></Text>
+        )
+      })}
     </Box>
   )
 }

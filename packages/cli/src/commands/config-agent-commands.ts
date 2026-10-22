@@ -1,8 +1,8 @@
-import { BRAND_PALETTE_IDS, THEMES, THEME_NAMES, isBrandTheme } from "../utils/theme.js"
-import { SECURITY_SANDBOX_PROFILE_DEFAULTS, getAllSessionAgents, getConfigPath, loadConfig, pinStore, resolveLongTaskRuntimeConfig, resolveSecuritySandboxConfig, setApiKey, setCompaction, setDefault, setLongTaskRuntime, setSecuritySandbox } from "@aurict/core"
+import { SECURITY_SANDBOX_PROFILE_DEFAULTS, getAllSessionAgents, getConfigPath, loadConfig, pinStore, resolveSecuritySandboxConfig, setApiKey, setDefault, setLongTaskRuntime, setSecuritySandbox } from "@aurict/core"
 import type { CommandDef, CommandResult, PickerItem } from "./types.js"
-import { longTaskConfigLines, pullSecurityImage, securityConfigLines } from "./command-helpers.js"
+import { longTaskConfigLines, pullSecurityImage, securityConfigLines, tildePath } from "./command-helpers.js"
 import { APPROVAL_MODES, parseApprovalMode } from "../tui/approval-mode.js"
+import { keyLabel } from "../tui/KeyboardShortcuts.js"
 
 export const configAgentCommands: CommandDef[] = [
   // ── /background ───────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ export const configAgentCommands: CommandDef[] = [
         const key      = args[2]
         if (!provider || !key) return { type: "error", message: "Usage: /config set <provider> <apikey>" }
         setApiKey(provider, key)
-        return { type: "text", content: `API key saved for ${provider} → ${getConfigPath()}` }
+        return { type: "text", content: `API key saved for ${provider} → ${tildePath(getConfigPath())}` }
       }
 
       // /config default provider <name>  |  /config default model <name>
@@ -202,7 +202,7 @@ export const configAgentCommands: CommandDef[] = [
 
       // /config (no args) → show the current state
       const cfg = loadConfig(ctx.workdir)
-      const lines: string[] = [`Config: ${getConfigPath()}`, ""]
+      const lines: string[] = [`Config: ${tildePath(getConfigPath())}`, ""]
       lines.push("API Keys:")
       const providers = Object.entries(cfg.providers ?? {})
       if (!providers.length) {
@@ -330,12 +330,34 @@ export const configAgentCommands: CommandDef[] = [
     },
   },
 
-  // ── /approvals ────────────────────────────────────────────────────────────
+  // ── /subagents ────────────────────────────────────────────────────────────
   {
-    name:        "approvals",
-    aliases:     ["permissions"],
-    description: "Choose how tool calls are approved: ask, Project Auto, or full access",
-    usage:       "/approvals [ask|auto|full]",
+    name:        "subagents",
+    aliases:     ["sub"],
+    description: "Select a subagent to watch",
+    handler: (_args, ctx): CommandResult => {
+      const agents = ctx.listSubagents()
+      if (agents.length === 0) return { type: "text", content: "No subagents in this session yet." }
+      return {
+        type:   "picker",
+        title:  "Subagents",
+        header: [[{ text: `Select an agent to watch. ${keyLabel("alt+←")} previous, ${keyLabel("alt+→")} next.`, tone: "dim" }]],
+        items:  agents.map((agent) => ({
+          id:    agent.id,
+          label: `${agent.status === "running" ? "◦" : "•"} ${agent.title ?? "Agent"}`,
+          hint:  agent.id,
+        })),
+        onSelect: (item) => ctx.viewSubagent(item.id),
+      }
+    },
+  },
+
+  // ── /permissions ──────────────────────────────────────────────────────────
+  {
+    name:        "permissions",
+    aliases:     ["approvals"],
+    description: "Choose what Aurict is allowed to do",
+    usage:       "/permissions [ask|auto|full]",
     handler: (args, ctx): CommandResult => {
       if (args[0]) {
         const mode = parseApprovalMode(args[0])
@@ -343,19 +365,30 @@ export const configAgentCommands: CommandDef[] = [
         ctx.setApprovalMode(mode)
         return { type: "text", content: "" }
       }
-      return {
-        type:  "picker",
-        title: "Approval mode — dangerous operations always ask",
-        items: APPROVAL_MODES.map((mode) => ({
-          id:    mode.id,
-          label: `${mode.id === ctx.approvalMode ? "● " : "  "}${mode.label}`,
-          hint:  mode.description,
-        })),
-        onSelect: (item) => {
-          const mode = parseApprovalMode(item.id)
-          if (mode) ctx.setApprovalMode(mode)
-        },
+      const items = (): PickerItem[] => APPROVAL_MODES.map((mode) => ({
+        id:    mode.id,
+        label: mode.id === ctx.approvalMode ? `${mode.label} (current)` : mode.label,
+        hint:  mode.description,
+      }))
+      const choose = (item: PickerItem): void => {
+        const mode = parseApprovalMode(item.id)
+        if (!mode) return
+        if (mode !== "full" || ctx.approvalMode === "full") { ctx.setApprovalMode(mode); return }
+        // Codex asks once more before handing over full access.
+        ctx.showPicker(
+          "Enable full access?",
+          [
+            { id: "confirm", label: "Yes, continue anyway", hint: "Apply full access for this session" },
+            { id: "cancel", label: "Cancel", hint: "Go back without enabling full access" },
+          ],
+          (answer) => answer.id === "confirm" ? ctx.setApprovalMode("full") : ctx.showPicker("Update Model Permissions", items(), choose),
+          [[
+            { text: "When Aurict runs with full access, it can edit any file on your computer and run commands with network, without your approval. " },
+            { text: "Exercise caution when enabling full access. This significantly increases the risk of data loss, leaks, or unexpected behavior.", tone: "error" },
+          ]],
+        )
       }
+      return { type: "picker", title: "Update Model Permissions", items: items(), onSelect: choose }
     },
   },
 

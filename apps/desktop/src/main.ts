@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol, screen, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Notification, protocol, screen, shell } from 'electron';
 import path from 'node:path';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, unlinkSync, renameSync, mkdirSync, openSync, closeSync, copyFileSync } from 'node:fs';
@@ -16,20 +16,15 @@ import type {
   WorkspaceInfo,
   SidecarStatus,
   UserProfile,
-  UserType,
-  ExperienceLayout,
-  ExperienceTheme,
-  ColorMode,
-  FontPair,
-  FinanceCalculationRequest,
-  FinanceConversationMessage,
   ArtifactInfo,
   RemoteStatus,
 } from './shared/ipc-types.js';
-import { createFinanceStore } from './main/finance-store.js';
 import { createPendingRequestRegistry, rejectQueue, requestFromSidecar, resolveById, rejectById } from './main/pending-requests.js';
 import { wireSidecarChild } from './main/sidecar-process.js';
 import { createDesktopStores, isDirectory } from './main/desktop-stores.js';
+import { normalizeProfile } from './main/profile.js';
+import { attentionForChatEvent, attentionForPermission, type AttentionNotice } from './main/attention.js';
+import { createRpcClient } from './main/sidecar-rpc.js';
 import { markChangedFiles, readFileTree, resolveWithinRoot } from './main/workspace-files.js';
 import { createArtifactStore } from './main/artifact-store.js';
 
@@ -45,53 +40,7 @@ let runtimeSuspended = false;
 let restartAttempts = 0;
 let restartTimer: NodeJS.Timeout | null = null;
 let runtimeStatus: SidecarStatus = { connected: false, message: 'starting' };
-const financeStore = createFinanceStore(() => app.getPath('userData'));
 const artifactStore = createArtifactStore(() => app.getPath('userData'), () => activeWorkdir);
-
-const USER_TYPES: UserType[] = ['general', 'developer', 'product', 'designer', 'operator', 'finance'];
-const LAYOUTS: ExperienceLayout[] = ['home', 'developer', 'product', 'design', 'operations', 'finance'];
-const THEMES: ExperienceTheme[] = ['oxblood', 'paper', 'slate', 'studio', 'forest', 'ledger', 'contrast'];
-const COLOR_MODES: ColorMode[] = ['system', 'light', 'dark'];
-const FONT_PAIRS: FontPair[] = ['editorial', 'modern', 'technical', 'friendly', 'system'];
-
-function defaultLayout(userType: UserType): ExperienceLayout {
-  if (userType === 'general') return 'home';
-  if (userType === 'developer') return 'developer';
-  if (userType === 'product') return 'product';
-  if (userType === 'designer') return 'design';
-  if (userType === 'operator') return 'operations';
-  return 'finance';
-}
-
-function defaultProfile(userType: UserType = 'general'): UserProfile {
-  return {
-    userType,
-    layout: defaultLayout(userType),
-    theme: userType === 'finance' ? 'ledger' : userType === 'designer' ? 'studio' : userType === 'general' ? 'paper' : 'oxblood',
-    colorMode: 'system',
-    fontPair: userType === 'finance' ? 'technical' : userType === 'designer' ? 'editorial' : 'modern',
-    preferredProviderId: null,
-    preferredModelId: null,
-    onboardingVersion: 3,
-    completedAt: Date.now(),
-  };
-}
-
-function normalizeProfile(profile: Partial<UserProfile>): UserProfile | null {
-  if (!profile.userType || !USER_TYPES.includes(profile.userType)) return null;
-  const fallback = defaultProfile(profile.userType);
-  return {
-    userType: profile.userType,
-    layout: profile.layout && LAYOUTS.includes(profile.layout) ? profile.layout : fallback.layout,
-    theme: profile.theme && THEMES.includes(profile.theme) ? profile.theme : fallback.theme,
-    colorMode: profile.colorMode && COLOR_MODES.includes(profile.colorMode) ? profile.colorMode : fallback.colorMode,
-    fontPair: profile.fontPair && FONT_PAIRS.includes(profile.fontPair) ? profile.fontPair : fallback.fontPair,
-    preferredProviderId: typeof profile.preferredProviderId === 'string' ? profile.preferredProviderId : null,
-    preferredModelId: typeof profile.preferredModelId === 'string' ? profile.preferredModelId : null,
-    onboardingVersion: typeof profile.onboardingVersion === 'number' ? profile.onboardingVersion : 1,
-    completedAt: typeof profile.completedAt === 'number' ? profile.completedAt : Date.now(),
-  };
-}
 
 const desktopStores = createDesktopStores(() => app.getPath('userData'), normalizeProfile);
 
@@ -217,7 +166,12 @@ function restartSidecar(): void {
   startSidecar();
 }
 
+const rpc = createRpcClient((requestId, method, params) => sendToSidecar({ type: 'rpc', method, params, requestId }));
+// Pushing and opening a pull request can take a while on slow networks.
+const RPC_TIMEOUTS: Partial<Record<string, number>> = { 'git/pullRequest': 180_000, 'git/commit': 90_000 };
+
 function rejectPendingRequests(error: Error): void {
+  rpc.rejectAll(error);
   rejectQueue(pending.providerList, error); rejectQueue(pending.sessionList, error);
   rejectQueue(pending.sessionSelect, error); rejectQueue(pending.sessionNew, error);
   rejectQueue(pending.sessionDelete, error); rejectQueue(pending.skillsList, error);
@@ -229,7 +183,18 @@ function rejectPendingRequests(error: Error): void {
   rejectQueue(pending.designArtifactCreate, error); rejectQueue(pending.designArtifactRetry, error);
   rejectQueue(pending.memoryList, error); rejectQueue(pending.memoryAdd, error);
   rejectQueue(pending.memoryRemove, error); rejectQueue(pending.memoryClear, error);
-  rejectQueue(pending.financeCalculations, error);
+}
+
+// System notifications only while the window is in the background; clicking
+// one brings the window back. The taskbar/dock also flashes until focus returns.
+function requestAttention(notice: AttentionNotice | null): void {
+  const window = mainWindow;
+  if (!notice || !window || window.isDestroyed() || window.isFocused()) return;
+  window.flashFrame(true);
+  if (!Notification.isSupported()) return;
+  const notification = new Notification({ title: notice.title, body: notice.body, silent: false });
+  notification.on('click', () => { if (!window.isDestroyed()) { window.show(); window.focus(); } });
+  notification.show();
 }
 
 // Responses are matched to their request by requestId (resolveById/
@@ -242,13 +207,17 @@ function handleSidecarMessage(msg: SidecarMessage): void {
       if (msg.event.type === 'artifact:updated') {
         artifactStore.register(msg.event.artifact as ArtifactInfo & { path: string });
       }
-      if (msg.event.type === 'finance-research-audit') {
-        financeStore.recordConversationAudit(msg.event.researchId, msg.event.audit);
-      }
       mainWindow?.webContents.send('chat:event', msg.event);
+      requestAttention(attentionForChatEvent(msg.event));
       return;
     case 'remote:status':
       mainWindow?.webContents.send('remote:status', msg);
+      return;
+    case 'rpc-result':
+      rpc.settle(msg.requestId, msg.result, msg.error);
+      return;
+    case 'runtime:event':
+      mainWindow?.webContents.send('runtime:event', msg.event);
       return;
     case 'permission:request':
       if (desktopStores.readPolicy().autoAllowSafe && msg.request.level === 'safe') {
@@ -256,6 +225,7 @@ function handleSidecarMessage(msg: SidecarMessage): void {
         return;
       }
       mainWindow?.webContents.send('permission:request', msg.request);
+      requestAttention(attentionForPermission(msg.request));
       return;
     case 'provider:list-result':
       resolveById(pending.providerList, msg.requestId, msg.providers);
@@ -338,18 +308,6 @@ function handleSidecarMessage(msg: SidecarMessage): void {
     case 'memory:clear-result':
       resolveById(pending.memoryClear, msg.requestId, msg.removed);
       return;
-    case 'finance:calculate-result': {
-      if (msg.error) {
-        rejectById(pending.financeCalculations, msg.requestId, new Error(msg.error));
-        return;
-      }
-      if (!msg.result) {
-        rejectById(pending.financeCalculations, msg.requestId, new Error('Finance runtime returned no calculation result'));
-        return;
-      }
-      resolveById(pending.financeCalculations, msg.requestId, msg.result);
-      return;
-    }
   }
 }
 
@@ -368,7 +326,7 @@ const createWindow = () => {
     minWidth: Math.min(960, screenWidth),
     minHeight: Math.min(640, screenHeight),
     frame: false,
-    backgroundColor: '#0d0a09',
+    backgroundColor: '#0b0908',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -376,6 +334,7 @@ const createWindow = () => {
       sandbox: true,
     },
   });
+  mainWindow.on('focus', () => mainWindow?.flashFrame(false));
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -568,7 +527,7 @@ ipcMain.handle('files:rename', (_e, { oldPath, newPath }: { oldPath: string; new
 });
 ipcMain.handle('files:pick-images', async () => {
   const options = {
-    title: 'Add design reference images',
+    title: 'Add images',
     properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'>,
     filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] }],
   };
@@ -629,6 +588,15 @@ ipcMain.handle('runtime:retry', () => {
   restartSidecar();
   return runtimeStatus;
 });
+ipcMain.handle('rpc', (_e, method: unknown, params: unknown) => rpc.call(method, params ?? {}, typeof method === 'string' ? RPC_TIMEOUTS[method] : undefined));
+ipcMain.handle('transcript:export', async (_e, format: 'markdown' | 'html') => {
+  if (format !== 'markdown' && format !== 'html') throw new Error('Unsupported export format');
+  const { content, filename } = await rpc.call('session/export', { format }) as { content: string; filename: string };
+  const target = mainWindow ? await dialog.showSaveDialog(mainWindow, { title: 'Export conversation', defaultPath: filename }) : null;
+  if (!target || target.canceled || !target.filePath) return false;
+  writeFileSync(target.filePath, content, 'utf8');
+  return true;
+});
 ipcMain.handle('onboarding:get', () => desktopStores.readOnboarding());
 ipcMain.handle('onboarding:save', (_e, profile: UserProfile) => {
   const normalized = normalizeProfile(profile);
@@ -636,25 +604,6 @@ ipcMain.handle('onboarding:save', (_e, profile: UserProfile) => {
   desktopStores.saveOnboarding(normalized);
 });
 ipcMain.handle('onboarding:reset', () => desktopStores.resetOnboarding());
-ipcMain.handle('finance:conversations:list', () => financeStore.listConversations());
-ipcMain.handle('finance:conversations:create', () => financeStore.createConversation());
-ipcMain.handle('finance:conversations:remove', (_e, id: string) => financeStore.removeConversation(id));
-ipcMain.handle('finance:conversations:append-message', (_e, id: string, message: FinanceConversationMessage) => financeStore.appendConversationMessage(id, message));
-ipcMain.handle('finance:conversations:complete', (_e, id: string, message: FinanceConversationMessage) => financeStore.completeConversation(id, message));
-ipcMain.handle('finance:conversations:fail', (_e, id: string, message: string, cancelled?: boolean) => financeStore.failConversation(id, message, cancelled));
-ipcMain.handle('finance:research:list', () => financeStore.listResearch());
-ipcMain.handle('finance:research:create', (_e, question: string) => financeStore.createResearch(question));
-ipcMain.handle('finance:research:remove', (_e, id: string) => financeStore.removeResearch(id));
-ipcMain.handle('finance:calculate', (_e, request: FinanceCalculationRequest) => {
-  return requestFromSidecar(
-    pending.financeCalculations,
-    'Finance calculation',
-    (requestId) => sendToSidecar({ type: 'finance:calculate', request, requestId }),
-    30_000,
-  ).then((result) => financeStore.saveCalculation(result).result);
-});
-ipcMain.handle('finance:calculations:list', () => financeStore.listCalculations());
-ipcMain.handle('finance:calculations:remove', (_e, id: string) => financeStore.removeCalculation(id));
 
 // ── Local policy IPC (Faz 8) ─────────────────────────────────────────────────
 ipcMain.handle('policy:get', () => desktopStores.readPolicy());

@@ -59,19 +59,11 @@ export function PermissionCommandPreview({
   const visible = lines.slice(offset, offset + detailRows);
   if (!open) {
     return (
-      <Box
-        borderStyle="single"
-        borderColor={theme.borderDim}
-        borderTop={false}
-        borderRight={false}
-        borderBottom={false}
-        paddingLeft={1}
-      >
-        <Text color={theme.textPrimary} wrap="truncate-end">
-          <Text color={theme.textDim}>{label} {glyph("statusTiny")} </Text>
+      <Box>
+        <Text wrap="truncate-end">
           {linePrefix}{lines[0] || " "}
           {lines.length > 1
-            ? <Text color={theme.textDim}> {glyph("statusTiny")} +{lines.length - 1} lines {glyph("statusTiny")} d inspect</Text>
+            ? <Text color={theme.textDim}> {glyph("ellipsis")} +{lines.length - 1} lines (d to inspect)</Text>
             : null}
         </Text>
       </Box>

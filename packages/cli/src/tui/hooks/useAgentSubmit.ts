@@ -11,7 +11,6 @@ import {
 } from "@aurict/core";
 import type { CoreMessage } from "@aurict/core";
 import { RemoteEventTypes } from "../../remote/event-codec.js";
-import { clearDraft } from "../../util/draft.js";
 import {
   AUTO_CONTINUE_PROMPT,
   stopAutoContinueAfterFailure,
@@ -51,7 +50,6 @@ export function useAgentSubmit(params: AgentSubmitParams) {
     if (!autoContinueSubmit) params.autoContinueRef.current.count = 0;
 
     params.setInput("");
-    clearDraft();
     if (params.loading) {
       params.setComposerQueue((items) => addComposerItem(items, {
         id: crypto.randomUUID(),
@@ -159,7 +157,6 @@ export function useAgentSubmit(params: AgentSubmitParams) {
     const text = value.trim();
     if (!text || !params.loading) return;
     params.setInput("");
-    clearDraft();
     params.setComposerQueue((items) => addComposerItem(items, {
       id: crypto.randomUUID(),
       kind: "queued",

@@ -1,15 +1,12 @@
 import { glyph, terminalText } from "../terminal-glyphs.js";
 import { activityLabel, type RunActivity } from "../run-status.js";
-import type { TranscriptMessage, TranscriptBlock, TurnStats } from "./types.js";
-import { formatCostUsd } from "@aurict/core";
-import { formatElapsed, formatTokenCount } from "../run-status.js";
+import type { TranscriptMessage, TurnStats } from "./types.js";
 import {
   coalesceInterruptedAssistantBlocks,
   collapseRepeatedAssistantText,
 } from "./block-flow.js";
 import { resolveLivePresentation } from "./live-state.js";
 import { groupAdjacentToolBlocks } from "./tool-grouping.js";
-import { isMarkdownHeading, isMarkdownListItem, proseLayout, standaloneSectionTitle } from "./readability.js";
 import { terminalHyperlink } from "../terminal-text/hyperlink.js";
 import { truncateDisplayWidth } from "../terminal-text/display-width.js";
 import type { TranscriptLine, TranscriptRow, TranscriptSegment, TranscriptTone } from "./row-model.js";
@@ -25,7 +22,6 @@ import {
   projectToolBlock,
   projectToolGroup,
   toolGroupKey,
-  toolSectionKind,
 } from "./tool-block-projector.js";
 
 export type { TranscriptLine, TranscriptRow, TranscriptSegment, TranscriptTone } from "./row-model.js";
@@ -71,153 +67,165 @@ function inlineSegments(text: string, tone: TranscriptTone): TranscriptSegment[]
   return segments.length > 0 ? segments : [{ text: "", tone }];
 }
 
-function markdownSegments(line: string, tone: TranscriptTone, inCode: boolean): { segments: TranscriptSegment[]; toggleCode: boolean } {
-  const fence = line.match(/^```\s*([^\s]*)/);
-  if (fence) return { segments: [{ text: inCode ? glyph("close") : `${glyph("open")} ${fence[1] || "code"}`, tone: "code" }], toggleCode: true };
+function markdownSegments(line: string, tone: TranscriptTone, inCode: boolean): { segments: TranscriptSegment[]; toggleCode: boolean; hidden?: boolean } {
+  // Fences toggle code mode but print nothing; code lines keep their indentation.
+  if (/^```/.test(line)) return { segments: [], toggleCode: true, hidden: true };
   if (inCode) return { segments: [{ text: line, tone: "code" }], toggleCode: false };
   const heading = line.match(/^(#{1,6})\s+(.+)$/);
   if (heading) {
     const level = heading[1]!.length;
     return {
-      segments: [{
-        text: `${glyph(level < 3 ? "headingMajor" : "headingMinor")} ${heading[2]!}`,
-        tone: level <= 2 ? "heading" : "assistant",
+      segments: inlineSegments(heading[2]!, tone).map((segment) => ({
+        ...segment,
         ...(level <= 3 ? { bold: true } : {}),
-      }],
+        ...(level === 1 ? { underline: true } : {}),
+        ...(level >= 3 ? { italic: true } : {}),
+      })),
       toggleCode: false,
     };
   }
-  const sectionTitle = standaloneSectionTitle(line);
-  if (sectionTitle) return { segments: [{ text: sectionTitle, tone: "heading", bold: true }], toggleCode: false };
-  if (/^(---+|\*\*\*+)\s*$/.test(line)) return { segments: [{ text: glyph("divider").repeat(16), tone: "muted" }], toggleCode: false };
-  if (line.startsWith(">")) return { segments: [{ text: `${glyph("quote")} ${line.replace(/^>\s?/, "")}`, tone: "quote", italic: true }], toggleCode: false };
+  if (/^(---+|\*\*\*+)\s*$/.test(line)) return { segments: [{ text: glyph("divider").repeat(16), tone: "muted", dim: true }], toggleCode: false };
+  if (line.startsWith(">")) return { segments: [{ text: "> ", tone: "success" }, ...inlineSegments(line.replace(/^>\s?/, ""), "success")], toggleCode: false };
   const task = line.match(/^(\s*)[-*]\s+\[([ xX])\]\s+(.*)$/);
-  if (task) return { segments: [{ text: `${task[1]}${task[2]!.toLowerCase() === "x" ? glyph("done") : glyph("todo")} `, tone: task[2]!.toLowerCase() === "x" ? "success" : "muted" }, ...inlineSegments(task[3]!, tone)], toggleCode: false };
+  if (task) {
+    const done = task[2]!.toLowerCase() === "x";
+    return { segments: [{ text: `${task[1]}${done ? glyph("check") : glyph("box")} `, tone: done ? "success" : "muted" }, ...inlineSegments(task[3]!, tone).map((segment) => (done ? { ...segment, strikethrough: true, dim: true } : segment))], toggleCode: false };
+  }
   const list = line.match(/^(\s*)[-*]\s+(.*)$/);
-  if (list) return { segments: [{ text: `${list[1]}${glyph("bullet")} `, tone: "bullet" }, ...inlineSegments(list[2]!, tone)], toggleCode: false };
+  if (list) return { segments: [{ text: `${list[1]}- `, tone: "muted" }, ...inlineSegments(list[2]!, tone)], toggleCode: false };
+  const ordered = line.match(/^(\s*)(\d+[.)])\s+(.*)$/);
+  if (ordered) return { segments: [{ text: `${ordered[1]}${ordered[2]} `, tone: "code" }, ...inlineSegments(ordered[3]!, tone)], toggleCode: false };
   return { segments: inlineSegments(line, tone), toggleCode: false };
 }
 
 function pushMarkdown(rows: TranscriptRow[], id: string, text: string, tone: TranscriptTone, width: number): void {
   let inCode = false;
-  const layout = proseLayout(width);
-  const inset = layout.leftInset > 0 ? " ".repeat(layout.leftInset) : "";
-  const sources = clean(text).split("\n");
-  for (const [index, source] of sources.entries()) {
+  for (const [index, source] of clean(text).split("\n").entries()) {
     if (!inCode && !source.trim()) {
       pushGap(rows, `${id}:${index}:gap`);
       continue;
     }
-    const wasInCode = inCode;
-    const codeFence = /^```/.test(source);
-    const sectionHeading = !inCode && (isMarkdownHeading(source) || standaloneSectionTitle(source) !== undefined);
-    const listItem = !inCode && isMarkdownListItem(source);
-    const previousListItem = index > 0 && isMarkdownListItem(sources[index - 1]!);
-    const nextListItem = index + 1 < sources.length && isMarkdownListItem(sources[index + 1]!);
-    if (sectionHeading) pushGap(rows, `${id}:${index}:before`);
-    if (listItem && !previousListItem) pushGap(rows, `${id}:${index}:list-before`);
-    if (codeFence && !wasInCode) pushGap(rows, `${id}:${index}:code-before`);
     const formatted = markdownSegments(source, tone, inCode);
-    const codeLine = inCode || formatted.toggleCode;
     if (formatted.toggleCode) inCode = !inCode;
-    const firstRow = rows.length;
-    pushWrapped(rows, `${id}:${index}`, formatted.segments, codeLine ? width : layout.contentWidth);
-    if (inset && !codeLine) {
-      for (let rowIndex = firstRow; rowIndex < rows.length; rowIndex++)
-        rows[rowIndex]!.segments.unshift({ text: inset, tone: "muted" });
-    }
-    if (sectionHeading) pushGap(rows, `${id}:${index}:after`);
-    if (listItem && !nextListItem) pushGap(rows, `${id}:${index}:list-after`);
-    if (codeFence && wasInCode) pushGap(rows, `${id}:${index}:code-after`);
+    if (formatted.hidden) continue;
+    pushWrapped(rows, `${id}:${index}`, formatted.segments, width);
   }
 }
 
-function thinkingSummary(content: string): string {
-  const normalized = content.toLowerCase();
-  const stage = /test|verify|check|lint|build/.test(normalized) ? "verifying"
-    : /search|research|source|investigat/.test(normalized) ? "researching"
-      : /plan|approach|step|first/.test(normalized) ? "planning" : "thinking";
-  return `${glyph("thinking")} ${stage} · Ctrl+O inspect`;
+/**
+ * Codex's two-column gutter: the first content row of a cell gets the marker,
+ * every other content row gets two spaces; blank rows stay empty.
+ */
+function prefixCell(rows: TranscriptRow[], start: number, marker: TranscriptSegment): void {
+  let first = true;
+  for (let index = start; index < rows.length; index++) {
+    const row = rows[index]!;
+    if (isBlankRow(row)) continue;
+    row.segments.unshift(first ? marker : { text: "  ", tone: "muted" });
+    first = false;
+  }
 }
 
-function timestamp(timestamp: number | undefined): string {
-  if (timestamp === undefined) return "";
-  const date = new Date(timestamp);
-  return ` · ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+/** One plain blank row between cells, as Codex inserts before every history cell. */
+function pushCellGap(rows: TranscriptRow[], id: string): void {
+  const last = rows[rows.length - 1];
+  if (rows.length === 0 || (isBlankRow(last) && !last!.surface)) return;
+  rows.push({ id, segments: [{ text: "", tone: "muted" }] });
 }
 
-/** `── Worked for 12s · 1.5k tokens · $0.0041 ──` closes a finished turn. */
-export function turnStatsRow(id: string, stats: TurnStats, width: number): TranscriptRow {
-  const parts = [`Worked for ${formatElapsed(stats.durationMs)}`];
-  if (stats.tokens > 0) parts.push(`${formatTokenCount(stats.tokens)} tokens`);
-  if (stats.costUsd > 0) parts.push(formatCostUsd(stats.costUsd));
-  const label = ` ${parts.join(` ${glyph("statusTiny")} `)} `;
-  const rule = glyph("divider").repeat(Math.max(2, Math.min(24, width - label.length - 2)));
-  return { id, segments: [{ text: `${glyph("divider").repeat(2)}${label}${rule}`, tone: "muted" }] };
+/** `  Worked for 12s • 1.5k tokens • $0.0041` closes a finished turn. */
+/** Codex's elapsed label: "<1s", "45s", "2m 5s", "1h 0m 3s". */
+function workedFor(durationMs: number): string {
+  const total = Math.floor(durationMs / 1000);
+  const hours = Math.floor(total / 3600), minutes = Math.floor((total % 3600) / 60), seconds = total % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return seconds === 0 ? "<1s" : `${seconds}s`;
+}
+
+/** "3:07 PM", with the date when the turn finished on another day (and year). */
+function completedLabel(at: number, now = new Date()): string {
+  const date = new Date(at);
+  const hours = date.getHours();
+  const time = `${hours % 12 || 12}:${String(date.getMinutes()).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
+  if (date.toDateString() === now.toDateString()) return time;
+  const day = date.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) });
+  return `${day} at ${time}`;
+}
+
+/** The dim completion line Codex prints under a finished turn. */
+export function turnStatsRow(id: string, stats: TurnStats, _width: number): TranscriptRow {
+  const parts = [`Worked for ${workedFor(stats.durationMs)}`];
+  if (stats.completedAt !== undefined) parts.push(completedLabel(stats.completedAt));
+  return { id, segments: [{ text: `  ${parts.join(` ${glyph("bullet")} `)}`, tone: "muted", dim: true }] };
+}
+
+function projectUser(rows: TranscriptRow[], id: string, text: string, width: number): void {
+  const start = rows.length;
+  rows.push({ id: `${id}:pad-top`, segments: [{ text: "", tone: "muted" }] });
+  for (const [index, line] of wrapTranscriptText(text, Math.max(8, width - 1)).entries())
+    rows.push({ id: `${id}:line:${index}`, segments: [{ text: index === 0 ? `${glyph("input")} ` : "  ", tone: "accent", bold: index === 0 }, { text: line, tone: "user" }] });
+  rows.push({ id: `${id}:pad-bottom`, segments: [{ text: "", tone: "muted" }] });
+  for (let index = start; index < rows.length; index++) rows[index]!.surface = "user";
 }
 
 function projectMessage(rows: TranscriptRow[], message: TranscriptMessage, index: number, width: number): void {
   const id = message.id ?? `message-${index}`;
+  const bodyWidth = Math.max(8, width - 2);
+  if (message.role === "system" && message.notice) {
+    pushCellGap(rows, `${id}:gap`);
+    const { marker, parts } = message.notice;
+    const markerTone = marker === "check" ? "success" : marker === "error" ? "error" : "muted";
+    const start = rows.length;
+    pushWrapped(rows, `${id}:notice`, parts.map((part) => ({ text: part.text, tone: "assistant" as const, ...(part.bold ? { bold: true } : {}), ...(part.dim ? { dim: true, tone: "muted" as const } : {}) })), bodyWidth);
+    prefixCell(rows, start, { text: `${glyph(marker)} `, tone: markerTone, ...(marker === "stop" ? { dim: true } : { bold: true }) });
+    return;
+  }
   if (message.role === "system") {
-    pushWrapped(rows, `${id}:notice`, [{ text: `${glyph("system")} `, tone: "muted" }, { text: message.content, tone: "muted" }], width);
+    pushCellGap(rows, `${id}:gap`);
+    const start = rows.length;
+    pushText(rows, `${id}:notice`, message.content, "muted", bodyWidth);
+    prefixCell(rows, start, { text: `${glyph("bullet")} `, tone: "muted", dim: true });
     return;
   }
   if (message.role === "error") {
     const error = message.errorPresentation;
-    pushWrapped(rows, `${id}:error`, [{ text: `${glyph("error")} `, tone: "error", bold: true }, { text: error?.title ?? message.content, tone: "error", bold: true }], width);
-    if (error?.detail && error.detail !== error.title) pushText(rows, `${id}:detail`, `  ${error.detail}`, "muted", width);
-    if (error?.action) pushText(rows, `${id}:action`, `  ${glyph("action")} ${error.action}`, "muted", width);
-    pushGap(rows, `${id}:gap`);
+    pushCellGap(rows, `${id}:gap`);
+    const start = rows.length;
+    pushText(rows, `${id}:error`, error?.title ?? message.content, "error", bodyWidth);
+    if (error?.detail && error.detail !== error.title) pushText(rows, `${id}:detail`, error.detail, "muted", bodyWidth);
+    if (error?.action) pushText(rows, `${id}:action`, `${glyph("action")} ${error.action}`, "muted", bodyWidth);
+    prefixCell(rows, start, { text: `${glyph("stop")} `, tone: "error", bold: true });
     return;
   }
   if (message.role === "tool_result") return;
   if (message.role === "tool_call") {
+    pushCellGap(rows, `${id}:gap`);
     projectToolBlock(rows, `${id}:tool`, { type: "tool", id, tool: message.tool ?? "tool", args: message.content, pending: Boolean(message.pending), ...(message.resultContent !== undefined ? { resultContent: message.resultContent } : {}), ...(message.artifact !== undefined ? { artifact: message.artifact } : {}) }, width);
     return;
   }
-  const tone = message.role === "user" ? "user" : "assistant";
-  const messageStart = rows.length;
-  const toolOnly = message.role === "assistant" && Boolean(message.blocks?.length) && message.blocks!.every((block) => block.type === "tool");
-  if (!toolOnly) {
-    const marker = message.role === "user" ? glyph("headingMinor") : glyph("assistant");
-    const time = timestamp(message.timestamp);
-    rows.push({ id: `${id}:header`, segments: [
-      { text: `${marker} ${message.role === "user" ? "You" : "Aurict"}`, tone, bold: true },
-      ...(time ? [{ text: time, tone: "muted" as const }] : []),
-    ] });
-  }
-  if (message.reasoningContent) rows.push({ id: `${id}:thinking`, segments: [{ text: thinkingSummary(message.reasoningContent), tone: "thinking", italic: true }], detailId: `${id}:thinking` });
-  if (message.blocks?.length) {
-    const displayBlocks = message.role === "assistant"
-      ? collapseRepeatedAssistantText(coalesceInterruptedAssistantBlocks(message.blocks))
-      : message.blocks.map((block, sourceIndex) => ({ block, sourceIndex }));
-    const groupedBlocks = groupAdjacentToolBlocks(displayBlocks, toolGroupKey);
-    let previousKind: TranscriptBlock["type"] | "error" | undefined;
-    for (const item of groupedBlocks) {
-      const { block, sourceIndex } = item.kind === "single" ? item.entry : item.entries[0]!;
-      const kind = item.kind === "tool-group" ? "tool" : block.type;
-      const sectionKind = item.kind === "single" && block.type === "tool"
-        ? toolSectionKind(block)
-        : kind;
-      if (previousKind && previousKind !== sectionKind)
-        pushGap(rows, `${id}:flow:${sourceIndex}:gap`);
-      if (item.kind === "tool-group") {
-        projectToolGroup(rows, id, item.entries, width);
-      } else if (block.type === "tool") projectToolBlock(rows, `${id}:tool:${sourceIndex}`, block, width);
-      else {
-        if (block.reasoningContent) rows.push({ id: `${id}:text:${sourceIndex}:thinking`, segments: [{ text: thinkingSummary(block.reasoningContent), tone: "thinking", italic: true }], detailId: `${id}:text:${sourceIndex}:thinking` });
-        pushMarkdown(rows, `${id}:text:${sourceIndex}`, block.content, tone, width);
-      }
-      previousKind = sectionKind;
-    }
-  } else pushMarkdown(rows, `${id}:body`, message.resultContent ?? message.content, tone, width);
-  if (message.role === "assistant" && message.turnStats) rows.push(turnStatsRow(`${id}:stats`, message.turnStats, width));
-  pushGap(rows, `${id}:gap`);
   if (message.role === "user") {
-    for (let rowIndex = messageStart; rowIndex < rows.length; rowIndex++) {
-      const row = rows[rowIndex]!;
-      if (!isBlankRow(row)) row.surface = "user";
-    }
+    pushCellGap(rows, `${id}:gap`);
+    projectUser(rows, id, message.content, width);
+    return;
+  }
+  const blocks = message.blocks?.length
+    ? collapseRepeatedAssistantText(coalesceInterruptedAssistantBlocks(message.blocks))
+    : [{ block: { type: "text" as const, content: message.resultContent ?? message.content }, sourceIndex: 0 }];
+  for (const item of groupAdjacentToolBlocks(blocks, toolGroupKey)) {
+    pushCellGap(rows, `${id}:cell:${item.kind === "single" ? item.entry.sourceIndex : item.entries[0]!.sourceIndex}`);
+    if (item.kind === "tool-group") { projectToolGroup(rows, id, item.entries, width); continue; }
+    const { block, sourceIndex } = item.entry;
+    if (block.type === "tool") { projectToolBlock(rows, `${id}:tool:${sourceIndex}`, block, width); continue; }
+    if (!block.content.trim()) continue;
+    const start = rows.length;
+    pushMarkdown(rows, `${id}:text:${sourceIndex}`, block.content, "assistant", bodyWidth);
+    while (rows.length > start && isBlankRow(rows[rows.length - 1])) rows.pop();
+    prefixCell(rows, start, { text: `${glyph("bullet")} `, tone: "muted", dim: true });
+  }
+  if (message.turnStats) {
+    pushCellGap(rows, `${id}:stats-gap`);
+    rows.push(turnStatsRow(`${id}:stats`, message.turnStats, width));
   }
 }
 
@@ -239,6 +247,9 @@ export function projectStableMessage(
 ): TranscriptRow[] {
   const rows: TranscriptRow[] = [];
   projectMessage(rows, message, index, Math.max(12, width - 2));
+  // Messages are projected (and committed) one at a time; the trailing blank
+  // row is the gap Codex puts before the next history cell.
+  pushCellGap(rows, `${message.id ?? `message-${index}`}:end`);
   return normalizeTerminalRows(rows);
 }
 
@@ -252,12 +263,14 @@ export function projectLiveTranscript(options: LiveTranscriptOptions): Transcrip
     hasReasoning: Boolean(options.streamingReason),
     hasActiveTool: Boolean(options.activeTool),
   });
-  if (presentation === "reasoning")
-    rows.push({ id: "stream:reason", segments: [{ text: `${glyph("thinking")} thinking…`, tone: "thinking", italic: true }] });
+  // With a status line, reasoning shows there (as in Codex) instead of in the transcript.
+  if (presentation === "reasoning" && !options.statusLine)
+    rows.push({ id: "stream:reason", segments: [{ text: `${glyph("running")} `, tone: "muted", dim: true }, { text: "Thinking", tone: "muted", italic: true }] });
   if (presentation === "text" && options.streamingText) {
-    if (!options.hasAssistantHeader)
-      rows.push({ id: "stream:header", segments: [{ text: `${glyph("assistant")} Aurict`, tone: "assistant", bold: true }] });
-    pushMarkdown(rows, "stream:text", options.streamingText, "assistant", width);
+    pushCellGap(rows, "stream:gap");
+    const start = rows.length;
+    pushMarkdown(rows, "stream:text", options.streamingText, "assistant", Math.max(8, width - 2));
+    prefixCell(rows, start, { text: `${glyph("bullet")} `, tone: "muted", dim: true });
   }
   if (presentation === "paused" || (presentation === "activity" && !options.statusLine)) {
     const paused = presentation === "paused";
@@ -265,12 +278,16 @@ export function projectLiveTranscript(options: LiveTranscriptOptions): Transcrip
     rows.push({
       id: "stream:activity",
       segments: [
-        { text: `${glyph(paused ? "paused" : "working")} `, tone: "thinking" },
+        { text: `${glyph(paused ? "paused" : "running")} `, tone: "muted", dim: true },
         { text: label, tone: "muted", italic: true },
       ],
     });
   }
-  if (options.streamingError) pushText(rows, "stream:error", `${glyph("error")} ${options.streamingError}`, "error", width);
+  if (options.streamingError) {
+    const start = rows.length;
+    pushText(rows, "stream:error", options.streamingError, "error", Math.max(8, width - 2));
+    prefixCell(rows, start, { text: `${glyph("stop")} `, tone: "error", bold: true });
+  }
   return normalizeTerminalRows(rows);
 }
 
@@ -281,8 +298,9 @@ function normalizeTerminalRows(rows: TranscriptRow[]): TranscriptRow[] {
   }));
 }
 
-export function hasAssistantHeader(rows: readonly TranscriptRow[]): boolean {
-  return rows.some((row) => row.id.endsWith(":header") && row.segments.some((segment) => segment.text.toLowerCase().includes("aurict")));
+/** Cells carry no "Aurict" header any more; kept for callers that still pass it through. */
+export function hasAssistantHeader(_rows: readonly TranscriptRow[]): boolean {
+  return false;
 }
 
 export function projectTranscript(options: ProjectOptions): TranscriptRow[] {
