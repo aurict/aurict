@@ -41,6 +41,7 @@ describe("terminal glyph fallback", () => {
     withEnv("AURICT_ASCII", "1", () => {
       expect([glyph("prompt"), glyph("bullet"), glyph("gap"), glyph("box"), glyph("stop"), glyph("running")]).toEqual([">", "-", ":", "[ ]", "#", "o"])
       expect(terminalText("└ ⋮ ✔ □ ■ ◦")).toBe("` : v [ ] # o")
+    })
   })
 
   it("falls back for dumb terminals and non-UTF locales", () => {
