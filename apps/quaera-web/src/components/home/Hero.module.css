@@ -1,0 +1,125 @@
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: min(900px, 100svh);
+  padding-top: 84px;
+}
+
+.panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(48px, 7vw, 96px) clamp(28px, 5vw, 72px) clamp(48px, 7vw, 96px) max(var(--gutter), calc((100vw - var(--max)) / 2 + var(--gutter)));
+  border-radius: 0 var(--radius-panel) var(--radius-panel) 0;
+  background:
+    radial-gradient(110% 90% at 0% 0%, #6e5ff0 0%, transparent 60%),
+    radial-gradient(80% 70% at 100% 100%, #4a3bc9 0%, transparent 70%),
+    var(--violet);
+  color: var(--on-violet);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--on-violet-dim);
+}
+
+.title {
+  margin-top: 18px;
+  color: #fff;
+  font-size: clamp(52px, 7vw, 112px);
+  line-height: 0.92;
+  letter-spacing: -0.055em;
+}
+
+.title span {
+  display: block;
+}
+
+.lead {
+  margin-top: 24px;
+  max-width: 46ch;
+  font-size: clamp(17px, 1.5vw, 20px);
+  color: var(--on-violet-dim);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.art {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--gutter) 40px 0;
+}
+
+.sculpture {
+  position: relative;
+  z-index: 2;
+  width: min(118%, 760px);
+  margin-left: -22%;
+  filter: drop-shadow(0 40px 60px #4334c255);
+  animation: float 9s ease-in-out infinite;
+}
+
+.caption {
+  align-self: flex-end;
+  max-width: 34ch;
+  margin-top: -12px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.caption span {
+  color: var(--text-dim);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(-2deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .panel {
+    margin-right: var(--gutter);
+    padding: 48px 28px 120px var(--gutter);
+  }
+
+  .art {
+    margin-top: -110px;
+    padding: 0 var(--gutter);
+    align-items: center;
+  }
+
+  .sculpture {
+    width: min(92%, 520px);
+    margin-left: 0;
+  }
+
+  .caption {
+    align-self: flex-start;
+    margin-top: 8px;
+  }
+}

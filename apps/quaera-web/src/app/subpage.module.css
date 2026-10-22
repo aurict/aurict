@@ -1,0 +1,97 @@
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(64px, 9vw, 112px);
+  padding-top: clamp(56px, 8vw, 96px);
+}
+
+.block h2 {
+  font-size: clamp(30px, 4vw, 48px);
+  max-width: 20ch;
+}
+
+.block > p,
+.block .lead {
+  margin-top: 18px;
+  max-width: 64ch;
+  color: var(--text-dim);
+  font-size: 18px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps > li {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 30px;
+  counter-increment: step;
+}
+
+.steps > li::before {
+  content: counter(step, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--violet-ink);
+}
+
+.steps h3 {
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+
+.steps p {
+  color: var(--text-dim);
+  font-size: 15px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.cards article {
+  padding: 30px;
+}
+
+.cards h3 {
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.cards p {
+  margin-top: 12px;
+  color: var(--text-dim);
+}
+
+.note {
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.art {
+  width: 100%;
+  margin-top: 40px;
+  mix-blend-mode: multiply;
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);
+}
+
+@media (max-width: 900px) {
+  .steps,
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
