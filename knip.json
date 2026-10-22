@@ -19,8 +19,26 @@
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
     "packages/cli": {
-      "entry": ["src/index.ts", "test/**/*.test.{ts,tsx}"],
+      "entry": ["src/index.ts", "src/visual/server.ts", "test/**/*.test.{ts,tsx}"],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"]
+    },
+    "apps/desktop": {
+      "entry": [
+        "forge.config.ts",
+        "vite.*.config.ts",
+        "windows-sign.ts",
+        "macos-sign.ts",
+        "src/main.ts",
+        "src/preload.ts",
+        "src/renderer.tsx",
+        "src/sidecar-entry.ts",
+        "test/**/*.test.{ts,tsx}"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"]
+    },
+    "apps/web": {
+      "entry": ["ecosystem.config.js"],
+      "project": ["src/**/*.{ts,tsx}"]
     }
   },
   "ignore": [

@@ -142,7 +142,3 @@ async function login(credentials) {
     ],
   },
 ]
-
-export function getUseCase(slug: string) {
-  return USE_CASES.find((useCase) => useCase.slug === slug)
-}
