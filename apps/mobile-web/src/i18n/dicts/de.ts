@@ -10,6 +10,7 @@ export const de = {
 		jelly: { tagline: `Ein herrlich wackeliges Rätselabenteuer.` },
 		duckley: { tagline: `Kleine Lektionen. Hellere Tage.` },
 		mindgrid: { tagline: `Ruhiger und klarer – Feld für Feld.` },
+		dungeon: { tagline: `Sei der Drachenboss, den Helden fürchten.` },
 		comingSoon: { title: `Demnächst` },
 		googlePlay: `Google Play`,
 	},
@@ -21,7 +22,7 @@ export const de = {
 	},
 	spotlight: {
 		eyebrow: `Aus dem Studio`,
-		title: `Drei Apps. Drei kleine Welten.`,
+		title: `Vier Apps. Vier kleine Welten.`,
 		getOnPlay: `Bei Google Play holen`,
 		jelly: {
 			kicker: `Rätselspiel`,
@@ -45,6 +46,14 @@ export const de = {
 			f1: `Fesselnde Gedächtnisrätsel auf einem klaren Kachelraster`,
 			f2: `Gemacht, um Gedächtnis und Fokus zu schärfen`,
 			f3: `Verfolge deinen Fortschritt, während du besser wirst`,
+		},
+		dungeon: {
+			kicker: `Idle-Spiel`,
+			body: `Ein Idle-Tycoon, in dem du der Drache tief unten im Dungeon bist. Helden steigen Etage für Etage hinab; deine Monster halten sie auf, und jeder bringt Gold für dein Versteck.`,
+			f1: `30 Etagen in 10 Biomen, bewacht von 20 Monstern`,
+			f2: `Ein Babydrache, der zum Uralten Drachenlord wird`,
+			f3: `Wiedergeburt für Seelen-Perks und eine Geschichte in Briefen`,
+			f4: `Dein Dungeon verdient weiter, während du weg bist`,
 		},
 	},
 	studio: {
@@ -122,11 +131,11 @@ export const de = {
 		title: `Häufige Fragen`,
 		q1: {
 			q: `Was ist Aurict Mobile?`,
-			a: `Aurict Mobile ist das Mobile-App-Studio von Aurict. Wir machen Jelly Paradox, Duckley und Mind Grid und hosten hier ihre Konto- und Supportseiten.`,
+			a: `Aurict Mobile ist das Mobile-App-Studio von Aurict. Wir machen Jelly Paradox, Duckley, Mind Grid und Dungeon Lord und hosten hier ihre Konto- und Supportseiten.`,
 		},
 		q2: {
 			q: `Wo kann ich die Apps herunterladen?`,
-			a: `Duckley und Mind Grid gibt es bei Google Play. Jelly Paradox erscheint bald.`,
+			a: `Duckley und Mind Grid gibt es bei Google Play. Jelly Paradox und Dungeon Lord erscheinen bald.`,
 		},
 		q3: {
 			q: `Wie lösche ich mein Konto?`,

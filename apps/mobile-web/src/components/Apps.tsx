@@ -33,6 +33,7 @@ const APPS: App[] = [
     soft: "var(--grid-soft)",
     href: "https://play.google.com/store/apps/details?id=com.mindgrid.mind_grid",
   },
+  { name: "Dungeon Lord", taglineKey: "apps.dungeon.tagline", art: "/apps/dungeon-dragon.webp", color: "var(--dungeon)", soft: "var(--dungeon-soft)" },
 ];
 
 const ARROW = (
@@ -63,7 +64,7 @@ export default function Apps() {
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
           variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
-          className="grid gap-5 md:grid-cols-3"
+          className="grid gap-5 md:grid-cols-2"
         >
           {APPS.map((app) => {
             const body = (

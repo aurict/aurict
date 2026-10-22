@@ -10,6 +10,7 @@ export const fr = {
 		jelly: { tagline: `Une aventure de puzzle délicieusement gélatineuse.` },
 		duckley: { tagline: `Petites leçons. Journées plus lumineuses.` },
 		mindgrid: { tagline: `Plus calme et plus vif, une case à la fois.` },
+		dungeon: { tagline: `Deviens le dragon que les héros redoutent.` },
 		comingSoon: { title: `Bientôt disponible` },
 		googlePlay: `Google Play`,
 	},
@@ -21,7 +22,7 @@ export const fr = {
 	},
 	spotlight: {
 		eyebrow: `Dans le studio`,
-		title: `Trois apps. Trois petits mondes.`,
+		title: `Quatre apps. Quatre petits mondes.`,
 		getOnPlay: `Disponible sur Google Play`,
 		jelly: {
 			kicker: `Jeu de réflexion`,
@@ -45,6 +46,14 @@ export const fr = {
 			f1: `Des puzzles de mémoire captivants sur une grille épurée`,
 			f2: `Conçu pour aiguiser la mémoire et la concentration`,
 			f3: `Suis ta progression au fil de tes progrès`,
+		},
+		dungeon: {
+			kicker: `Jeu idle`,
+			body: `Un idle tycoon où tu es le dragon tout au fond du donjon. Les héros descendent étage par étage ; tes monstres les arrêtent et chacun laisse de l’or pour agrandir ton antre.`,
+			f1: `30 étages dans 10 biomes, gardés par 20 monstres`,
+			f2: `Un bébé dragon qui évolue en Ancien Seigneur Dragon`,
+			f3: `Renaissance pour des talents d’âme, et une histoire racontée en lettres`,
+			f4: `Ton donjon continue de gagner pendant ton absence`,
 		},
 	},
 	studio: {
@@ -122,11 +131,11 @@ export const fr = {
 		title: `Vos questions, nos réponses`,
 		q1: {
 			q: `Qu’est-ce qu’Aurict Mobile ?`,
-			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley et Mind Grid, et hébergeons ici leurs pages de compte et d’assistance.`,
+			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid et Dungeon Lord, et hébergeons ici leurs pages de compte et d’assistance.`,
 		},
 		q2: {
 			q: `Où télécharger les applis ?`,
-			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox arrive bientôt.`,
+			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox et Dungeon Lord arrivent bientôt.`,
 		},
 		q3: {
 			q: `Comment supprimer mon compte ?`,

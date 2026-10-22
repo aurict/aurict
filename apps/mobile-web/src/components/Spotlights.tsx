@@ -7,7 +7,7 @@ import SectionHeading from "./SectionHeading";
 const EASE = [0.16, 0.8, 0.2, 1] as const;
 
 type Spotlight = {
-  key: "jelly" | "duckley" | "mindgrid";
+  key: "jelly" | "duckley" | "mindgrid" | "dungeon";
   name: string;
   features: string[];
   color: string;
@@ -46,6 +46,15 @@ const SPOTLIGHTS: Spotlight[] = [
     art: { src: "/apps/tiles.webp", className: "w-[58%] right-[6%] bottom-[8%]" },
     companion: { src: "/apps/mindgrid-icon.webp", className: "w-[30%] left-[10%] top-[12%] rounded-[22%] shadow-xl" },
     href: "https://play.google.com/store/apps/details?id=com.mindgrid.mind_grid",
+  },
+  {
+    key: "dungeon",
+    name: "Dungeon Lord",
+    features: ["f1", "f2", "f3", "f4"],
+    color: "var(--dungeon)",
+    soft: "var(--dungeon-soft)",
+    art: { src: "/apps/dungeon-dragon.webp", className: "w-[64%] left-[6%] bottom-[6%]" },
+    companion: { src: "/apps/dungeon-icon.webp", className: "w-[26%] right-[8%] top-[10%] rounded-[22%] shadow-xl" },
   },
 ];
 

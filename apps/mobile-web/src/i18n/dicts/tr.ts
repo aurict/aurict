@@ -10,6 +10,7 @@ export const tr = {
 		jelly: { tagline: `Harika titrek bir bulmaca macerası.` },
 		duckley: { tagline: `Kısa dersler. Daha parlak günler.` },
 		mindgrid: { tagline: `Taş taş, daha sakin ve daha keskin bir sen.` },
+		dungeon: { tagline: `Kahramanların korktuğu ejderha boss sen ol.` },
 		comingSoon: { title: `Yakında` },
 		googlePlay: `Google Play`,
 	},
@@ -21,7 +22,7 @@ export const tr = {
 	},
 	spotlight: {
 		eyebrow: `Stüdyonun içinden`,
-		title: `Üç uygulama. Üç küçük dünya.`,
+		title: `Dört uygulama. Dört küçük dünya.`,
 		getOnPlay: `Google Play'den indir`,
 		jelly: {
 			kicker: `Bulmaca oyunu`,
@@ -45,6 +46,14 @@ export const tr = {
 			f1: `Sade bir taş ızgarasında keyifli hafıza bulmacaları`,
 			f2: `Hafızanı ve odağını keskinleştirmek için tasarlandı`,
 			f3: `Geliştikçe ilerlemeni takip et`,
+		},
+		dungeon: {
+			kicker: `Idle oyun`,
+			body: `Zindanın en dibindeki ejderha olduğun bir idle tycoon. Kahramanlar kat kat aşağı iniyor; canavarların onları durduruyor, her biri inini büyütmen için altın bırakıyor.`,
+			f1: `10 biyomda 30 kat, 20 canavar bekçi`,
+			f2: `Kadim Ejderha Lordu'na evrimleşen bebek bir ejderha`,
+			f3: `Ruh yetenekleri için yeniden doğuş ve mektuplarla anlatılan bir hikâye`,
+			f4: `Sen yokken de zindanın kazanmaya devam eder`,
 		},
 	},
 	studio: {
@@ -122,11 +131,11 @@ export const tr = {
 		title: `Sık sorulan sorular`,
 		q1: {
 			q: `Aurict Mobile nedir?`,
-			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley ve Mind Grid'i yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
+			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid ve Dungeon Lord'u yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
 		},
 		q2: {
 			q: `Uygulamaları nereden indirebilirim?`,
-			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox çok yakında.`,
+			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox ve Dungeon Lord çok yakında.`,
 		},
 		q3: {
 			q: `Hesabımı nasıl silerim?`,
