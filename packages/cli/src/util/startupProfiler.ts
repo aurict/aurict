@@ -101,13 +101,3 @@ export function flushProfileReportOnExit(): void {
     }
   })
 }
-
-/** Get the enabled flag, for tests or placement checks. */
-export function isStartupProfilingEnabled(): boolean {
-  return enabled
-}
-
-/** Clear internal state for tests or reset (enabled mode only) — not used in production. */
-export function __resetForTests(): void {
-  phases.length = 0
-}

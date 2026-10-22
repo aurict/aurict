@@ -6,7 +6,7 @@ export const modelCommands: CommandDef[] = [
   // ── /models ───────────────────────────────────────────────────────────────
   {
     name:        "models",
-    aliases:     ["m"],
+    aliases:     ["m", "model"],
     description: "List and select models for the current provider",
     handler: async (_args, ctx): Promise<CommandResult> => {
       const plugin = ProviderRegistry.get(ctx.provider)

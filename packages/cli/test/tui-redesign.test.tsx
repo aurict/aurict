@@ -4,12 +4,12 @@
  * Covers:
  *  - Brand palette identity (4 brand palettes exist, names, accent hues)
  *  - Functional hue separation (safe/warning/danger ≥40° from any brand accent)
- *  - DEFAULT_THEME is a brand palette
+ *  - DEFAULT_THEME is the Codex look
  *  - Palette command registration & picker result shape
  *  - motionEnabled() under NO_COLOR / TERM=dumb / AURICT_NO_MOTION
  *  - StatusBar density breakpoints (tiny / compact / normal / wide) preserve key strings
  *  - ExpandableOutput renders terminal header bar with tool name
- *  - PermissionDialog responsive action-required banner
+ *  - PermissionDialog Codex-style question block
  */
 import { test, expect, describe } from "bun:test"
 import React from "react"
@@ -49,9 +49,9 @@ describe("brand palette identity", () => {
     expect(THEMES["deep-emerald"]!.name).toBe("Deep Emerald")
   })
 
-  test("DEFAULT_THEME is the default brand palette (oxblood)", () => {
-    expect(DEFAULT_THEME).toBe("oxblood")
-    expect(isBrandTheme(DEFAULT_THEME)).toBe(true)
+  test("DEFAULT_THEME is the Codex look", () => {
+    expect(DEFAULT_THEME).toBe("aurict")
+    expect(isBrandTheme(DEFAULT_THEME)).toBe(false)
   })
 
   test("isBrandTheme excludes legacy themes", () => {
@@ -203,9 +203,8 @@ describe("Session chrome density breakpoints", () => {
     expect(header).toContain("/home/user/project")
     expect(header).toContain("opus-4")
 
-    const footer = render(<StatusBar cols={140} sandboxBackend="policy" />).lastFrame() ?? ""
-    expect(footer).toContain("ready")
-    expect(footer).toContain("policy")
+    const footer = (render(<StatusBar cols={140} sandboxBackend="policy" />).lastFrame() ?? "").replace(/\x1b\[[0-9;]*m/g, "")
+    expect(footer).toContain("? for shortcuts")
     expect(footer).not.toContain("/home/user/project")
     expect(footer).not.toContain("opus-4")
   })
@@ -246,17 +245,17 @@ describe("SettingsPanel responsive theme surface", () => {
 })
 
 describe("PermissionDialog", () => {
-  test("renders a compact action-required banner", () => {
+  test("renders a frameless question with its risk line", () => {
     const { lastFrame } = render(
       <PermissionDialog title="Bash command" subtitle="destructive operation" color="#ff0000" tone="danger">
         <Text>body</Text>
       </PermissionDialog>,
     )
-    const frame = lastFrame() ?? ""
-    expect(frame).toContain("Permission")
+    const frame = (lastFrame() ?? "").replace(/\x1b\[[0-9;]*m/g, "")
     expect(frame).toContain("Bash command")
     expect(frame).toContain("destructive operation")
-    expect(frame).toContain("danger")
+    expect(frame).toContain("body")
+    expect(frame).not.toContain("╭")
   })
 
   test("stays bounded on a narrow terminal", () => {
@@ -271,7 +270,7 @@ describe("PermissionDialog", () => {
     expect(plain.split("\n").every((line) => line.length <= 24)).toBe(true)
   })
 
-  test("aligns the inline card with the composer inset on a wide terminal", () => {
+  test("indents the question two columns past the composer inset on a wide terminal", () => {
     const { lastFrame } = render(
       <TerminalSizeContext.Provider value={{ columns: 120, rows: 30 }}>
         <PermissionDialog title="Bash command" color="#ff0000">
@@ -280,9 +279,9 @@ describe("PermissionDialog", () => {
       </TerminalSizeContext.Provider>,
     )
     const plain = (lastFrame() ?? "").replace(/\x1b\[[0-9;]*m/g, "")
-    const heading = plain.split("\n").find((line) => line.includes("Permission"))
+    const heading = plain.split("\n").find((line) => line.includes("Bash command"))
     expect(heading).toBeDefined()
-    expect(heading!.startsWith("  │")).toBe(true)
+    expect(heading!.startsWith("    Bash command")).toBe(true)
     expect(plain.split("\n").every((line) => line.length <= 120)).toBe(true)
   })
 })

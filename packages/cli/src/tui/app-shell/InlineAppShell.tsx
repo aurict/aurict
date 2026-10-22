@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Box, Static, measureElement, useStdout, type DOMElement } from "../design-system/renderer.js";
+import { Box, Static, measureElement, useStdout, useWindowSize, type DOMElement } from "../design-system/renderer.js";
 import type { Theme } from "../../utils/theme.js";
 import { ThemeContext } from "../../utils/theme.js";
 import type { Context as KeybindingContext } from "../../keybindings/index.js";
@@ -89,7 +89,7 @@ export function InlineAppShell(props: Props) {
   );
 }
 
-function useMeasuredRows(ref: React.RefObject<DOMElement>, fallback: number): number {
+function useMeasuredRows(ref: React.RefObject<DOMElement | null>, fallback: number): number {
   const [rows, setRows] = useState(fallback);
   useLayoutEffect(() => {
     if (!ref.current) return;
@@ -124,10 +124,9 @@ function InlineSurface(props: Props) {
   const { transcript } = props;
   // Ink repaints on resize before React state catches up; never size the
   // frame for more rows than the terminal Ink is drawing into has now.
-  const { stdout } = useStdout();
-  const rows = Math.min(props.rows, stdout.rows || props.rows);
+  const windowSize = useWindowSize();
+  const rows = Math.min(props.rows, windowSize.rows || props.rows);
   const inset = shellHorizontalInset(props.columns);
-  const rail = props.columns >= 60;
   const modalScreen = useModalScreen(props.overlayOpen && !props.exiting);
   const inline = useInlineTranscript({
     messages: transcript.messages,
@@ -186,7 +185,7 @@ function InlineSurface(props: Props) {
         ? <Box key="intro" flexDirection="column" width={props.columns}>{props.intro}</Box>
         : (
           <Box key={`${index}:${item.row.id}`} paddingX={inset} width={props.columns}>
-            <TranscriptRows rows={[item.row]} rail={rail} />
+            <TranscriptRows rows={[item.row]} />
           </Box>
         )}
     </Static>
@@ -201,7 +200,7 @@ function InlineSurface(props: Props) {
           {props.header}
         </Box>
         <Box flexDirection="column" flexGrow={1} flexShrink={1} overflow="hidden" justifyContent="flex-end" paddingX={inset}>
-          {shown.length > 0 && <TranscriptRows rows={shown} rail={rail} />}
+          {shown.length > 0 && <TranscriptRows rows={shown} />}
         </Box>
         <Box ref={bottomRef} flexDirection="column" flexShrink={0}>
           {props.bottom}

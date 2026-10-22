@@ -105,7 +105,6 @@ export function Surface({
   const requestedBorderStyle = resolveBorderStyle(variant)
   const borderStyle = requestedBorderStyle && prefersAsciiGlyphs() ? "classic" : requestedBorderStyle
   const borderColor  = resolveBorderColor(tone, theme, accentColor)
-  const hasBorder    = borderStyle !== undefined
 
   const px = paddingX !== undefined ? spacingValue(paddingX) : spacingValue(padding)
   const py = paddingY !== undefined ? spacingValue(paddingY) : spacingValue(padding)

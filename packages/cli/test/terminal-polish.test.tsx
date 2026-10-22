@@ -1,11 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import React from "react";
-import { cleanup, render } from "ink-testing-library";
+import { render } from "ink-testing-library";
 import { ConversationViewport, viewportTopPadding } from "../src/tui/ConversationViewport.js";
 import { StartupBanner } from "../src/tui/StartupBanner.js";
 import { TerminalSizeContext } from "../src/tui/TerminalSizeContext.js";
 import { Typo } from "../src/tui/design-system/index.js";
-import { CockpitHeader } from "../src/tui/CockpitHeader.js";
 import { ComposerPane } from "../src/tui/app-shell/ComposerPane.js";
 import { TranscriptRows } from "../src/tui/TranscriptRows.js";
 
@@ -55,7 +54,7 @@ describe("terminal polish contract", () => {
     expect(frame).toContain("⋯ 1 new · verify failed ↓");
   });
 
-  test("centers a large branded startup wordmark on capable terminals", () => {
+  test("prints the aurict session header", () => {
     const frame = stripAnsi(render(
       <StartupBanner
         version="v1.2.7"
@@ -64,43 +63,42 @@ describe("terminal polish contract", () => {
         workdir="/workspace/aurict"
         cols={100}
         rows={30}
-        quip="Reality compiled. Warnings remain."
       />,
     ).lastFrame() ?? "");
     const lines = frame.split("\n");
-    expect(frame).toContain("AURICT");
-    expect(frame).toContain("AGENTIC ENGINEERING SYSTEM");
-    expect(frame).toContain("Reality compiled. Warnings remain.");
-    expect(lines.some((line) => line.startsWith("                    ") && line.includes("█████"))).toBe(true);
+    expect(frame).toContain("  aurict█ v1.2.7");
+    expect(frame).toContain("\n  /workspace/aurict\n");
+    expect(frame).toContain("  /init         create an AGENTS.md file");
+    expect(frame).not.toContain("deepseek-v4");
+    expect(frame).not.toContain("YOLO mode");
+    expect(frame).toContain("To get started, describe a task or try one of these commands:");
+    expect(frame).not.toContain("AURICT");
+    // Only the wordmark cursor, never a block-letter logo.
+    expect(frame.split("█")).toHaveLength(2);
     expect(lines.every((line) => line.length <= 100)).toBe(true);
   });
 
-  test("keeps the selected startup quip stable across rerenders", () => {
-    const banner = render(
+  test("marks full-access sessions with the YOLO line", () => {
+    const frame = stripAnsi(render(
+      <StartupBanner version="v1.2.7" provider="opencode" model="deepseek-v4" workdir="/workspace/aurict" fullAccess />,
+    ).lastFrame() ?? "");
+    expect(frame).toContain("  permissions: YOLO mode");
+  });
+
+  test("drops the command help on short terminals", () => {
+    const frame = stripAnsi(render(
       <StartupBanner
         version="v1.2.7"
         provider="opencode"
         model="deepseek-v4"
         workdir="/workspace/aurict"
         cols={100}
-        rows={30}
-        quip="Reality compiled. Warnings remain."
+        rows={16}
       />,
-    );
-    banner.rerender(
-      <StartupBanner
-        version="v1.2.7"
-        provider="opencode"
-        model="deepseek-v4"
-        workdir="/workspace/aurict"
-        cols={100}
-        rows={30}
-        quip="This must not replace the launch selection."
-      />,
-    );
-    const frame = stripAnsi(banner.lastFrame() ?? "");
-    expect(frame).toContain("Reality compiled. Warnings remain.");
-    expect(frame).not.toContain("This must not replace the launch selection.");
+    ).lastFrame() ?? "");
+    expect(frame).toContain("aurict█ v1.2.7");
+    expect(frame).toContain("/workspace/aurict");
+    expect(frame).not.toContain("To get started");
   });
 
   test("keeps the composer focused and removes dashboard-era labels", () => {
@@ -122,15 +120,16 @@ describe("terminal polish contract", () => {
       </TerminalSizeContext.Provider>,
     ).lastFrame() ?? "";
     const plain = stripAnsi(frame);
-    expect(frame).toContain("Ask Aurict to plan, explain, or build");
-    expect(plain).toContain("PROMPT workspace input");
-    expect(frame).toContain("commands");
+    // The empty input shows the block cursor between the prompt and the placeholder.
+    expect(plain).toMatch(/❯ +Ask Aurict to do anything/);
+    expect(plain).not.toContain("PROMPT");
+    expect(plain).not.toContain("╭");
     expect(frame).not.toContain("INSERT");
     expect(frame).not.toContain("tasks");
     expect(frame).not.toContain("history");
   });
 
-  test("renders the transcript as a subtle timeline", () => {
+  test("renders a user turn with the brand prompt gutter and no rail", () => {
     const frame = stripAnsi(render(
       <TerminalSizeContext.Provider value={{ columns: 100, rows: 20 }}>
         <ConversationViewport
@@ -146,8 +145,9 @@ describe("terminal polish contract", () => {
         />
       </TerminalSizeContext.Provider>,
     ).lastFrame() ?? "");
-    expect(frame).toContain("│ ▸ You");
-    expect(frame).toContain("│ Modern terminal");
+    expect(frame).toContain("❯ Modern terminal");
+    expect(frame).not.toContain("│");
+    expect(frame).not.toContain("You ·");
   });
 
   test("turns semantic gap rows into true visual whitespace", () => {
@@ -164,20 +164,7 @@ describe("terminal polish contract", () => {
     expect(frame).toContain("│ Before tool\n\n│ After tool");
   });
 
-  test("gives the cockpit and composer the same outer frame width", () => {
-    const cockpit = stripAnsi(render(
-      <TerminalSizeContext.Provider value={{ columns: 100, rows: 30 }}>
-        <CockpitHeader
-          provider="opencode"
-          model="deepseek-v4"
-          workdir="/workspace/aurict"
-          tokens={{ input: 100, output: 50 }}
-          contextTokens={25_000}
-          cols={100}
-        />
-      </TerminalSizeContext.Provider>,
-    ).lastFrame() ?? "");
-    cleanup();
+  test("draws the composer as a frameless block one row taller on each side", () => {
     const composer = stripAnsi(render(
       <TerminalSizeContext.Provider value={{ columns: 100, rows: 30 }}>
         <ComposerPane
@@ -195,10 +182,11 @@ describe("terminal polish contract", () => {
         />
       </TerminalSizeContext.Provider>,
     ).lastFrame() ?? "");
-    const cockpitBorder = cockpit.split("\n").find((line) => line.includes("╭"));
-    const composerBorder = composer.split("\n").find((line) => line.includes("╭"));
-    expect(cockpitBorder).toBeDefined();
-    expect(cockpitBorder?.length).toBe(composerBorder?.length);
+    const lines = composer.split("\n");
+    const promptIndex = lines.findIndex((line) => /❯ +Ask Aurict to do anything/.test(line));
+    expect(promptIndex).toBe(1);
+    expect(lines).toHaveLength(3);
+    expect(composer).not.toMatch(/[╭╮╰╯│─]/);
   });
 
   test("does not combine a semantic muted color with ANSI dim", () => {

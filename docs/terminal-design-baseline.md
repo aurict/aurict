@@ -242,3 +242,38 @@ Date: 2026-10-03
 - A full reprint clears the terminal's scrollback, including output from before Aurict started.
 - Rewind restores only files changed through Aurict's file tools. User edits made to those files after the chosen prompt are overwritten.
 - The PTY matrix runs against xterm.js emulation. tmux, ssh, Windows Terminal, iTerm2, and Kitty have not been exercised by it.
+
+## Phase 9 Codex look (2026-10-22)
+
+The inline TUI now follows the OpenAI Codex CLI visual model; the brand stays
+"Aurict" and the colours follow aurict.com (`aurict` theme: accent `#ff7a6b`,
+active border and wordmark cursor `#c9352b`).
+
+- **Cells, not headers.** History is a list of cells separated by one blank
+  row. Agent text, tools and notices start with `• ` and continue with a
+  two-column gutter; user turns are `❯ text` on a tinted block (blank tinted
+  row above and below). There is no `◇ Aurict` / `▸ You · HH:MM` header and no
+  transcript rail. Prose is no longer capped at 110 columns or inset.
+- **Tool cells.** `• Ran cmd` with up to five output lines under `  └ `
+  (middle-truncated, `… +N lines (^O to view details)`); reads and searches,
+  including `cat`/`rg` through bash, merge into `• Explored` / `  └ Read a, b`;
+  edits are `• Edited path (+a -b)` followed by `    12 +line` diff rows with
+  `⋮` between hunks; MCP and other tools are `• Called server.tool(args)`; the
+  `todo` tool renders as `• Updated Plan` with `✔`/`□`. Success bullets are
+  green, failures red, pending ones dim.
+- **Reasoning** is not printed in the transcript; its latest `**heading**`
+  becomes the status line title: `• Planning (12s • esc to interrupt)`.
+- **Composer** has no border: a tinted block one row taller than the text on
+  each side, `❯ ` prompt in the accent colour, placeholder "Ask Aurict to do anything". The footer
+  below shows `/ for commands · @ for files` (or a transient hint) and
+  `N% context left`, plus the approval mode when it is not `ask`.
+- **Popups and approvals** are frameless. Selected popup rows are filled in
+  the accent colour; approvals ask "Would you like to run the following
+  command?" with a numbered `› 1. Yes, proceed (y)` list and "Press enter to
+  confirm or esc to cancel". Only keys Aurict binds are shown in labels.
+- **Backgrounds.** Tinted rows use Ink 8's `<Box backgroundColor>`, which
+  fills the whole row width.
+- **Theme values.** A colour may be `""`, meaning the terminal's default
+  foreground. `aurict` is the default theme and `aurict-light` the
+  light-terminal variant (Codex detects the background via OSC 11; Aurict does
+  not yet, so pick it with `/theme`).

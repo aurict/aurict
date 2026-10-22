@@ -11,10 +11,11 @@ import type { PermissionRequest } from "@aurict/core";
  */
 export type ApprovalMode = "ask" | "auto" | "full";
 
+/** The Codex permission presets, in Codex's order, mapped onto Aurict's modes. */
 export const APPROVAL_MODES: ReadonlyArray<{ id: ApprovalMode; label: string; description: string }> = [
-  { id: "ask", label: "Ask", description: "Approve every file change and command yourself" },
-  { id: "auto", label: "Project Auto", description: "File changes inside this project run; commands still ask" },
-  { id: "full", label: "Full access", description: "Everything runs without asking, except dangerous operations" },
+  { id: "auto", label: "Ask for approval", description: "Read and edit workspace files, with approval required for commands, internet access, or edits outside the workspace" },
+  { id: "full", label: "Full Access", description: "Use with caution: Aurict can edit files outside this workspace and access the internet without approval" },
+  { id: "ask", label: "Read Only", description: "Read workspace files, with approval required for edits or internet access" },
 ];
 
 export function parseApprovalMode(value: string | undefined): ApprovalMode | undefined {

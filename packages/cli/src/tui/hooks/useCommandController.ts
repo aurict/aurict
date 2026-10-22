@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import crypto from "node:crypto";
 import {
   ProviderRegistry,
+  SessionManager,
   fileWatcher,
   getSessionAgent,
   runAgent,
@@ -13,7 +14,7 @@ import {
   parseSlashCommand,
   suggestCommands,
 } from "../../commands/registry.js";
-import type { CommandResult, PickerItem } from "../../commands/types.js";
+import type { CommandResult, PickerHeader, PickerItem } from "../../commands/types.js";
 import type { DisplayMessage } from "../conversation/types.js";
 import type { ConversationBranch } from "../app/app-state-types.js";
 import { ZERO_TOKENS } from "../app/app-state-types.js";
@@ -159,7 +160,8 @@ export function useCommandController(params: AppCommandParams) {
       title: string,
       items: PickerItem[],
       onSelect: (item: PickerItem) => void,
-    ) => params.setPicker({ title, items, onSelect }),
+      header?: PickerHeader,
+    ) => params.setPicker({ title, header, items, onSelect }),
     showPrompt: (
       title: string,
       placeholder: string,
@@ -323,6 +325,11 @@ export function useCommandController(params: AppCommandParams) {
     startRemoteSession: () => params.remoteBridgeRef.current.start(),
     stopRemoteSession: () => params.remoteBridgeRef.current.stop(),
     remoteConnected: params.remoteConnected,
+    listSubagents: () => SessionManager.list()
+      .filter((session) => session.parentId === params.mainSessionId.current)
+      .sort((left, right) => left.createdAt - right.createdAt)
+      .map((session) => ({ id: session.id, title: session.title, status: session.status })),
+    viewSubagent: (id: string) => params.overlay.setViewingSubagentId(id),
   }), [params, rewindTo, requestRewind]);
 
   const applyResult = useCallback((result: CommandResult) => {
@@ -339,6 +346,7 @@ export function useCommandController(params: AppCommandParams) {
       case "picker":
         params.setPicker({
           title: result.title,
+          header: result.header,
           items: result.items,
           onSelect: result.onSelect,
         });

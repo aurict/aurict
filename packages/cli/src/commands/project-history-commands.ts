@@ -1,8 +1,8 @@
-import { SessionManager, defaultExportFilename, exportToHtml, exportToMarkdown, gateGuard, loadConfig, setCompaction } from "@aurict/core"
-import { existsSync, readFileSync, writeFileSync } from "fs"
-import { join, resolve } from "path"
+import { SessionManager, defaultExportFilename, exportToHtml, exportToMarkdown, loadConfig, setCompaction } from "@aurict/core"
+import { writeFileSync } from "fs"
+import { resolve } from "path"
 import type { CommandDef, CommandResult } from "./types.js"
-import { runCompactNow } from "./command-helpers.js"
+import { runCompactNow, tildePath } from "./command-helpers.js"
 
 export const projectHistoryCommands: CommandDef[] = [
   // ── /share ────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ export const projectHistoryCommands: CommandDef[] = [
         type:  "picker",
         title: "Share session",
         items: [
-          { id: "local",  label: "Save locally",       hint: filepath },
+          { id: "local",  label: "Save locally",       hint: tildePath(filepath) },
           { id: "upload", label: "Upload to transfer.sh", hint: "Generates a temporary URL (7 days)" },
         ],
         onSelect: async (item) => {

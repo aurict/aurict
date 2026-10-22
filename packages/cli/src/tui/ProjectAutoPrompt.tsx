@@ -1,67 +1,87 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import wrapAnsi from "wrap-ansi";
 import { Box, Text, useInput } from "./design-system/renderer.js";
-import { PermissionDialog } from "./PermissionDialog.js";
 import { useTheme } from "../utils/theme.js";
+import { glyph } from "./terminal-glyphs.js";
+import { trustTarget } from "./project-trust.js";
+import { useTerminalSize } from "./TerminalSizeContext.js";
+import { tildePath } from "../commands/command-helpers.js";
 
 interface Props {
   workdir: string;
-  onDecide: (enabled: boolean) => void;
+  /** true: trust and continue; false: quit. */
+  onDecide: (trusted: boolean) => void;
 }
 
+const OPTIONS = ["Trust and continue", "Quit"] as const;
+const TRUST_TEXT = "Trust this folder? Aurict can read, edit, and run files here, subject to your permission settings. "
+  + "Folder settings can run code automatically, even without a model request. Continue only if you trust these files. "
+  + "Your trust decision will be saved.";
+
+/**
+ * The Codex folder-trust prompt, shown once per folder:
+ *
+ *   Folder access
+ *   ~/projects/aurict
+ *
+ *   Trust this folder? Aurict can read, edit, and run files here, …
+ *
+ * › 1. Trust and continue
+ *   2. Quit
+ *
+ *   enter continue · esc quit
+ */
 export function ProjectAutoPrompt({ workdir, onDecide }: Props) {
   const theme = useTheme();
-  const [selected, setSelected] = useState<"yes" | "no">("no");
+  const { columns } = useTerminalSize();
+  const [selected, setSelected] = useState(0);
+  const selectedRef = useRef(0);
+  const paragraph = (text: string) => wrapAnsi(text, Math.max(20, columns - 4), { hard: true, trim: true }).split("\n");
+  const root = trustTarget(workdir);
 
   useInput((input, key) => {
-    const shortcut = input.toLowerCase();
-    if (shortcut === "y" || shortcut === "e") {
-      onDecide(true);
+    if (key.escape) { onDecide(false); return; }
+    if (key.upArrow || key.downArrow) {
+      selectedRef.current = selectedRef.current === 0 ? 1 : 0;
+      setSelected(selectedRef.current);
       return;
     }
-    if (shortcut === "n" || shortcut === "h" || key.escape) {
-      onDecide(false);
-      return;
-    }
-    if (key.leftArrow || key.rightArrow || key.upArrow || key.downArrow) {
-      setSelected((current) => current === "yes" ? "no" : "yes");
-      return;
-    }
-    if (key.return) onDecide(selected === "yes");
+    if (input === "1" || input === "2") { onDecide(input === "1"); return; }
+    if (key.return) onDecide(selectedRef.current === 0);
   });
 
   return (
-    <Box flexDirection="column" marginBottom={1}>
-      <PermissionDialog
-        title="Project Auto"
-        subtitle="startup access"
-        color={theme.accent}
-        tone="accent"
-      >
-        <Text color={theme.textPrimary}>
-          Allow Aurict to edit files in this project without asking each time?
-        </Text>
-        <Text color={theme.textDim} wrap="truncate-middle">{workdir}</Text>
-        <Box marginTop={1} gap={2}>
-          <Text
-            color={selected === "yes" ? theme.success : theme.textDim}
-            bold={selected === "yes"}
-          >
-            {selected === "yes" ? "❯ " : "  "}Yes · enable Auto
-          </Text>
-          <Text
-            color={selected === "no" ? theme.accent : theme.textDim}
-            bold={selected === "no"}
-          >
-            {selected === "no" ? "❯ " : "  "}No · ask each time
-          </Text>
+    <Box flexDirection="column">
+      <Text> </Text>
+      <Text bold>  Folder access</Text>
+      <Text color={theme.textDim} wrap="truncate-middle">  {tildePath(workdir)}</Text>
+      {root !== workdir && (
+        <Box flexDirection="column" marginTop={1} paddingLeft={2}>
+          {paragraph("Note: You’re in a subdirectory of a Git project. Trusting will apply to the repository root:").map((line, index) => (
+            <Text key={index} color={theme.warning}>{line}</Text>
+          ))}
+          <Text color={theme.textDim} wrap="truncate-middle">{tildePath(root)}</Text>
         </Box>
-        <Text color={theme.textDim} dimColor>
-          Auto never approves shell, secrets, .git/.aurict, outside paths, or large deletes.
-        </Text>
-        <Text color={theme.textDim} dimColor>
-          y/e yes · n/h no · ←/→ choose · Enter confirm
-        </Text>
-      </PermissionDialog>
+      )}
+      <Box marginTop={1} paddingLeft={2} flexDirection="column">
+        {/* Pre-wrapped: Ink keeps the leading space of a soft-wrapped line. */}
+        {paragraph(TRUST_TEXT).map((line, index) => (
+          <Text key={index}>{line}</Text>
+        ))}
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        {OPTIONS.map((label, index) => {
+          const active = index === selected;
+          return (
+            <Text key={label} {...(active ? { color: theme.accent, bold: true } : {})}>
+              {active ? `${glyph("prompt")} ` : "  "}{index + 1}. {label}
+            </Text>
+          );
+        })}
+      </Box>
+      <Box marginTop={1}>
+        <Text>  enter<Text color={theme.textDim}> continue · </Text>esc<Text color={theme.textDim}> quit</Text></Text>
+      </Box>
     </Box>
   );
 }

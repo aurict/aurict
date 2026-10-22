@@ -1,10 +1,5 @@
 import type { Task } from "@aurict/core"
-import {
-  hasOpenContinuationTasks,
-  shouldContinueAgentRun,
-  stalledMidTask,
-  type ContinuationSignal as CoreContinuationSignal,
-} from "@aurict/core"
+import { shouldContinueAgentRun, stalledMidTask, type ContinuationSignal as CoreContinuationSignal } from "@aurict/core"
 
 export const AUTO_CONTINUE_PROMPT =
   "Resume the original task from the current state. Take the next necessary action, then reassess whether the task is complete. Stop if it is complete or a user decision is required."
@@ -17,10 +12,6 @@ export interface ContinuationSignal {
 }
 
 export { stalledMidTask }
-
-export function hasOpenTasks(tasks: Task[]): boolean {
-  return hasOpenContinuationTasks(tasks)
-}
 
 export function shouldAutoContinue(signal: ContinuationSignal): boolean {
   return shouldContinueAgentRun(signal as CoreContinuationSignal)

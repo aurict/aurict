@@ -27,8 +27,17 @@ describe("terminal layout contract", () => {
   test("diff and shell scenarios keep inspectable summaries", () => {
     const diff = projectTranscript({ messages: terminalScenarios.multiFileDiff!, width: 80, streamingText: null, streamingReason: null, streamingError: null });
     const shell = projectTranscript({ messages: terminalScenarios.shell!, width: 80, streamingText: null, streamingReason: null, streamingError: null });
-    expect(diff.map(rowText).join("\n")).toMatch(/│ change\s+2 files · \+2 −2/);
-    expect(diff.map(rowText).join("\n")).toContain("└ completed");
-    expect(shell.map(rowText).join("\n")).toMatch(/80 passed · 0 failed\s+details \^O/);
+    const diffText = diff.map(rowText).join("\n");
+    const shellText = shell.map(rowText).join("\n");
+    // Each edit is its own Codex "Edited" cell with a numbered diff below it.
+    expect(diffText).toContain("• Edited src/header.tsx (+1 -1)");
+    expect(diffText).toContain("• Edited src/footer.tsx (+1 -1)");
+    expect(diffText).toContain("    1 -old");
+    expect(diffText).toContain("    1 +new");
+    // Long command output keeps its head and tail around a hidden-line marker.
+    expect(shellText).toContain("• Ran bun test");
+    expect(shellText).toContain("  └ test 1: passed");
+    expect(shellText).toContain("    … +76 lines (^O to view details)");
+    expect(shellText).toContain("    test 80: passed");
   });
 });

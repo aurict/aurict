@@ -188,21 +188,6 @@ export function getTerminalCaps(): TerminalCapabilities {
 }
 
 /**
- * Clear the cache (for testing)
- */
-export function clearTerminalCapsCache(): void {
-  cachedCaps = null
-}
-
-/**
- * Return the terminal name in short form
- */
-export function shortTerminalName(): string {
-  const caps = getTerminalCaps()
-  return caps.name
-}
-
-/**
  * Check whether the terminal supports a given feature
  */
 export function supports(feature: keyof Omit<TerminalCapabilities, "name" | "multiplexer">): boolean {

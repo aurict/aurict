@@ -29,9 +29,9 @@ export function getDiffPalette(theme: Theme): DiffPalette {
   const baseBg = theme.bgDeep ?? theme.bgHighlight
   return {
     baseBg,
-    addBg: blendHex(baseBg, theme.success, 0.22),
+    addBg: theme.diffAddBg ?? blendHex(baseBg, theme.success, 0.22),
     addWordBg: blendHex(baseBg, theme.success, 0.48),
-    removeBg: blendHex(baseBg, theme.error, 0.22),
+    removeBg: theme.diffRemoveBg ?? blendHex(baseBg, theme.error, 0.22),
     removeWordBg: blendHex(baseBg, theme.error, 0.48),
     hunkBg: blendHex(baseBg, theme.accent, 0.18),
   }

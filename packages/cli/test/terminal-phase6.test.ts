@@ -56,8 +56,9 @@ describe("terminal phase 6 hardening", () => {
       paused: true,
       messages: [{ id: "e", role: "error", content: "failed", errorPresentation: { title: "Request failed", action: "Retry now." } }],
     });
-    expect(text(rows)).not.toMatch(/[◆◇▸∴›⌕✦↗│•●○✗→◌⏸±⌥…⋯−─·]/);
-    expect(text(rows)).toContain("x Request failed");
+    expect(text(rows)).not.toMatch(/[◆◇▸∴›⌕✦↗│•●○✗→◌◦⏸±⌥…⋯−─·└⋮✔□■]/);
+    expect(text(rows)).toContain("# Request failed");
+    expect(text(rows)).toContain("  > Retry now.");
     expect(text(rows)).toContain("P live output paused . Ctrl+L resume");
   }));
 });

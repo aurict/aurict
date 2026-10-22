@@ -1,7 +1,7 @@
 export type TranscriptTone =
   | "user" | "assistant" | "tool" | "error" | "muted"
   | "heading" | "code" | "quote" | "thinking" | "success" | "bullet"
-  | "diff-add" | "diff-remove" | "diff-context" | "diff-hunk"
+  | "diff-add" | "diff-remove" | "diff-context" | "diff-hunk" | "accent"
 
 export interface TranscriptSegment {
   text: string

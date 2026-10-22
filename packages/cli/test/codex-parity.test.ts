@@ -40,20 +40,34 @@ describe("approval modes", () => {
     expect(fullAccessApproves({ level: "danger" })).toBe(false);
   });
 
-  test("/approvals sets a mode directly or offers a picker", () => {
-    const command = getCommand("approvals")!;
+  test("/permissions sets a mode directly or offers the Codex presets", () => {
+    const command = getCommand("permissions")!;
+    expect(getCommand("approvals")).toBe(command);
     const chosen: string[] = [];
-    const ctx = { approvalMode: "ask", setApprovalMode: (mode: string) => chosen.push(mode) } as unknown as CommandContext;
+    const pickers: Array<{ title: string; items: Array<{ id: string }>; onSelect: (item: { id: string; label: string }) => void }> = [];
+    const ctx = {
+      approvalMode: "ask",
+      setApprovalMode: (mode: string) => chosen.push(mode),
+      showPicker: (title: string, items: Array<{ id: string }>, onSelect: (item: { id: string; label: string }) => void) => pickers.push({ title, items, onSelect }),
+    } as unknown as CommandContext;
     expect(command.handler(["full"], ctx)).toEqual({ type: "text", content: "" });
     expect(chosen).toEqual(["full"]);
     expect(command.handler(["sometimes"], ctx)).toMatchObject({ type: "error" });
     const picker = command.handler([], ctx);
-    expect(picker).toMatchObject({ type: "picker" });
     if (picker instanceof Promise || picker.type !== "picker") throw new Error("expected picker");
-    expect(picker.items.map((item) => item.id)).toEqual(["ask", "auto", "full"]);
-    expect(picker.items[0]!.label.startsWith("●")).toBe(true);
+    expect(picker.title).toBe("Update Model Permissions");
+    expect(picker.items.map((item) => item.label)).toEqual(["Ask for approval", "Full Access", "Read Only (current)"]);
+    picker.onSelect(picker.items[0]!);
+    expect(chosen).toEqual(["full", "auto"]);
+    // Full access asks for confirmation first; cancelling goes back to the list.
     picker.onSelect(picker.items[1]!);
     expect(chosen).toEqual(["full", "auto"]);
+    expect(pickers[0]!.title).toBe("Enable full access?");
+    pickers[0]!.onSelect({ id: "cancel", label: "Cancel" });
+    expect(pickers[1]!.title).toBe("Update Model Permissions");
+    picker.onSelect(picker.items[1]!);
+    pickers[2]!.onSelect({ id: "confirm", label: "Yes, continue anyway" });
+    expect(chosen).toEqual(["full", "auto", "full"]);
   });
 });
 
@@ -74,8 +88,9 @@ describe("exit summary", () => {
       tokens: { input: 1200, output: 340, cacheRead: 800, cacheWrite: 0, reasoning: 0 },
     });
     expect(lines).toEqual([
-      "Token usage: 2,340 total · 1,200 input (+800 cached) · 340 output",
-      "To continue this session, run: aurict --resume abc-123",
+      "Token usage: total=1,540 input=1,200 (+ 800 cached) output=340",
+      "To continue this session, run:",
+      "  aurict --resume abc-123",
     ]);
   });
 

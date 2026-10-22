@@ -72,16 +72,6 @@ export function addXP(state: CompanionState, amount: number): { state: Companion
   return { state: newState, result: { newXp, newlyUnlocked } }
 }
 
-export function setSpecies(state: CompanionState, speciesId: string): CompanionState | null {
-  if (!state.unlockedSpecies.includes(speciesId)) return null
-  return { ...state, speciesId }
-}
-
-export function setHat(state: CompanionState, hatId: string): CompanionState | null {
-  if (!state.unlockedHats.includes(hatId)) return null
-  return { ...state, hatId }
-}
-
 export function setCustomName(state: CompanionState, name: string): CompanionState {
   const trimmed = name.trim().slice(0, 20)
   if (!trimmed) {

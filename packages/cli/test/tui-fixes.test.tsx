@@ -87,10 +87,10 @@ describe("CommandSuggest windowed scrolling", () => {
     }
     await sleep(30)
     const frame = r.lastFrame() ?? ""
-    expect(frame).toContain("› ")
+    // Codex popups mark the selection with a filled row, not a marker or counter.
     expect(frame).toContain("/zcmd10")          // the selected item is visible in the window
-    expect(frame).toContain("11/20")             // position indicator
     expect(frame).not.toContain("/zcmd00")       // window scrolled, first item off-screen
+    expect(frame).not.toContain("11/20")
     r.unmount()
   })
 
@@ -175,7 +175,7 @@ describe("OverlayStack", () => {
     const frame = r.lastFrame() ?? ""
     // The title and the SELECTED row (previously disappearing rows) should be visible
     expect(frame).toContain("Select Provider")
-    expect(frame).toContain("▶ Anthropic")
+    expect(frame).toContain("› 1. Anthropic")
     r.unmount()
   })
 

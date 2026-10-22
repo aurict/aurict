@@ -26,8 +26,7 @@
 
 import { useState, useCallback } from "react"
 import type { Dispatch, SetStateAction } from "react"
-import type { DisplayMessage } from "../Message.js"
-import type { PlanRequest, Attachment, CoreMessage, TokenBreakdown } from "@aurict/core"
+import type { PlanRequest, Attachment } from "@aurict/core"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

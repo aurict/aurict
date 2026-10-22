@@ -4,6 +4,9 @@ export interface PickerItem {
   hint?: string
 }
 
+/** Lines under a picker title (Codex subtitle/body); each line is a run of styled spans. */
+export type PickerHeader = Array<Array<{ text: string; tone?: "dim" | "error" }>>
+
 export interface BackgroundTask {
   id: string
   prompt: string
@@ -15,7 +18,7 @@ export interface BackgroundTask {
 export type CommandResult =
   | { type: "text";   content: string; color?: string }
   | { type: "error";  message: string }
-  | { type: "picker"; title: string; items: PickerItem[]; onSelect: (item: PickerItem) => void }
+  | { type: "picker"; title: string; header?: PickerHeader; items: PickerItem[]; onSelect: (item: PickerItem) => void }
   | { type: "prompt"; title: string; placeholder?: string; secret?: boolean; onSubmit: (value: string) => void }
   | { type: "clear" }
   | { type: "new" }
@@ -61,7 +64,7 @@ export interface CommandContext {
   cancelBackgroundTask: (id: string) => boolean
   bgTasks:           BackgroundTask[]
   showBgTask:        (id: string) => void
-  showPicker:        (title: string, items: PickerItem[], onSelect: (item: PickerItem) => void) => void
+  showPicker:        (title: string, items: PickerItem[], onSelect: (item: PickerItem) => void, header?: PickerHeader) => void
   showPrompt:        (title: string, placeholder: string, secret: boolean, onSubmit: (value: string) => void) => void
   /** Opens a unified diff in the full-screen diff viewer. */
   showDiff:          (rawDiff: string, title: string) => void
@@ -107,6 +110,10 @@ export interface CommandContext {
   startRemoteSession: () => void
   stopRemoteSession:  () => void
   remoteConnected:    boolean
+  /** Subagent sessions spawned by this session, oldest first. */
+  listSubagents:      () => Array<{ id: string; title: string | null; status: string }>
+  /** Opens a subagent's transcript (the Codex agent view). */
+  viewSubagent:       (id: string) => void
 }
 import type { ContextUsage, CoreMessage } from "@aurict/core"
 import type { ApprovalMode } from "../tui/approval-mode.js"

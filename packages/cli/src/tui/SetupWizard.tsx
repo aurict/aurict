@@ -147,8 +147,6 @@ export function SetupWizard({ onComplete }: Props) {
     }
   })
 
-  const prov = providers[cursor]
-
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       {/* Header */}

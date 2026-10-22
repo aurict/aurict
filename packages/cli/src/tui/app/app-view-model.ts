@@ -53,5 +53,8 @@ export function isBlockingOverlayLayer(focusLayer: FocusLayer): boolean {
     "projectAuto",
     "subagent",
     "taskPanel",
+    // Codex shows these inline in the bottom pane, in place of the composer/footer.
+    "keyboardShortcuts",
+    "picker",
   ].includes(focusLayer);
 }

@@ -8,6 +8,7 @@ import { DEFAULT_BINDINGS, ALL_ACTIONS } from "./defaults.js"
 import { detectPlatform } from "./persistence.js"
 import { formatKey, parseKeyString } from "../tui/design-system/Kbd.js"
 import type { Context } from "./types.js"
+import { shortcutColumns } from "../tui/KeyboardShortcuts.js"
 
 /** Platform symbol mapping (same as Kbd.tsx). */
 function platformLabel(pf: ReturnType<typeof detectPlatform>): "macos" | "linux" | "windows" {
@@ -59,29 +60,28 @@ export function formatBindingsForContext(
   return out
 }
 
+/** The diff viewer is the only surface driven by this binding table, so only its keys are customizable. */
+const CUSTOMIZABLE_ACTIONS = ["diff.next-hunk", "diff.prev-hunk", "diff.toggle-view"] as const
+
 /**
- * Returns bindings for all contexts as grouped text.
- * For the /keys command output.
+ * The /keys reference: the keys Aurict actually binds (the same table as the
+ * "?" overlay), then the diff-viewer keys that ~/.aurict/keybindings.json can change.
  */
 export function formatAllBindings(overrides: Record<string, string> = {}): string {
   const lines: string[] = ["Keybindings:"]
-  const contexts: Context[] = ["global", "ready", "streaming", "permission", "picker", "modal"]
-
-  for (const ctx of contexts) {
-    const items = formatBindingsForContext(ctx, overrides)
-    if (items.length === 0) continue
-    lines.push("")
-    lines.push(`  [${ctx}]`)
-    // Find the widest action name, for alignment
-    const maxAction = Math.min(28, Math.max(...items.map(i => i.action.length)))
-    for (const { action, display, source } of items) {
-      const marker = source === "user" ? "★" : " "
-      lines.push(`    ${marker} ${display.padEnd(14)} ${action.padEnd(maxAction + 2)}`)
-    }
+  const idle = shortcutColumns(false)
+  const running = shortcutColumns(true)
+  for (const [index, column] of idle.entries()) {
+    const extra = running[index]!.rows.filter(([key, label]) => !column.rows.some(([idleKey, idleLabel]) => idleKey === key && idleLabel === label))
+    const rows = [...column.rows, ...extra.map(([key, label]) => [key, `${label} (while working)`] as const)]
+    const width = Math.max(...rows.map(([key]) => key.length)) + 2
+    lines.push("", `  ${column.title}`, ...rows.map(([key, label]) => `    ${key.padEnd(width)}${label}`))
   }
-
-  lines.push("")
-  lines.push("  ★ = custom override (in ~/.aurict/keybindings.json)")
-  lines.push("  To override: edit the JSON file with { \"quit\": \"ctrl+q\" } format.")
+  const diff = formatBindingsForContext("modal", overrides).filter((item) => (CUSTOMIZABLE_ACTIONS as readonly string[]).includes(item.action))
+  if (diff.length > 0) {
+    lines.push("", "  Diff viewer (customizable)")
+    for (const { action, display, source } of diff) lines.push(`  ${source === "user" ? "★" : " "} ${display.padEnd(14)}${action}`)
+  }
+  lines.push("", "  ★ = custom override in ~/.aurict/keybindings.json, e.g. { \"diff.next-hunk\": \"j\" }")
   return lines.join("\n")
 }

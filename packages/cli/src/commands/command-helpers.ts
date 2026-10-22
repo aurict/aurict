@@ -1,8 +1,7 @@
-import { ProviderRegistry, createOpenAICompatiblePlugin, SessionManager, mcpManager, loadCustomAgents, memoryStore, getAllSessionAgents, pinStore, setApiKey, setDefault, setCustomProvider, removeCustomProvider, setSecuritySandbox, setLongTaskRuntime, resolveSecuritySandboxConfig, resolveLongTaskRuntimeConfig, SECURITY_SANDBOX_PROFILE_DEFAULTS, getConfigPath, loadConfig, exportToMarkdown, exportToHtml, defaultExportFilename, setCompaction, gateGuard, getCircuitState, getContextBreakdown, snapshotManager, installRemoteSkill, listInstalledSkills, uninstallSkill, getLoadedPlugins, PLUGIN_DIR, diagnosticsStore, skillScoreStore, installRemotePlugin, listInstalledPlugins, uninstallPlugin, fetchRegistry, searchRegistry, findInRegistry, readLatestTraceEvents, buildSecurityAssessmentLedger, formatSecurityLedgerAnchor, evaluateSecurityOperatorStep, formatSecurityOperatorDecision, readSecurityAssessmentLedger, updateSecurityAssessmentLedger, writeSecurityAssessmentLedger, resetSecurityAssessmentLedger, verifySecurityFinding, applySecurityVerification, buildAttackGraphFromFindings, formatAttackGraph, compact, estimateTokens } from "@aurict/core"
+import { resolveSecuritySandboxConfig, resolveLongTaskRuntimeConfig, loadConfig, buildSecurityAssessmentLedger, evaluateSecurityOperatorStep, formatSecurityOperatorDecision, readSecurityAssessmentLedger, updateSecurityAssessmentLedger, writeSecurityAssessmentLedger, compact, estimateTokens } from "@aurict/core"
 import type { ModelInfo, SecurityAssessmentLedger, SecurityDistilledFinding } from "@aurict/core"
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs"
+import { writeFileSync, existsSync, readFileSync } from "fs"
 import { spawnSync } from "child_process"
-import { resolve, join } from "path"
 import type { CommandContext, CommandResult } from "./types.js"
 
 export function formatRelativeTime(ts: number): string {
@@ -14,6 +13,20 @@ export function formatRelativeTime(ts: number): string {
   const hrs = Math.round(min / 60)
   if (hrs < 48) return `${hrs}h ago`
   return `${Math.round(hrs / 24)}d ago`
+}
+
+/** Paths under the home directory print as `~/…`, as Codex does. */
+export function tildePath(path: string): string {
+  const home = process.env["HOME"]
+  return home && (path === home || path.startsWith(`${home}/`)) ? `~${path.slice(home.length)}` : path
+}
+
+/** Codex's compact counts: 900, 1K, 1.9K, 2.25K, 272K, 1.2M (three significant digits). */
+export function siCount(value: number): string {
+  const n = Math.max(0, Math.round(value))
+  if (n < 1000) return String(n)
+  const [scaled, suffix] = n < 1_000_000 ? [n / 1000, "K"] : [n / 1_000_000, "M"]
+  return `${Number(scaled.toPrecision(3))}${suffix}`
 }
 
 export function oneLine(value: unknown, max = 110): string {

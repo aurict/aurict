@@ -28,9 +28,9 @@ describe("terminal phases 3-5", () => {
       streamingReason: "reasoning", streamingError: null, loading: true,
       activity: "waiting_for_provider", activeTool: "bash",
     });
-    expect(commentary.map(rowText).join("\n")).toContain("I am checking the repository.");
+    expect(commentary.map(rowText).join("\n")).toContain("• I am checking the repository.");
     expect(commentary.map(rowText).join("\n")).not.toContain("waiting for provider");
-    expect(commentary.map(rowText).join("\n")).not.toContain("using tool");
+    expect(commentary.map(rowText).join("\n")).not.toContain("running tool");
 
     const pendingTool = projectTranscript({
       messages: [{ id: "a", role: "assistant", content: "", blocks: [
@@ -40,9 +40,9 @@ describe("terminal phases 3-5", () => {
       streamingError: null, loading: true, activeTool: "bash",
     });
     const text = pendingTool.map(rowText).join("\n");
-    expect(text.match(/◌ git\s+status/g)?.length).toBe(1);
-    expect(text).not.toContain("using tool");
-    expect(text).not.toContain("thinking…");
+    expect(text.match(/• Running git status/g)?.length).toBe(1);
+    expect(text).not.toContain("running tool");
+    expect(text).not.toContain("Thinking");
   });
 
   test("preserves file identity for every hunk in a multi-file diff", () => {
@@ -51,7 +51,7 @@ describe("terminal phases 3-5", () => {
     expect(parsed.hunks.map((hunk) => hunk.fileName)).toEqual(["a.ts", "b.ts"]);
   });
 
-  test("keeps tool calls compact and displays meaningful duration", () => {
+  test("renders reads as Explored and a running command as a Running cell", () => {
     const rows = projectTranscript({
       width: 80, streamingText: null, streamingReason: null, streamingError: null,
       messages: [{ id: "a", role: "assistant", content: "", blocks: [
@@ -60,12 +60,12 @@ describe("terminal phases 3-5", () => {
       ] }],
     });
     const text = rows.map(rowText).join("\n");
-    expect(text).toMatch(/› read\s+a\.ts\s+1\.3s/);
-    expect(text).toMatch(/◌ verify\s+bun test/);
-    expect(text).not.toContain("tools · 2 calls");
+    expect(text).toContain("• Explored\n  └ Read a.ts");
+    expect(text).toContain("• Running bun test");
+    expect(text).not.toContain("1.3s");
   });
 
-  test("keeps raw shell output behind details and shows one useful summary", () => {
+  test("shows short command output under the Ran cell", () => {
     const rows = projectTranscript({
       width: 90, streamingText: null, streamingReason: null, streamingError: null,
       messages: [{ id: "shell-summary", role: "assistant", content: "", blocks: [
@@ -80,12 +80,11 @@ describe("terminal phases 3-5", () => {
       ] }],
     });
     const text = rows.map(rowText).join("\n");
-    expect(text).toMatch(/2 passed · 0 failed\s+details \^O/);
-    expect(text).not.toContain("test one: passed");
-    expect(text).not.toContain("test two: passed");
+    expect(text).toContain("• Ran bun test\n  └ test one: passed\n    test two: passed\n    2 pass\n    0 fail");
+    expect(text).not.toContain("lines (^O to view details)");
   });
 
-  test("summarizes verification from structured metadata instead of localized stdout", () => {
+  test("prints the command's own output even when structured metadata exists", () => {
     const rows = projectTranscript({
       width: 90, streamingText: null, streamingReason: null, streamingError: null,
       messages: [{ id: "structured-verify", role: "assistant", content: "", blocks: [{
@@ -111,11 +110,10 @@ describe("terminal phases 3-5", () => {
       }] }],
     });
     const text = rows.map(rowText).join("\n");
-    expect(text).toMatch(/test passed\s+details \^O/);
-    expect(text).not.toContain("すべてのテスト");
+    expect(text).toContain("• Ran bun test\n  └ すべてのテストが完了しました");
   });
 
-  test("presents git diff as a compact artifact instead of stdout", () => {
+  test("truncates long git diff output around a hidden-line marker", () => {
     const rows = projectTranscript({
       width: 90, streamingText: null, streamingReason: null, streamingError: null,
       messages: [{ id: "git-diff", role: "assistant", content: "", blocks: [
@@ -130,13 +128,11 @@ describe("terminal phases 3-5", () => {
       ] }],
     });
     const text = rows.map(rowText).join("\n");
-    expect(text).toMatch(/› git\s+diff/);
-    expect(text).toMatch(/└ src\/a\.ts · \+1 −1\s+details \^O/);
-    expect(text).not.toContain("diff --git");
-    expect(text).not.toContain("-old");
+    expect(text).toContain("• Ran git diff");
+    expect(text).toContain("  └ diff --git a/src/a.ts b/src/a.ts\n    --- a/src/a.ts\n    … +2 lines (^O to view details)\n    -old\n    +new");
   });
 
-  test("folds adjacent low-level activity into a modern inspectable summary", () => {
+  test("folds adjacent reads into one Explored cell", () => {
     const rows = projectTranscript({
       width: 100, streamingText: null, streamingReason: null, streamingError: null,
       messages: [{ id: "group", role: "assistant", content: "", blocks: [
@@ -145,15 +141,15 @@ describe("terminal phases 3-5", () => {
         { type: "tool", id: "three", tool: "read", args: '{"path":"src/c.ts"}', pending: false, resultContent: "c" },
       ] }],
     });
-    const summary = rows.find((row) => /│ read\s+3 files/.test(rowText(row)));
-    const summaryIndex = summary ? rows.indexOf(summary) : -1;
-    expect(summary?.detailId).toBe("group:tool:0");
-    expect(rowText(rows[summaryIndex - 1]!)).toBe("┌ activity");
-    expect(rowText(rows[summaryIndex + 1]!)).toBe("└ completed");
-    expect(rows.filter((row) => rowText(row).startsWith("│ read")).length).toBe(1);
+    const header = rows.find((row) => rowText(row) === "• Explored");
+    const headerIndex = header ? rows.indexOf(header) : -1;
+    expect(header?.detailId).toBe("group:tool:0");
+    expect(rowText(rows[headerIndex + 1]!)).toBe("  └ Read a.ts, b.ts, c.ts");
+    expect(rows[headerIndex + 1]!.detailId).toBe("group:tool:0");
+    expect(rows.filter((row) => rowText(row).includes("Read ")).length).toBe(1);
   });
 
-  test("groups mixed tool families into a material activity cluster", () => {
+  test("keeps exploration, edits and commands in separate Codex cells", () => {
     const rows = projectTranscript({
       width: 100, streamingText: null, streamingReason: null, streamingError: null,
       messages: [{ id: "mixed", role: "assistant", content: "", blocks: [
@@ -168,15 +164,13 @@ describe("terminal phases 3-5", () => {
       ] }],
     });
     const text = rows.map(rowText).join("\n");
-    expect(text).toContain("┌ activity");
-    expect(text).toMatch(/│ read\s+6 files/);
-    expect(text).toMatch(/│ search\s+14 matches/);
-    expect(text).toMatch(/│ change\s+3 files · \+42 −18/);
-    expect(text).toMatch(/│ verify\s+340 passed/);
-    expect(text).toMatch(/└ completed\s+18\.4s/);
+    expect(text).toContain("• Explored\n  └ Read a.ts, b.ts, c.ts, d.ts, e.ts, f.ts\n    Search TODO");
+    expect(text).toContain("\n\n• Edited 3 files (+42 -18)");
+    expect(text).toContain("\n\n• Ran bun test\n  └ 340 pass\n    0 fail");
+    expect(text).not.toContain("activity");
   });
 
-  test("presents built-in and MCP git tools with readable names", () => {
+  test("renders other tools as Called cells with their output", () => {
     const rows = projectTranscript({
       width: 90, streamingText: null, streamingReason: null, streamingError: null,
       messages: [{ id: "git-tools", role: "assistant", content: "", blocks: [
@@ -189,14 +183,10 @@ describe("terminal phases 3-5", () => {
       ] }],
     });
     const text = rows.map(rowText).join("\n");
-    expect(text).toContain("┌ activity");
-    expect(text).toMatch(/│ git\s+status, log, diff/);
-    expect(text).toMatch(/│ github\s+list pull requests/);
-    expect(text).toMatch(/│ tool 1\s+1 call/);
-    expect(text).toMatch(/│ tool 2\s+1 call/);
-    expect(text).not.toMatch(/git\s+git\s/i);
-    expect(text).not.toContain("mcp_git_git_log");
-    expect(text).not.toContain("mcp__git__git_diff");
+    expect(text.match(/^• Called /gm)?.length).toBe(6);
+    expect(text).toContain('• Called git({"action":"status"})');
+    expect(text).toContain('• Called github.list_pull_requests({"state":"open"})\n  └ #42');
+    expect(text).toContain("• Called tool-1({})\n  └ ok");
     expect(text).not.toContain("mcp:github:list_pull_requests");
   });
 
@@ -234,9 +224,10 @@ describe("terminal phases 3-5", () => {
       </TerminalSizeContext.Provider>,
     );
     const frame = view.lastFrame() ?? "";
-    expect(frame).toContain("review required");
-    expect(frame).toContain("Always allow");
-    expect(frame).not.toContain("destructive operation");
+    expect(frame).toContain("Would you like to run the following command?");
+    expect(frame).toContain("$ cat package.json");
+    expect(frame).toContain("Reason: Shell file readers bypass workspace path protections");
+    expect(frame).not.toContain("Destructive operation");
     view.unmount();
   });
 
@@ -255,12 +246,12 @@ describe("terminal phases 3-5", () => {
       </TerminalSizeContext.Provider>,
     );
     const frame = view.lastFrame() ?? "";
-    expect(frame.indexOf("conversation tail")).toBeLessThan(frame.indexOf("Permission"));
-    expect(frame.indexOf("Permission")).toBeLessThan(frame.indexOf("composer surface"));
-    expect(frame).toContain("Allow once");
-    expect(frame).toContain("Always allow");
-    expect(frame).toContain("Deny");
-    expect(frame).toContain("1 of 2 requests · 1 queued");
+    const question = "Would you like to run the following command?";
+    expect(frame.indexOf("conversation tail")).toBeLessThan(frame.indexOf(question));
+    expect(frame.indexOf(question)).toBeLessThan(frame.indexOf("composer surface"));
+    expect(frame).toContain("› 1. Yes, proceed (y)");
+    expect(frame).toContain("2. No, and tell Aurict what to do differently (esc)");
+    expect(frame).toContain("Press enter to confirm or esc to cancel");
   });
 
   test("renders crash recovery as a bounded snackbar instead of transcript prose", () => {
@@ -277,7 +268,7 @@ describe("terminal phases 3-5", () => {
     expect(isCrashReportUnseen(200, 200)).toBe(false);
   });
 
-  test("navigates horizontal permission actions with left and right arrows", async () => {
+  test("navigates the numbered permission choices with up and down arrows", async () => {
     const decisions: string[] = [];
     const view = render(
       <TerminalSizeContext.Provider value={{ columns: 80, rows: 24 }}>
@@ -288,12 +279,14 @@ describe("terminal phases 3-5", () => {
       </TerminalSizeContext.Provider>,
     );
     await sleep(30);
-    view.stdin.write("\x1b[C");
+    view.stdin.write("\x1b[B");
     await sleep(20);
-    expect(view.lastFrame()).toContain("save this exact command rule");
+    expect(view.lastFrame()).toContain("› 2. No, and tell Aurict what to do differently (esc)");
+    view.stdin.write("\x1b[A");
+    await sleep(20);
     view.stdin.write("\r");
     await sleep(20);
-    expect(decisions).toEqual(["allow"]);
+    expect(decisions).toEqual(["allow_once"]);
     view.unmount();
   });
 });

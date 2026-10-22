@@ -1,5 +1,6 @@
 import { parseRawDiff, wordRangesByLine, type DiffLine, type Hunk } from "../DiffRenderer/logic.js"
 import { wrapStyledSegments } from "../terminal-text/wrap-segments.js"
+import { glyph } from "../terminal-glyphs.js"
 import { C, detectLang, tokenizeLine, type Lang } from "../../utils/highlight.js"
 import type { SyntaxKind, TranscriptRow, TranscriptSegment, TranscriptTone } from "./row-model.js"
 
@@ -46,16 +47,10 @@ function emphasize(segments: TranscriptSegment[], ranges: Array<{ start: number;
   return output.length > 0 ? output : segments
 }
 
-function linePrefix(line: DiffLine, width: number): { text: string; tone: TranscriptTone } {
-  const marker = line.type === "add" ? "+" : line.type === "remove" ? "−" : "│"
-  const tone = line.type === "add" ? "diff-add" : line.type === "remove" ? "diff-remove" : "diff-context"
-  if (width < 40) {
-    const number = line.type === "add" ? line.newLineNum : line.oldLineNum ?? line.newLineNum
-    return { text: `${number?.toString().padStart(4) ?? "    "} ${marker} `, tone }
-  }
-  const oldNumber = line.oldLineNum?.toString().padStart(4) ?? "    "
-  const newNumber = line.newLineNum?.toString().padStart(4) ?? "    "
-  return { text: `${oldNumber} ${newNumber} ${marker} `, tone }
+const DIFF_INDENT = "    "
+
+function lineNumber(line: DiffLine): number | undefined {
+  return line.type === "remove" ? line.oldLineNum : line.newLineNum ?? line.oldLineNum
 }
 
 function lineSurface(line: DiffLine): TranscriptRow["surface"] {
@@ -64,6 +59,7 @@ function lineSurface(line: DiffLine): TranscriptRow["surface"] {
   return undefined
 }
 
+/** `    12 +content`: right-aligned number, sign, then content, as Codex prints edits. */
 function renderLine(
   line: DiffLine,
   ranges: Array<{ start: number; end: number }>,
@@ -71,22 +67,25 @@ function renderLine(
   detailId: string,
   width: number,
   lang: Lang | undefined,
+  numberWidth: number,
 ): TranscriptRow[] {
-  const prefix = linePrefix(line, width)
-  const contentTone = line.type === "context" ? "diff-context" : line.type === "add" ? "diff-add" : "diff-remove"
-  const contentWidth = Math.max(4, width - prefix.text.length)
-  const content = emphasize(contentSegments(line.content, contentTone, lang), ranges)
-  const wrapped = wrapStyledSegments(content.length > 0 ? content : [{ text: "", tone: contentTone }], contentWidth)
+  const sign = line.type === "add" ? "+" : line.type === "remove" ? "-" : " "
+  const tone: TranscriptTone = line.type === "context" ? "diff-context" : line.type === "add" ? "diff-add" : "diff-remove"
+  const gutter = `${DIFF_INDENT}${(lineNumber(line)?.toString() ?? "").padStart(numberWidth)} `
+  const contentWidth = Math.max(4, width - gutter.length - 1)
+  const content = emphasize(contentSegments(line.content, tone, lang), ranges)
+  const wrapped = wrapStyledSegments(content.length > 0 ? content : [{ text: "", tone }], contentWidth)
   const surface = lineSurface(line)
   return wrapped.map((segments, index) => ({
-      id: `${id}:${index}`,
-      segments: [
-        { text: index === 0 ? prefix.text : " ".repeat(prefix.text.length), tone: prefix.tone, dim: line.type === "context" },
-        ...segments,
-      ],
-      detailId,
-      ...(surface !== undefined ? { surface } : {}),
-    }))
+    id: `${id}:${index}`,
+    segments: [
+      { text: index === 0 ? gutter : " ".repeat(gutter.length), tone: "muted", dim: true },
+      { text: index === 0 ? sign : " ", tone },
+      ...segments,
+    ],
+    detailId,
+    ...(surface !== undefined ? { surface } : {}),
+  }))
 }
 
 function groupHunks(hunks: Hunk[]): Array<{ file: string; hunks: Hunk[] }> {
@@ -105,31 +104,36 @@ function groupStats(hunks: Hunk[]): { additions: number; deletions: number } {
   }), { additions: 0, deletions: 0 })
 }
 
-/** Projects every hunk and line; vertical viewport scrolling is the only limiter. */
-export function projectInlineDiff(rawDiff: string, id: string, detailId: string, width: number): TranscriptRow[] {
+/**
+ * Projects every hunk and line under the "• Edited …" header the tool cell
+ * prints. Multi-file edits get a "  └ file (+a -b)" line per file.
+ */
+export function projectInlineDiff(rawDiff: string, id: string, detailId: string, width: number, multiFile = false): TranscriptRow[] {
   const parsed = parseRawDiff(rawDiff)
   const rows: TranscriptRow[] = []
-  groupHunks(parsed.hunks).forEach((group, groupIndex) => {
-    const stats = groupStats(group.hunks)
+  const groups = groupHunks(parsed.hunks)
+  groups.forEach((group, groupIndex) => {
     const lang = diffLanguage(group.file)
-    rows.push({
-      id: `${id}:file:${groupIndex}`,
-      segments: [
-        { text: "  ◆ ", tone: "diff-hunk" },
-        { text: group.file, tone: "assistant", bold: true },
-        { text: `  +${stats.additions}`, tone: "diff-add", bold: true },
-        { text: ` −${stats.deletions}`, tone: "diff-remove", bold: true },
-        { text: "  · details ^O", tone: "muted" },
-      ],
-      detailId,
-    })
-    group.hunks.forEach((hunk, hunkIndex) => {
+    const numberWidth = Math.max(1, ...group.hunks.flatMap((hunk) => hunk.lines.map((line) => (lineNumber(line) ?? 0).toString().length)))
+    if (multiFile || groups.length > 1) {
+      if (groupIndex > 0) rows.push({ id: `${id}:file:${groupIndex}:gap`, segments: [{ text: "", tone: "muted" }] })
+      const stats = groupStats(group.hunks)
       rows.push({
-        id: `${id}:file:${groupIndex}:hunk:${hunkIndex}`,
-        segments: [{ text: `  ${hunk.header}`, tone: "diff-hunk", dim: true }],
+        id: `${id}:file:${groupIndex}`,
+        segments: [
+          { text: `  ${glyph("close")} `, tone: "muted", dim: true },
+          { text: group.file, tone: "assistant" },
+          { text: " (", tone: "muted" },
+          { text: `+${stats.additions}`, tone: "diff-add" },
+          { text: " ", tone: "muted" },
+          { text: `-${stats.deletions}`, tone: "diff-remove" },
+          { text: ")", tone: "muted" },
+        ],
         detailId,
-        surface: "diff-hunk",
       })
+    }
+    group.hunks.forEach((hunk, hunkIndex) => {
+      if (hunkIndex > 0) rows.push({ id: `${id}:file:${groupIndex}:hunk:${hunkIndex}:gap`, segments: [{ text: `${DIFF_INDENT}${" ".repeat(numberWidth - 1)}${glyph("gap")}`, tone: "muted", dim: true }], detailId })
       const ranges = wordRangesByLine(hunk.lines)
       hunk.lines.forEach((line, lineIndex) => rows.push(...renderLine(
         line,
@@ -138,6 +142,7 @@ export function projectInlineDiff(rawDiff: string, id: string, detailId: string,
         detailId,
         width,
         lang,
+        numberWidth,
       )))
     })
   })

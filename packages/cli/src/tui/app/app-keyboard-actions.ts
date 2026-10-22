@@ -1,5 +1,7 @@
 import { PermissionGate, PlanGate } from "@aurict/core";
-import { TURN_CANCELLED_NOTICE } from "./cancellation-feedback.js";
+import { TURN_CANCELLED_NOTICE, TURN_INTERRUPTED } from "./cancellation-feedback.js";
+import { approvalNotice } from "../permission-feedback.js";
+import { approvalDetailState, escapeDecision } from "../PermissionPrompt.js";
 import { checkpointForMessage } from "./turn-checkpoints.js";
 
 /** Alt+↑ on an empty composer: take the newest queued message back for editing. */
@@ -33,7 +35,7 @@ export function cancelActiveTurn(params: AppKeyboardParams): boolean {
   params.setStreamingReason(null);
   params.setScrollLocked(false);
   params.setConversationOffsetRows(0);
-  params.addSystemMsg(TURN_CANCELLED_NOTICE);
+  params.addSystemMsg(TURN_CANCELLED_NOTICE, TURN_INTERRUPTED);
   return true;
 }
 
@@ -71,13 +73,20 @@ export function closeFocusedLayer(params: AppKeyboardParams): boolean {
   const overlay = params.overlay;
   switch (params.focusLayer) {
     case "permission": {
+      // Codex: Esc cancels the request and interrupts the turn so the user can redirect it.
       const request = params.permission;
+      if (approvalDetailState.open) return true;
       if (request) {
+        const decision = escapeDecision(request);
+        const notice = approvalNotice(decision, request);
+        if (notice) params.addSystemMsg(notice.parts.map((part) => part.text).join(""), notice);
         PermissionGate.respond(request.id, "deny");
-        params.setPermissionQueue((queue) =>
-          queue.filter((item) => item.id !== request.id),
-        );
-        params.addSystemMsg(`Permission denied: ${request.tool}`);
+        if (decision === "deny") {
+          params.setPermissionQueue((queue) => queue.filter((item) => item.id !== request.id));
+          return true;
+        }
+        params.setPermissionQueue([]);
+        cancelActiveTurn(params);
       }
       return true;
     }

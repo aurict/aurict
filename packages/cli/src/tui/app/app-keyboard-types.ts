@@ -1,3 +1,4 @@
+import type { TranscriptNotice } from "../conversation/types.js";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { PermissionRequest, Task } from "@aurict/core";
 import type { DisplayMessage } from "../conversation/types.js";
@@ -9,6 +10,8 @@ import type { ComposerQueueItem } from "../composer-queue.js";
 import type { useOverlayState } from "../hooks/useOverlayState.js";
 
 export interface AppKeyboardParams {
+  /** Filled with the turn interrupt so approval decisions can reuse it. */
+  interruptRef?: { current: (() => void) | null };
   exit: () => void;
   tuiMode: TuiMode;
   focusLayer: FocusLayer;
@@ -55,7 +58,7 @@ export interface AppKeyboardParams {
   requestRewind: (index: number) => void;
   composerQueue: ComposerQueueItem[];
   setComposerQueue: Dispatch<SetStateAction<ComposerQueueItem[]>>;
-  addSystemMsg: (content: string) => void;
+  addSystemMsg: (content: string, notice?: TranscriptNotice) => void;
   handleAttachSubmit: (path: string) => Promise<void>;
   openExternalEditor: () => void;
   scrollConversation: (deltaRows: number) => void;

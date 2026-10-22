@@ -45,7 +45,6 @@ export function App({
 
   const overlay = useOverlayState();
   const {
-    keyboardShortcutsOpen,
     setAttachInput,
     setAttachPath,
     attachments,
@@ -148,6 +147,7 @@ export function App({
   const selectionHintVisible = useTransientFlag(10_000);
 
   const inputRef = useRef(input);
+  const interruptTurnRef = useRef<(() => void) | null>(null);
   const { resolvePrompt: resolveProjectAutoPrompt, setApprovalMode } = useProjectAutoMode({
     workdir: workdirState,
     autopilotRef,
@@ -156,6 +156,7 @@ export function App({
     setFullAccess,
     setPromptOpen: setProjectAutoPromptOpen,
     addSystemMsg,
+    onQuit: exit,
   });
   const approvalMode = approvalModeFrom(autopilotMode, fullAccess);
   const openExternalEditor = useExternalEditor({
@@ -210,6 +211,7 @@ export function App({
     setAttachPath,
     setAttachments,
     addSystemMsg,
+    interruptTurn: () => { interruptTurnRef.current?.(); },
   });
 
 
@@ -279,6 +281,7 @@ export function App({
   });
 
   const keyboardHint = useAppKeyboard({
+    interruptRef: interruptTurnRef,
     exit,
     tuiMode,
     setPicker,

@@ -1,3 +1,4 @@
+import wrapAnsi from "wrap-ansi"
 import type { CommandDef } from "./types.js"
 import { suggestSlashCommands, tokenizeSlashCommand } from "./command-input.js"
 import { agentSecurityCommands } from "./agent-security-commands.js"
@@ -30,6 +31,9 @@ const commandGroups: ReadonlyArray<ReadonlyArray<CommandDef>> = [
 
 const commands: CommandDef[] = commandGroups.flat()
 
+/** "    /" + 14-column name + space. */
+const HELP_NAME_COLUMN = 20
+
 const helpCommand: CommandDef = {
   name: "help",
   aliases: ["h", "?"],
@@ -38,18 +42,22 @@ const helpCommand: CommandDef = {
     const categories: Record<string, string[]> = {
       "Setup & Config": ["init", "doctor", "providers", "models", "config", "theme", "palette", "keys", "settings", "version"],
       "Session & History": ["new", "status", "history", "diff", "diffs", "session", "sessions", "clear", "fork", "branch", "undo", "rewind", "replay", "checkpoints", "proof", "flight"],
-      "Agents & AI": ["agent", "agents", "coordinator", "approvals", "autopilot", "undercover", "background", "btw"],
+      "Agents & AI": ["agent", "agents", "subagents", "coordinator", "permissions", "autopilot", "undercover", "background", "btw"],
       "Context & Memory": ["pin", "memory", "ctx", "trace", "compact", "worktree"],
       "Tools & Integration": ["review", "commit", "watch", "unwatch", "mcp", "security", "skill", "plugin", "editor", "template", "protect", "unprotect", "design", "adr", "diag", "skill-scores", "visual"],
       "Info & Misc": ["help", "cost", "export", "share", "stash", "crashes", "exit", "pet", "name", "companion"],
     }
     const commandMap = new Map(allCommands().map((command) => [command.name, command]))
+    // Transcript rows lose 2 columns to the gutter; wrapped descriptions hang under their column.
+    const descriptionWidth = Math.max(20, (process.stdout.columns || 80) - 2 - HELP_NAME_COLUMN)
     const output: string[] = ["Aurict Commands:\n"]
     for (const [category, names] of Object.entries(categories)) {
       output.push(`  ── ${category} ${"─".repeat(Math.max(0, 40 - category.length))}`)
       for (const name of names) {
         const command = commandMap.get(name)
-        if (command) output.push(`    /${command.name.padEnd(14)} ${command.description}`)
+        if (!command) continue
+        const [first = "", ...rest] = wrapAnsi(command.description, descriptionWidth, { hard: true, trim: true }).split("\n")
+        output.push(`    /${command.name.padEnd(14)} ${first}`, ...rest.map((line) => `${" ".repeat(HELP_NAME_COLUMN)}${line}`))
       }
       output.push("")
     }

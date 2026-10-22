@@ -198,7 +198,6 @@ export function ProgressBar(props: ProgressBarProps) {
 // ── Specialized context bar (backwards compatibility) ────────────────────────────────
 
 export function ContextBar({ used, total }: { used: number; total: number }) {
-  const theme = useTheme()
   const pct = Math.min(1, used / total)
   const tone =
     pct >= 0.85 ? "error" :

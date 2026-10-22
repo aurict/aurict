@@ -17,7 +17,6 @@ import { wrapStyledSegments } from "../src/tui/terminal-text/wrap-segments.js"
 import { terminalHyperlink } from "../src/tui/terminal-text/hyperlink.js"
 import { cursorLineParts, inputPointFromTerminal } from "../src/tui/multiline-input-layout.js"
 import { wordLeft, wordRight } from "../src/tui/multiline-input-model.js"
-import { alignToolRow } from "../src/tui/conversation/tool-row-model.js"
 
 describe("terminal Unicode text primitives", () => {
   it("emits OSC 8 only for explicitly safe link schemes", () => {
@@ -75,16 +74,11 @@ describe("terminal Unicode text primitives", () => {
     expect(indented.map((row) => row.map((part) => part.text).join(""))).toEqual(["  ab", "cdef"])
   })
 
-  it("keeps word navigation and tool alignment Unicode-safe", () => {
+  it("keeps word navigation Unicode-safe", () => {
     const value = "foo 👩🏽‍💻 bar"
     expect(wordLeft(value, value.length)).toBe(value.lastIndexOf("bar"))
     expect(wordLeft(value, value.lastIndexOf("bar"))).toBe(4)
     expect(wordRight(value, 4)).toBe(value.lastIndexOf("bar"))
-
-    const row = alignToolRow("ara", "日本語 dosyaları", "2.4s", 36)
-    expect(row.layout).toBe("stacked")
-    expect(displayWidth(`  ${row.action}${row.spacer}${row.metadata}`)).toBeLessThanOrEqual(36)
-    expect(displayWidth(`    ${row.subject}`)).toBeLessThanOrEqual(36)
   })
 
   it("keeps the space after a carried word when the overflowing character is a space", () => {

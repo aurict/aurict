@@ -1,6 +1,6 @@
 import React from "react"
 import { Box, Text } from "./design-system/renderer.js"
-import { tokenizeLine, detectLang, C, type Lang } from "../utils/highlight.js"
+import { tokenizeLine, detectLang, type Lang } from "../utils/highlight.js"
 import { useTerminalSize } from "./TerminalSizeContext.js"
 import { useTheme } from "../utils/theme.js"
 import { useSemanticTheme, type SemanticTheme } from "./theme/semantic-theme.js"

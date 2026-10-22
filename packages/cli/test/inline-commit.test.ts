@@ -75,7 +75,7 @@ describe("settledRowCount", () => {
       },
     ];
     const ids = rowIds(messages);
-    expect(ids).toContain("a1:header");
+    expect(ids.some((id) => id.startsWith("a1:text:0"))).toBe(true);
     expect(ids.some((id) => id.startsWith("a1:tool:1"))).toBe(true);
     expect(ids.some((id) => id.startsWith("a1:text:2"))).toBe(true);
     expect(ids.some((id) => id.startsWith("a1:tool:3"))).toBe(false);

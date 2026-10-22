@@ -52,7 +52,6 @@
     "@xterm/headless": "^6.0.0",
     "drizzle-kit": "^0.29.0",
     "electron-winstaller": "5.4.4",
-    "ink-testing-library": "^4.0.0",
     "typescript": "^5.8.0"
   },
   "patchedDependencies": {

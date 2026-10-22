@@ -20,7 +20,6 @@ import {
   togglePatchRow,
   type PatchFile,
 } from "../src/tui/patch-selection.js";
-import { GranularPatchRequest } from "../src/tui/GranularPatchRequest.js";
 import { projectInlineDiff, diffLanguage } from "../src/tui/conversation/inline-diff.js";
 import { syntaxPalette } from "../src/tui/TranscriptRows.js";
 import { projectStableMessage, turnStatsRow } from "../src/tui/conversation/projector.js";
@@ -150,26 +149,6 @@ describe("patch hunk selection model", () => {
   });
 });
 
-describe("GranularPatchRequest", () => {
-  test("lists chunks and sends the chunk selection", async () => {
-    const onDecide = mock((_decision: unknown) => {});
-    const request: PermissionRequest = { id: "p1", tool: "apply_patch", pattern: "app.ts", files, patch: { text: "*** Begin Patch\n*** End Patch", granular: true } };
-    const view = render(<GranularPatchRequest request={request} onDecide={onDecide} />);
-    await flush();
-    expect(view.lastFrame()).toContain("@@ first  +1 −1");
-    expect(view.lastFrame()).toContain("@@ second  +2 −0");
-    view.stdin.write("\x1b[C");
-    await flush();
-    view.stdin.write(" ");
-    await flush();
-    expect(view.lastFrame()).toContain("[~]");
-    view.stdin.write("\r");
-    await flush();
-    expect(onDecide).toHaveBeenCalledWith({ decision: "allow_partial", approvedFiles: ["app.ts", "notes.md"], approvedHunks: { "app.ts": [1] } });
-    view.unmount();
-  });
-});
-
 describe("syntax-highlighted diffs", () => {
   const diff = [
     "--- a/src/app.ts",
@@ -201,21 +180,25 @@ describe("syntax-highlighted diffs", () => {
 });
 
 describe("turn stats", () => {
-  test("a finished turn closes with duration, tokens, and cost", () => {
-    expect(text(turnStatsRow("r", { durationMs: 12_400, tokens: 1540, costUsd: 0.0041 }, 80)))
-      .toMatch(/^── Worked for 12s · 1\.5k tokens · \$0\.0041 ─+$/);
-    expect(text(turnStatsRow("r", { durationMs: 900, tokens: 0, costUsd: 0 }, 80))).toMatch(/^── Worked for 0s ─+$/);
+  test("a finished turn closes with Codex's elapsed time and completion clock", () => {
+    expect(text(turnStatsRow("r", { durationMs: 12_400, tokens: 1540, costUsd: 0.0041 }, 80))).toBe("  Worked for 12s");
+    expect(text(turnStatsRow("r", { durationMs: 900, tokens: 0, costUsd: 0 }, 80))).toBe("  Worked for <1s");
+    expect(text(turnStatsRow("r", { durationMs: 3_603_000, tokens: 0, costUsd: 0 }, 80))).toBe("  Worked for 1h 0m 3s");
+    const at = new Date(); at.setHours(15, 7, 0, 0);
+    expect(text(turnStatsRow("r", { durationMs: 125_000, tokens: 0, costUsd: 0, completedAt: at.getTime() }, 80))).toBe("  Worked for 2m 5s • 3:07 PM");
+    expect(turnStatsRow("r", { durationMs: 900, tokens: 0, costUsd: 0 }, 80).segments[0]).toMatchObject({ tone: "muted", dim: true });
   });
 
   test("the stats row is the assistant message's last content row", () => {
     const rows = projectStableMessage({ id: "a1", role: "assistant", content: "Done.", turnStats: { durationMs: 65_000, tokens: 10, costUsd: 0 } }, 0, 80);
     expect(rows.at(-2)!.id).toBe("a1:stats");
-    expect(text(rows.at(-2)!)).toContain("Worked for 1m 05s");
+    expect(text(rows.at(-2)!)).toBe("  Worked for 1m 5s");
+    expect(text(rows.at(-3)!)).toBe("");
   });
 });
 
-describe("inline footer extras", () => {
-  test("shows proof, cost, and a /compact nudge near the context limit", () => {
+describe("inline footer near the context limit", () => {
+  test("shows only the context left, as Codex does", () => {
     const view = render(
       <SessionFooter
         cols={140}
@@ -226,9 +209,8 @@ describe("inline footer extras", () => {
       />,
     );
     const frame = view.lastFrame()!;
-    expect(frame).toContain("ctx 90% /compact");
-    expect(frame).toContain("proof 3");
-    expect(frame).toContain("$0.012");
+    expect(frame).toContain("10% context left");
+    expect(frame).not.toContain("/compact");
     view.unmount();
   });
 });

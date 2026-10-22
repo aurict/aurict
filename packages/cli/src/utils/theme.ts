@@ -34,9 +34,40 @@ export interface Theme {
   bgAlt?:        string
   buddyMain:     string
   buddyEar:      string
+  /** Fixed diff row backgrounds; when absent they are blended from the palette. */
+  diffAddBg?:    string
+  diffRemoveBg?: string
 }
 
+// Colour values: "#rrggbb", an ANSI name, or "" for the terminal's own default
+// colour (the Codex look draws text in the default foreground).
+
 export const THEMES: Record<string, Theme> = {
+  // Codex layout in Aurict colours (desktop tokens): brand red #c9352b, text-safe
+  // red #ff7a6b on dark, warm greys; body text keeps the terminal's own foreground.
+  aurict: {
+    name: "Aurict",
+    // Text accents use the AA-safe red; brand red #c9352b is for borders and the wordmark cursor.
+    accent: "#ff7a6b", accentAlt: "#ff7a6b", accentInk: "#1d0a08",
+    success: "#5fbf74", error: "#e5484d", warning: "#e8c34a",
+    userColor: "", assistantDot: "", toolColor: "", systemColor: "#8c7f77",
+    textPrimary: "", textSecondary: "", textDim: "#8c7f77", textLabel: "#b5a99f",
+    borderDim: "#2a211e", borderBright: "#3a2e2a", borderActive: "#c9352b",
+    bgHighlight: "#1e1816", bgDeep: "#0b0908", bgCard: "#1e1816", bgCardHover: "#2a211e", bgAlt: "#100c0b",
+    buddyMain: "#c9352b", buddyEar: "#ff7a6b",
+    diffAddBg: "#1f3326", diffRemoveBg: "#4a1f1b",
+  },
+  "aurict-light": {
+    name: "Aurict Light",
+    accent: "#b8322a", accentAlt: "#c9352b", accentInk: "#ffffff",
+    success: "#1f8a4c", error: "#b8322a", warning: "#9a6a00",
+    userColor: "", assistantDot: "", toolColor: "", systemColor: "#74675f",
+    textPrimary: "", textSecondary: "", textDim: "#74675f", textLabel: "#574b46",
+    borderDim: "#e6ddd3", borderBright: "#d3c7bb", borderActive: "#c9352b",
+    bgHighlight: "#f4eee6", bgDeep: "#faf6f1", bgCard: "#f4eee6", bgCardHover: "#fbf8f4", bgAlt: "#f1e9df",
+    buddyMain: "#c9352b", buddyEar: "#b8322a",
+    diffAddBg: "#dcf3e3", diffRemoveBg: "#fbe3df",
+  },
   // ── Brand palettes (Aurict Design System — Whiskey Amber default) ──────────
   // oklch() targets from the design spec, calibrated to hex for ANSI 24-bit.
   // Functional safe/warning/danger hues kept ≥40° from accent, all on a
@@ -348,6 +379,7 @@ export const THEMES: Record<string, Theme> = {
     borderDim: "#221a10", borderBright: "#4a3520", borderActive: "#f97316",
     bgHighlight: "#1e1408", buddyMain: "#f97316", buddyEar: "#c2580a",
   },
+  // ── Codex look: terminal default text, one blue accent, faint gray chrome ──
   "system-ansi": {
     name: "System ANSI",
     accent: "cyan", accentAlt: "blue",
@@ -384,7 +416,7 @@ export const THEMES: Record<string, Theme> = {
   },
 }
 
-export const DEFAULT_THEME = "oxblood"
+export const DEFAULT_THEME = "aurict"
 export const THEME_NAMES   = Object.keys(THEMES)
 
 export const BRAND_PALETTE_IDS = ["whiskey-amber", "oxblood", "ink-sapphire", "deep-emerald"] as const

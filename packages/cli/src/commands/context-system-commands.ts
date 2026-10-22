@@ -1,7 +1,7 @@
-import { SessionManager, gateGuard, getCircuitState, getContextBreakdown, loadConfig, readLatestTraceEvents } from "@aurict/core"
+import { SessionManager, gateGuard, getCircuitState, getContextBreakdown, readLatestTraceEvents } from "@aurict/core"
 import type { CommandDef, CommandResult } from "./types.js"
 import { CURRENT_VERSION } from "../util/update-check.js"
-import { ensureLine, formatRelativeTime, oneLine, traceSummary } from "./command-helpers.js"
+import { oneLine, traceSummary } from "./command-helpers.js"
 
 export const contextSystemCommands: CommandDef[] = [
   // ── /ctx ─────────────────────────────────────────────────────────────────

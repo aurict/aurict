@@ -1,36 +1,10 @@
-import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, readdirSync } from "node:fs"
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
 
 const DIR        = join(homedir(), ".aurict")
-const DRAFT_FILE = join(DIR, "draft.txt")
 const CRASH_DIR  = join(DIR, "crash")
 const CRASH_NOTICE_FILE = join(DIR, "crash-notice-seen")
-
-// ── Draft auto-save ───────────────────────────────────────────────────────────
-
-export function saveDraft(text: string): void {
-  try {
-    mkdirSync(DIR, { recursive: true })
-    if (text.trim()) {
-      writeFileSync(DRAFT_FILE, text, "utf8")
-    } else {
-      clearDraft()
-    }
-  } catch { /* non-fatal */ }
-}
-
-export function loadDraft(): string | null {
-  try {
-    return readFileSync(DRAFT_FILE, "utf8") || null
-  } catch {
-    return null
-  }
-}
-
-export function clearDraft(): void {
-  try { unlinkSync(DRAFT_FILE) } catch { /* ignore */ }
-}
 
 // ── Crash reporting ───────────────────────────────────────────────────────────
 
