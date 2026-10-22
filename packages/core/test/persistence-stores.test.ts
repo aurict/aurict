@@ -28,6 +28,7 @@ describe("critical persistence stores", () => {
       version: 1,
       approved: ["write:src/index.ts"],
       approvedDirs: [],
+      approvedPrefixes: [],
     })
     if (process.platform !== "win32") expect(statSync(path).mode & 0o777).toBe(0o600)
   })
