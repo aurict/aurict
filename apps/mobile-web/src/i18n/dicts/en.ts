@@ -10,6 +10,7 @@ export const en = {
 		jelly: { tagline: `A wonderfully wobbly puzzle adventure.` },
 		duckley: { tagline: `Bite-sized lessons. Brighter days.` },
 		mindgrid: { tagline: `A calmer, sharper you, one tile at a time.` },
+		dungeon: { tagline: `Be the dragon boss heroes fear.` },
 		comingSoon: { title: `Coming Soon` },
 		googlePlay: `Google Play`,
 	},
@@ -21,7 +22,7 @@ export const en = {
 	},
 	spotlight: {
 		eyebrow: `Inside the studio`,
-		title: `Three apps. Three little worlds.`,
+		title: `Four apps. Four little worlds.`,
 		getOnPlay: `Get it on Google Play`,
 		jelly: {
 			kicker: `Puzzle game`,
@@ -45,6 +46,14 @@ export const en = {
 			f1: `Engaging memory puzzles on a clean tile grid`,
 			f2: `Built to sharpen memory and focus`,
 			f3: `Track your progress as you improve`,
+		},
+		dungeon: {
+			kicker: `Idle game`,
+			body: `An idle tycoon where you are the dragon at the bottom of the dungeon. Heroes march down floor by floor; your monsters stop them, and every one drops gold to grow your lair.`,
+			f1: `30 floors across 10 biomes, guarded by 20 monsters`,
+			f2: `A baby dragon that evolves into the Ancient Dragon Lord`,
+			f3: `Rebirth for soul perks, plus a story told in letters`,
+			f4: `Your dungeon keeps earning while you're away`,
 		},
 	},
 	studio: {
@@ -122,11 +131,11 @@ export const en = {
 		title: `Questions, answered`,
 		q1: {
 			q: `What is Aurict Mobile?`,
-			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley and Mind Grid, and host the account and support pages for them here.`,
+			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid and Dungeon Lord, and host the account and support pages for them here.`,
 		},
 		q2: {
 			q: `Where can I download the apps?`,
-			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox is coming soon.`,
+			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox and Dungeon Lord are coming soon.`,
 		},
 		q3: {
 			q: `How do I delete my account?`,

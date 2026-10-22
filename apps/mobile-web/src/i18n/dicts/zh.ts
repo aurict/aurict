@@ -10,6 +10,7 @@ export const zh = {
 		jelly: { tagline: `一场妙趣横生的果冻解谜冒险。` },
 		duckley: { tagline: `小小课程，更亮的每一天。` },
 		mindgrid: { tagline: `一格一格，更平静、更敏锐的你。` },
+		dungeon: { tagline: `成为让英雄畏惧的巨龙首领。` },
 		comingSoon: { title: `即将推出` },
 		googlePlay: `Google Play`,
 	},
@@ -21,7 +22,7 @@ export const zh = {
 	},
 	spotlight: {
 		eyebrow: `走进工作室`,
-		title: `三款应用，三个小世界。`,
+		title: `四款应用，四个小世界。`,
 		getOnPlay: `在 Google Play 下载`,
 		jelly: {
 			kicker: `解谜游戏`,
@@ -45,6 +46,14 @@ export const zh = {
 			f1: `简洁网格上的趣味记忆谜题`,
 			f2: `专为提升记忆力和专注力而设计`,
 			f3: `随时跟踪你的进步`,
+		},
+		dungeon: {
+			kicker: `放置游戏`,
+			body: `一款放置经营游戏：你是地下城最深处的巨龙。英雄们一层层向下进发，你的怪物将他们拦下，每击败一个都会掉落金币，助你扩建巢穴。`,
+			f1: `10 种生态、30 层地下城，20 种怪物守护`,
+			f2: `从幼龙一路进化为远古龙王`,
+			f3: `转生获得灵魂天赋，还有以信件讲述的故事`,
+			f4: `离线时地下城也在持续赚钱`,
 		},
 	},
 	studio: {
@@ -122,11 +131,11 @@ export const zh = {
 		title: `常见问题解答`,
 		q1: {
 			q: `Aurict Mobile 是什么？`,
-			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley 和 Mind Grid，并在这里提供它们的账户和支持页面。`,
+			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid 和 Dungeon Lord，并在这里提供它们的账户和支持页面。`,
 		},
 		q2: {
 			q: `在哪里下载这些应用？`,
-			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox 即将推出。`,
+			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox 和 Dungeon Lord 即将推出。`,
 		},
 		q3: {
 			q: `如何删除我的账户？`,
