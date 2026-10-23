@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/jelly-paradox/privacy-policy", priority: 0.5 },
     { path: "/dungeon-lord/privacy-policy", priority: 0.5 },
     { path: "/drift-street/privacy-policy", priority: 0.5 },
+    { path: "/roomie-puzzle/privacy-policy", priority: 0.5 },
     { path: "/terms-of-service", priority: 0.5 },
     { path: "/ccpa-policy", priority: 0.5 },
   ];
