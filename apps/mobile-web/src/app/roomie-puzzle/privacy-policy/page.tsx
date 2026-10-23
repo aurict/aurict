@@ -47,6 +47,7 @@ const STRINGS = {
           "Google AdMob (reklamlar): isteğe bağlı ödüllü reklamlar (ek süre, ipucu, ödülü iki katına çıkarma) ve bazı bölüm sonlarında geçiş reklamları. AdMob reklam kimliğini, IP adresini, cihaz bilgilerini ve reklam etkileşimlerini reklam göstermek, ölçmek ve dolandırıcılığı önlemek için işleyebilir. Avrupa Ekonomik Alanı, Birleşik Krallık ve İsviçre'de ilk açılışta izniniz istenir; kişiselleştirilmiş reklamlar yalnızca izin verirseniz gösterilir. \"Reklamları kaldır\" satın alındığında geçiş reklamları gösterilmez.",
           "Google Play Faturalandırma: paketler (ipucu, süre, balık) ve \"Reklamları kaldır\" Google Play üzerinden satılır. Ödemeyi Google işler; kart ve banka bilgileriniz bize ulaşmaz.",
           "Firebase Analytics (Google): oyunu iyileştirmek için uygulama örneği kimliği, cihaz modeli, işletim sistemi, ülke, oturum süreleri ve oyun içi olaylar (bölüm başlangıcı ve sonucu, lig maçları, izlenen ödüllü reklamlar, satın almalar) toplanır. Adınız veya e-postanız toplanmaz ve reklam kişiselleştirmesi için kullanılmaz. İzin gerektiren bölgelerde yalnızca izin verirseniz çalışır.",
+          "Firebase Crashlytics (Google): oyun çökerse çökme anındaki teknik bilgiler (cihaz modeli, işletim sistemi sürümü, hata kaydı, uygulama örneği kimliği) hataları düzeltmek için gönderilir. Kişisel bilgi içermez. İzin gerektiren bölgelerde yalnızca izin verirseniz çalışır.",
           "Firebase Authentication ve Cloud Firestore (Google): yalnızca Takım Ligi için, yukarıda anlatıldığı gibi.",
         ],
       },
@@ -56,7 +57,7 @@ const STRINGS = {
       },
       {
         title: "Hukuki dayanak (KVKK, GDPR)",
-        body: "Sizinle yaptığımız sözleşmenin ifası (oyunun, Takım Ligi'nin ve satın almaların sunulması); meşru menfaatlerimiz (hizmetin çalışması, hile ve dolandırıcılığın önlenmesi); açık rızanız (kişiselleştirilmiş reklam ve izin gerektiren bölgelerde analitik). Rızanızı istediğiniz zaman Ayarlar → Reklam gizlilik seçenekleri'nden değiştirebilirsiniz.",
+        body: "Sizinle yaptığımız sözleşmenin ifası (oyunun, Takım Ligi'nin ve satın almaların sunulması); meşru menfaatlerimiz (hizmetin çalışması, hile ve dolandırıcılığın önlenmesi); açık rızanız (kişiselleştirilmiş reklam ve izin gerektiren bölgelerde analitik ve çökme raporları). Rızanızı istediğiniz zaman Ayarlar → Reklam gizlilik seçenekleri'nden değiştirebilirsiniz.",
       },
       {
         title: "Çocuklar",
@@ -71,7 +72,7 @@ const STRINGS = {
         items: [
           "Telefonunuzdaki oyun kaydı, uygulamayı kaldırdığınızda veya uygulama verilerini temizlediğinizde silinir.",
           `Takım Ligi kayıtlarınızın silinmesini istediğinizde ${CONTACT} adresine lig tablosundaki oyuncu adınızla yazın; 30 gün içinde sileriz.`,
-          "Firebase Analytics verileri en fazla 14 ay saklanır.",
+          "Firebase Analytics verileri en fazla 14 ay, Crashlytics çökme raporları 90 gün saklanır.",
           "Google AdMob ve Google Play kendi verilerini kendi politikalarına göre saklar.",
         ],
       },
@@ -128,6 +129,7 @@ const STRINGS = {
           "Google AdMob (ads): optional rewarded ads (extra time, hints, double rewards) and interstitial ads after some levels. AdMob may process your advertising ID, IP address, device information and ad interactions to show and measure ads and prevent fraud. In the European Economic Area, the UK and Switzerland you are asked for consent on first launch; personalized ads are shown only if you agree. Buying \"Remove ads\" turns off interstitial ads.",
           "Google Play Billing: packs (hints, time, fish) and \"Remove ads\" are sold through Google Play. Payments are processed by Google; we never receive card or bank details.",
           "Firebase Analytics (Google): to improve the game we collect an app instance ID, device model, operating system, country, session length and in-game events (level start and result, league matches, rewarded ads watched, purchases). Your name and email are not collected, and the data is not used for ad personalization. In regions that require consent it runs only if you agree.",
+          "Firebase Crashlytics (Google): if the game crashes, technical details from the moment of the crash (device model, OS version, error log, app instance ID) are sent so we can fix bugs. They contain no personal information. In regions that require consent it runs only if you agree.",
           "Firebase Authentication and Cloud Firestore (Google): only for the Team League, as described above.",
         ],
       },
@@ -137,7 +139,7 @@ const STRINGS = {
       },
       {
         title: "Legal bases (GDPR, KVKK)",
-        body: "Performance of our contract with you (providing the game, the Team League and purchases); our legitimate interests (keeping the service running, preventing cheating and fraud); your consent (personalized ads, and analytics in regions that require it). You can change your consent at any time in Settings → Ad privacy options.",
+        body: "Performance of our contract with you (providing the game, the Team League and purchases); our legitimate interests (keeping the service running, preventing cheating and fraud); your consent (personalized ads, and analytics and crash reports in regions that require it). You can change your consent at any time in Settings → Ad privacy options.",
       },
       {
         title: "Children",
@@ -152,7 +154,7 @@ const STRINGS = {
         items: [
           "The game save on your phone is deleted when you uninstall the app or clear its data.",
           `To have your Team League records deleted, write to ${CONTACT} with the player name shown on the league table; we delete them within 30 days.`,
-          "Firebase Analytics data is kept for at most 14 months.",
+          "Firebase Analytics data is kept for at most 14 months; Crashlytics crash reports for 90 days.",
           "Google AdMob and Google Play keep their own data under their own policies.",
         ],
       },
