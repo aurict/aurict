@@ -78,6 +78,17 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
+          <Section title={language === "tr" ? "Drift Street oyunu" : "Drift Street game"} color="var(--accent)">
+            <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
+              {language === "tr"
+                ? "Aurict tarafından yayınlanan Drift Street oyununun (com.aurict.driftstreet) gizlilik politikası: "
+                : "The privacy policy for the Drift Street game (com.aurict.driftstreet), published by developer Aurict, is here: "}
+              <Link href="/drift-street/privacy-policy" style={{ color: "var(--accent)" }}>
+                {language === "tr" ? "Drift Street Gizlilik Politikası" : "Drift Street Privacy Policy"}
+              </Link>
+            </p>
+          </Section>
+
           <Section title={t("privacyPolicy.infoWeCollect")} color="var(--accent)">
             <p className="leading-relaxed mb-4" style={{ color: "var(--text-dim)" }}>
               {t("privacyPolicy.intro")}

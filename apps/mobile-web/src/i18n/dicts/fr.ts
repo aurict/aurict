@@ -11,6 +11,7 @@ export const fr = {
 		duckley: { tagline: `Petites leçons. Journées plus lumineuses.` },
 		mindgrid: { tagline: `Plus calme et plus vif, une case à la fois.` },
 		dungeon: { tagline: `Deviens le dragon que les héros redoutent.` },
+		drift: { tagline: `Du drift à un pouce, dans un monde coloré comme un jouet.` },
 		comingSoon: { title: `Bientôt disponible` },
 		googlePlay: `Google Play`,
 	},
@@ -22,7 +23,7 @@ export const fr = {
 	},
 	spotlight: {
 		eyebrow: `Dans le studio`,
-		title: `Quatre apps. Quatre petits mondes.`,
+		title: `Cinq apps. Cinq petits mondes.`,
 		getOnPlay: `Disponible sur Google Play`,
 		jelly: {
 			kicker: `Jeu de réflexion`,
@@ -54,6 +55,14 @@ export const fr = {
 			f2: `Un bébé dragon qui évolue en Ancien Seigneur Dragon`,
 			f3: `Renaissance pour des talents d’âme, et une histoire racontée en lettres`,
 			f4: `Ton donjon continue de gagner pendant ton absence`,
+		},
+		drift: {
+			kicker: `Jeu de course`,
+			body: `Un jeu de drift qui se joue avec un seul pouce. Maintiens pour glisser, dirige avec ton pouce et prends chaque virage en travers dans un monde coloré comme un jouet.`,
+			f1: `40 niveaux en ville, dans un parc de drift, sur des routes de montagne et au port`,
+			f2: `Zones de drift notées de S à D, tandems et nitro`,
+			f3: `14 voitures à débloquer, de la kei car à la supercar`,
+			f4: `Course-poursuite infinie avec la police et récompenses quotidiennes ; jouable hors ligne`,
 		},
 	},
 	studio: {
@@ -117,6 +126,10 @@ export const fr = {
 			title: `Confidentialité de Dungeon Lord`,
 			body: `La politique de confidentialité du jeu Dungeon Lord: Rise of the Boss.`,
 		},
+		driftPrivacy: {
+			title: `Confidentialité de Drift Street`,
+			body: `La politique de confidentialité du jeu Drift Street.`,
+		},
 		terms: {
 			title: `Conditions d’utilisation`,
 			body: `Les règles d’utilisation de nos applis et de ce site.`,
@@ -131,11 +144,11 @@ export const fr = {
 		title: `Vos questions, nos réponses`,
 		q1: {
 			q: `Qu’est-ce qu’Aurict Mobile ?`,
-			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid et Dungeon Lord, et hébergeons ici leurs pages de compte et d’assistance.`,
+			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid, Dungeon Lord et Drift Street, et hébergeons ici leurs pages de compte et d’assistance.`,
 		},
 		q2: {
 			q: `Où télécharger les applis ?`,
-			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox et Dungeon Lord arrivent bientôt.`,
+			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox, Dungeon Lord et Drift Street arrivent bientôt.`,
 		},
 		q3: {
 			q: `Comment supprimer mon compte ?`,

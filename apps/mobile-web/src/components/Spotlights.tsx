@@ -7,7 +7,7 @@ import SectionHeading from "./SectionHeading";
 const EASE = [0.16, 0.8, 0.2, 1] as const;
 
 type Spotlight = {
-  key: "jelly" | "duckley" | "mindgrid" | "dungeon";
+  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift";
   name: string;
   features: string[];
   color: string;
@@ -55,6 +55,15 @@ const SPOTLIGHTS: Spotlight[] = [
     soft: "var(--dungeon-soft)",
     art: { src: "/apps/dungeon-dragon.webp", className: "w-[64%] left-[6%] bottom-[6%]" },
     companion: { src: "/apps/dungeon-icon.webp", className: "w-[26%] right-[8%] top-[10%] rounded-[22%] shadow-xl" },
+  },
+  {
+    key: "drift",
+    name: "Drift Street",
+    features: ["f1", "f2", "f3", "f4"],
+    color: "var(--drift)",
+    soft: "var(--drift-soft)",
+    art: { src: "/apps/drift.webp", className: "h-[82%] right-[4%] bottom-[4%]" },
+    companion: { src: "/apps/drift-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
   },
 ];
 

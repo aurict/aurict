@@ -11,6 +11,7 @@ export const zh = {
 		duckley: { tagline: `小小课程，更亮的每一天。` },
 		mindgrid: { tagline: `一格一格，更平静、更敏锐的你。` },
 		dungeon: { tagline: `成为让英雄畏惧的巨龙首领。` },
+		drift: { tagline: `单指漂移，穿梭在玩具般缤纷的世界。` },
 		comingSoon: { title: `即将推出` },
 		googlePlay: `Google Play`,
 	},
@@ -22,7 +23,7 @@ export const zh = {
 	},
 	spotlight: {
 		eyebrow: `走进工作室`,
-		title: `四款应用，四个小世界。`,
+		title: `五款应用，五个小世界。`,
 		getOnPlay: `在 Google Play 下载`,
 		jelly: {
 			kicker: `解谜游戏`,
@@ -54,6 +55,14 @@ export const zh = {
 			f2: `从幼龙一路进化为远古龙王`,
 			f3: `转生获得灵魂天赋，还有以信件讲述的故事`,
 			f4: `离线时地下城也在持续赚钱`,
+		},
+		drift: {
+			kicker: `竞速游戏`,
+			body: `一款单指操作的漂移游戏。按住即可甩尾，用拇指控制方向，在玩具般缤纷的世界里横着冲过每一个弯道。`,
+			f1: `城市、漂移公园、山路和港口共 40 个关卡`,
+			f2: `从 S 到 D 评分的漂移区、双车追走和氮气加速`,
+			f3: `14 辆可解锁赛车，从小型车到超级跑车`,
+			f4: `无尽警察追逐模式和每日奖励；可离线游玩`,
 		},
 	},
 	studio: {
@@ -117,6 +126,10 @@ export const zh = {
 			title: `Dungeon Lord 隐私政策`,
 			body: `Dungeon Lord: Rise of the Boss 游戏的隐私政策。`,
 		},
+		driftPrivacy: {
+			title: `Drift Street 隐私政策`,
+			body: `Drift Street 游戏的隐私政策。`,
+		},
 		terms: {
 			title: `服务条款`,
 			body: `使用我们的应用和本网站的规则。`,
@@ -131,11 +144,11 @@ export const zh = {
 		title: `常见问题解答`,
 		q1: {
 			q: `Aurict Mobile 是什么？`,
-			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid 和 Dungeon Lord，并在这里提供它们的账户和支持页面。`,
+			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord 和 Drift Street，并在这里提供它们的账户和支持页面。`,
 		},
 		q2: {
 			q: `在哪里下载这些应用？`,
-			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox 和 Dungeon Lord 即将推出。`,
+			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord 和 Drift Street 即将推出。`,
 		},
 		q3: {
 			q: `如何删除我的账户？`,

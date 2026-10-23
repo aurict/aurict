@@ -34,6 +34,7 @@ const APPS: App[] = [
     href: "https://play.google.com/store/apps/details?id=com.mindgrid.mind_grid",
   },
   { name: "Dungeon Lord", taglineKey: "apps.dungeon.tagline", art: "/apps/dungeon-dragon.webp", color: "var(--dungeon)", soft: "var(--dungeon-soft)" },
+  { name: "Drift Street", taglineKey: "apps.drift.tagline", art: "/apps/drift.webp", color: "var(--drift)", soft: "var(--drift-soft)" },
 ];
 
 const ARROW = (

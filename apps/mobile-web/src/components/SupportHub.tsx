@@ -17,6 +17,7 @@ const ITEMS = [
   { key: "jellyPrivacy", href: "/jelly-paradox/privacy-policy", color: "var(--jelly)", soft: "var(--jelly-soft)" },
   { key: "deleteDungeon", href: "/dungeon-lord/delete-account", color: "var(--dungeon)", soft: "var(--dungeon-soft)" },
   { key: "dungeonPrivacy", href: "/dungeon-lord/privacy-policy", color: "var(--dungeon)", soft: "var(--dungeon-soft)" },
+  { key: "driftPrivacy", href: "/drift-street/privacy-policy", color: "var(--drift)", soft: "var(--drift-soft)" },
   { key: "terms", href: "/terms-of-service", color: "var(--accent-alt)", soft: "#fff0e2" },
   { key: "contact", href: "mailto:contact@aurict.com", color: "var(--jelly)", soft: "var(--jelly-soft)" },
 ];
