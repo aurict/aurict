@@ -24,7 +24,7 @@ const STRINGS = {
     sections: [
       {
         title: "Kısaca",
-        body: "Roomie Puzzle hesap açmanızı istemez. Hikâye ilerlemeniz yalnızca telefonunuzda saklanır. İsteğe bağlı Takım Ligi'ne katılırsanız otomatik verilen oyuncu adınız, takımınız ve haftalık puanınız lig tablosunda gösterilmek üzere Google Firebase'de tutulur. Bunun dışında veri toplayan taraflar aşağıda listelenen Google hizmetleridir (reklam, satın alma ve analitik). Kişisel verilerinizi satmayız.",
+        body: "Roomie Puzzle hesap açmanızı istemez. Hikâye ilerlemeniz yalnızca telefonunuzda saklanır. İsteğe bağlı Takım Ligi'ne katılırsanız otomatik verilen oyuncu adınız, takımınız ve haftalık puanınız lig tablosunda gösterilmek üzere Aurict'in kendi sunucusunda (roomie.aurict.com) tutulur. Bunun dışında veri toplayan taraflar aşağıda listelenen Google hizmetleridir (reklam, satın alma ve analitik). Kişisel verilerinizi satmayız.",
       },
       {
         title: "Telefonunuzda kalan bilgiler",
@@ -36,8 +36,8 @@ const STRINGS = {
       {
         title: "Takım Ligi (isteğe bağlı)",
         items: [
-          "Takım Ligi'ni açtığınızda Firebase Authentication ile anonim bir oyuncu kimliği oluşturulur. Adınız, e-postanız veya telefon numaranız istenmez.",
-          "Cloud Firestore'da şunlar saklanır: anonim oyuncu kimliği, oyunun otomatik verdiği oyuncu adı (ör. \"Kaptan 4821\"), seçtiğiniz takım, haftalık puanınız ve oynadığınız maç sayısı. Takım toplamları ve en iyi oyuncular, oyunu oynayan herkes tarafından görülebilen lig tablosunda gösterilir.",
+          "Takım Ligi'ni açtığınızda sunucumuz anonim bir oyuncu kimliği ve oyuncu adı oluşturur; telefonunuzda yalnızca buna ait bir erişim anahtarı saklanır. Adınız, e-postanız veya telefon numaranız istenmez.",
+          "Sunucumuzda (Google Cloud, Avrupa – Hollanda bölgesi) şunlar saklanır: anonim oyuncu kimliği, oyunun otomatik verdiği oyuncu adı (ör. \"Kaptan 4821\"), seçtiğiniz takım, haftalık puanınız ve her maçın puanı, haritası ve başlangıç/bitiş zamanı (hile önlemek için). Bağlantı sırasında IP adresiniz kötüye kullanımı sınırlamak için geçici olarak işlenir, saklanmaz. Takım toplamları ve en iyi oyuncular, oyunu oynayan herkes tarafından görülebilen lig tablosunda gösterilir.",
           "Ligi hiç açmazsanız bu bilgilerin hiçbiri oluşturulmaz.",
         ],
       },
@@ -48,7 +48,6 @@ const STRINGS = {
           "Google Play Faturalandırma: paketler (ipucu, süre, balık) ve \"Reklamları kaldır\" Google Play üzerinden satılır. Ödemeyi Google işler; kart ve banka bilgileriniz bize ulaşmaz.",
           "Firebase Analytics (Google): oyunu iyileştirmek için uygulama örneği kimliği, cihaz modeli, işletim sistemi, ülke, oturum süreleri ve oyun içi olaylar (bölüm başlangıcı ve sonucu, lig maçları, izlenen ödüllü reklamlar, satın almalar) toplanır. Adınız veya e-postanız toplanmaz ve reklam kişiselleştirmesi için kullanılmaz. İzin gerektiren bölgelerde yalnızca izin verirseniz çalışır.",
           "Firebase Crashlytics (Google): oyun çökerse çökme anındaki teknik bilgiler (cihaz modeli, işletim sistemi sürümü, hata kaydı, uygulama örneği kimliği) hataları düzeltmek için gönderilir. Kişisel bilgi içermez. İzin gerektiren bölgelerde yalnızca izin verirseniz çalışır.",
-          "Firebase Authentication ve Cloud Firestore (Google): yalnızca Takım Ligi için, yukarıda anlatıldığı gibi.",
         ],
       },
       {
@@ -71,7 +70,7 @@ const STRINGS = {
         title: "Saklama ve silme",
         items: [
           "Telefonunuzdaki oyun kaydı, uygulamayı kaldırdığınızda veya uygulama verilerini temizlediğinizde silinir.",
-          `Takım Ligi kayıtlarınızın silinmesini istediğinizde ${CONTACT} adresine lig tablosundaki oyuncu adınızla yazın; 30 gün içinde sileriz.`,
+          `Takım Ligi kayıtlarınızı oyunda Ayarlar → Lig verilerimi sil ile hemen silebilirsiniz; oyunu kaldırdıysanız ${CONTACT} adresine lig tablosundaki oyuncu adınızla yazın, 30 gün içinde sileriz. Maç kayıtları ayrıca 14 günlük yedeklerde bulunabilir ve bu sürenin sonunda kendiliğinden silinir.`,
           "Firebase Analytics verileri en fazla 14 ay, Crashlytics çökme raporları 90 gün saklanır.",
           "Google AdMob ve Google Play kendi verilerini kendi politikalarına göre saklar.",
         ],
@@ -85,7 +84,7 @@ const STRINGS = {
       },
       {
         title: "Güvenlik",
-        body: "Google hizmetleriyle tüm bağlantılar şifrelidir. Lig verilerine yazma, oyuncunun yalnızca kendi kaydını güncelleyebileceği güvenlik kurallarıyla sınırlandırılmıştır. Hiçbir sistem mutlak güvenlik garantisi veremez.",
+        body: "Google hizmetleriyle tüm bağlantılar şifrelidir. Lig sunucumuza bağlantılar da şifrelidir (HTTPS); her oyuncu yalnızca kendi kaydını değiştirebilir ve puanlar sunucuda hesaplanır. Hiçbir sistem mutlak güvenlik garantisi veremez.",
       },
       {
         title: "Değişiklikler",
@@ -106,7 +105,7 @@ const STRINGS = {
     sections: [
       {
         title: "In short",
-        body: "Roomie Puzzle never asks you to create an account. Your story progress is stored only on your phone. If you join the optional Team League, an automatically assigned player name, your team and your weekly score are kept in Google Firebase so they can be shown on the league table. Apart from that, the only parties that collect data are the Google services listed below (ads, purchases and analytics). We do not sell your personal data.",
+        body: "Roomie Puzzle never asks you to create an account. Your story progress is stored only on your phone. If you join the optional Team League, an automatically assigned player name, your team and your weekly score are kept on Aurict's own server (roomie.aurict.com) so they can be shown on the league table. Apart from that, the only parties that collect data are the Google services listed below (ads, purchases and analytics). We do not sell your personal data.",
       },
       {
         title: "Information that stays on your phone",
@@ -118,8 +117,8 @@ const STRINGS = {
       {
         title: "Team League (optional)",
         items: [
-          "When you open the Team League, an anonymous player ID is created with Firebase Authentication. Your name, email or phone number are never requested.",
-          "Cloud Firestore stores: the anonymous player ID, the player name the game assigns automatically (e.g. \"Kaptan 4821\"), the team you choose, your weekly score and the number of matches you played. Team totals and the top players appear on a league table that everyone who plays can see.",
+          "When you open the Team League, our server creates an anonymous player ID and player name; only an access key for it is stored on your phone. Your name, email or phone number are never requested.",
+          "Our server (Google Cloud, Europe – Netherlands region) stores: the anonymous player ID, the player name the game assigns automatically (e.g. \"Kaptan 4821\"), the team you choose, and for each match its score, map and start/finish time (to prevent cheating). Your IP address is processed briefly to limit abuse and is not stored. Team totals and the top players appear on a league table that everyone who plays can see.",
           "If you never open the league, none of this is created.",
         ],
       },
@@ -130,7 +129,6 @@ const STRINGS = {
           "Google Play Billing: packs (hints, time, fish) and \"Remove ads\" are sold through Google Play. Payments are processed by Google; we never receive card or bank details.",
           "Firebase Analytics (Google): to improve the game we collect an app instance ID, device model, operating system, country, session length and in-game events (level start and result, league matches, rewarded ads watched, purchases). Your name and email are not collected, and the data is not used for ad personalization. In regions that require consent it runs only if you agree.",
           "Firebase Crashlytics (Google): if the game crashes, technical details from the moment of the crash (device model, OS version, error log, app instance ID) are sent so we can fix bugs. They contain no personal information. In regions that require consent it runs only if you agree.",
-          "Firebase Authentication and Cloud Firestore (Google): only for the Team League, as described above.",
         ],
       },
       {
@@ -153,7 +151,7 @@ const STRINGS = {
         title: "Retention and deletion",
         items: [
           "The game save on your phone is deleted when you uninstall the app or clear its data.",
-          `To have your Team League records deleted, write to ${CONTACT} with the player name shown on the league table; we delete them within 30 days.`,
+          `You can delete your Team League records instantly in the game under Settings → Delete my league data; if you have uninstalled the game, write to ${CONTACT} with the player name shown on the league table and we delete them within 30 days. Match records may also remain in 14-day backups and are removed automatically when those expire.`,
           "Firebase Analytics data is kept for at most 14 months; Crashlytics crash reports for 90 days.",
           "Google AdMob and Google Play keep their own data under their own policies.",
         ],
@@ -167,7 +165,7 @@ const STRINGS = {
       },
       {
         title: "Security",
-        body: "All connections to Google services are encrypted. Writing league data is limited by security rules so a player can only update their own record. No system can guarantee absolute security.",
+        body: "All connections to Google services are encrypted. Connections to our league server are encrypted too (HTTPS); each player can only change their own record and scores are calculated on the server. No system can guarantee absolute security.",
       },
       {
         title: "Changes",
