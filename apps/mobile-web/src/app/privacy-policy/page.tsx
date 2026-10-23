@@ -89,6 +89,17 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
+          <Section title={language === "tr" ? "Roomie Puzzle oyunu" : "Roomie Puzzle game"} color="var(--accent)">
+            <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
+              {language === "tr"
+                ? "Aurict tarafından yayınlanan Roomie Puzzle oyununun (com.aurict.roomiepuzzle) gizlilik politikası: "
+                : "The privacy policy for the Roomie Puzzle game (com.aurict.roomiepuzzle), published by developer Aurict, is here: "}
+              <Link href="/roomie-puzzle/privacy-policy" style={{ color: "var(--accent)" }}>
+                {language === "tr" ? "Roomie Puzzle Gizlilik Politikası" : "Roomie Puzzle Privacy Policy"}
+              </Link>
+            </p>
+          </Section>
+
           <Section title={t("privacyPolicy.infoWeCollect")} color="var(--accent)">
             <p className="leading-relaxed mb-4" style={{ color: "var(--text-dim)" }}>
               {t("privacyPolicy.intro")}

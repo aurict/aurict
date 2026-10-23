@@ -12,6 +12,7 @@ export const zh = {
 		mindgrid: { tagline: `一格一格，更平静、更敏锐的你。` },
 		dungeon: { tagline: `成为让英雄畏惧的巨龙首领。` },
 		drift: { tagline: `单指漂移，穿梭在玩具般缤纷的世界。` },
+		roomie: { tagline: `在海边温馨的场景里找出隐藏的物品。` },
 		comingSoon: { title: `即将推出` },
 		googlePlay: `Google Play`,
 	},
@@ -23,7 +24,7 @@ export const zh = {
 	},
 	spotlight: {
 		eyebrow: `走进工作室`,
-		title: `五款应用，五个小世界。`,
+		title: `六款应用，六个小世界。`,
 		getOnPlay: `在 Google Play 下载`,
 		jelly: {
 			kicker: `解谜游戏`,
@@ -63,6 +64,14 @@ export const zh = {
 			f2: `从 S 到 D 评分的漂移区、双车追走和氮气加速`,
 			f3: `14 辆可解锁赛车，从小型车到超级跑车`,
 			f4: `无尽警察追逐模式和每日奖励；可离线游玩`,
+		},
+		roomie: {
+			kicker: `寻物游戏`,
+			body: `和鸭子船长一起玩的寻物记忆游戏。每个阶段是一个场景；每一关都会加入新物品，旧物品留在原处——记住场景，找出新来的东西。`,
+			f1: `从船长室到沉船，8 个室内外场景`,
+			f2: `乘电梯一层层登上灯塔`,
+			f3: `每周团队联赛、每日任务和回忆之路奖励`,
+			f4: `双指缩放、让物品闪烁的提示、5 种语言`,
 		},
 	},
 	studio: {
@@ -130,6 +139,10 @@ export const zh = {
 			title: `Drift Street 隐私政策`,
 			body: `Drift Street 游戏的隐私政策。`,
 		},
+		roomiePrivacy: {
+			title: `Roomie Puzzle 隐私政策`,
+			body: `Roomie Puzzle 游戏的隐私政策。`,
+		},
 		terms: {
 			title: `服务条款`,
 			body: `使用我们的应用和本网站的规则。`,
@@ -144,11 +157,11 @@ export const zh = {
 		title: `常见问题解答`,
 		q1: {
 			q: `Aurict Mobile 是什么？`,
-			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord 和 Drift Street，并在这里提供它们的账户和支持页面。`,
+			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street 和 Roomie Puzzle，并在这里提供它们的账户和支持页面。`,
 		},
 		q2: {
 			q: `在哪里下载这些应用？`,
-			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord 和 Drift Street 即将推出。`,
+			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street 和 Roomie Puzzle 即将推出。`,
 		},
 		q3: {
 			q: `如何删除我的账户？`,
