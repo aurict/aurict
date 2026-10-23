@@ -35,6 +35,7 @@ const APPS: App[] = [
   },
   { name: "Dungeon Lord", taglineKey: "apps.dungeon.tagline", art: "/apps/dungeon-dragon.webp", color: "var(--dungeon)", soft: "var(--dungeon-soft)" },
   { name: "Drift Street", taglineKey: "apps.drift.tagline", art: "/apps/drift.webp", color: "var(--drift)", soft: "var(--drift-soft)" },
+  { name: "Roomie Puzzle", taglineKey: "apps.roomie.tagline", art: "/apps/roomie.webp", color: "var(--roomie)", soft: "var(--roomie-soft)" },
 ];
 
 const ARROW = (

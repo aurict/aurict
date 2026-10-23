@@ -12,6 +12,7 @@ export const tr = {
 		mindgrid: { tagline: `Taş taş, daha sakin ve daha keskin bir sen.` },
 		dungeon: { tagline: `Kahramanların korktuğu ejderha boss sen ol.` },
 		drift: { tagline: `Oyuncak gibi rengârenk bir dünyada tek parmakla drift.` },
+		roomie: { tagline: `Deniz kenarındaki sıcacık sahnelerde gizli olanı bul.` },
 		comingSoon: { title: `Yakında` },
 		googlePlay: `Google Play`,
 	},
@@ -23,7 +24,7 @@ export const tr = {
 	},
 	spotlight: {
 		eyebrow: `Stüdyonun içinden`,
-		title: `Beş uygulama. Beş küçük dünya.`,
+		title: `Altı uygulama. Altı küçük dünya.`,
 		getOnPlay: `Google Play'den indir`,
 		jelly: {
 			kicker: `Bulmaca oyunu`,
@@ -63,6 +64,14 @@ export const tr = {
 			f2: `S'den D'ye not veren hakemli drift bölgeleri, tandem ve nitro`,
 			f3: `Kei'den süper otomobile açılacak 14 araç`,
 			f4: `Sonsuz polis kovalamacası ve günlük ödüller; internetsiz oynanır`,
+		},
+		roomie: {
+			kicker: `Gizli eşya oyunu`,
+			body: `Kaptan Ördek'le bir gizli eşya ve hafıza oyunu. Her stage tek bir sahne; her bölüm yeni eşyalar ekler, eskiler yerinde kalır. Sahneyi öğrenir, yeni geleni yakalarsın.`,
+			f1: `Kaptan kamarasından batık gemiye 8 iç ve dış mekân`,
+			f2: `Fener kulesine asansörle kat kat tırman`,
+			f3: `Haftalık takım ligi, günlük görevler ve Hatıra Yolu ödülleri`,
+			f4: `Yakınlaştırma, eşyayı yanıp söndüren ipuçları, 5 dil`,
 		},
 	},
 	studio: {
@@ -130,6 +139,10 @@ export const tr = {
 			title: `Drift Street gizlilik politikası`,
 			body: `Drift Street oyununun gizlilik politikası.`,
 		},
+		roomiePrivacy: {
+			title: `Roomie Puzzle gizlilik politikası`,
+			body: `Roomie Puzzle oyununun gizlilik politikası.`,
+		},
 		terms: {
 			title: `Hizmet şartları`,
 			body: `Uygulamalarımızı ve bu siteyi kullanma kuralları.`,
@@ -144,11 +157,11 @@ export const tr = {
 		title: `Sık sorulan sorular`,
 		q1: {
 			q: `Aurict Mobile nedir?`,
-			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord ve Drift Street'i yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
+			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street ve Roomie Puzzle'ı yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
 		},
 		q2: {
 			q: `Uygulamaları nereden indirebilirim?`,
-			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord ve Drift Street çok yakında.`,
+			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord, Drift Street ve Roomie Puzzle çok yakında.`,
 		},
 		q3: {
 			q: `Hesabımı nasıl silerim?`,

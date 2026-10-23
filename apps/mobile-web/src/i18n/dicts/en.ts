@@ -12,6 +12,7 @@ export const en = {
 		mindgrid: { tagline: `A calmer, sharper you, one tile at a time.` },
 		dungeon: { tagline: `Be the dragon boss heroes fear.` },
 		drift: { tagline: `One-thumb drifting through a toy-bright world.` },
+		roomie: { tagline: `Find what's hidden in cozy scenes by the sea.` },
 		comingSoon: { title: `Coming Soon` },
 		googlePlay: `Google Play`,
 	},
@@ -23,7 +24,7 @@ export const en = {
 	},
 	spotlight: {
 		eyebrow: `Inside the studio`,
-		title: `Five apps. Five little worlds.`,
+		title: `Six apps. Six little worlds.`,
 		getOnPlay: `Get it on Google Play`,
 		jelly: {
 			kicker: `Puzzle game`,
@@ -63,6 +64,14 @@ export const en = {
 			f2: `Judged drift zones graded S to D, tandem runs and nitro`,
 			f3: `14 cars to unlock, from kei cars to supercars`,
 			f4: `Endless police chase mode and daily rewards; plays offline`,
+		},
+		roomie: {
+			kicker: `Hidden-object game`,
+			body: `A hidden-object memory game with Captain Duck. Each stage is one scene; every level adds new objects while the old ones stay put, so you learn the scene and spot what's new.`,
+			f1: `8 indoor and outdoor scenes, from the captain's cabin to a sunken ship`,
+			f2: `Climb the lighthouse tower floor by floor in an elevator`,
+			f3: `Weekly team league, daily tasks and Memory Road rewards`,
+			f4: `Pinch to zoom, hints that make objects blink, 5 languages`,
 		},
 	},
 	studio: {
@@ -130,6 +139,10 @@ export const en = {
 			title: `Drift Street privacy policy`,
 			body: `The privacy policy for the Drift Street game.`,
 		},
+		roomiePrivacy: {
+			title: `Roomie Puzzle privacy policy`,
+			body: `The privacy policy for the Roomie Puzzle game.`,
+		},
 		terms: {
 			title: `Terms of service`,
 			body: `The rules for using our apps and this site.`,
@@ -144,11 +157,11 @@ export const en = {
 		title: `Questions, answered`,
 		q1: {
 			q: `What is Aurict Mobile?`,
-			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid, Dungeon Lord and Drift Street, and host the account and support pages for them here.`,
+			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street and Roomie Puzzle, and host the account and support pages for them here.`,
 		},
 		q2: {
 			q: `Where can I download the apps?`,
-			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox, Dungeon Lord and Drift Street are coming soon.`,
+			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox, Dungeon Lord, Drift Street and Roomie Puzzle are coming soon.`,
 		},
 		q3: {
 			q: `How do I delete my account?`,

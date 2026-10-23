@@ -12,6 +12,7 @@ export const fr = {
 		mindgrid: { tagline: `Plus calme et plus vif, une case à la fois.` },
 		dungeon: { tagline: `Deviens le dragon que les héros redoutent.` },
 		drift: { tagline: `Du drift à un pouce, dans un monde coloré comme un jouet.` },
+		roomie: { tagline: `Trouve ce qui est caché dans des scènes douillettes au bord de la mer.` },
 		comingSoon: { title: `Bientôt disponible` },
 		googlePlay: `Google Play`,
 	},
@@ -23,7 +24,7 @@ export const fr = {
 	},
 	spotlight: {
 		eyebrow: `Dans le studio`,
-		title: `Cinq apps. Cinq petits mondes.`,
+		title: `Six apps. Six petits mondes.`,
 		getOnPlay: `Disponible sur Google Play`,
 		jelly: {
 			kicker: `Jeu de réflexion`,
@@ -63,6 +64,14 @@ export const fr = {
 			f2: `Zones de drift notées de S à D, tandems et nitro`,
 			f3: `14 voitures à débloquer, de la kei car à la supercar`,
 			f4: `Course-poursuite infinie avec la police et récompenses quotidiennes ; jouable hors ligne`,
+		},
+		roomie: {
+			kicker: `Jeu d’objets cachés`,
+			body: `Un jeu d’objets cachés et de mémoire avec Capitaine Canard. Chaque étape est une scène ; chaque niveau ajoute des objets et les anciens restent à leur place : tu apprends la scène et repères les nouveautés.`,
+			f1: `8 lieux intérieurs et extérieurs, de la cabine du capitaine à l’épave`,
+			f2: `Monte le phare étage par étage en ascenseur`,
+			f3: `Ligue d’équipes hebdo, missions du jour et Chemin des souvenirs`,
+			f4: `Zoom, indices qui font clignoter les objets, 5 langues`,
 		},
 	},
 	studio: {
@@ -130,6 +139,10 @@ export const fr = {
 			title: `Confidentialité de Drift Street`,
 			body: `La politique de confidentialité du jeu Drift Street.`,
 		},
+		roomiePrivacy: {
+			title: `Politique de confidentialité de Roomie Puzzle`,
+			body: `La politique de confidentialité du jeu Roomie Puzzle.`,
+		},
 		terms: {
 			title: `Conditions d’utilisation`,
 			body: `Les règles d’utilisation de nos applis et de ce site.`,
@@ -144,11 +157,11 @@ export const fr = {
 		title: `Vos questions, nos réponses`,
 		q1: {
 			q: `Qu’est-ce qu’Aurict Mobile ?`,
-			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid, Dungeon Lord et Drift Street, et hébergeons ici leurs pages de compte et d’assistance.`,
+			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street et Roomie Puzzle, et hébergeons ici leurs pages de compte et d’assistance.`,
 		},
 		q2: {
 			q: `Où télécharger les applis ?`,
-			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox, Dungeon Lord et Drift Street arrivent bientôt.`,
+			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox, Dungeon Lord, Drift Street et Roomie Puzzle arrivent bientôt.`,
 		},
 		q3: {
 			q: `Comment supprimer mon compte ?`,

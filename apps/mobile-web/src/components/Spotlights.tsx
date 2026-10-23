@@ -7,7 +7,7 @@ import SectionHeading from "./SectionHeading";
 const EASE = [0.16, 0.8, 0.2, 1] as const;
 
 type Spotlight = {
-  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift";
+  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift" | "roomie";
   name: string;
   features: string[];
   color: string;
@@ -64,6 +64,15 @@ const SPOTLIGHTS: Spotlight[] = [
     soft: "var(--drift-soft)",
     art: { src: "/apps/drift.webp", className: "h-[82%] right-[4%] bottom-[4%]" },
     companion: { src: "/apps/drift-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
+  },
+  {
+    key: "roomie",
+    name: "Roomie Puzzle",
+    features: ["f1", "f2", "f3", "f4"],
+    color: "var(--roomie)",
+    soft: "var(--roomie-soft)",
+    art: { src: "/apps/roomie.webp", className: "h-[84%] right-[6%] bottom-[4%]" },
+    companion: { src: "/apps/roomie-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
   },
 ];
 
