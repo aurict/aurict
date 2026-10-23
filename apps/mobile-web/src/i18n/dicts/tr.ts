@@ -11,6 +11,7 @@ export const tr = {
 		duckley: { tagline: `Kısa dersler. Daha parlak günler.` },
 		mindgrid: { tagline: `Taş taş, daha sakin ve daha keskin bir sen.` },
 		dungeon: { tagline: `Kahramanların korktuğu ejderha boss sen ol.` },
+		drift: { tagline: `Oyuncak gibi rengârenk bir dünyada tek parmakla drift.` },
 		comingSoon: { title: `Yakında` },
 		googlePlay: `Google Play`,
 	},
@@ -22,7 +23,7 @@ export const tr = {
 	},
 	spotlight: {
 		eyebrow: `Stüdyonun içinden`,
-		title: `Dört uygulama. Dört küçük dünya.`,
+		title: `Beş uygulama. Beş küçük dünya.`,
 		getOnPlay: `Google Play'den indir`,
 		jelly: {
 			kicker: `Bulmaca oyunu`,
@@ -54,6 +55,14 @@ export const tr = {
 			f2: `Kadim Ejderha Lordu'na evrimleşen bebek bir ejderha`,
 			f3: `Ruh yetenekleri için yeniden doğuş ve mektuplarla anlatılan bir hikâye`,
 			f4: `Sen yokken de zindanın kazanmaya devam eder`,
+		},
+		drift: {
+			kicker: `Yarış oyunu`,
+			body: `Tek parmakla oynanan bir drift oyunu. Basılı tut, kaydır, parmağınla yönlendir ve oyuncak gibi rengârenk bir dünyada her virajı yan yan geç.`,
+			f1: `Şehirde, drift parkında, dağ yollarında ve limanda 40 bölüm`,
+			f2: `S'den D'ye not veren hakemli drift bölgeleri, tandem ve nitro`,
+			f3: `Kei'den süper otomobile açılacak 14 araç`,
+			f4: `Sonsuz polis kovalamacası ve günlük ödüller; internetsiz oynanır`,
 		},
 	},
 	studio: {
@@ -117,6 +126,10 @@ export const tr = {
 			title: `Dungeon Lord gizlilik politikası`,
 			body: `Dungeon Lord: Rise of the Boss oyununun gizlilik politikası.`,
 		},
+		driftPrivacy: {
+			title: `Drift Street gizlilik politikası`,
+			body: `Drift Street oyununun gizlilik politikası.`,
+		},
 		terms: {
 			title: `Hizmet şartları`,
 			body: `Uygulamalarımızı ve bu siteyi kullanma kuralları.`,
@@ -131,11 +144,11 @@ export const tr = {
 		title: `Sık sorulan sorular`,
 		q1: {
 			q: `Aurict Mobile nedir?`,
-			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid ve Dungeon Lord'u yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
+			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord ve Drift Street'i yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
 		},
 		q2: {
 			q: `Uygulamaları nereden indirebilirim?`,
-			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox ve Dungeon Lord çok yakında.`,
+			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord ve Drift Street çok yakında.`,
 		},
 		q3: {
 			q: `Hesabımı nasıl silerim?`,

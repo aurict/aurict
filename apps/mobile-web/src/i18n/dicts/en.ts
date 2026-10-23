@@ -11,6 +11,7 @@ export const en = {
 		duckley: { tagline: `Bite-sized lessons. Brighter days.` },
 		mindgrid: { tagline: `A calmer, sharper you, one tile at a time.` },
 		dungeon: { tagline: `Be the dragon boss heroes fear.` },
+		drift: { tagline: `One-thumb drifting through a toy-bright world.` },
 		comingSoon: { title: `Coming Soon` },
 		googlePlay: `Google Play`,
 	},
@@ -22,7 +23,7 @@ export const en = {
 	},
 	spotlight: {
 		eyebrow: `Inside the studio`,
-		title: `Four apps. Four little worlds.`,
+		title: `Five apps. Five little worlds.`,
 		getOnPlay: `Get it on Google Play`,
 		jelly: {
 			kicker: `Puzzle game`,
@@ -54,6 +55,14 @@ export const en = {
 			f2: `A baby dragon that evolves into the Ancient Dragon Lord`,
 			f3: `Rebirth for soul perks, plus a story told in letters`,
 			f4: `Your dungeon keeps earning while you're away`,
+		},
+		drift: {
+			kicker: `Racing game`,
+			body: `A one-thumb drift game. Hold to slide, steer with your thumb and take every corner sideways through a bright, toy-like world.`,
+			f1: `40 levels across the city, a drift park, mountain roads and the harbour`,
+			f2: `Judged drift zones graded S to D, tandem runs and nitro`,
+			f3: `14 cars to unlock, from kei cars to supercars`,
+			f4: `Endless police chase mode and daily rewards; plays offline`,
 		},
 	},
 	studio: {
@@ -117,6 +126,10 @@ export const en = {
 			title: `Dungeon Lord privacy policy`,
 			body: `The privacy policy for the Dungeon Lord: Rise of the Boss game.`,
 		},
+		driftPrivacy: {
+			title: `Drift Street privacy policy`,
+			body: `The privacy policy for the Drift Street game.`,
+		},
 		terms: {
 			title: `Terms of service`,
 			body: `The rules for using our apps and this site.`,
@@ -131,11 +144,11 @@ export const en = {
 		title: `Questions, answered`,
 		q1: {
 			q: `What is Aurict Mobile?`,
-			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid and Dungeon Lord, and host the account and support pages for them here.`,
+			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid, Dungeon Lord and Drift Street, and host the account and support pages for them here.`,
 		},
 		q2: {
 			q: `Where can I download the apps?`,
-			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox and Dungeon Lord are coming soon.`,
+			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox, Dungeon Lord and Drift Street are coming soon.`,
 		},
 		q3: {
 			q: `How do I delete my account?`,

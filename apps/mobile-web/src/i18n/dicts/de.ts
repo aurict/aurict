@@ -11,6 +11,7 @@ export const de = {
 		duckley: { tagline: `Kleine Lektionen. Hellere Tage.` },
 		mindgrid: { tagline: `Ruhiger und klarer – Feld für Feld.` },
 		dungeon: { tagline: `Sei der Drachenboss, den Helden fürchten.` },
+		drift: { tagline: `Mit einem Daumen driften, in einer bunten Spielzeugwelt.` },
 		comingSoon: { title: `Demnächst` },
 		googlePlay: `Google Play`,
 	},
@@ -22,7 +23,7 @@ export const de = {
 	},
 	spotlight: {
 		eyebrow: `Aus dem Studio`,
-		title: `Vier Apps. Vier kleine Welten.`,
+		title: `Fünf Apps. Fünf kleine Welten.`,
 		getOnPlay: `Bei Google Play holen`,
 		jelly: {
 			kicker: `Rätselspiel`,
@@ -54,6 +55,14 @@ export const de = {
 			f2: `Ein Babydrache, der zum Uralten Drachenlord wird`,
 			f3: `Wiedergeburt für Seelen-Perks und eine Geschichte in Briefen`,
 			f4: `Dein Dungeon verdient weiter, während du weg bist`,
+		},
+		drift: {
+			kicker: `Rennspiel`,
+			body: `Ein Drift-Spiel für einen Daumen. Halten zum Rutschen, mit dem Daumen lenken und jede Kurve quer nehmen, in einer bunten Spielzeugwelt.`,
+			f1: `40 Level in der Stadt, im Driftpark, auf Bergstraßen und im Hafen`,
+			f2: `Bewertete Driftzonen von S bis D, Tandemfahrten und Nitro`,
+			f3: `14 Autos zum Freischalten, vom Kei-Car bis zum Supersportwagen`,
+			f4: `Endlose Polizeijagd und tägliche Belohnungen; spielbar offline`,
 		},
 	},
 	studio: {
@@ -117,6 +126,10 @@ export const de = {
 			title: `Dungeon-Lord-Datenschutzerklärung`,
 			body: `Die Datenschutzerklärung des Spiels Dungeon Lord: Rise of the Boss.`,
 		},
+		driftPrivacy: {
+			title: `Drift Street Datenschutzerklärung`,
+			body: `Die Datenschutzerklärung des Spiels Drift Street.`,
+		},
 		terms: {
 			title: `Nutzungsbedingungen`,
 			body: `Die Regeln für unsere Apps und diese Website.`,
@@ -131,11 +144,11 @@ export const de = {
 		title: `Häufige Fragen`,
 		q1: {
 			q: `Was ist Aurict Mobile?`,
-			a: `Aurict Mobile ist das Mobile-App-Studio von Aurict. Wir machen Jelly Paradox, Duckley, Mind Grid und Dungeon Lord und hosten hier ihre Konto- und Supportseiten.`,
+			a: `Aurict Mobile ist das Mobile-App-Studio von Aurict. Wir machen Jelly Paradox, Duckley, Mind Grid, Dungeon Lord und Drift Street und hosten hier ihre Konto- und Supportseiten.`,
 		},
 		q2: {
 			q: `Wo kann ich die Apps herunterladen?`,
-			a: `Duckley und Mind Grid gibt es bei Google Play. Jelly Paradox und Dungeon Lord erscheinen bald.`,
+			a: `Duckley und Mind Grid gibt es bei Google Play. Jelly Paradox, Dungeon Lord und Drift Street erscheinen bald.`,
 		},
 		q3: {
 			q: `Wie lösche ich mein Konto?`,
