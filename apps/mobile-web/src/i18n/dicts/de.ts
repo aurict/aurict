@@ -77,7 +77,7 @@ export const de = {
 		jellysort: {
 			kicker: `Gelee-Sortierpuzzle`,
 			body: `Ein saftiges Sortierpuzzle in einem sonnigen Obstgarten. Gieße durchscheinende Fruchtgelee-Schichten von Glas zu Glas, bis jedes Glas nur eine Farbe hat – aber dicke Schichten passen nicht durch enge Hälse, also plane Größen und Farben.`,
-			f1: `150 handgemachte Level in 8 Welten, jede mit neuer Mechanik`,
+			f1: `1000 Level in 8 Welten, jede mit neuer Mechanik`,
 			f2: `Gefrorene, sprudelnde und Zapfhahn-Gläser sowie enge Flaschen`,
 			f3: `Kombos, Punkte und eine Bestenliste der täglichen Herausforderung`,
 			f4: `Keine Leben, kein Zeitlimit; offline spielbar, Sync mit Google`,

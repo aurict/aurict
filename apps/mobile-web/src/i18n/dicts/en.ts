@@ -77,7 +77,7 @@ export const en = {
 		jellysort: {
 			kicker: `Jelly sorting puzzle`,
 			body: `A juicy sorting puzzle in a sunny orchard. Pour translucent fruit-jelly layers from jar to jar until each jar holds one color — but thick layers won't squeeze into narrow necks, so plan sizes as well as colors.`,
-			f1: `150 handcrafted levels across 8 worlds, each with a new twist`,
+			f1: `1000 levels across 8 worlds, each world with a new twist`,
 			f2: `Frozen, bubbly and tap jars plus narrow bottles`,
 			f3: `Combos, scores and a daily challenge leaderboard`,
 			f4: `No lives or timers; plays offline, syncs with Google`,
