@@ -13,6 +13,7 @@ export const de = {
 		dungeon: { tagline: `Sei der Drachenboss, den Helden fürchten.` },
 		drift: { tagline: `Mit einem Daumen driften, in einer bunten Spielzeugwelt.` },
 		roomie: { tagline: `Finde Verstecktes in gemütlichen Szenen am Meer.` },
+		jellysort: { tagline: `Gieße wackeliges Fruchtgelee, bis jedes Glas eine Farbe hat.` },
 		comingSoon: { title: `Demnächst` },
 		googlePlay: `Google Play`,
 	},
@@ -24,7 +25,7 @@ export const de = {
 	},
 	spotlight: {
 		eyebrow: `Aus dem Studio`,
-		title: `Sechs Apps. Sechs kleine Welten.`,
+		title: `Sieben Apps. Sieben kleine Welten.`,
 		getOnPlay: `Bei Google Play holen`,
 		jelly: {
 			kicker: `Rätselspiel`,
@@ -72,6 +73,14 @@ export const de = {
 			f2: `Fahre mit dem Aufzug Etage für Etage den Leuchtturm hinauf`,
 			f3: `Wöchentliche Teamliga, Tagesaufgaben und Erinnerungsweg`,
 			f4: `Zoom, blinkende Tipps und 5 Sprachen`,
+		},
+		jellysort: {
+			kicker: `Gelee-Sortierpuzzle`,
+			body: `Ein saftiges Sortierpuzzle in einem sonnigen Obstgarten. Gieße durchscheinende Fruchtgelee-Schichten von Glas zu Glas, bis jedes Glas nur eine Farbe hat – aber dicke Schichten passen nicht durch enge Hälse, also plane Größen und Farben.`,
+			f1: `150 handgemachte Level in 8 Welten, jede mit neuer Mechanik`,
+			f2: `Gefrorene, sprudelnde und Zapfhahn-Gläser sowie enge Flaschen`,
+			f3: `Kombos, Punkte und eine Bestenliste der täglichen Herausforderung`,
+			f4: `Keine Leben, kein Zeitlimit; offline spielbar, Sync mit Google`,
 		},
 	},
 	studio: {
@@ -143,6 +152,14 @@ export const de = {
 			title: `Datenschutzerklärung von Roomie Puzzle`,
 			body: `Die Datenschutzerklärung für das Spiel Roomie Puzzle.`,
 		},
+		deleteJellySort: {
+			title: `Jelly-Sort-Konto löschen`,
+			body: `Entferne dein Jelly-Sort-Konto und deine synchronisierten Spieldaten.`,
+		},
+		jellySortPrivacy: {
+			title: `Datenschutzerklärung von Jelly Sort`,
+			body: `Die Datenschutzerklärung für das Spiel Jelly Sort.`,
+		},
 		terms: {
 			title: `Nutzungsbedingungen`,
 			body: `Die Regeln für unsere Apps und diese Website.`,
@@ -157,11 +174,11 @@ export const de = {
 		title: `Häufige Fragen`,
 		q1: {
 			q: `Was ist Aurict Mobile?`,
-			a: `Aurict Mobile ist das Mobile-App-Studio von Aurict. Wir machen Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street und Roomie Puzzle und hosten hier ihre Konto- und Supportseiten.`,
+			a: `Aurict Mobile ist das Mobile-App-Studio von Aurict. Wir machen Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle und Jelly Sort und hosten hier ihre Konto- und Supportseiten.`,
 		},
 		q2: {
 			q: `Wo kann ich die Apps herunterladen?`,
-			a: `Duckley und Mind Grid gibt es bei Google Play. Jelly Paradox, Dungeon Lord, Drift Street und Roomie Puzzle erscheinen bald.`,
+			a: `Duckley und Mind Grid gibt es bei Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle und Jelly Sort erscheinen bald.`,
 		},
 		q3: {
 			q: `Wie lösche ich mein Konto?`,

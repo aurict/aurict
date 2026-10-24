@@ -100,6 +100,17 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
+          <Section title={language === "tr" ? "Jelly Sort oyunu" : "Jelly Sort game"} color="var(--accent)">
+            <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
+              {language === "tr"
+                ? "Aurict tarafından yayınlanan Jelly Sort oyununun (com.aurict.jellysort) gizlilik politikası: "
+                : "The privacy policy for the Jelly Sort game (com.aurict.jellysort), published by developer Aurict, is here: "}
+              <Link href="/jelly-sort/privacy-policy" style={{ color: "var(--accent)" }}>
+                {language === "tr" ? "Jelly Sort Gizlilik Politikası" : "Jelly Sort Privacy Policy"}
+              </Link>
+            </p>
+          </Section>
+
           <Section title={t("privacyPolicy.infoWeCollect")} color="var(--accent)">
             <p className="leading-relaxed mb-4" style={{ color: "var(--text-dim)" }}>
               {t("privacyPolicy.intro")}

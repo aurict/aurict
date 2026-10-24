@@ -13,6 +13,7 @@ export const tr = {
 		dungeon: { tagline: `Kahramanların korktuğu ejderha boss sen ol.` },
 		drift: { tagline: `Oyuncak gibi rengârenk bir dünyada tek parmakla drift.` },
 		roomie: { tagline: `Deniz kenarındaki sıcacık sahnelerde gizli olanı bul.` },
+		jellysort: { tagline: `Her kavanoz tek renk olana kadar meyve jölelerini dök.` },
 		comingSoon: { title: `Yakında` },
 		googlePlay: `Google Play`,
 	},
@@ -24,7 +25,7 @@ export const tr = {
 	},
 	spotlight: {
 		eyebrow: `Stüdyonun içinden`,
-		title: `Altı uygulama. Altı küçük dünya.`,
+		title: `Yedi uygulama. Yedi küçük dünya.`,
 		getOnPlay: `Google Play'den indir`,
 		jelly: {
 			kicker: `Bulmaca oyunu`,
@@ -72,6 +73,14 @@ export const tr = {
 			f2: `Fener kulesine asansörle kat kat tırman`,
 			f3: `Haftalık takım ligi, günlük görevler ve Hatıra Yolu ödülleri`,
 			f4: `Yakınlaştırma, eşyayı yanıp söndüren ipuçları, 5 dil`,
+		},
+		jellysort: {
+			kicker: `Jöle sıralama bulmacası`,
+			body: `Güneşli bir meyve bahçesinde sulu bir sıralama bulmacası. Yarı saydam meyve jölesi katmanlarını kavanozdan kavanoza dök, her kavanoz tek renk olsun. Ama kalın katmanlar dar ağızlara sığmaz; rengi de boyutu da planla.`,
+			f1: `8 dünyada her biri yeni bir mekanik getiren 150 el yapımı seviye`,
+			f2: `Donmuş, kabarcıklı ve musluklu kavanozlar, dar şişeler`,
+			f3: `Kombolar, skor ve günlük meydan okuma sıralaması`,
+			f4: `Can ve süre yok; internetsiz oynanır, Google ile eşitlenir`,
 		},
 	},
 	studio: {
@@ -143,6 +152,14 @@ export const tr = {
 			title: `Roomie Puzzle gizlilik politikası`,
 			body: `Roomie Puzzle oyununun gizlilik politikası.`,
 		},
+		deleteJellySort: {
+			title: `Jelly Sort hesabını sil`,
+			body: `Jelly Sort hesabını ve eşitlenmiş oyun verilerini kaldır.`,
+		},
+		jellySortPrivacy: {
+			title: `Jelly Sort gizlilik politikası`,
+			body: `Jelly Sort oyununun gizlilik politikası.`,
+		},
 		terms: {
 			title: `Hizmet şartları`,
 			body: `Uygulamalarımızı ve bu siteyi kullanma kuralları.`,
@@ -157,11 +174,11 @@ export const tr = {
 		title: `Sık sorulan sorular`,
 		q1: {
 			q: `Aurict Mobile nedir?`,
-			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street ve Roomie Puzzle'ı yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
+			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle ve Jelly Sort'u yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
 		},
 		q2: {
 			q: `Uygulamaları nereden indirebilirim?`,
-			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord, Drift Street ve Roomie Puzzle çok yakında.`,
+			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle ve Jelly Sort çok yakında.`,
 		},
 		q3: {
 			q: `Hesabımı nasıl silerim?`,
