@@ -77,7 +77,7 @@ export const fr = {
 		jellysort: {
 			kicker: `Puzzle de tri de gelée`,
 			body: `Un puzzle de tri juteux dans un verger ensoleillé. Verse des couches de gelée de fruits translucide de bocal en bocal jusqu’à ce que chacun n’ait qu’une couleur — mais les couches épaisses ne passent pas par les goulots étroits : prévois les tailles autant que les couleurs.`,
-			f1: `150 niveaux faits main dans 8 mondes, chacun avec une nouveauté`,
+			f1: `1000 niveaux dans 8 mondes, chacun avec une nouveauté`,
 			f2: `Bocaux gelés, pétillants et à robinet, et bouteilles étroites`,
 			f3: `Combos, scores et classement du défi quotidien`,
 			f4: `Ni vies ni minuteur ; joue hors ligne, synchro avec Google`,

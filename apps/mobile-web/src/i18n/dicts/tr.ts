@@ -77,7 +77,7 @@ export const tr = {
 		jellysort: {
 			kicker: `Jöle sıralama bulmacası`,
 			body: `Güneşli bir meyve bahçesinde sulu bir sıralama bulmacası. Yarı saydam meyve jölesi katmanlarını kavanozdan kavanoza dök, her kavanoz tek renk olsun. Ama kalın katmanlar dar ağızlara sığmaz; rengi de boyutu da planla.`,
-			f1: `8 dünyada her biri yeni bir mekanik getiren 150 el yapımı seviye`,
+			f1: `Her biri yeni bir mekanik getiren 8 dünyada 1000 seviye`,
 			f2: `Donmuş, kabarcıklı ve musluklu kavanozlar, dar şişeler`,
 			f3: `Kombolar, skor ve günlük meydan okuma sıralaması`,
 			f4: `Can ve süre yok; internetsiz oynanır, Google ile eşitlenir`,
