@@ -24,7 +24,7 @@ const STRINGS = {
     sections: [
       {
         title: "Kısaca",
-        body: "Jelly Sort'u misafir olarak, hesap açmadan oynayabilirsiniz; bu durumda ilerlemeniz yalnızca telefonunuzda saklanır. İsteğe bağlı olarak Google hesabınızla giriş yaparsanız, ilerlemenizi cihazlar arasında taşımak, satın almaları doğrulamak ve hileyi önlemek için oyun verileriniz Aurict'in kendi sunucusunda (jellysort.aurict.com) tutulur. E-posta adresinizi saklamayız. Bunun dışında veri işleyen taraflar aşağıda listelenen Google hizmetleridir. Kişisel verilerinizi satmayız.",
+        body: "Jelly Sort'u misafir olarak, hesap açmadan oynayabilirsiniz; bu durumda ilerlemeniz yalnızca telefonunuzda saklanır. İsteğe bağlı olarak Google hesabınızla giriş yaparsanız, ilerlemenizi cihazlar arasında taşımak, satın almaları doğrulamak ve hileyi önlemek için oyun verileriniz Aurict'in kendi sunucusunda (jellysort.aurict.com) tutulur. E-posta adresinizi saklamayız. Bunun dışında veri işleyen taraflar aşağıda listelenen Google hizmetleridir (giriş, reklam, satın alma, analitik ve çökme raporları). Kişisel verilerinizi satmayız.",
       },
       {
         title: "Telefonunuzda kalan bilgiler",
@@ -53,7 +53,8 @@ const STRINGS = {
           "Google AdMob (reklamlar): isteğe bağlı ödüllü reklamlar (ek hamle, booster, geri alma) ve bazı seviye aralarında geçiş reklamları. AdMob reklam kimliğini, IP adresini, cihaz bilgilerini ve reklam etkileşimlerini reklam göstermek, ölçmek ve dolandırıcılığı önlemek için işleyebilir. Avrupa Ekonomik Alanı, Birleşik Krallık ve İsviçre'de ilk açılışta izniniz istenir; kişiselleştirilmiş reklamlar yalnızca izin verirseniz gösterilir. \"Reklamsız\" satın alındığında geçiş reklamları gösterilmez.",
           "Google Play Faturalandırma: coin paketleri, \"Reklamsız\" ve temalar Google Play üzerinden satılır. Ödemeyi Google işler; kart ve banka bilgileriniz bize ulaşmaz. Her satın alma hesabınıza bağlanır ve sunucumuz Google'a sorarak doğrular.",
           "Google Play Integrity: giriş ve satın alma sırasında uygulamanın Google Play'den gelen gerçek sürüm olduğunu ve cihazın değiştirilmemiş olduğunu doğrulamak için kullanılabilir. Bu doğrulama kişisel bilgi içermez.",
-          "Oyunda analitik veya çökme raporu aracı yoktur.",
+          "Firebase Analytics (Google): oyunu iyileştirmek için uygulama örneği kimliği, cihaz modeli, işletim sistemi, ülke, oturum süreleri ve oyun içi olaylar (seviye başlangıcı ve sonucu, hamle sayısı, kullanılan booster'lar, izlenen ödüllü reklamlar, satın almalar) toplanır. Adınız, e-postanız veya reklam kimliğiniz toplanmaz ve veriler reklam kişiselleştirmesi için kullanılmaz. İzin gerektiren bölgelerde yalnızca izin verirseniz çalışır.",
+          "Firebase Crashlytics (Google): oyun çökerse çökme anındaki teknik bilgiler (cihaz modeli, işletim sistemi sürümü, hata kaydı, uygulama örneği kimliği, son oynanan seviye) hataları düzeltmek için gönderilir. Kişisel bilgi içermez. İzin gerektiren bölgelerde yalnızca izin verirseniz çalışır.",
         ],
       },
       {
@@ -62,7 +63,7 @@ const STRINGS = {
       },
       {
         title: "Hukuki dayanak (KVKK, GDPR)",
-        body: "Sizinle yaptığımız sözleşmenin ifası (oyunun, hesap eşitlemesinin ve satın almaların sunulması); meşru menfaatlerimiz (hizmetin çalışması, hile ve dolandırıcılığın önlenmesi); açık rızanız (kişiselleştirilmiş reklam). Reklam iznini cihazınızın ayarlarından ve oyunun izin ekranından değiştirebilirsiniz.",
+        body: "Sizinle yaptığımız sözleşmenin ifası (oyunun, hesap eşitlemesinin ve satın almaların sunulması); meşru menfaatlerimiz (hizmetin çalışması, hile ve dolandırıcılığın önlenmesi); açık rızanız (kişiselleştirilmiş reklam ve izin gerektiren bölgelerde analitik ve çökme raporları). İzninizi cihazınızın ayarlarından ve oyunun izin ekranından değiştirebilirsiniz.",
       },
       {
         title: "Çocuklar",
@@ -79,6 +80,7 @@ const STRINGS = {
           "Hesabınızı oyunda Ayarlar → Hesabı sil ile hemen ve kalıcı olarak silebilirsiniz. Hesabınız, ilerlemeniz, coin'leriniz, booster'larınız, sıralama sonuçlarınız ve oturumlarınız silinir.",
           `Oyuna erişemiyorsanız Google hesabınızın adresinden ${CONTACT} adresine \"Jelly Sort hesap silme\" konulu bir e-posta gönderin; 7 gün içinde sileriz.`,
           "Satın alma ve ödüllü reklam kayıtları, muhasebe yükümlülüğümüz nedeniyle hesabınızdan ayrılarak (anonim) saklanır. Sunucu yedeklerindeki kopyalar 14 gün içinde kendiliğinden silinir.",
+          "Firebase Analytics verileri en fazla 14 ay, Crashlytics çökme raporları 90 gün saklanır.",
           "Google AdMob ve Google Play kendi verilerini kendi politikalarına göre saklar.",
         ],
       },
@@ -91,7 +93,7 @@ const STRINGS = {
       },
       {
         title: "Güvenlik",
-        body: "Sunucumuza tüm bağlantılar şifrelidir (HTTPS). Oturum anahtarlarının sunucuda yalnızca tek yönlü özetleri tutulur; coin, booster ve ödüller sunucuda hesaplanır ve her oyuncu yalnızca kendi kaydına erişebilir. Hiçbir sistem mutlak güvenlik garantisi veremez.",
+        body: "Sunucumuza ve Google hizmetlerine tüm bağlantılar şifrelidir (HTTPS). Oturum anahtarlarının sunucuda yalnızca tek yönlü özetleri tutulur; coin, booster ve ödüller sunucuda hesaplanır ve her oyuncu yalnızca kendi kaydına erişebilir. Hiçbir sistem mutlak güvenlik garantisi veremez.",
       },
       {
         title: "Değişiklikler",
@@ -112,7 +114,7 @@ const STRINGS = {
     sections: [
       {
         title: "In short",
-        body: "You can play Jelly Sort as a guest without an account; your progress then stays only on your phone. If you choose to sign in with Google, your game data is kept on Aurict's own server (jellysort.aurict.com) to sync your progress across devices, verify purchases and prevent cheating. We do not store your email address. Apart from that, the only parties that process data are the Google services listed below. We do not sell your personal data.",
+        body: "You can play Jelly Sort as a guest without an account; your progress then stays only on your phone. If you choose to sign in with Google, your game data is kept on Aurict's own server (jellysort.aurict.com) to sync your progress across devices, verify purchases and prevent cheating. We do not store your email address. Apart from that, the only parties that process data are the Google services listed below (sign-in, ads, purchases, analytics and crash reports). We do not sell your personal data.",
       },
       {
         title: "Information that stays on your phone",
@@ -141,7 +143,8 @@ const STRINGS = {
           "Google AdMob (ads): optional rewarded ads (extra moves, boosters, undo) and interstitial ads between some levels. AdMob may process your advertising ID, IP address, device information and ad interactions to show and measure ads and prevent fraud. In the European Economic Area, the UK and Switzerland you are asked for consent on first launch; personalized ads are shown only if you agree. Buying \"No Ads\" turns off interstitial ads.",
           "Google Play Billing: coin packs, \"No Ads\" and themes are sold through Google Play. Payments are processed by Google; we never receive card or bank details. Every purchase is bound to your account and verified by our server with Google.",
           "Google Play Integrity: may be used during sign-in and purchases to check that the app is the genuine version from Google Play on an unmodified device. This check contains no personal information.",
-          "The game contains no analytics or crash-reporting tools.",
+          "Firebase Analytics (Google): to improve the game we collect an app instance ID, device model, operating system, country, session length and in-game events (level start and result, move counts, boosters used, rewarded ads watched, purchases). Your name, email and advertising ID are not collected, and the data is not used for ad personalization. In regions that require consent it runs only if you agree.",
+          "Firebase Crashlytics (Google): if the game crashes, technical details from the moment of the crash (device model, OS version, error log, app instance ID, the last level played) are sent so we can fix bugs. They contain no personal information. In regions that require consent it runs only if you agree.",
         ],
       },
       {
@@ -150,7 +153,7 @@ const STRINGS = {
       },
       {
         title: "Legal bases (GDPR, KVKK)",
-        body: "Performance of our contract with you (providing the game, account sync and purchases); our legitimate interests (keeping the service running, preventing cheating and fraud); your consent (personalized ads). You can change ad consent in your device settings and in the game's consent screen.",
+        body: "Performance of our contract with you (providing the game, account sync and purchases); our legitimate interests (keeping the service running, preventing cheating and fraud); your consent (personalized ads, and analytics and crash reports in regions that require it). You can change your consent in your device settings and in the game's consent screen.",
       },
       {
         title: "Children",
@@ -167,6 +170,7 @@ const STRINGS = {
           "You can delete your account instantly and permanently in the game under Settings → Delete account. Your account, progress, coins, boosters, leaderboard results and sessions are deleted.",
           `If you can't open the game, email ${CONTACT} from your Google account's address with the subject \"Jelly Sort account deletion\"; we delete it within 7 days.`,
           "Purchase and rewarded-ad records are kept separated from your account (anonymized) because of our accounting obligations. Copies in server backups are deleted automatically within 14 days.",
+          "Firebase Analytics data is kept for at most 14 months; Crashlytics crash reports for 90 days.",
           "Google AdMob and Google Play keep their own data under their own policies.",
         ],
       },
@@ -179,7 +183,7 @@ const STRINGS = {
       },
       {
         title: "Security",
-        body: "All connections to our server are encrypted (HTTPS). The server stores only one-way hashes of session keys; coins, boosters and rewards are calculated on the server, and each player can only access their own record. No system can guarantee absolute security.",
+        body: "All connections to our server and to Google services are encrypted (HTTPS). The server stores only one-way hashes of session keys; coins, boosters and rewards are calculated on the server, and each player can only access their own record. No system can guarantee absolute security.",
       },
       {
         title: "Changes",
