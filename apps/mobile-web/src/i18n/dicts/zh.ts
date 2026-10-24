@@ -13,6 +13,7 @@ export const zh = {
 		dungeon: { tagline: `成为让英雄畏惧的巨龙首领。` },
 		drift: { tagline: `单指漂移，穿梭在玩具般缤纷的世界。` },
 		roomie: { tagline: `在海边温馨的场景里找出隐藏的物品。` },
+		jellysort: { tagline: `倒动晃动的水果果冻，直到每个罐子只剩一种颜色。` },
 		comingSoon: { title: `即将推出` },
 		googlePlay: `Google Play`,
 	},
@@ -24,7 +25,7 @@ export const zh = {
 	},
 	spotlight: {
 		eyebrow: `走进工作室`,
-		title: `六款应用，六个小世界。`,
+		title: `七款应用，七个小世界。`,
 		getOnPlay: `在 Google Play 下载`,
 		jelly: {
 			kicker: `解谜游戏`,
@@ -72,6 +73,14 @@ export const zh = {
 			f2: `乘电梯一层层登上灯塔`,
 			f3: `每周团队联赛、每日任务和回忆之路奖励`,
 			f4: `双指缩放、让物品闪烁的提示、5 种语言`,
+		},
+		jellysort: {
+			kicker: `果冻分类益智游戏`,
+			body: `阳光果园里多汁的分类益智游戏。把半透明的水果果冻层在罐子之间倒来倒去，直到每个罐子只有一种颜色——但厚的果冻层挤不进窄口瓶，所以既要规划颜色，也要规划大小。`,
+			f1: `8 个世界共 150 个手工关卡，每个世界都有新玩法`,
+			f2: `冰冻、气泡和龙头罐子，以及窄口瓶`,
+			f3: `连击、分数和每日挑战排行榜`,
+			f4: `没有体力和计时；可离线游玩，并通过 Google 同步`,
 		},
 	},
 	studio: {
@@ -143,6 +152,14 @@ export const zh = {
 			title: `Roomie Puzzle 隐私政策`,
 			body: `Roomie Puzzle 游戏的隐私政策。`,
 		},
+		deleteJellySort: {
+			title: `删除你的 Jelly Sort 账户`,
+			body: `删除你的 Jelly Sort 账户和已同步的游戏数据。`,
+		},
+		jellySortPrivacy: {
+			title: `Jelly Sort 隐私政策`,
+			body: `Jelly Sort 游戏的隐私政策。`,
+		},
 		terms: {
 			title: `服务条款`,
 			body: `使用我们的应用和本网站的规则。`,
@@ -157,11 +174,11 @@ export const zh = {
 		title: `常见问题解答`,
 		q1: {
 			q: `Aurict Mobile 是什么？`,
-			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street 和 Roomie Puzzle，并在这里提供它们的账户和支持页面。`,
+			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street、Roomie Puzzle 和 Jelly Sort，并在这里提供它们的账户和支持页面。`,
 		},
 		q2: {
 			q: `在哪里下载这些应用？`,
-			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street 和 Roomie Puzzle 即将推出。`,
+			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street、Roomie Puzzle 和 Jelly Sort 即将推出。`,
 		},
 		q3: {
 			q: `如何删除我的账户？`,

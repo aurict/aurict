@@ -7,7 +7,7 @@ import SectionHeading from "./SectionHeading";
 const EASE = [0.16, 0.8, 0.2, 1] as const;
 
 type Spotlight = {
-  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift" | "roomie";
+  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift" | "roomie" | "jellysort";
   name: string;
   features: string[];
   color: string;
@@ -73,6 +73,15 @@ const SPOTLIGHTS: Spotlight[] = [
     soft: "var(--roomie-soft)",
     art: { src: "/apps/roomie.webp", className: "h-[84%] right-[6%] bottom-[4%]" },
     companion: { src: "/apps/roomie-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
+  },
+  {
+    key: "jellysort",
+    name: "Jelly Sort",
+    features: ["f1", "f2", "f3", "f4"],
+    color: "var(--jellysort)",
+    soft: "var(--jellysort-soft)",
+    art: { src: "/apps/jellysort.webp", className: "h-[80%] right-[6%] bottom-[6%]" },
+    companion: { src: "/apps/jellysort-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
   },
 ];
 
