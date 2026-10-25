@@ -10,11 +10,11 @@ const BASE_URL = "https://mobile.aurict.com";
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "Aurict Mobile — Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle & Jelly Sort",
+    default: "Aurict Mobile — Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort & Drip Jam",
     template: "%s | Aurict Mobile",
   },
   description:
-    "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle and Jelly Sort. Account management, support and legal pages.",
+    "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort and Drip Jam. Account management, support and legal pages.",
   applicationName: "Aurict Mobile",
   authors: [{ name: "Aurict" }],
   robots: { index: true, follow: true },
@@ -29,18 +29,18 @@ export const metadata: Metadata = {
     type: "website",
     url: BASE_URL,
     siteName: "Aurict Mobile",
-    title: "Aurict Mobile — Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle & Jelly Sort",
+    title: "Aurict Mobile — Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort & Drip Jam",
     description:
-      "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle and Jelly Sort. Account management, support and legal pages.",
+      "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort and Drip Jam. Account management, support and legal pages.",
     locale: "en_US",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "Aurict Mobile — Tiny apps. Big joy." }],
   },
   twitter: {
     card: "summary_large_image",
     images: ["/og.png"],
-    title: "Aurict Mobile — Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle & Jelly Sort",
+    title: "Aurict Mobile — Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort & Drip Jam",
     description:
-      "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle and Jelly Sort. Account management, support and legal pages.",
+      "Aurict Mobile — the home of Aurict's mobile apps and games: Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort and Drip Jam. Account management, support and legal pages.",
   },
 };
 

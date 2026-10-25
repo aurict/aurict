@@ -111,6 +111,17 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
+          <Section title={language === "tr" ? "Drip Jam oyunu" : "Drip Jam game"} color="var(--accent)">
+            <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
+              {language === "tr"
+                ? "Aurict tarafından yayınlanan Drip Jam oyununun (com.aurict.dripjam) gizlilik politikası: "
+                : "The privacy policy for the Drip Jam game (com.aurict.dripjam), published by developer Aurict, is here: "}
+              <Link href="/drip-jam/privacy-policy" style={{ color: "var(--accent)" }}>
+                {language === "tr" ? "Drip Jam Gizlilik Politikası" : "Drip Jam Privacy Policy"}
+              </Link>
+            </p>
+          </Section>
+
           <Section title={t("privacyPolicy.infoWeCollect")} color="var(--accent)">
             <p className="leading-relaxed mb-4" style={{ color: "var(--text-dim)" }}>
               {t("privacyPolicy.intro")}

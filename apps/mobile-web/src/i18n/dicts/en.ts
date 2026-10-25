@@ -14,6 +14,7 @@ export const en = {
 		drift: { tagline: `One-thumb drifting through a toy-bright world.` },
 		roomie: { tagline: `Find what's hidden in cozy scenes by the sea.` },
 		jellysort: { tagline: `Pour wobbly fruit jelly until every jar is one color.` },
+		dripjam: { tagline: `Pour paint buckets to color cozy little-town pictures.` },
 		comingSoon: { title: `Coming Soon` },
 		googlePlay: `Google Play`,
 	},
@@ -25,7 +26,7 @@ export const en = {
 	},
 	spotlight: {
 		eyebrow: `Inside the studio`,
-		title: `Seven apps. Seven little worlds.`,
+		title: `Eight apps. Eight little worlds.`,
 		getOnPlay: `Get it on Google Play`,
 		jelly: {
 			kicker: `Puzzle game`,
@@ -81,6 +82,14 @@ export const en = {
 			f2: `Frozen, bubbly and tap jars plus narrow bottles`,
 			f3: `Combos, scores and a daily challenge leaderboard`,
 			f4: `No lives or timers; plays offline, syncs with Google`,
+		},
+		dripjam: {
+			kicker: `Paint-pour puzzle`,
+			body: `A cozy coloring puzzle in a little clay town. Tap paint buckets to slide them out of a jammed board; every bucket pours its color into the picture, region by region, until the gray sketch blooms into a finished scene — but the shelf has only five slots, so plan your order.`,
+			f1: `200 hand-drawn pictures across 8 town districts`,
+			f2: `Locked, frozen, mixed-color and rotating buckets`,
+			f3: `Sticker album, daily puzzle, Paint Pass and weekend events`,
+			f4: `Plays offline; progress syncs with Google Play Games`,
 		},
 	},
 	studio: {
@@ -160,6 +169,10 @@ export const en = {
 			title: `Jelly Sort privacy policy`,
 			body: `The privacy policy for the Jelly Sort game.`,
 		},
+		dripJamPrivacy: {
+			title: `Drip Jam privacy policy`,
+			body: `The privacy policy for the Drip Jam game.`,
+		},
 		terms: {
 			title: `Terms of service`,
 			body: `The rules for using our apps and this site.`,
@@ -174,11 +187,11 @@ export const en = {
 		title: `Questions, answered`,
 		q1: {
 			q: `What is Aurict Mobile?`,
-			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle and Jelly Sort, and host the account and support pages for them here.`,
+			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort and Drip Jam, and host the account and support pages for them here.`,
 		},
 		q2: {
 			q: `Where can I download the apps?`,
-			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle and Jelly Sort are coming soon.`,
+			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort and Drip Jam are coming soon.`,
 		},
 		q3: {
 			q: `How do I delete my account?`,
