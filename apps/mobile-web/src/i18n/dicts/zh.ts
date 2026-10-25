@@ -14,6 +14,7 @@ export const zh = {
 		drift: { tagline: `单指漂移，穿梭在玩具般缤纷的世界。` },
 		roomie: { tagline: `在海边温馨的场景里找出隐藏的物品。` },
 		jellysort: { tagline: `倒动晃动的水果果冻，直到每个罐子只剩一种颜色。` },
+		dripjam: { tagline: `倒出油漆桶，为温馨小镇的图画上色。` },
 		comingSoon: { title: `即将推出` },
 		googlePlay: `Google Play`,
 	},
@@ -25,7 +26,7 @@ export const zh = {
 	},
 	spotlight: {
 		eyebrow: `走进工作室`,
-		title: `七款应用，七个小世界。`,
+		title: `八款应用，八个小世界。`,
 		getOnPlay: `在 Google Play 下载`,
 		jelly: {
 			kicker: `解谜游戏`,
@@ -81,6 +82,14 @@ export const zh = {
 			f2: `冰冻、气泡和龙头罐子，以及窄口瓶`,
 			f3: `连击、分数和每日挑战排行榜`,
 			f4: `没有体力和计时；可离线游玩，并通过 Google 同步`,
+		},
+		dripjam: {
+			kicker: `倒漆解谜`,
+			body: `一款发生在黏土小镇里的温馨涂色解谜游戏。点击油漆桶，让它们从拥挤的棋盘中滑出；每只桶都会把颜色一块一块倒进画里，直到灰色草图变成完整的场景——但架子上只有五个位置，所以要规划好顺序。`,
+			f1: `8 个小镇街区，200 幅手绘图画`,
+			f2: `上锁、冰冻、混色和旋转的油漆桶`,
+			f3: `贴纸相册、每日谜题、Paint Pass 和周末活动`,
+			f4: `可离线游玩；进度通过 Google Play 游戏同步`,
 		},
 	},
 	studio: {
@@ -160,6 +169,10 @@ export const zh = {
 			title: `Jelly Sort 隐私政策`,
 			body: `Jelly Sort 游戏的隐私政策。`,
 		},
+		dripJamPrivacy: {
+			title: `Drip Jam 隐私政策`,
+			body: `Drip Jam 游戏的隐私政策。`,
+		},
 		terms: {
 			title: `服务条款`,
 			body: `使用我们的应用和本网站的规则。`,
@@ -174,11 +187,11 @@ export const zh = {
 		title: `常见问题解答`,
 		q1: {
 			q: `Aurict Mobile 是什么？`,
-			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street、Roomie Puzzle 和 Jelly Sort，并在这里提供它们的账户和支持页面。`,
+			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort 和 Drip Jam，并在这里提供它们的账户和支持页面。`,
 		},
 		q2: {
 			q: `在哪里下载这些应用？`,
-			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street、Roomie Puzzle 和 Jelly Sort 即将推出。`,
+			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort 和 Drip Jam 即将推出。`,
 		},
 		q3: {
 			q: `如何删除我的账户？`,

@@ -14,6 +14,7 @@ export const tr = {
 		drift: { tagline: `Oyuncak gibi rengârenk bir dünyada tek parmakla drift.` },
 		roomie: { tagline: `Deniz kenarındaki sıcacık sahnelerde gizli olanı bul.` },
 		jellysort: { tagline: `Her kavanoz tek renk olana kadar meyve jölelerini dök.` },
+		dripjam: { tagline: `Boya kovalarını dök, küçük kasaba resimlerini renklendir.` },
 		comingSoon: { title: `Yakında` },
 		googlePlay: `Google Play`,
 	},
@@ -25,7 +26,7 @@ export const tr = {
 	},
 	spotlight: {
 		eyebrow: `Stüdyonun içinden`,
-		title: `Yedi uygulama. Yedi küçük dünya.`,
+		title: `Sekiz uygulama. Sekiz küçük dünya.`,
 		getOnPlay: `Google Play'den indir`,
 		jelly: {
 			kicker: `Bulmaca oyunu`,
@@ -81,6 +82,14 @@ export const tr = {
 			f2: `Donmuş, kabarcıklı ve musluklu kavanozlar, dar şişeler`,
 			f3: `Kombolar, skor ve günlük meydan okuma sıralaması`,
 			f4: `Can ve süre yok; internetsiz oynanır, Google ile eşitlenir`,
+		},
+		dripjam: {
+			kicker: `Boya dökme bulmacası`,
+			body: `Kil gibi yumuşacık küçük bir kasabada geçen sıcacık bir boyama bulmacası. Sıkışmış tahtadaki boya kovalarına dokunup kaydır; her kova rengini resme bölge bölge döker ve gri taslak bitmiş bir sahneye dönüşür. Ama rafta yalnızca beş yer var, sırayı iyi planla.`,
+			f1: `8 kasaba semtinde 200 elle çizilmiş resim`,
+			f2: `Kilitli, donmuş, karışık renkli ve dönen kovalar`,
+			f3: `Çıkartma albümü, günlük bulmaca, Paint Pass ve hafta sonu etkinlikleri`,
+			f4: `İnternetsiz oynanır; ilerleme Google Play Games ile eşitlenir`,
 		},
 	},
 	studio: {
@@ -160,6 +169,10 @@ export const tr = {
 			title: `Jelly Sort gizlilik politikası`,
 			body: `Jelly Sort oyununun gizlilik politikası.`,
 		},
+		dripJamPrivacy: {
+			title: `Drip Jam gizlilik politikası`,
+			body: `Drip Jam oyununun gizlilik politikası.`,
+		},
 		terms: {
 			title: `Hizmet şartları`,
 			body: `Uygulamalarımızı ve bu siteyi kullanma kuralları.`,
@@ -174,11 +187,11 @@ export const tr = {
 		title: `Sık sorulan sorular`,
 		q1: {
 			q: `Aurict Mobile nedir?`,
-			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle ve Jelly Sort'u yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
+			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort ve Drip Jam'i yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
 		},
 		q2: {
 			q: `Uygulamaları nereden indirebilirim?`,
-			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle ve Jelly Sort çok yakında.`,
+			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort ve Drip Jam çok yakında.`,
 		},
 		q3: {
 			q: `Hesabımı nasıl silerim?`,

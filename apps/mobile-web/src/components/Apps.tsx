@@ -37,6 +37,7 @@ const APPS: App[] = [
   { name: "Drift Street", taglineKey: "apps.drift.tagline", art: "/apps/drift.webp", color: "var(--drift)", soft: "var(--drift-soft)" },
   { name: "Roomie Puzzle", taglineKey: "apps.roomie.tagline", art: "/apps/roomie.webp", color: "var(--roomie)", soft: "var(--roomie-soft)" },
   { name: "Jelly Sort", taglineKey: "apps.jellysort.tagline", art: "/apps/jellysort.webp", color: "var(--jellysort)", soft: "var(--jellysort-soft)" },
+  { name: "Drip Jam", taglineKey: "apps.dripjam.tagline", art: "/apps/dripjam.webp", color: "var(--dripjam)", soft: "var(--dripjam-soft)" },
 ];
 
 const ARROW = (

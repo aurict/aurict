@@ -14,6 +14,7 @@ export const fr = {
 		drift: { tagline: `Du drift à un pouce, dans un monde coloré comme un jouet.` },
 		roomie: { tagline: `Trouve ce qui est caché dans des scènes douillettes au bord de la mer.` },
 		jellysort: { tagline: `Verse de la gelée de fruits jusqu’à ce que chaque bocal n’ait qu’une couleur.` },
+		dripjam: { tagline: `Verse des seaux de peinture pour colorier une petite ville douillette.` },
 		comingSoon: { title: `Bientôt disponible` },
 		googlePlay: `Google Play`,
 	},
@@ -25,7 +26,7 @@ export const fr = {
 	},
 	spotlight: {
 		eyebrow: `Dans le studio`,
-		title: `Sept apps. Sept petits mondes.`,
+		title: `Huit apps. Huit petits mondes.`,
 		getOnPlay: `Disponible sur Google Play`,
 		jelly: {
 			kicker: `Jeu de réflexion`,
@@ -81,6 +82,14 @@ export const fr = {
 			f2: `Bocaux gelés, pétillants et à robinet, et bouteilles étroites`,
 			f3: `Combos, scores et classement du défi quotidien`,
 			f4: `Ni vies ni minuteur ; joue hors ligne, synchro avec Google`,
+		},
+		dripjam: {
+			kicker: `Puzzle de peinture à verser`,
+			body: `Un puzzle de coloriage douillet dans une petite ville en pâte à modeler. Touche les seaux de peinture pour les faire glisser hors d’un plateau encombré ; chaque seau verse sa couleur dans l’image, zone par zone, jusqu’à ce que l’esquisse grise devienne une scène terminée — mais l’étagère n’a que cinq places : prévois ton ordre.`,
+			f1: `200 images dessinées à la main dans 8 quartiers`,
+			f2: `Seaux verrouillés, gelés, multicolores et rotatifs`,
+			f3: `Album d’autocollants, puzzle du jour, Paint Pass et événements du week-end`,
+			f4: `Joue hors ligne ; progression synchronisée avec Google Play Jeux`,
 		},
 	},
 	studio: {
@@ -160,6 +169,10 @@ export const fr = {
 			title: `Politique de confidentialité de Jelly Sort`,
 			body: `La politique de confidentialité du jeu Jelly Sort.`,
 		},
+		dripJamPrivacy: {
+			title: `Politique de confidentialité de Drip Jam`,
+			body: `La politique de confidentialité du jeu Drip Jam.`,
+		},
 		terms: {
 			title: `Conditions d’utilisation`,
 			body: `Les règles d’utilisation de nos applis et de ce site.`,
@@ -174,11 +187,11 @@ export const fr = {
 		title: `Vos questions, nos réponses`,
 		q1: {
 			q: `Qu’est-ce qu’Aurict Mobile ?`,
-			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle et Jelly Sort, et hébergeons ici leurs pages de compte et d’assistance.`,
+			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort et Drip Jam, et hébergeons ici leurs pages de compte et d’assistance.`,
 		},
 		q2: {
 			q: `Où télécharger les applis ?`,
-			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle et Jelly Sort arrivent bientôt.`,
+			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort et Drip Jam arrivent bientôt.`,
 		},
 		q3: {
 			q: `Comment supprimer mon compte ?`,

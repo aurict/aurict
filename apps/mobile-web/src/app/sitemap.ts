@@ -19,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/roomie-puzzle/privacy-policy", priority: 0.5 },
     { path: "/jelly-sort/privacy-policy", priority: 0.5 },
     { path: "/jelly-sort/delete-account", priority: 0.4 },
+    { path: "/drip-jam/privacy-policy", priority: 0.5 },
     { path: "/terms-of-service", priority: 0.5 },
     { path: "/ccpa-policy", priority: 0.5 },
   ];
