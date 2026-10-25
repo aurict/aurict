@@ -69,7 +69,10 @@ jobs:
           command_timeout: 15m
           script: |
             set -euo pipefail
-            export PATH="/home/admin/.bun/bin:/home/admin/.nvm/versions/node/v24.16.0/bin:$PATH"
+            # Node (and the global pm2) come from nvm's default version, so Node upgrades on the server don't break deploys.
+            export NVM_DIR="/home/admin/.nvm"
+            set +u; . "$NVM_DIR/nvm.sh"; set -u
+            export PATH="/home/admin/.bun/bin:$PATH"
             # The server checkout is deploy-only: always build exactly origin/main.
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch --quiet origin main
