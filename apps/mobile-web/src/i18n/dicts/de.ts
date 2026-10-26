@@ -15,6 +15,7 @@ export const de = {
 		roomie: { tagline: `Finde Verstecktes in gemütlichen Szenen am Meer.` },
 		jellysort: { tagline: `Gieße wackeliges Fruchtgelee, bis jedes Glas eine Farbe hat.` },
 		dripjam: { tagline: `Gieße Farbeimer aus und male gemütliche Kleinstadtbilder.` },
+		sproutvalley: { tagline: `Verbinde Samen und Werkzeuge und lass einen gemütlichen Hof im Abendlicht wachsen.` },
 		comingSoon: { title: `Demnächst` },
 		googlePlay: `Google Play`,
 	},
@@ -26,7 +27,7 @@ export const de = {
 	},
 	spotlight: {
 		eyebrow: `Aus dem Studio`,
-		title: `Acht Apps. Acht kleine Welten.`,
+		title: `Neun Apps. Neun kleine Welten.`,
 		getOnPlay: `Bei Google Play holen`,
 		jelly: {
 			kicker: `Rätselspiel`,
@@ -90,6 +91,14 @@ export const de = {
 			f2: `Verschlossene, gefrorene, gemischtfarbige und drehende Eimer`,
 			f3: `Stickeralbum, Tagesrätsel, Paint Pass und Wochenend-Events`,
 			f4: `Offline spielbar; Fortschritt synchronisiert mit Google Play Games`,
+		},
+		sproutvalley: {
+			kicker: `Merge-Farmspiel`,
+			body: `Ein gemütliches Merge- und Farmspiel in Echtzeit. Verbinde Samen, Ernte und Werkzeuge auf dem Spielbrett, baue auf einer isometrischen Farm, die du scrollen und zoomen kannst, deine Ernte an, erfülle Lieferaufträge, backe Brot und schalte Feld für Feld neues Land frei.`,
+			f1: `Samen, Ernte und Werkzeuge auf einem Hochformat-Brett verbinden`,
+			f2: `Pflanzen wachsen in Echtzeit auf einer scroll- und zoombaren Farm`,
+			f3: `Lieferaufträge, eine Bäckerei und neues Land zum Freischalten`,
+			f4: `Kostenlos spielbar; optionale Cloud-Sicherung mit Google Play Games`,
 		},
 	},
 	studio: {
@@ -173,6 +182,10 @@ export const de = {
 			title: `Datenschutzerklärung von Drip Jam`,
 			body: `Die Datenschutzerklärung für das Spiel Drip Jam.`,
 		},
+		sproutValleyPrivacy: {
+			title: `Datenschutzerklärung von Sprout Valley`,
+			body: `Die Datenschutzerklärung für das Spiel Sprout Valley: Merge Farm.`,
+		},
 		terms: {
 			title: `Nutzungsbedingungen`,
 			body: `Die Regeln für unsere Apps und diese Website.`,
@@ -187,11 +200,11 @@ export const de = {
 		title: `Häufige Fragen`,
 		q1: {
 			q: `Was ist Aurict Mobile?`,
-			a: `Aurict Mobile ist das Mobile-App-Studio von Aurict. Wir machen Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort und Drip Jam und hosten hier ihre Konto- und Supportseiten.`,
+			a: `Aurict Mobile ist das Mobile-App-Studio von Aurict. Wir machen Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam und Sprout Valley und hosten hier ihre Konto- und Supportseiten.`,
 		},
 		q2: {
 			q: `Wo kann ich die Apps herunterladen?`,
-			a: `Duckley und Mind Grid gibt es bei Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort und Drip Jam erscheinen bald.`,
+			a: `Duckley und Mind Grid gibt es bei Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam und Sprout Valley erscheinen bald.`,
 		},
 		q3: {
 			q: `Wie lösche ich mein Konto?`,

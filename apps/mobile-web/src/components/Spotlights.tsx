@@ -7,7 +7,7 @@ import SectionHeading from "./SectionHeading";
 const EASE = [0.16, 0.8, 0.2, 1] as const;
 
 type Spotlight = {
-  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift" | "roomie" | "jellysort" | "dripjam";
+  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift" | "roomie" | "jellysort" | "dripjam" | "sproutvalley";
   name: string;
   features: string[];
   color: string;
@@ -91,6 +91,15 @@ const SPOTLIGHTS: Spotlight[] = [
     soft: "var(--dripjam-soft)",
     art: { src: "/apps/dripjam.webp", className: "h-[80%] right-[6%] bottom-[6%]" },
     companion: { src: "/apps/dripjam-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
+  },
+  {
+    key: "sproutvalley",
+    name: "Sprout Valley",
+    features: ["f1", "f2", "f3", "f4"],
+    color: "var(--sproutvalley)",
+    soft: "var(--sproutvalley-soft)",
+    art: { src: "/apps/sproutvalley.webp", className: "h-[80%] right-[6%] bottom-[6%]" },
+    companion: { src: "/apps/sproutvalley-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
   },
 ];
 

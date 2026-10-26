@@ -15,6 +15,7 @@ export const zh = {
 		roomie: { tagline: `在海边温馨的场景里找出隐藏的物品。` },
 		jellysort: { tagline: `倒动晃动的水果果冻，直到每个罐子只剩一种颜色。` },
 		dripjam: { tagline: `倒出油漆桶，为温馨小镇的图画上色。` },
+		sproutvalley: { tagline: `合成种子和工具，打造一座金色夕阳下的温馨农场。` },
 		comingSoon: { title: `即将推出` },
 		googlePlay: `Google Play`,
 	},
@@ -26,7 +27,7 @@ export const zh = {
 	},
 	spotlight: {
 		eyebrow: `走进工作室`,
-		title: `八款应用，八个小世界。`,
+		title: `九款应用，九个小世界。`,
 		getOnPlay: `在 Google Play 下载`,
 		jelly: {
 			kicker: `解谜游戏`,
@@ -90,6 +91,14 @@ export const zh = {
 			f2: `上锁、冰冻、混色和旋转的油漆桶`,
 			f3: `贴纸相册、每日谜题、Paint Pass 和周末活动`,
 			f4: `可离线游玩；进度通过 Google Play 游戏同步`,
+		},
+		sproutvalley: {
+			kicker: `合成农场游戏`,
+			body: `一款温馨的实时合成农场游戏。在棋盘上合成种子、作物和工具，在可以滑动和缩放的等距视角农场里种植作物，完成送货订单，烘焙面包，一块田一块田地解锁新土地。`,
+			f1: `在竖屏棋盘上合成种子、作物和工具`,
+			f2: `作物实时生长，农场可滑动和缩放`,
+			f3: `送货订单、面包房和待解锁的新土地`,
+			f4: `免费游玩；可选通过 Google Play 游戏进行云端备份`,
 		},
 	},
 	studio: {
@@ -173,6 +182,10 @@ export const zh = {
 			title: `Drip Jam 隐私政策`,
 			body: `Drip Jam 游戏的隐私政策。`,
 		},
+		sproutValleyPrivacy: {
+			title: `Sprout Valley 隐私政策`,
+			body: `Sprout Valley: Merge Farm 游戏的隐私政策。`,
+		},
 		terms: {
 			title: `服务条款`,
 			body: `使用我们的应用和本网站的规则。`,
@@ -187,11 +200,11 @@ export const zh = {
 		title: `常见问题解答`,
 		q1: {
 			q: `Aurict Mobile 是什么？`,
-			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort 和 Drip Jam，并在这里提供它们的账户和支持页面。`,
+			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort、Drip Jam 和 Sprout Valley，并在这里提供它们的账户和支持页面。`,
 		},
 		q2: {
 			q: `在哪里下载这些应用？`,
-			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort 和 Drip Jam 即将推出。`,
+			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort、Drip Jam 和 Sprout Valley 即将推出。`,
 		},
 		q3: {
 			q: `如何删除我的账户？`,

@@ -38,6 +38,7 @@ const APPS: App[] = [
   { name: "Roomie Puzzle", taglineKey: "apps.roomie.tagline", art: "/apps/roomie.webp", color: "var(--roomie)", soft: "var(--roomie-soft)" },
   { name: "Jelly Sort", taglineKey: "apps.jellysort.tagline", art: "/apps/jellysort.webp", color: "var(--jellysort)", soft: "var(--jellysort-soft)" },
   { name: "Drip Jam", taglineKey: "apps.dripjam.tagline", art: "/apps/dripjam.webp", color: "var(--dripjam)", soft: "var(--dripjam-soft)" },
+  { name: "Sprout Valley", taglineKey: "apps.sproutvalley.tagline", art: "/apps/sproutvalley.webp", color: "var(--sproutvalley)", soft: "var(--sproutvalley-soft)" },
 ];
 
 const ARROW = (
