@@ -15,6 +15,7 @@ export const tr = {
 		roomie: { tagline: `Deniz kenarındaki sıcacık sahnelerde gizli olanı bul.` },
 		jellysort: { tagline: `Her kavanoz tek renk olana kadar meyve jölelerini dök.` },
 		dripjam: { tagline: `Boya kovalarını dök, küçük kasaba resimlerini renklendir.` },
+		sproutvalley: { tagline: `Tohumları ve aletleri birleştir, gün batımı renklerinde sıcacık bir çiftlik büyüt.` },
 		comingSoon: { title: `Yakında` },
 		googlePlay: `Google Play`,
 	},
@@ -26,7 +27,7 @@ export const tr = {
 	},
 	spotlight: {
 		eyebrow: `Stüdyonun içinden`,
-		title: `Sekiz uygulama. Sekiz küçük dünya.`,
+		title: `Dokuz uygulama. Dokuz küçük dünya.`,
 		getOnPlay: `Google Play'den indir`,
 		jelly: {
 			kicker: `Bulmaca oyunu`,
@@ -90,6 +91,14 @@ export const tr = {
 			f2: `Kilitli, donmuş, karışık renkli ve dönen kovalar`,
 			f3: `Çıkartma albümü, günlük bulmaca, Paint Pass ve hafta sonu etkinlikleri`,
 			f4: `İnternetsiz oynanır; ilerleme Google Play Games ile eşitlenir`,
+		},
+		sproutvalley: {
+			kicker: `Birleştirmeli çiftlik oyunu`,
+			body: `Gerçek zamanlı, sıcacık bir birleştirme ve çiftlik oyunu. Tahtada tohumları, ürünleri ve aletleri birleştir; kaydırıp yakınlaştırabildiğin izometrik çiftliğinde ürün yetiştir, teslimat siparişlerini tamamla, ekmek pişir ve tarla tarla yeni araziler aç.`,
+			f1: `Dikey tahtada tohum, ürün ve aletleri birleştir`,
+			f2: `Kaydırıp yakınlaştırabildiğin çiftlikte gerçek zamanlı ürünler`,
+			f3: `Teslimat siparişleri, fırın ve açılacak yeni araziler`,
+			f4: `Ücretsiz; Google Play Games ile isteğe bağlı bulut yedeği`,
 		},
 	},
 	studio: {
@@ -173,6 +182,10 @@ export const tr = {
 			title: `Drip Jam gizlilik politikası`,
 			body: `Drip Jam oyununun gizlilik politikası.`,
 		},
+		sproutValleyPrivacy: {
+			title: `Sprout Valley gizlilik politikası`,
+			body: `Sprout Valley: Merge Farm oyununun gizlilik politikası.`,
+		},
 		terms: {
 			title: `Hizmet şartları`,
 			body: `Uygulamalarımızı ve bu siteyi kullanma kuralları.`,
@@ -187,11 +200,11 @@ export const tr = {
 		title: `Sık sorulan sorular`,
 		q1: {
 			q: `Aurict Mobile nedir?`,
-			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort ve Drip Jam'i yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
+			a: `Aurict Mobile, Aurict'in mobil uygulama stüdyosu. Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam ve Sprout Valley'yi yapıyor, bu uygulamaların hesap ve destek sayfalarını da burada barındırıyoruz.`,
 		},
 		q2: {
 			q: `Uygulamaları nereden indirebilirim?`,
-			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort ve Drip Jam çok yakında.`,
+			a: `Duckley ve Mind Grid Google Play'de. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam ve Sprout Valley çok yakında.`,
 		},
 		q3: {
 			q: `Hesabımı nasıl silerim?`,

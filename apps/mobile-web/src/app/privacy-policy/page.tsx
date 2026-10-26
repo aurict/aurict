@@ -122,6 +122,17 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
+          <Section title={language === "tr" ? "Sprout Valley: Merge Farm oyunu" : "Sprout Valley: Merge Farm game"} color="var(--accent)">
+            <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
+              {language === "tr"
+                ? "Aurict tarafından yayınlanan Sprout Valley: Merge Farm oyununun (com.aurict.sprout) gizlilik politikası: "
+                : "The privacy policy for the Sprout Valley: Merge Farm game (com.aurict.sprout), published by developer Aurict, is here: "}
+              <Link href="/sprout-valley/privacy-policy" style={{ color: "var(--accent)" }}>
+                {language === "tr" ? "Sprout Valley Gizlilik Politikası" : "Sprout Valley Privacy Policy"}
+              </Link>
+            </p>
+          </Section>
+
           <Section title={t("privacyPolicy.infoWeCollect")} color="var(--accent)">
             <p className="leading-relaxed mb-4" style={{ color: "var(--text-dim)" }}>
               {t("privacyPolicy.intro")}
