@@ -23,6 +23,7 @@ const ITEMS = [
   { key: "jellySortPrivacy", href: "/jelly-sort/privacy-policy", color: "var(--jellysort)", soft: "var(--jellysort-soft)" },
   { key: "dripJamPrivacy", href: "/drip-jam/privacy-policy", color: "var(--dripjam)", soft: "var(--dripjam-soft)" },
   { key: "sproutValleyPrivacy", href: "/sprout-valley/privacy-policy", color: "var(--sproutvalley)", soft: "var(--sproutvalley-soft)" },
+  { key: "brewToTheMoonPrivacy", href: "/brew-to-the-moon/privacy-policy", color: "var(--brewtothemoon)", soft: "var(--brewtothemoon-soft)" },
   { key: "terms", href: "/terms-of-service", color: "var(--accent-alt)", soft: "#fff0e2" },
   { key: "contact", href: "mailto:contact@aurict.com", color: "var(--jelly)", soft: "var(--jelly-soft)" },
 ];

@@ -7,7 +7,7 @@ import SectionHeading from "./SectionHeading";
 const EASE = [0.16, 0.8, 0.2, 1] as const;
 
 type Spotlight = {
-  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift" | "roomie" | "jellysort" | "dripjam" | "sproutvalley";
+  key: "jelly" | "duckley" | "mindgrid" | "dungeon" | "drift" | "roomie" | "jellysort" | "dripjam" | "sproutvalley" | "brewtothemoon";
   name: string;
   features: string[];
   color: string;
@@ -100,6 +100,15 @@ const SPOTLIGHTS: Spotlight[] = [
     soft: "var(--sproutvalley-soft)",
     art: { src: "/apps/sproutvalley.webp", className: "h-[80%] right-[6%] bottom-[6%]" },
     companion: { src: "/apps/sproutvalley-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
+  },
+  {
+    key: "brewtothemoon",
+    name: "Brew to the Moon",
+    features: ["f1", "f2", "f3", "f4"],
+    color: "var(--brewtothemoon)",
+    soft: "var(--brewtothemoon-soft)",
+    art: { src: "/apps/brewtothemoon.webp", className: "h-[80%] right-[6%] bottom-[6%]" },
+    companion: { src: "/apps/brewtothemoon-icon.webp", className: "w-[24%] left-[6%] top-[8%] rounded-[22%] shadow-xl" },
   },
 ];
 

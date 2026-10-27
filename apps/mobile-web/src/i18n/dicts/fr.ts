@@ -16,6 +16,7 @@ export const fr = {
 		jellysort: { tagline: `Verse de la gelée de fruits jusqu’à ce que chaque bocal n’ait qu’une couleur.` },
 		dripjam: { tagline: `Verse des seaux de peinture pour colorier une petite ville douillette.` },
 		sproutvalley: { tagline: `Fusionne graines et outils, puis fais pousser une ferme douillette à l’heure dorée.` },
+		brewtothemoon: { tagline: `Tape pour préparer du café et transforme un petit chariot en café sur la Lune.` },
 		comingSoon: { title: `Bientôt disponible` },
 		googlePlay: `Google Play`,
 	},
@@ -27,7 +28,7 @@ export const fr = {
 	},
 	spotlight: {
 		eyebrow: `Dans le studio`,
-		title: `Neuf apps. Neuf petits mondes.`,
+		title: `Dix apps. Dix petits mondes.`,
 		getOnPlay: `Disponible sur Google Play`,
 		jelly: {
 			kicker: `Jeu de réflexion`,
@@ -99,6 +100,14 @@ export const fr = {
 			f2: `Des cultures en temps réel sur une ferme à faire défiler et zoomer`,
 			f3: `Commandes de livraison, boulangerie et nouvelles terres à débloquer`,
 			f4: `Gratuit ; sauvegarde cloud facultative avec Google Play Jeux`,
+		},
+		brewtothemoon: {
+			kicker: `Jeu idle de gestion de café`,
+			body: `Un jeu idle douillet de gestion de café. Tape sur la machine à espresso pour préparer du café, embauche des baristas qui travaillent même quand tu n’es pas là, achète des améliorations et passe d’un chariot de rue à un café de quartier, à une chaîne de cafés et enfin à un café dans l’espace.`,
+			f1: `Tape pour préparer ; garde le rythme pour de plus gros combos`,
+			f2: `Des baristas et producteurs qui gagnent même hors ligne`,
+			f3: `Coup de feu du matin, clients spéciaux, tâches du jour et cadeaux de connexion`,
+			f4: `Vends ta franchise contre des Grains d’or et recommence, plus vite`,
 		},
 	},
 	studio: {
@@ -186,6 +195,10 @@ export const fr = {
 			title: `Politique de confidentialité de Sprout Valley`,
 			body: `La politique de confidentialité du jeu Sprout Valley: Merge Farm.`,
 		},
+		brewToTheMoonPrivacy: {
+			title: `Politique de confidentialité de Brew to the Moon`,
+			body: `La politique de confidentialité du jeu Brew to the Moon.`,
+		},
 		terms: {
 			title: `Conditions d’utilisation`,
 			body: `Les règles d’utilisation de nos applis et de ce site.`,
@@ -200,11 +213,11 @@ export const fr = {
 		title: `Vos questions, nos réponses`,
 		q1: {
 			q: `Qu’est-ce qu’Aurict Mobile ?`,
-			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam et Sprout Valley, et hébergeons ici leurs pages de compte et d’assistance.`,
+			a: `Aurict Mobile est le studio d’applications mobiles d’Aurict. Nous créons Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam, Sprout Valley et Brew to the Moon, et hébergeons ici leurs pages de compte et d’assistance.`,
 		},
 		q2: {
 			q: `Où télécharger les applis ?`,
-			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam et Sprout Valley arrivent bientôt.`,
+			a: `Duckley et Mind Grid sont disponibles sur Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam, Sprout Valley et Brew to the Moon arrivent bientôt.`,
 		},
 		q3: {
 			q: `Comment supprimer mon compte ?`,

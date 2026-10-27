@@ -39,6 +39,7 @@ const APPS: App[] = [
   { name: "Jelly Sort", taglineKey: "apps.jellysort.tagline", art: "/apps/jellysort.webp", color: "var(--jellysort)", soft: "var(--jellysort-soft)" },
   { name: "Drip Jam", taglineKey: "apps.dripjam.tagline", art: "/apps/dripjam.webp", color: "var(--dripjam)", soft: "var(--dripjam-soft)" },
   { name: "Sprout Valley", taglineKey: "apps.sproutvalley.tagline", art: "/apps/sproutvalley.webp", color: "var(--sproutvalley)", soft: "var(--sproutvalley-soft)" },
+  { name: "Brew to the Moon", taglineKey: "apps.brewtothemoon.tagline", art: "/apps/brewtothemoon.webp", color: "var(--brewtothemoon)", soft: "var(--brewtothemoon-soft)" },
 ];
 
 const ARROW = (
