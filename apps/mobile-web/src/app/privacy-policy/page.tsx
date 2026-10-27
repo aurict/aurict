@@ -133,6 +133,17 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
+          <Section title={language === "tr" ? "Brew to the Moon oyunu" : "Brew to the Moon game"} color="var(--accent)">
+            <p className="leading-relaxed text-sm" style={{ color: "var(--text-dim)" }}>
+              {language === "tr"
+                ? "Aurict tarafından yayınlanan Brew to the Moon oyununun (com.aurict.brewtothemoon) gizlilik politikası: "
+                : "The privacy policy for the Brew to the Moon game (com.aurict.brewtothemoon), published by developer Aurict, is here: "}
+              <Link href="/brew-to-the-moon/privacy-policy" style={{ color: "var(--accent)" }}>
+                {language === "tr" ? "Brew to the Moon Gizlilik Politikası" : "Brew to the Moon Privacy Policy"}
+              </Link>
+            </p>
+          </Section>
+
           <Section title={t("privacyPolicy.infoWeCollect")} color="var(--accent)">
             <p className="leading-relaxed mb-4" style={{ color: "var(--text-dim)" }}>
               {t("privacyPolicy.intro")}

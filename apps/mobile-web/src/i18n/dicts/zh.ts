@@ -16,6 +16,7 @@ export const zh = {
 		jellysort: { tagline: `倒动晃动的水果果冻，直到每个罐子只剩一种颜色。` },
 		dripjam: { tagline: `倒出油漆桶，为温馨小镇的图画上色。` },
 		sproutvalley: { tagline: `合成种子和工具，打造一座金色夕阳下的温馨农场。` },
+		brewtothemoon: { tagline: `点击冲煮咖啡，把小小的咖啡推车经营成月球上的咖啡馆。` },
 		comingSoon: { title: `即将推出` },
 		googlePlay: `Google Play`,
 	},
@@ -27,7 +28,7 @@ export const zh = {
 	},
 	spotlight: {
 		eyebrow: `走进工作室`,
-		title: `九款应用，九个小世界。`,
+		title: `十款应用，十个小世界。`,
 		getOnPlay: `在 Google Play 下载`,
 		jelly: {
 			kicker: `解谜游戏`,
@@ -99,6 +100,14 @@ export const zh = {
 			f2: `作物实时生长，农场可滑动和缩放`,
 			f3: `送货订单、面包房和待解锁的新土地`,
 			f4: `免费游玩；可选通过 Google Play 游戏进行云端备份`,
+		},
+		brewtothemoon: {
+			kicker: `放置咖啡经营游戏`,
+			body: `一款温馨的放置咖啡经营游戏。点击意式咖啡机冲煮咖啡，雇用在你离开时也继续工作的咖啡师，购买升级，从街头咖啡推车一路发展到街角咖啡馆、连锁咖啡品牌，最终把咖啡馆开到太空。`,
+			f1: `点击冲煮；保持节奏打出更高连击`,
+			f2: `雇用离线时也能赚钱的咖啡师和生产者`,
+			f3: `早高峰、特殊顾客、每日任务和登录礼物`,
+			f4: `出售加盟店换取金咖啡豆，然后更快地重新开始`,
 		},
 	},
 	studio: {
@@ -186,6 +195,10 @@ export const zh = {
 			title: `Sprout Valley 隐私政策`,
 			body: `Sprout Valley: Merge Farm 游戏的隐私政策。`,
 		},
+		brewToTheMoonPrivacy: {
+			title: `Brew to the Moon 隐私政策`,
+			body: `Brew to the Moon 游戏的隐私政策。`,
+		},
 		terms: {
 			title: `服务条款`,
 			body: `使用我们的应用和本网站的规则。`,
@@ -200,11 +213,11 @@ export const zh = {
 		title: `常见问题解答`,
 		q1: {
 			q: `Aurict Mobile 是什么？`,
-			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort、Drip Jam 和 Sprout Valley，并在这里提供它们的账户和支持页面。`,
+			a: `Aurict Mobile 是 Aurict 的移动应用工作室。我们制作 Jelly Paradox、Duckley、Mind Grid、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort、Drip Jam、Sprout Valley 和 Brew to the Moon，并在这里提供它们的账户和支持页面。`,
 		},
 		q2: {
 			q: `在哪里下载这些应用？`,
-			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort、Drip Jam 和 Sprout Valley 即将推出。`,
+			a: `Duckley 和 Mind Grid 已在 Google Play 上架。Jelly Paradox、Dungeon Lord、Drift Street、Roomie Puzzle、Jelly Sort、Drip Jam、Sprout Valley 和 Brew to the Moon 即将推出。`,
 		},
 		q3: {
 			q: `如何删除我的账户？`,

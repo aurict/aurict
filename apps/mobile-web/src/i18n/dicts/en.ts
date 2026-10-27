@@ -16,6 +16,7 @@ export const en = {
 		jellysort: { tagline: `Pour wobbly fruit jelly until every jar is one color.` },
 		dripjam: { tagline: `Pour paint buckets to color cozy little-town pictures.` },
 		sproutvalley: { tagline: `Merge seeds and tools, then grow a cozy golden-hour farm.` },
+		brewtothemoon: { tagline: `Tap to brew and grow a tiny coffee cart into a café on the Moon.` },
 		comingSoon: { title: `Coming Soon` },
 		googlePlay: `Google Play`,
 	},
@@ -27,7 +28,7 @@ export const en = {
 	},
 	spotlight: {
 		eyebrow: `Inside the studio`,
-		title: `Nine apps. Nine little worlds.`,
+		title: `Ten apps. Ten little worlds.`,
 		getOnPlay: `Get it on Google Play`,
 		jelly: {
 			kicker: `Puzzle game`,
@@ -99,6 +100,14 @@ export const en = {
 			f2: `Real-time crops on a farm you can scroll and zoom`,
 			f3: `Delivery orders, a bakery and new land to unlock`,
 			f4: `Free to play; optional cloud backup with Google Play Games`,
+		},
+		brewtothemoon: {
+			kicker: `Idle coffee tycoon`,
+			body: `A cozy idle coffee tycoon. Tap the espresso machine to brew, hire baristas who keep working while you're away, buy upgrades and grow from a street cart to a corner café, a coffee chain and finally a café in space.`,
+			f1: `Tap to brew; keep the rhythm for bigger combos`,
+			f2: `Hire baristas and producers that earn while you're away`,
+			f3: `Morning rush, special customers, daily tasks and login gifts`,
+			f4: `Sell your franchise for Golden Beans and start again, faster`,
 		},
 	},
 	studio: {
@@ -186,6 +195,10 @@ export const en = {
 			title: `Sprout Valley privacy policy`,
 			body: `The privacy policy for the Sprout Valley: Merge Farm game.`,
 		},
+		brewToTheMoonPrivacy: {
+			title: `Brew to the Moon privacy policy`,
+			body: `The privacy policy for the Brew to the Moon game.`,
+		},
 		terms: {
 			title: `Terms of service`,
 			body: `The rules for using our apps and this site.`,
@@ -200,11 +213,11 @@ export const en = {
 		title: `Questions, answered`,
 		q1: {
 			q: `What is Aurict Mobile?`,
-			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam and Sprout Valley, and host the account and support pages for them here.`,
+			a: `Aurict Mobile is the mobile app studio of Aurict. We make Jelly Paradox, Duckley, Mind Grid, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam, Sprout Valley and Brew to the Moon, and host the account and support pages for them here.`,
 		},
 		q2: {
 			q: `Where can I download the apps?`,
-			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam and Sprout Valley are coming soon.`,
+			a: `Duckley and Mind Grid are available on Google Play. Jelly Paradox, Dungeon Lord, Drift Street, Roomie Puzzle, Jelly Sort, Drip Jam, Sprout Valley and Brew to the Moon are coming soon.`,
 		},
 		q3: {
 			q: `How do I delete my account?`,
