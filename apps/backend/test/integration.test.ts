@@ -118,7 +118,7 @@ if (!databaseUrl) {
     })
 
     test("firebase link to an unverified account revokes pre-existing access in postgres", async () => {
-      const firebaseApp = createApp({ env: { ...env, FIREBASE_PROJECT_ID: "aurict-test" }, db })
+      const firebaseApp = createApp({ env: { ...env, FIREBASE_PROJECT_ID: "aurict-test" }, db: db! })
       const registered = await firebaseApp.request("/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
