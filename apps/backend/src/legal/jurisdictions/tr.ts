@@ -209,16 +209,23 @@ export function extractCitationsTr(units: ParsedUnit[]): ParsedCitation[] {
 }
 
 const MEVZUAT_BASE_URL = "https://www.mevzuat.gov.tr"
+const FETCH_TIMEOUT_MS = 20_000
+const MAX_PDF_BYTES = 25 * 1024 * 1024
 
 export async function fetchStatuteTr(identifier: string): Promise<FetchedStatuteText> {
+  if (!/^\d{1,6}$/.test(identifier)) throw new Error(`Geçersiz kanun numarası: ${identifier}`)
   // mevzuat.gov.tr botlara varsayılan User-Agent ile 403 döner; tarayıcı UA'sı gerekli.
   const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
   const pdfUrl = `${MEVZUAT_BASE_URL}/MevzuatMetin/1.5.${identifier}.pdf`
-  const response = await fetch(pdfUrl, { headers: { "User-Agent": userAgent } })
+  const response = await fetch(pdfUrl, { headers: { "User-Agent": userAgent }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
   if (!response.ok) {
     throw new Error(`mevzuat.gov.tr'den ${identifier} sayılı kanun çekilemedi: HTTP ${response.status}`)
   }
+  if (Number(response.headers.get("content-length") ?? 0) > MAX_PDF_BYTES) {
+    throw new Error(`mevzuat.gov.tr'den ${identifier} sayılı kanun çok büyük.`)
+  }
   const pdfBytes = new Uint8Array(await response.arrayBuffer())
+  if (pdfBytes.byteLength > MAX_PDF_BYTES) throw new Error(`mevzuat.gov.tr'den ${identifier} sayılı kanun çok büyük.`)
   const parser = new PDFParse({ data: pdfBytes })
   const { text } = await parser.getText()
   await parser.destroy()

@@ -1,8 +1,15 @@
+import { timingSafeEqual } from "node:crypto"
 import { Hono } from "hono"
 import { publicKeyJwk } from "../crypto/tokens"
 import { ApiError } from "../middleware/errors"
 import { openApiDocument } from "../openapi"
 import type { AppBindings } from "../types"
+
+function bearerMatches(header: string | undefined, token: string): boolean {
+  const received = Buffer.from(header ?? "")
+  const expected = Buffer.from(`Bearer ${token}`)
+  return received.length === expected.length && timingSafeEqual(received, expected)
+}
 
 export const healthRoutes = new Hono<AppBindings>()
   .get("/health", (c) => c.json({ ok: true, service: "aurict-backend" }))
@@ -18,7 +25,7 @@ export const healthRoutes = new Hono<AppBindings>()
   })
   .get("/metrics", (c) => {
     const token = c.get("env").METRICS_TOKEN
-    if (token && c.req.header("authorization") !== `Bearer ${token}`) {
+    if (token && !bearerMatches(c.req.header("authorization"), token)) {
       throw new ApiError(401, "Metrics token is required.", "unauthorized")
     }
     if (!token && c.get("env").NODE_ENV === "production") {

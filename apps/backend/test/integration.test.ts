@@ -117,6 +117,36 @@ if (!databaseUrl) {
       await db?.close()
     })
 
+    test("firebase link to an unverified account revokes pre-existing access in postgres", async () => {
+      const firebaseApp = createApp({ env: { ...env, FIREBASE_PROJECT_ID: "aurict-test" }, db })
+      const registered = await firebaseApp.request("/auth/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "squatted@example.com", password: "correct horse battery" }),
+      })
+      expect(registered.status).toBe(201)
+      const squatter = await json(registered)
+      const claims = { uid: "firebase-owner".repeat(8), email: "squatted@example.com", emailVerified: true }
+      const linked = await firebaseApp.request("/auth/firebase", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ idToken: `test.${Buffer.from(JSON.stringify(claims)).toString("base64url")}` }),
+      })
+      expect(linked.status).toBe(200)
+      const login = await firebaseApp.request("/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "squatted@example.com", password: "correct horse battery" }),
+      })
+      expect(login.status).toBe(401)
+      const refreshed = await firebaseApp.request("/auth/refresh", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ refreshToken: squatter.refreshToken }),
+      })
+      expect(refreshed.status).toBe(401)
+    })
+
     test("ready endpoint pings postgres", async () => {
       const res = await app.request("/ready")
       expect(res.status).toBe(200)

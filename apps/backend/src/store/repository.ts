@@ -26,6 +26,10 @@ export type BackendRepository = {
   updateUser(user: User): Promise<void>
   updatePasswordIdentity(userId: string, passwordHash: string): Promise<void>
   deleteAccount(userId: string, deletedAt: Date): Promise<void>
+  // Drops every credential and session created before the email was proven (password, refresh
+  // tokens, pending action tokens, devices, trusts, transfers, remote sessions). Used when a
+  // verified provider claims an unverified account, so a squatter who registered first loses access.
+  revokePreVerificationAccess(userId: string, revokedAt: Date): Promise<void>
   touchUserPresence(userId: string, seenAt: Date): Promise<void>
   countActiveUsers(since: Date): Promise<number>
 
@@ -136,6 +140,31 @@ export function createMemoryRepository(store: BackendStore): BackendRepository {
         candidate.userId === userId && candidate.provider === "password",
       )
       if (identity) identity.passwordHash = passwordHash
+    },
+    async revokePreVerificationAccess(userId, revokedAt) {
+      for (const identity of store.identities.values()) {
+        if (identity.userId === userId && identity.provider === "password") delete identity.passwordHash
+      }
+      for (const token of store.refreshTokens.values()) {
+        if (token.userId === userId) token.revokedAt ??= revokedAt
+      }
+      for (const token of store.authTokens.values()) {
+        if (token.userId === userId) token.consumedAt ??= revokedAt
+      }
+      for (const device of store.devices.values()) {
+        if (device.userId === userId) device.revokedAt ??= revokedAt
+      }
+      for (const trust of store.trusts.values()) {
+        if (trust.userId === userId) trust.revokedAt ??= revokedAt
+      }
+      for (const transfer of store.secretTransfers.values()) {
+        if (transfer.userId === userId) transfer.revokedAt ??= revokedAt
+      }
+      for (const session of store.remoteSessions.values()) {
+        if (session.userId !== userId || session.closedAt) continue
+        session.status = "closed"
+        session.closedAt = revokedAt
+      }
     },
     async deleteAccount(userId, deletedAt) {
       const user = store.users.get(userId)
