@@ -74,6 +74,31 @@ export function createPostgresRepository(db: Db): BackendRepository {
         .set({ passwordHash })
         .where(and(eq(schema.authIdentities.userId, userId), eq(schema.authIdentities.provider, "password")))
     },
+    async revokePreVerificationAccess(userId, revokedAt) {
+      await db.transaction(async (tx) => {
+        await tx.update(schema.authIdentities)
+          .set({ passwordHash: null })
+          .where(and(eq(schema.authIdentities.userId, userId), eq(schema.authIdentities.provider, "password")))
+        await tx.update(schema.refreshTokens)
+          .set({ revokedAt })
+          .where(and(eq(schema.refreshTokens.userId, userId), isNull(schema.refreshTokens.revokedAt)))
+        await tx.update(schema.authTokens)
+          .set({ consumedAt: revokedAt })
+          .where(and(eq(schema.authTokens.userId, userId), isNull(schema.authTokens.consumedAt)))
+        await tx.update(schema.devices)
+          .set({ revokedAt })
+          .where(and(eq(schema.devices.userId, userId), isNull(schema.devices.revokedAt)))
+        await tx.update(schema.deviceTrusts)
+          .set({ revokedAt })
+          .where(and(eq(schema.deviceTrusts.userId, userId), isNull(schema.deviceTrusts.revokedAt)))
+        await tx.update(schema.secretTransfers)
+          .set({ revokedAt })
+          .where(and(eq(schema.secretTransfers.userId, userId), isNull(schema.secretTransfers.revokedAt)))
+        await tx.update(schema.remoteSessions)
+          .set({ status: "closed", closedAt: revokedAt })
+          .where(and(eq(schema.remoteSessions.userId, userId), isNull(schema.remoteSessions.closedAt)))
+      })
+    },
     async deleteAccount(userId, deletedAt) {
       await db.transaction(async (tx) => {
         await tx.update(schema.users)

@@ -55,10 +55,10 @@ export function rateLimit(limit: number, windowMs: number, keyPrefix: string) {
   }
 }
 
+// Only CF-Connecting-IP is trusted: Cloudflare overwrites it on every request, and the origin only
+// accepts connections from Cloudflare (deploy/apache/api.aurict.com.conf). X-Real-IP and
+// X-Forwarded-For pass through Cloudflare unchanged, so a client could pick a fresh bucket per request.
 function clientIp(c: Context<AppBindings>): string {
   if (!c.get("env").TRUST_PROXY_HEADERS) return "local"
-  return c.req.header("cf-connecting-ip")
-    ?? c.req.header("x-real-ip")
-    ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim()
-    ?? "local"
+  return c.req.header("cf-connecting-ip") ?? "local"
 }

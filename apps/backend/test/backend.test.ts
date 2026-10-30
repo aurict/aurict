@@ -4,6 +4,7 @@ import type { BackendDb } from "../src/db/client"
 import { loadEnv } from "../src/env"
 import { createMemoryStore } from "../src/store/memory"
 import { createMemoryRepository } from "../src/store/repository"
+import { createMemoryRateLimiter } from "../src/middleware/rate-limit"
 
 const env = loadEnv({
   NODE_ENV: "test",
@@ -285,6 +286,59 @@ describe("backend auth", () => {
       identity.provider === "firebase" && identity.providerSubject === "firebase-user-3".repeat(8),
     )).toBe(true)
     expect([...store.users.values()][0]?.emailVerifiedAt).toBeInstanceOf(Date)
+  })
+
+  test("firebase link to an unverified password account revokes the pre-existing credentials", async () => {
+    const store = createMemoryStore()
+    const app = createApp({ env: firebaseEnv, store })
+    const squatter = await register(app)
+    const device = await addDevice(app, squatter.accessToken, "cli", "squatter")
+
+    const linked = await app.request("/auth/firebase", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        idToken: firebaseToken({ uid: "firebase-owner".repeat(8), email: "user@example.com", emailVerified: true }),
+      }),
+    })
+    expect(linked.status).toBe(200)
+
+    const passwordLogin = await app.request("/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com", password: "correct horse battery" }),
+    })
+    expect(passwordLogin.status).toBe(401)
+    const refreshed = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refreshToken: squatter.refreshToken }),
+    })
+    expect(refreshed.status).toBe(401)
+    expect(store.devices.get(device.id)?.revokedAt).toBeInstanceOf(Date)
+  })
+
+  test("firebase link keeps the password of an already verified account", async () => {
+    const store = createMemoryStore()
+    const app = createApp({ env: firebaseEnv, store })
+    await register(app)
+    const user = [...store.users.values()][0]!
+    user.emailVerifiedAt = new Date()
+
+    const linked = await app.request("/auth/firebase", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        idToken: firebaseToken({ uid: "firebase-owner2".repeat(8), email: "user@example.com", emailVerified: true }),
+      }),
+    })
+    expect(linked.status).toBe(200)
+    const passwordLogin = await app.request("/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com", password: "correct horse battery" }),
+    })
+    expect(passwordLogin.status).toBe(200)
   })
 
   test("browser based CLI device login approves via authenticated web session", async () => {
@@ -1116,11 +1170,11 @@ describe("ed25519 access tokens", () => {
     expect(claims?.typ).toBe("access")
   })
 
-  test("still accepts HS256 tokens issued before the switch", async () => {
+  test("rejects HS256 tokens once an Ed25519 keypair is configured", async () => {
     const { signAccessToken, verifyAccessToken } = await import("../src/crypto/tokens")
     const legacyToken = await signAccessToken("user_legacy", env)
-    const claims = await verifyAccessToken(legacyToken, keyedEnv)
-    expect(claims?.sub).toBe("user_legacy")
+    expect(await verifyAccessToken(legacyToken, keyedEnv)).toBeNull()
+    expect((await verifyAccessToken(legacyToken, env))?.sub).toBe("user_legacy")
   })
 
   test("rejects tampered EdDSA tokens and unknown algorithms", async () => {
@@ -1165,5 +1219,99 @@ describe("ed25519 access tokens", () => {
       headers: { authorization: `Bearer ${auth.accessToken}` },
     })
     expect(res.status).toBe(200)
+  })
+})
+
+describe("security hardening", () => {
+  const prodEnv = loadEnv({
+    NODE_ENV: "production",
+    JWT_SECRET: "prod-secret-prod-secret-prod-secret-prod-secret",
+    DATABASE_URL: "postgres://aurict:aurict@example.com:5432/aurict",
+    CORS_ORIGINS: "https://app.aurict.com",
+    TRUST_PROXY_HEADERS: "true",
+  })
+
+  function prodApp() {
+    const store = createMemoryStore()
+    const db = { async ping() {}, async close() {} } as BackendDb
+    return { app: createApp({ env: prodEnv, store, db, repo: createMemoryRepository(store), rateLimiter: createMemoryRateLimiter() }), store }
+  }
+
+  test("env defaults to production so a missing NODE_ENV never enables dev shortcuts", () => {
+    expect(() => loadEnv({})).toThrow("JWT_SECRET")
+  })
+
+  test("rate limiting keys only on cf-connecting-ip, ignoring spoofable forwarding headers", async () => {
+    const { app } = prodApp()
+    for (let i = 0; i < 10; i++) {
+      const res = await app.request("/auth/register", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": "198.51.100.1",
+          "x-real-ip": `203.0.113.${i}`,
+          "x-forwarded-for": `192.0.2.${i}`,
+        },
+        body: JSON.stringify({ email: `spoof-${i}@example.com`, password: "correct horse battery" }),
+      })
+      expect(res.status).toBe(201)
+    }
+    const limited = await app.request("/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json", "cf-connecting-ip": "198.51.100.1", "x-real-ip": "203.0.113.99" },
+      body: JSON.stringify({ email: "spoof-limited@example.com", password: "correct horse battery" }),
+    })
+    expect(limited.status).toBe(429)
+    const otherClient = await app.request("/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json", "cf-connecting-ip": "198.51.100.2" },
+      body: JSON.stringify({ email: "other-client@example.com", password: "correct horse battery" }),
+    })
+    expect(otherClient.status).toBe(201)
+  })
+
+  test("password reset request does not reveal whether an account exists", async () => {
+    const { app } = prodApp()
+    await register(app)
+    const request = (email: string) => app.request("/auth/password-reset/request", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    })
+    const existing = await request("user@example.com")
+    const missing = await request("nobody@example.com")
+    expect(existing.status).toBe(200)
+    expect(await json(existing)).toEqual(await json(missing))
+  })
+
+  test("request ids from clients are only echoed when well-formed", async () => {
+    const { app } = testApp()
+    const bad = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-request-id": "<script>alert(1)</script> " + "x".repeat(200) },
+      body: JSON.stringify({ refreshToken: "x".repeat(40) }),
+    })
+    expect((await json(bad)).error.requestId).toStartWith("req_")
+    const good = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-request-id": "trace-123.abc" },
+      body: JSON.stringify({ refreshToken: "x".repeat(40) }),
+    })
+    expect((await json(good)).error.requestId).toBe("trace-123.abc")
+  })
+
+  test("legal statute identifiers are validated before any upstream fetch", async () => {
+    const { app } = testApp()
+    const auth = await register(app)
+    const res = await app.request("/legal/statute/TR/..%2F..%2Fetc", {
+      headers: { authorization: `Bearer ${auth.accessToken}` },
+    })
+    expect(res.status).toBe(400)
+    expect((await json(res)).error.code).toBe("invalid_identifier")
+  })
+
+  test("legal search escapes LIKE wildcards", async () => {
+    const { escapeLikePattern } = await import("../src/legal/routes")
+    expect(escapeLikePattern("50%_off\\")).toBe("50\\%\\_off\\\\")
   })
 })

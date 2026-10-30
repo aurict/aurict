@@ -73,8 +73,9 @@ export async function verifyAccessToken(token: string, env: BackendEnv): Promise
       encoder.encode(`${parts[0]}.${parts[1]}`),
     )
     if (!valid) return null
-  } else if (alg === "HS256") {
-    // Transitional: accept HS256 tokens issued before the Ed25519 switch until their TTL runs out.
+  } else if (alg === "HS256" && !env.JWT_PUBLIC_KEY) {
+    // HS256 is only for deployments without an Ed25519 keypair; once one is configured,
+    // JWT_SECRET must stop being a valid signing key.
     const expected = await hmac(`${parts[0]}.${parts[1]}`, env.JWT_SECRET)
     if (!timingSafeEqual(expected, parts[2])) return null
   } else {

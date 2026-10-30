@@ -9,7 +9,9 @@ const booleanString = z.preprocess((value) => {
 const optionalString = (schema: z.ZodString) => z.preprocess((value) => value === "" ? undefined : value, schema.optional())
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  // Fails safe: an unset NODE_ENV means production, so dev-only shortcuts (test Firebase tokens,
+  // action tokens echoed in responses, skipped device signature checks) need an explicit opt-in.
+  NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
   PORT: z.coerce.number().int().positive().default(8787),
   DATABASE_URL: z.string().url().optional(),
   DATABASE_MAX_CONNECTIONS: z.coerce.number().int().positive().max(50).default(10),

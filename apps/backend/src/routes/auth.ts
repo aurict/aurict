@@ -93,6 +93,9 @@ export const authRoutes = new Hono<AppBindings>()
         throw new ApiError(409, "Verified email is required to link this provider.", "verified_email_required")
       }
       if (!user.emailVerifiedAt) {
+        // Nobody had proven ownership of this email until now, so whatever access exists may
+        // belong to someone who registered it first; the verified provider wins.
+        await repo.revokePreVerificationAccess(user.id, now())
         user.emailVerifiedAt = now()
         await repo.updateUser(user)
       }
@@ -347,7 +350,9 @@ export const authRoutes = new Hono<AppBindings>()
       metadataJson: "{}",
       createdAt: now(),
     })
-    return c.json(includeActionToken(c, { ok: true, expiresAt: issued.expiresAt.toISOString() }, issued.plaintext))
+    // Same body as the unknown-email branch above so the response doesn't reveal which emails
+    // are registered; outside production the token is still echoed for local testing.
+    return c.json(includeActionToken(c, { ok: true }, issued.plaintext))
   })
   .post("/auth/password-reset/confirm", rateLimit(20, 60_000, "password-reset-confirm"), async (c) => {
     const body = passwordResetConfirmSchema.parse(await c.req.json())

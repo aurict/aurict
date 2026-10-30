@@ -112,7 +112,7 @@ function parseTestFirebaseToken(idToken: string): VerifiedFirebaseToken {
 async function getFirebaseCerts() {
   const timestamp = Date.now()
   if (cachedCerts && cachedCerts.expiresAt > timestamp) return cachedCerts.certs
-  const response = await fetch(GOOGLE_CERTS_URL, { headers: { accept: "application/json" } })
+  const response = await fetch(GOOGLE_CERTS_URL, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) })
   if (!response.ok) throw new ApiError(503, "Firebase token keys are unavailable.", "firebase_keys_unavailable")
   const data = await response.json() as { keys?: FirebaseJwk[] }
   const certs: Record<string, FirebaseJwk> = {}

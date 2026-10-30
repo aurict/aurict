@@ -11,7 +11,8 @@ export class ApiError extends Error {
 }
 
 export async function requestContext(c: Context<AppBindings>, next: Next) {
-  c.set("requestId", c.req.header("x-request-id") ?? newId("req"))
+  const requestId = c.req.header("x-request-id")
+  c.set("requestId", requestId && /^[A-Za-z0-9._-]{1,128}$/.test(requestId) ? requestId : newId("req"))
   await next()
 }
 

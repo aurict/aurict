@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { and, eq, ilike, or } from "drizzle-orm"
 import { requireAuth } from "../middleware/auth"
 import { ApiError } from "../middleware/errors"
+import { rateLimit } from "../middleware/rate-limit"
 import type { AppBindings } from "../types"
 import { getOrFetchStatute } from "./statute-cache"
 import { genericAdapter } from "./jurisdictions/generic"
@@ -15,11 +16,27 @@ function adapterForJurisdiction(jurisdiction: string): JurisdictionAdapter {
   return KNOWN_ADAPTERS[jurisdiction] ?? { ...genericAdapter, jurisdiction }
 }
 
+// Statute identifiers end up in an upstream URL path (e.g. mevzuat.gov.tr/MevzuatMetin/1.5.<id>.pdf),
+// so only plain law numbers/codes are accepted.
+const IDENTIFIER_PATTERN = /^[A-Za-z0-9.-]{1,32}$/
+const JURISDICTION_PATTERN = /^[A-Z]{2,8}$/
+
+// ILIKE treats % and _ as wildcards and \ as the escape character.
+export function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&")
+}
+
 export const legalRoutes = new Hono<AppBindings>()
   .use("/legal/*", requireAuth)
+  .use("/legal/statute/*", rateLimit(30, 60_000, "legal-statute"))
+  .use("/legal/unit/*", rateLimit(120, 60_000, "legal-unit"))
+  .use("/legal/search", rateLimit(60, 60_000, "legal-search"))
   .get("/legal/statute/:jurisdiction/:identifier", async (c) => {
     const jurisdiction = c.req.param("jurisdiction")
     const identifier = c.req.param("identifier")
+    if (!JURISDICTION_PATTERN.test(jurisdiction) || !IDENTIFIER_PATTERN.test(identifier)) {
+      throw new ApiError(400, "Invalid jurisdiction or statute identifier.", "invalid_identifier")
+    }
     const db = c.get("db")
     if (!db) throw new ApiError(503, "Database is not configured.", "unavailable")
 
@@ -52,10 +69,11 @@ export const legalRoutes = new Hono<AppBindings>()
     const q = c.req.query("q")?.trim()
     const jurisdiction = c.req.query("jurisdiction")
     if (!q) throw new ApiError(400, "Query parameter 'q' is required.", "missing_query")
+    if (q.length > 200) throw new ApiError(400, "Query parameter 'q' is too long.", "query_too_long")
     const db = c.get("db")
     if (!db) throw new ApiError(503, "Database is not configured.", "unavailable")
 
-    const pattern = `%${q}%`
+    const pattern = `%${escapeLikePattern(q)}%`
     const textMatch = or(ilike(legalUnits.bodyText, pattern), ilike(legalUnits.heading, pattern))
     const where = jurisdiction
       ? and(textMatch, eq(legalDocuments.jurisdiction, jurisdiction))
