@@ -33,11 +33,12 @@ const STRINGS = {
           "Görünen ad: çalışma grupları ve hikâyelerde göstermek için seçtiğiniz ad.",
           "Kullanıcı içeriği: çalışma hikâyeleri, tepkiler ve çalışma grubu üyeliği.",
           "Satın alma geçmişi: App Store veya Google Play üzerinden yapılan satın almaların kayıtları. Kart ve ödeme bilgileriniz Apple veya Google tarafından işlenir, bize ulaşmaz.",
+          "Yaklaşık konum: Google ile Giriş, güvenlik ve dolandırıcılığı önleme amacıyla IP adresinden genel konum tahmin edebilir. İsteğe bağlı Firebase Analytics açıksa, maskelenmiş IP adresinden ülke, bölge veya şehir gibi yaklaşık konum bilgileri türetilebilir. GPS veya cihazın konum servisleri kullanılmaz.",
         ],
       },
       {
         title: "Toplamadığımız bilgiler",
-        body: "Konum, rehber, fotoğraf/video, mikrofon, dosyalar, takvim, sağlık verisi, mesajlar ve telefon numarası toplamıyoruz. Duki çalışma selfiesi karakter görsellerinden oluşturulur; kamera kullanılmaz. Uygulamada reklam yoktur.",
+        body: "GPS veya cihazın konum servislerinden hassas konum, rehber, fotoğraf/video, mikrofon, dosyalar, takvim, sağlık verisi, mesajlar ve telefon numarası toplamıyoruz. Hizmet sağlayıcıların IP adresinden türetebileceği yaklaşık konum yukarıda açıklanmıştır. Duki çalışma selfiesi karakter görsellerinden oluşturulur; kamera kullanılmaz. Uygulamada reklam yoktur.",
       },
       {
         title: "Bilgileri nasıl kullanırız",
@@ -47,7 +48,7 @@ const STRINGS = {
           "Satın almaları doğrulamak ve hakları tanımlamak",
           "İzin verdiyseniz çalışma hatırlatıcıları göndermek",
           "Kötüye kullanımı ve dolandırıcılığı önlemek, hizmeti güvende tutmak",
-          "İzin verdiyseniz uygulamayı iyileştirmek için anonim kullanım istatistikleri çıkarmak",
+          "İzin verdiyseniz uygulamayı iyileştirmek için toplu kullanım istatistikleri çıkarmak",
         ],
       },
       {
@@ -80,7 +81,7 @@ const STRINGS = {
       },
     ] as Section[],
     deleteLink: "Duckley hesabını web üzerinden sil",
-    lastUpdated: "Yürürlük ve son güncelleme: 21 Ekim 2026",
+    lastUpdated: "Yürürlük ve son güncelleme: 11 Kasım 2026",
     backButton: "Geri",
   },
   en: {
@@ -102,11 +103,12 @@ const STRINGS = {
           "Display name: the name you choose to show in study circles and stories.",
           "User content: study stories, reactions and study circle membership.",
           "Purchase history: records of purchases made through the App Store or Google Play. Your card and payment details are handled by Apple or Google and never reach us.",
+          "Approximate location: Google Sign-In may estimate a device's general location from its IP address for security and fraud prevention. When optional Firebase Analytics is enabled, approximate location such as country, region or city may be derived from a masked IP address. GPS and device location services are not used.",
         ],
       },
       {
         title: "Information we do not collect",
-        body: "We do not collect location, contacts, photos/videos, microphone audio, files, calendar, health data, messages or phone numbers. Duki's study selfie is built from character art; the camera is not used. The app contains no ads.",
+        body: "We do not collect precise location from GPS or device location services, contacts, photos/videos, microphone audio, files, calendar, health data, messages or phone numbers. Approximate location that service providers may derive from IP addresses is described above. Duki's study selfie is built from character art; the camera is not used. The app contains no ads.",
       },
       {
         title: "How we use information",
@@ -116,7 +118,7 @@ const STRINGS = {
           "To verify purchases and grant entitlements",
           "To send study reminders, if you allow them",
           "To prevent abuse and fraud and keep the service secure",
-          "To produce anonymous usage statistics that improve the app, if you opt in",
+          "To produce aggregate usage statistics that improve the app, if you opt in",
         ],
       },
       {
@@ -149,7 +151,7 @@ const STRINGS = {
       },
     ] as Section[],
     deleteLink: "Delete your Duckley account on the web",
-    lastUpdated: "Effective and last updated: 21 October 2026",
+    lastUpdated: "Effective and last updated: 11 November 2026",
     backButton: "Back",
   },
 } as const;
