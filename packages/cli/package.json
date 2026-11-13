@@ -46,7 +46,7 @@
     "ink": "^8.0.0",
     "ink-testing-library": "^4.0.0",
     "react": "^19.3.0",
-    "react-devtools-core": "^6.1.2",
+    "react-devtools-core": "^8.0.0",
     "string-width": "^8.3.0",
     "typescript": "^5.8.0",
     "werift": "^0.23.0",
