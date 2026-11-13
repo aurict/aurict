@@ -9,16 +9,16 @@
     "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
-    "next": "16.4.3",
-    "react": "19.2.9",
-    "react-dom": "19.2.9"
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "typescript": "^5",
-    "@next/eslint-plugin-next": "16.4.3",
-    "eslint": "10.8.0",
+    "@next/eslint-plugin-next": "16.4.6",
+    "eslint": "10.14.0",
     "eslint-plugin-react-hooks": "7.1.1",
-    "typescript-eslint": "8.65.0",
+    "typescript-eslint": "8.72.2",
     "@types/node": "22.19.17",
     "@types/react": "^19",
     "@types/react-dom": "^19"
