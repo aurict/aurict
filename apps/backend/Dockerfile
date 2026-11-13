@@ -1,14 +1,13 @@
 # syntax=docker/dockerfile:1.7
 # Build from the repository root:  docker build -f apps/backend/Dockerfile .
-# Base images are pinned by digest; Dependabot updates them.
-ARG BUN_IMAGE=oven/bun:1.3.14-slim@sha256:d56a2534ffd262e92c12fd3249d3924d296d97086da773f821d7d0477435ea04
+# Base images are pinned by digest; plain FROM lines let Dependabot update them.
 
-FROM ${BUN_IMAGE} AS deps
+FROM oven/bun:1.3.14-slim@sha256:d56a2534ffd262e92c12fd3249d3924d296d97086da773f821d7d0477435ea04 AS deps
 WORKDIR /app
 COPY apps/backend/package.json apps/backend/bun.lock ./
 RUN bun install --production --frozen-lockfile
 
-FROM ${BUN_IMAGE} AS runtime
+FROM oven/bun:1.3.14-slim@sha256:d56a2534ffd262e92c12fd3249d3924d296d97086da773f821d7d0477435ea04 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
