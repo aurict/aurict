@@ -24,6 +24,10 @@ export function errorResponse(c: Context<AppBindings>, error: unknown) {
   if (error instanceof HTTPException) {
     return c.json({ ok: false, error: { code: "http_error", message: error.message, requestId } }, error.status as never)
   }
+  // c.req.json() throws a SyntaxError for malformed bodies; that is the client's mistake.
+  if (error instanceof SyntaxError) {
+    return c.json({ ok: false, error: { code: "invalid_json", message: "Request body is not valid JSON.", requestId } }, 400)
+  }
   if (error instanceof ZodError) {
     return c.json({
       ok: false,

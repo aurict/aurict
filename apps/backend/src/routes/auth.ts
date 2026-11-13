@@ -7,7 +7,7 @@ import { hashPassword, verifyPassword } from "../crypto/password"
 import { createRefreshToken, refreshTokenHash, signAccessToken } from "../crypto/tokens"
 import { requireAuth } from "../middleware/auth"
 import { ApiError } from "../middleware/errors"
-import { enforceRateLimit, rateLimit } from "../middleware/rate-limit"
+import { clientCountry, clientNetwork, enforceRateLimit, rateLimit } from "../middleware/rate-limit"
 import { normalizeEmail } from "../store/policy"
 import type { AuditLog, RefreshTokenRecord, User } from "../store/types"
 import type { AppBindings } from "../types"
@@ -159,6 +159,7 @@ export const authRoutes = new Hono<AppBindings>()
       clientName: body.clientName,
       platform: "cli",
       expiresAt,
+      ...optionalOrigin(clientNetwork(c), clientCountry(c)),
       createdAt,
     })
     const verificationUri = c.get("env").DEVICE_LOGIN_VERIFICATION_URI
@@ -201,6 +202,28 @@ export const authRoutes = new Hono<AppBindings>()
       createdAt: now(),
     })
     return c.json({ ...(await authPayload(c, result.flow.approvedUserId)), status: "approved" })
+  })
+  // Shown before the approve button: what started this login and from where. The client name
+  // is chosen by whoever started the flow, so the network is the part a user can trust.
+  .post("/auth/device/lookup", requireAuth, rateLimit(30, 60_000, "device-login-lookup", { by: "user" }), async (c) => {
+    const body = deviceLoginUserCodeSchema.parse(await c.req.json())
+    const flow = await c.get("repo").getDeviceLoginFlowByUserCodeHash(await refreshTokenHash(normalizeUserCode(body.userCode)))
+    if (!flow || flow.expiresAt <= now() || flow.deniedAt || flow.consumedAt || flow.approvedAt) {
+      throw new ApiError(404, "Device login code not found or no longer pending.", "invalid_user_code")
+    }
+    const approverNetwork = clientNetwork(c)
+    return c.json({
+      ok: true,
+      request: {
+        clientName: flow.clientName,
+        platform: flow.platform,
+        createdAt: flow.createdAt.toISOString(),
+        expiresAt: flow.expiresAt.toISOString(),
+        network: flow.requesterNetwork,
+        country: flow.requesterCountry,
+        sameNetworkAsYou: !!flow.requesterNetwork && flow.requesterNetwork === approverNetwork,
+      },
+    })
   })
   .post("/auth/device/approve", requireAuth, rateLimit(30, 60_000, "device-login-approve"), async (c) => {
     const body = deviceLoginUserCodeSchema.parse(await c.req.json())
@@ -519,6 +542,10 @@ let dummyHash: Promise<string> | undefined
 function dummyPasswordHash() {
   dummyHash ??= hashPassword(crypto.randomUUID())
   return dummyHash
+}
+
+function optionalOrigin(network: string | undefined, country: string | undefined) {
+  return { ...(network ? { requesterNetwork: network } : {}), ...(country ? { requesterCountry: country } : {}) }
 }
 
 async function invalidateAccessTokens(c: Context<AppBindings>, userId: string, at: Date) {

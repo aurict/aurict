@@ -546,6 +546,8 @@ function toDeviceLoginFlow(row: typeof schema.deviceLoginFlows.$inferSelect): De
   if (row.deniedAt) flow.deniedAt = row.deniedAt
   if (row.consumedAt) flow.consumedAt = row.consumedAt
   if (row.lastPolledAt) flow.lastPolledAt = row.lastPolledAt
+  if (row.requesterNetwork) flow.requesterNetwork = row.requesterNetwork
+  if (row.requesterCountry) flow.requesterCountry = row.requesterCountry
   return flow
 }
 
@@ -562,6 +564,8 @@ function toDeviceLoginFlowInsert(record: DeviceLoginFlow): typeof schema.deviceL
     deniedAt: record.deniedAt ?? null,
     consumedAt: record.consumedAt ?? null,
     lastPolledAt: record.lastPolledAt ?? null,
+    requesterNetwork: record.requesterNetwork ?? null,
+    requesterCountry: record.requesterCountry ?? null,
     createdAt: record.createdAt,
   }
 }
