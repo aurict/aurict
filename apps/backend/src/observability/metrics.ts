@@ -56,7 +56,9 @@ export async function observeRequest(c: Context<AppBindings>, next: Next) {
   await next()
   const latencyMs = Math.round((performance.now() - started) * 100) / 100
   const path = sanitizedPath(c.req.url)
-  const route = `${c.req.method} ${path}`
+  // Label by the registered route pattern, never the raw path: random URLs would otherwise
+  // each create a new series and grow memory without bound.
+  const route = `${c.req.method} ${routePattern(c)}`
   c.get("metrics").recordRequest(route, c.res.status, latencyMs)
   if (c.get("env").REQUEST_LOGS) {
     console.log(JSON.stringify({
@@ -69,4 +71,9 @@ export async function observeRequest(c: Context<AppBindings>, next: Next) {
       latencyMs,
     }))
   }
+}
+
+function routePattern(c: Context<AppBindings>): string {
+  const handler = [...c.req.matchedRoutes].reverse().find((route) => route.method !== "ALL" && route.path !== "*" && route.path !== "/*")
+  return handler?.path ?? "unmatched"
 }

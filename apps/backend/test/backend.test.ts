@@ -1559,6 +1559,64 @@ describe("client address for rate limits", () => {
   })
 })
 
+describe("request hygiene", () => {
+  test("metrics label by route pattern, so random paths do not add series", async () => {
+    const { createMemoryMetrics } = await import("../src/observability/metrics")
+    const metrics = createMemoryMetrics()
+    const app = createApp({ env, store: createMemoryStore(), metrics })
+    for (let i = 0; i < 50; i++) await app.request(`/random-${crypto.randomUUID()}`)
+    const auth = await register(app)
+    await app.request("/auth/me", { headers: { authorization: `Bearer ${auth.accessToken}` } })
+    const routes = Object.keys(metrics.snapshot().responsesByRoute)
+    expect(routes).toContain("GET unmatched")
+    expect(routes).toContain("GET /auth/me")
+    expect(routes.length).toBeLessThan(6)
+  })
+
+  test("malformed JSON is a 400, not a 500", async () => {
+    const { app } = testApp()
+    const res = await app.request("/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: "{not json" })
+    expect(res.status).toBe(400)
+    expect((await json(res)).error.code).toBe("invalid_json")
+  })
+
+  test("bodies without content-length are limited while streaming", async () => {
+    const small = loadEnv({ NODE_ENV: "test", JWT_SECRET: "test-secret-test-secret-test-secret-test-secret", REQUEST_BODY_LIMIT_BYTES: "1024" })
+    const app = createApp({ env: small, store: createMemoryStore() })
+    const chunk = new TextEncoder().encode("x".repeat(512))
+    const body = new ReadableStream({ start(controller) { for (let i = 0; i < 8; i++) controller.enqueue(chunk); controller.close() } })
+    const res = await app.request("/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body, duplex: "half" } as RequestInit)
+    expect(res.status).toBe(413)
+  })
+})
+
+describe("device login approval details", () => {
+  test("lookup shows where the login started and whether it matches the approver's network", async () => {
+    const proxied = loadEnv({ NODE_ENV: "test", JWT_SECRET: "test-secret-test-secret-test-secret-test-secret", TRUST_PROXY_HEADERS: "true" })
+    const app = createApp({ env: proxied, store: createMemoryStore() })
+    const auth = await register(app)
+    const start = async (ip: string) => json(await app.request("/auth/device/start", {
+      method: "POST",
+      headers: { "content-type": "application/json", "cf-connecting-ip": ip, "cf-ipcountry": "TR" },
+      body: JSON.stringify({ clientName: "Aurict CLI (linux)" }),
+    }))
+    const lookup = async (userCode: string, ip: string) => app.request("/auth/device/lookup", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}`, "cf-connecting-ip": ip },
+      body: JSON.stringify({ userCode }),
+    })
+    const mine = await start("198.51.100.20")
+    const same = await json(await lookup(mine.userCode, "198.51.100.77"))
+    expect(same.request).toMatchObject({ clientName: "Aurict CLI (linux)", network: "198.51.100.0/24", country: "TR", sameNetworkAsYou: true })
+
+    const foreign = await start("203.0.113.5")
+    const other = await json(await lookup(foreign.userCode, "198.51.100.77"))
+    expect(other.request.sameNetworkAsYou).toBe(false)
+
+    expect((await lookup("ZZZZ-ZZZZ", "198.51.100.77")).status).toBe(404)
+  })
+})
+
 describe("ed25519 access tokens", () => {
   const { generateKeyPairSync } = require("node:crypto") as typeof import("node:crypto")
   const pair = generateKeyPairSync("ed25519")

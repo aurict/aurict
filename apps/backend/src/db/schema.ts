@@ -80,6 +80,10 @@ export const deviceLoginFlows = pgTable("device_login_flows", {
   deniedAt: timestamp("denied_at"),
   consumedAt: timestamp("consumed_at"),
   lastPolledAt: timestamp("last_polled_at"),
+  // Coarse origin of the request (IPv4 /24 or IPv6 /64, and the Cloudflare country), shown on
+  // the approval page so the user can tell whether the login started on their own machine.
+  requesterNetwork: text("requester_network"),
+  requesterCountry: text("requester_country"),
   createdAt: timestamp("created_at").notNull(),
 }, (table) => ({
   deviceCodeHashIdx: uniqueIndex("device_login_device_code_hash_idx").on(table.deviceCodeHash),

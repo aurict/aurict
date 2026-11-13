@@ -103,6 +103,22 @@ function socketAddress(c: Context<AppBindings>): string | undefined {
   }
 }
 
+/** IPv4 /24 or IPv6 /64 of the client: enough to recognise a network, not a household. */
+export function clientNetwork(c: Context<AppBindings>): string | undefined {
+  const ip = clientIp(c)
+  if (ip === "local") return undefined
+  if (ip.includes("/64")) return ip
+  const octets = ip.split(".")
+  return octets.length === 4 ? `${octets.slice(0, 3).join(".")}.0/24` : undefined
+}
+
+/** ISO country from Cloudflare, only when Cloudflare headers are trusted. */
+export function clientCountry(c: Context<AppBindings>): string | undefined {
+  if (!c.get("env").TRUST_PROXY_HEADERS) return undefined
+  const country = c.req.header("cf-ipcountry")
+  return country && /^[A-Z]{2}$/.test(country) ? country : undefined
+}
+
 export function normalizeIp(ip: string): string {
   const value = ip.trim().toLowerCase()
   const mapped = value.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)

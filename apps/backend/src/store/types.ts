@@ -43,6 +43,8 @@ export type DeviceLoginFlow = {
   deniedAt?: Date
   consumedAt?: Date
   lastPolledAt?: Date
+  requesterNetwork?: string
+  requesterCountry?: string
   createdAt: Date
 }
 
