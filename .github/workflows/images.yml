@@ -1,8 +1,9 @@
 name: Images
 
-# Builds the five service images. Pull requests only build them (no registry access);
-# pushes to main publish them to GHCR with SLSA provenance and an SBOM, and attest each
-# digest so the server can verify an image was built here, from main, by this workflow.
+# Builds the five service images for linux/amd64 and linux/arm64 on native runners. Pull requests
+# only build them (no registry access). Pushes to main publish each architecture by digest, join
+# them into one multi-arch tag, and attest that digest, so the server can verify an image was built
+# here, from main, by this workflow before running it.
 on:
   push:
     branches: [main]
@@ -17,22 +18,28 @@ concurrency:
   group: images-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+
 jobs:
-  image:
-    name: Image (${{ matrix.service }})
-    runs-on: ubuntu-latest
+  build:
+    name: Build (${{ matrix.service }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         service: [backend, web, mobile-web, decision-web, quaera-web]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
-      id-token: write
-      attestations: write
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/aurict-${{ matrix.service }}
-      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -48,26 +55,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
-        with:
-          images: ${{ env.IMAGE }}
-          tags: |
-            type=sha,format=long
-            type=raw,value=main,enable=${{ env.PUBLISH == 'true' }}
-
       - id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: apps/${{ matrix.service }}/Dockerfile
-          push: ${{ env.PUBLISH == 'true' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/${{ matrix.arch }}
+          # Each architecture is pushed by digest only; the merge job tags the combined manifest.
+          outputs: ${{ env.PUBLISH == 'true' && format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE) || 'type=cacheonly' }}
           provenance: ${{ env.PUBLISH == 'true' && 'mode=max' || 'false' }}
           sbom: ${{ env.PUBLISH == 'true' }}
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          cache-from: type=gha,scope=${{ matrix.service }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ matrix.arch }}
           # Public values compiled into the web bundle; set them as repository variables.
           build-args: |
             NEXT_PUBLIC_FIREBASE_API_KEY=${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
@@ -75,16 +74,70 @@ jobs:
             NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
             NEXT_PUBLIC_FIREBASE_APP_ID=${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
 
-      - name: Attest provenance
-        if: env.PUBLISH == 'true'
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-        with:
-          subject-name: ${{ env.IMAGE }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
-
-      - name: Summary
+      - name: Save digest
         if: env.PUBLISH == 'true'
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: echo "${IMAGE}@${DIGEST}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: env.PUBLISH == 'true'
+        with:
+          name: digest-${{ matrix.service }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish (${{ matrix.service }})
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, web, mobile-web, decision-web, quaera-web]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/aurict-${{ matrix.service }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: digest-${{ matrix.service }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create the multi-arch tag
+        id: manifest
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          sources=$(printf "${IMAGE}@sha256:%s " *)
+          # shellcheck disable=SC2086
+          docker buildx imagetools create -t "${IMAGE}:sha-${SHA}" -t "${IMAGE}:main" $sources
+          digest=$(docker buildx imagetools inspect "${IMAGE}:sha-${SHA}" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "${IMAGE}@${digest}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attest provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true
