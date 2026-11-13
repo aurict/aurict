@@ -10,10 +10,11 @@ const workspaceRoot = resolve(appRoot, "../..")
 // Content Security Policy. Next.js inlines its bootstrap scripts in statically rendered
 // pages, which cannot carry a per-request nonce, so script-src keeps 'unsafe-inline'; every
 // external source is still listed explicitly, and framing, plugins and <base> are blocked.
+// static.cloudflareinsights.com / cloudflareinsights.com: Cloudflare Web Analytics, injected by the edge.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.googletagmanager.com${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
-  "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
+  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.gstatic.com https://apis.google.com https://www.googletagmanager.com${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
+  "connect-src 'self' https://cloudflareinsights.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",
   "frame-src https://*.firebaseapp.com https://accounts.google.com https://apis.google.com",
   "img-src 'self' data: blob: https:",
   "style-src 'self' 'unsafe-inline'",

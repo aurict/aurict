@@ -16,9 +16,6 @@ ingress:
     service: http://decision-web:3000
   - hostname: quaera.aurict.com
     service: http://quaera-web:3000
-  # Separate zone: its DNS record is a CNAME to <TUNNEL_ID>.cfargotunnel.com, added by hand.
-  - hostname: microtarget.one
-    service: http://web:3000
   - hostname: api.aurict.com
     service: http://backend:8787
   - service: http_status:404

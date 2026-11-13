@@ -3,10 +3,11 @@ import type { NextConfig } from "next"
 // Content Security Policy. Next.js inlines its bootstrap scripts in statically rendered
 // pages, which cannot carry a per-request nonce, so script-src keeps 'unsafe-inline'; every
 // external source is still listed explicitly, and framing, plugins and <base> are blocked.
+// static.cloudflareinsights.com / cloudflareinsights.com: Cloudflare Web Analytics, injected by the edge.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://accounts.google.com${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
-  "connect-src 'self' https://accounts.google.com https://jelly.aurict.com https://dungeon.aurict.com https://duckley.aurict.com https://mind.fexiolabs.com",
+  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://accounts.google.com${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
+  "connect-src 'self' https://cloudflareinsights.com https://accounts.google.com https://jelly.aurict.com https://dungeon.aurict.com https://duckley.aurict.com https://mind.fexiolabs.com",
   "frame-src https://accounts.google.com",
   "img-src 'self' data: blob: https:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
