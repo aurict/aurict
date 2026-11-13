@@ -65,13 +65,21 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          for service in backend web mobile-web decision-web quaera-web; do
+          services=(backend web mobile-web decision-web quaera-web)
+          declare -A digests
+          # Verify every image first, then move all tags back to back, so the server never sees a
+          # release where some services are new and others are not yet verified.
+          for service in "${services[@]}"; do
             image="ghcr.io/${OWNER}/aurict-${service}"
             digest=$(docker buildx imagetools inspect "${image}:sha-${SHA}" --format '{{json .Manifest}}' | jq -r .digest)
             # The same check the server runs; failing here stops a bad tag from ever being set.
             gh attestation verify "oci://${image}@${digest}" --repo "$REPO" \
               --signer-workflow "${REPO}/.github/workflows/images.yml" --source-ref refs/heads/main \
               --deny-self-hosted-runners
-            docker buildx imagetools create -t "${image}:production" "${image}@${digest}"
-            echo "${service}: ${image}@${digest}" >> "$GITHUB_STEP_SUMMARY"
+            digests[$service]="$digest"
+          done
+          for service in "${services[@]}"; do
+            image="ghcr.io/${OWNER}/aurict-${service}"
+            docker buildx imagetools create -t "${image}:production" "${image}@${digests[$service]}"
+            echo "${service}: ${image}@${digests[$service]}" >> "$GITHUB_STEP_SUMMARY"
           done

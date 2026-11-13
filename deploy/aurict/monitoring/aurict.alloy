@@ -46,9 +46,15 @@ prometheus.relabel "aurict_containers" {
 }
 
 // Backend application metrics: the private metrics port (9464) on the edge network, never
-// routed by the tunnel. cloudflared's own metrics (2000) the same way.
+// routed by the tunnel. cloudflared's own metrics (2000) the same way. Docker discovery lists only
+// a container's first network by default; the backend's first is the internal data network,
+// which this host cannot reach, so list every network here.
+discovery.docker "aurict" {
+  host                = "unix:///var/run/docker.sock"
+  match_first_network = false
+}
 discovery.relabel "aurict_app" {
-  targets = discovery.docker.local.targets
+  targets = discovery.docker.aurict.targets
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
     regex         = "aurict"
