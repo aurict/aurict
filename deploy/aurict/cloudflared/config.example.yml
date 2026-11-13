@@ -1,0 +1,24 @@
+# Copy to config.yml next to the tunnel's credentials file (cloudflared tunnel create aurict).
+# Every public hostname of the stack is listed here; anything else gets a 404.
+tunnel: TUNNEL_ID
+credentials-file: /etc/cloudflared/TUNNEL_ID.json
+no-autoupdate: true
+originRequest:
+  connectTimeout: 10s
+ingress:
+  - hostname: aurict.com
+    service: http://web:3000
+  - hostname: www.aurict.com
+    service: http://web:3000
+  - hostname: mobile.aurict.com
+    service: http://mobile-web:3000
+  - hostname: decision.aurict.com
+    service: http://decision-web:3000
+  - hostname: quaera.aurict.com
+    service: http://quaera-web:3000
+  # Separate zone: its DNS record is a CNAME to <TUNNEL_ID>.cfargotunnel.com, added by hand.
+  - hostname: microtarget.one
+    service: http://web:3000
+  - hostname: api.aurict.com
+    service: http://backend:8787
+  - service: http_status:404

@@ -38,6 +38,9 @@ const envSchema = z.object({
   REQUEST_BODY_LIMIT_BYTES: z.coerce.number().int().positive().max(10_000_000).default(1_000_000),
   REQUEST_LOGS: booleanString.default(false),
   METRICS_TOKEN: optionalString(z.string().min(24)),
+  // Serves Prometheus metrics on this port, separately from the API port, so the public
+  // entry point (tunnel or proxy) never routes to it. Unset: no metrics listener.
+  METRICS_PORT: z.preprocess((value) => value === "" ? undefined : value, z.coerce.number().int().positive().max(65535).optional()),
   ACTIVE_USERS_ADMIN_TOKEN: optionalString(z.string().min(32)),
   ACTIVE_USERS_WINDOW_SECONDS: z.coerce.number().int().positive().max(300).default(90),
   PUBLIC_OPENAPI: booleanString.default(false),

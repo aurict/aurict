@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# Pull-based deploy for the aurict stack. Runs on the server from aurict-deploy.timer.
+#
+# For each service it resolves the digest behind ghcr.io/aurict/aurict-<service>:production
+# (moved only by .github/workflows/deploy.yml, which needs the "production" environment). A new
+# digest is used only if GitHub's build attestation proves it was built by images.yml from main
+# of aurict/aurict. Then migrations run, the stack is updated and health-checked; on failure the
+# previous images.env is restored. Nothing reaches into the server: no inbound SSH, no CI secrets.
+#
+# Usage: aurict-deploy [--force]     (--force redeploys even when no digest changed)
+set -euo pipefail
+
+STACK_DIR="${AURICT_STACK_DIR:-/home/ubuntu/stack/aurict}"
+TAG="${AURICT_DEPLOY_TAG:-production}"
+OWNER="aurict"
+REPO="aurict/aurict"
+SIGNER="aurict/aurict/.github/workflows/images.yml"
+SERVICES=(backend web mobile-web decision-web quaera-web)
+METRICS_DIR="${AURICT_METRICS_DIR:-/var/lib/aurict/metrics}"
+HEALTH_TIMEOUT_SECONDS=180
+
+cd "$STACK_DIR"
+exec 9>"$STACK_DIR/.deploy.lock"
+flock -n 9 || { echo "another deploy is running"; exit 0; }
+
+log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
+var_name() { local s="${1//-/_}"; printf 'AURICT_IMAGE_%s' "${s^^}"; }
+
+write_metric() {  # write_metric <success 0|1>
+  mkdir -p "$METRICS_DIR"
+  local now; now="$(date +%s)"
+  local last_ok=0 failures=0
+  [ -f "$METRICS_DIR/.last_ok" ] && last_ok="$(cat "$METRICS_DIR/.last_ok")"
+  [ -f "$METRICS_DIR/.failures" ] && failures="$(cat "$METRICS_DIR/.failures")"
+  if [ "$1" = 1 ]; then last_ok="$now"; echo "$now" > "$METRICS_DIR/.last_ok"
+  else failures=$((failures + 1)); echo "$failures" > "$METRICS_DIR/.failures"; fi
+  {
+    echo "# HELP aurict_deploy_last_success_timestamp_seconds Unix time of the last successful deploy check."
+    echo "# TYPE aurict_deploy_last_success_timestamp_seconds gauge"
+    echo "aurict_deploy_last_success_timestamp_seconds $last_ok"
+    echo "# HELP aurict_deploy_failures_total Deploys that failed verification or health checks."
+    echo "# TYPE aurict_deploy_failures_total counter"
+    echo "aurict_deploy_failures_total $failures"
+  } > "$METRICS_DIR/.deploy.prom.tmp"
+  mv "$METRICS_DIR/.deploy.prom.tmp" "$METRICS_DIR/deploy.prom"
+}
+
+# Digest of a public image tag, from the registry API (no docker pull, no credentials).
+remote_digest() {
+  local name="$1" token
+  token="$(curl -fsS -m 20 "https://ghcr.io/token?scope=repository:${OWNER}/${name}:pull" | jq -r .token)"
+  curl -fsSI -m 20 -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json" \
+    "https://ghcr.io/v2/${OWNER}/${name}/manifests/${TAG}" \
+    | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest" {print $2}'
+}
+
+verify() {  # verify <image@digest>
+  # The attestation bundle comes from GitHub's public API, so the server needs no token. gh checks
+  # it against Sigstore's trust root: signed by images.yml on main of aurict/aurict, for this digest.
+  local bundle digest="${1##*@}"
+  bundle="$(mktemp)"
+  if ! curl -fsS -m 30 "https://api.github.com/repos/${REPO}/attestations/${digest}" \
+      | jq -ce '.attestations[].bundle' > "$bundle"; then
+    rm -f "$bundle"
+    return 1
+  fi
+  local status=0
+  GH_PROMPT_DISABLED=1 gh attestation verify "oci://$1" --bundle "$bundle" --repo "$REPO" \
+    --signer-workflow "$SIGNER" --source-ref refs/heads/main --deny-self-hosted-runners >/dev/null || status=$?
+  rm -f "$bundle"
+  return "$status"
+}
+
+healthy() {  # healthy <service>: wait until the container reports healthy
+  local id status deadline=$(( $(date +%s) + HEALTH_TIMEOUT_SECONDS ))
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    id="$(docker compose ps -q "$1")"
+    status="$( [ -n "$id" ] && docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id" || echo missing)"
+    [ "$status" = healthy ] && return 0
+    sleep 3
+  done
+  log "$1 did not become healthy (last status: ${status:-unknown})"
+  return 1
+}
+
+force=0
+[ "${1:-}" = "--force" ] && force=1
+touch images.env
+cp images.env images.env.previous
+next="$(mktemp)"; trap 'rm -f "$next"' EXIT
+changed=()
+
+for service in "${SERVICES[@]}"; do
+  var="$(var_name "$service")"
+  current="$(grep -E "^${var}=" images.env | cut -d= -f2- || true)"
+  digest="$(remote_digest "aurict-${service}")"
+  if [ -z "$digest" ]; then
+    log "no ${TAG} tag for aurict-${service}; keeping ${current:-nothing}"
+    [ -n "$current" ] && echo "${var}=${current}" >> "$next"
+    continue
+  fi
+  ref="ghcr.io/${OWNER}/aurict-${service}@${digest}"
+  if [ "$ref" != "$current" ]; then
+    if ! verify "$ref"; then
+      log "REFUSING ${ref}: no valid build attestation from ${SIGNER} on main"
+      write_metric 0
+      exit 1
+    fi
+    log "verified ${ref}"
+    changed+=("$service")
+  fi
+  echo "${var}=${ref}" >> "$next"
+done
+
+if [ "${#changed[@]}" -eq 0 ] && [ "$force" = 0 ]; then
+  write_metric 1
+  exit 0
+fi
+
+install -m 600 "$next" images.env
+log "deploying: ${changed[*]:-all (forced)}"
+compose() { docker compose --env-file .env --env-file images.env "$@"; }
+
+rollback() {
+  log "rolling back to the previous images"
+  cp images.env.previous images.env
+  compose up -d --remove-orphans || true
+  write_metric 0
+  exit 1
+}
+
+compose pull --quiet || rollback
+# Migrations are forward-only and run before the new backend starts.
+compose run --rm migrate || rollback
+compose up -d --remove-orphans || rollback
+for service in "${SERVICES[@]}"; do healthy "$service" || rollback; done
+docker image prune -f >/dev/null 2>&1 || true
+log "deploy finished"
+write_metric 1

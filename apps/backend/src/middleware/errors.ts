@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception"
 import { ZodError } from "zod"
 import type { AppBindings } from "../types"
 import { newId } from "../crypto/ids"
+import { countEvent } from "../observability/metrics"
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code = "error") {
@@ -19,6 +20,7 @@ export async function requestContext(c: Context<AppBindings>, next: Next) {
 export function errorResponse(c: Context<AppBindings>, error: unknown) {
   const requestId = c.get("requestId") ?? newId("req")
   if (error instanceof ApiError) {
+    countEvent(error.code)
     return c.json({ ok: false, error: { code: error.code, message: error.message, requestId } }, error.status as never)
   }
   if (error instanceof HTTPException) {

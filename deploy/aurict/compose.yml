@@ -1,0 +1,156 @@
+# Production stack for aurict.com on one host: the five services, Postgres, Redis and a
+# Cloudflare Tunnel. No container publishes a port; public traffic arrives only through the
+# tunnel, so the origin cannot be reached around Cloudflare.
+#
+# Images are pinned by digest in images.env, which bin/aurict-deploy writes after verifying each
+# image's build attestation. Secrets are in .env (mode 600). See README.md.
+name: aurict
+
+x-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+x-site: &site
+  <<: *hardening
+  environment:
+    NODE_ENV: production
+    PORT: "3000"
+    HOSTNAME: 0.0.0.0
+  # Next.js writes its fetch and image cache here; everything else is read-only.
+  tmpfs: ["/app/.next/cache:uid=1000,gid=1000,size=256m"]
+  mem_limit: 512m
+  pids_limit: 128
+  networks: [edge]
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:17-alpine@sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065
+    # The entrypoint has to switch to the postgres user and fix data-dir ownership.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aurict}
+      POSTGRES_USER: ${POSTGRES_USER:-aurict}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      AURICT_APP_DB_USER: ${AURICT_APP_DB_USER:-aurict_app}
+      AURICT_APP_DB_PASSWORD: ${AURICT_APP_DB_PASSWORD:?AURICT_APP_DB_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    tmpfs: ["/var/run/postgresql", "/tmp"]
+    shm_size: 128m
+    mem_limit: 1g
+    pids_limit: 200
+    networks: [data]
+
+  redis:
+    <<: *hardening
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    # Rate-limit counters only: no persistence, bounded memory, password required.
+    command: ["sh", "-c", 'exec redis-server --appendonly no --save "" --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass "$$REDIS_PASSWORD"']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    tmpfs: ["/data"]
+    mem_limit: 320m
+    pids_limit: 64
+    networks: [data]
+
+  migrate:
+    <<: *hardening
+    image: ${AURICT_IMAGE_BACKEND:?run bin/aurict-deploy}
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      # Migrations run as the schema owner; the running backend never gets DDL rights.
+      DATABASE_URL: postgres://${POSTGRES_USER:-aurict}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aurict}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+    command: ["bun", "run", "src/db/migrate.ts"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    mem_limit: 256m
+    networks: [data]
+
+  backend:
+    <<: *hardening
+    image: ${AURICT_IMAGE_BACKEND:?run bin/aurict-deploy}
+    # Only the backend's own settings: the schema owner's and Redis's passwords are not in it.
+    env_file: [./backend.env]
+    environment:
+      NODE_ENV: production
+      PORT: "8787"
+      METRICS_PORT: "9464"
+      DATABASE_URL: postgres://${AURICT_APP_DB_USER:-aurict_app}:${AURICT_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-aurict}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    mem_limit: 768m
+    pids_limit: 256
+    # data: Postgres and Redis. edge: the tunnel, the web apps, and outbound calls
+    # (Firebase certificates, Resend, statute sources).
+    networks: [data, edge]
+
+  web:
+    <<: *site
+    image: ${AURICT_IMAGE_WEB:?run bin/aurict-deploy}
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      AURICT_API_URL: http://backend:8787
+      AURICT_WEB_URL: https://aurict.com
+      AURICT_BACKEND_PROXY_SECRET: ${TRUSTED_PROXY_SECRET:?TRUSTED_PROXY_SECRET is required}
+      AURICT_GITHUB_TOKEN: ${AURICT_GITHUB_TOKEN:-}
+    tmpfs: ["/app/apps/web/.next/cache:uid=1000,gid=1000,size=256m"]
+
+  mobile-web:
+    <<: *site
+    image: ${AURICT_IMAGE_MOBILE_WEB:?run bin/aurict-deploy}
+
+  decision-web:
+    <<: *site
+    image: ${AURICT_IMAGE_DECISION_WEB:?run bin/aurict-deploy}
+
+  quaera-web:
+    <<: *site
+    image: ${AURICT_IMAGE_QUAERA_WEB:?run bin/aurict-deploy}
+
+  cloudflared:
+    <<: *hardening
+    image: cloudflare/cloudflared:2026.10.7
+    # The credentials file belongs to the deploy user (mode 600); the container reads it as that user.
+    user: "${AURICT_UID:?set AURICT_UID in .env}:${AURICT_GID:?set AURICT_GID in .env}"
+    command: ["tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "--config", "/etc/cloudflared/config.yml", "run"]
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    mem_limit: 128m
+    pids_limit: 64
+    networks: [edge]
+    depends_on:
+      backend: { condition: service_healthy }
+      web: { condition: service_healthy }
+
+volumes:
+  postgres_data:
+
+networks:
+  # No route out and nothing published: only the backend and migrations reach the databases.
+  data: { internal: true }
+  edge: {}

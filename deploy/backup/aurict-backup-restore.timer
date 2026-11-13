@@ -1,0 +1,9 @@
+[Unit]
+Description=Monthly aurict restore test
+
+[Timer]
+OnCalendar=*-*-01 05:10
+Persistent=true
+
+[Install]
+WantedBy=timers.target

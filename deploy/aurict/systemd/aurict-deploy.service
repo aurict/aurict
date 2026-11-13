@@ -1,0 +1,14 @@
+[Unit]
+Description=Deploy verified aurict images
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=docker
+Environment=AURICT_STACK_DIR=/home/ubuntu/stack/aurict
+Environment=AURICT_METRICS_DIR=/var/lib/aurict/metrics
+ExecStart=/home/ubuntu/stack/aurict/bin/aurict-deploy
+TimeoutStartSec=15min
+NoNewPrivileges=true

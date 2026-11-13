@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily aurict database backup
+
+[Timer]
+OnCalendar=*-*-* 03:50
+RandomizedDelaySec=10m
+# Catches up a run missed while the machine was off.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Check for a new production release of aurict every two minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+Unit=aurict-deploy.service
+
+[Install]
+WantedBy=timers.target

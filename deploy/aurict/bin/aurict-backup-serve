@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Forced command of the backup machine's SSH key (authorized_keys: command="...",restrict).
+# The key can do exactly one thing: stream a custom-format dump of the aurict database to stdout.
+set -euo pipefail
+case "${SSH_ORIGINAL_COMMAND:-}" in
+  pg_dump)
+    cd "${AURICT_STACK_DIR:-/home/ubuntu/stack/aurict}"
+    exec docker compose --env-file .env --env-file images.env exec -T postgres \
+      sh -c 'pg_dump -Fc -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+    ;;
+  *)
+    echo "only 'pg_dump' is allowed" >&2
+    exit 126
+    ;;
+esac
