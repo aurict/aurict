@@ -1,0 +1,7 @@
+# Build context is the repository root; send only this app.
+*
+!apps/mobile-web/**
+apps/mobile-web/node_modules
+apps/mobile-web/.next
+apps/mobile-web/.env*
+apps/mobile-web/deploy

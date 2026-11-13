@@ -1,0 +1,7 @@
+# Build context is the repository root; send only this app.
+*
+!apps/decision-web/**
+apps/decision-web/node_modules
+apps/decision-web/.next
+apps/decision-web/.env*
+apps/decision-web/deploy

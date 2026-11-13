@@ -1,0 +1,90 @@
+name: Images
+
+# Builds the five service images. Pull requests only build them (no registry access);
+# pushes to main publish them to GHCR with SLSA provenance and an SBOM, and attest each
+# digest so the server can verify an image was built here, from main, by this workflow.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  image:
+    name: Image (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, web, mobile-web, decision-web, quaera-web]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/aurict-${{ matrix.service }}
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Log in to GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=main,enable=${{ env.PUBLISH == 'true' }}
+
+      - id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: apps/${{ matrix.service }}/Dockerfile
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: ${{ env.PUBLISH == 'true' && 'mode=max' || 'false' }}
+          sbom: ${{ env.PUBLISH == 'true' }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          # Public values compiled into the web bundle; set them as repository variables.
+          build-args: |
+            NEXT_PUBLIC_FIREBASE_API_KEY=${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+            NEXT_PUBLIC_FIREBASE_APP_ID=${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+
+      - name: Attest provenance
+        if: env.PUBLISH == 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Summary
+        if: env.PUBLISH == 'true'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "${IMAGE}@${DIGEST}" >> "$GITHUB_STEP_SUMMARY"

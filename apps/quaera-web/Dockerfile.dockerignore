@@ -1,0 +1,7 @@
+# Build context is the repository root; send only this app.
+*
+!apps/quaera-web/**
+apps/quaera-web/node_modules
+apps/quaera-web/.next
+apps/quaera-web/.env*
+apps/quaera-web/deploy
