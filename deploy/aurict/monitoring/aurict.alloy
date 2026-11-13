@@ -46,9 +46,15 @@ prometheus.relabel "aurict_containers" {
 }
 
 // Backend application metrics: the private metrics port (9464) on the edge network, never
-// routed by the tunnel. cloudflared's own metrics (2000) the same way.
+// routed by the tunnel. cloudflared's own metrics (2000) the same way. Docker discovery lists only
+// a container's first network by default; the backend's first is the internal data network,
+// which this host cannot reach, so list every network here.
+discovery.docker "aurict" {
+  host                = "unix:///var/run/docker.sock"
+  match_first_network = false
+}
 discovery.relabel "aurict_app" {
-  targets = discovery.docker.local.targets
+  targets = discovery.docker.aurict.targets
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
     regex         = "aurict"
@@ -168,6 +174,11 @@ discovery.relabel "aurict_logs" {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     target_label  = "service"
   }
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
 }
 loki.source.docker "aurict" {
   host       = "unix:///var/run/docker.sock"
@@ -198,4 +209,13 @@ loki.process "aurict" {
   stage.labels {
     values = { level = "", event = "" }
   }
+}
+
+// Host metrics again under system="aurict": the shared Home and System overview dashboards expect
+// every system to report its host. aurict shares this host with janus, so the series are the same.
+prometheus.scrape "aurict_host" {
+  targets         = prometheus.exporter.unix.host.targets
+  job_name        = "integrations/unix"
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.aurict.receiver]
 }

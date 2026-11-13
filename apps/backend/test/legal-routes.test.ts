@@ -52,6 +52,10 @@ if (!databaseUrl) {
     await db?.close()
   })
 
+  // These fetch the real statute from mevzuat.gov.tr; that is slow and sometimes unreachable from
+  // CI runners, so they run only when asked for (AURICT_NETWORK_TESTS=1).
+  const networkTest = process.env.AURICT_NETWORK_TESTS === "1" ? test : test.skip
+
   describe("legal routes", () => {
     test("statute/unit/search require auth", async () => {
       const paths = ["/legal/statute/TR/6098", "/legal/unit/nonexistent", "/legal/search?q=x"]
@@ -61,7 +65,7 @@ if (!databaseUrl) {
       }
     })
 
-    test("GET /legal/statute/TR/6098 fetches and caches the real TBK", async () => {
+    networkTest("GET /legal/statute/TR/6098 fetches and caches the real TBK", async () => {
       const res = await app.request("/legal/statute/TR/6098", {
         headers: { authorization: `Bearer ${accessToken}` },
       })
@@ -79,7 +83,7 @@ if (!databaseUrl) {
       expect(secondBody.document.id).toBe(body.document.id)
     })
 
-    test("GET /legal/unit/:id returns 404 for unknown id, 200 with children for a known unit", async () => {
+    networkTest("GET /legal/unit/:id returns 404 for unknown id, 200 with children for a known unit", async () => {
       const notFound = await app.request("/legal/unit/lgu_does_not_exist", {
         headers: { authorization: `Bearer ${accessToken}` },
       })
@@ -100,7 +104,7 @@ if (!databaseUrl) {
       expect(body.citations).toBeUndefined() // expand olmadan citations dönmemeli
     })
 
-    test("GET /legal/unit/:id?expand=citations resolves a real cross-reference once the target is cached", async () => {
+    networkTest("GET /legal/unit/:id?expand=citations resolves a real cross-reference once the target is cached", async () => {
       if (!db) throw new Error("db not initialized")
 
       // 700 sayılı KHK'ye atıf yapan gerçek birimi bul.
@@ -152,7 +156,7 @@ if (!databaseUrl) {
       expect(resolved.resolvedUnitPath).toBe("190")
     })
 
-    test("GET /legal/search requires q, matches real statute text", async () => {
+    networkTest("GET /legal/search requires q, matches real statute text", async () => {
       const missing = await app.request("/legal/search", { headers: { authorization: `Bearer ${accessToken}` } })
       expect(missing.status).toBe(400)
 
