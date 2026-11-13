@@ -45,8 +45,8 @@ export default async function ComparePage() {
   const tr = locale === "tr"
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collection) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb).replace(/</g, "\\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collection).replace(/</g, "\\u003c") }} />
       <Nav />
       <main className="marketing-main" style={{ maxWidth: 900 }}>
         <Breadcrumb items={[{ label: tr ? "Ana sayfa" : "Home", href: "/" }, { label: tr ? "Karşılaştır" : "Compare", href: "/compare" }]} />

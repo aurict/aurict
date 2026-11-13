@@ -35,7 +35,7 @@ export default async function ChangelogPage() {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }} />
       <Nav />
       <main className="marketing-main marketing-main-narrow">
         <div className="marketing-hero">

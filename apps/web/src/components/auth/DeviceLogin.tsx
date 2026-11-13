@@ -1,29 +1,37 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useLocale } from "next-intl"
 import { Link } from "@/i18n/navigation"
-import { useSearchParams } from "next/navigation"
 import { CheckCircle2, LoaderCircle, Terminal, XCircle } from "lucide-react"
 import { BrandMark } from "@/components/BrandMark"
+import { sanitizeNextPath } from "@/lib/auth/safe-redirect"
 
-type DeviceStatus = "checking" | "ready" | "approving" | "denying" | "approved" | "denied" | "error"
+type DeviceStatus = "checking" | "enter" | "looking" | "ready" | "approving" | "denying" | "approved" | "denied" | "error"
+type LoginRequest = {
+  clientName: string
+  createdAt: string
+  network?: string
+  country?: string
+  sameNetworkAsYou: boolean
+}
 type User = { id: string; email: string }
 type DeviceActionResponse = {
   ok: boolean
   status?: "approved" | "denied"
   clientName?: string
   expiresAt?: string
+  request?: LoginRequest
   error?: { message?: string }
 }
 
 export function DeviceLogin() {
   const tr = useLocale() === "tr"
-  const search = useSearchParams()
-  const userCode = useMemo(
-    () => normalizeUserCode(search.get("user_code") ?? search.get("userCode") ?? search.get("code") ?? ""),
-    [search],
-  )
+  // The code is typed by the user, never taken from the link: a link can carry a code that
+  // someone else started, and approving it would sign that person's terminal into this account.
+  const [codeInput, setCodeInput] = useState("")
+  const [userCode, setUserCode] = useState("")
+  const [request, setRequest] = useState<LoginRequest | null>(null)
   const [status, setStatus] = useState<DeviceStatus>("checking")
   const [user, setUser] = useState<User | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -33,12 +41,6 @@ export function DeviceLogin() {
     let cancelled = false
 
     async function checkSession() {
-      if (!userCode) {
-        setMessage(tr ? "CLI giriş kodu eksik." : "CLI login code is missing.")
-        setStatus("error")
-        return
-      }
-
       setStatus("checking")
       setMessage(null)
       try {
@@ -55,7 +57,7 @@ export function DeviceLogin() {
         }
 
         setUser(body.user)
-        setStatus("ready")
+        setStatus("enter")
       } catch (error) {
         if (cancelled) return
         setMessage(error instanceof Error ? error.message : (tr ? "Oturumunuz doğrulanamadı." : "Could not verify your session."))
@@ -67,7 +69,25 @@ export function DeviceLogin() {
     return () => {
       cancelled = true
     }
-  }, [tr, userCode])
+  }, [tr])
+
+  async function lookup(event: FormEvent) {
+    event.preventDefault()
+    const code = normalizeUserCode(codeInput)
+    if (!code || status === "looking") return
+    setStatus("looking")
+    setMessage(null)
+    const body = await postDevice("/api/auth/device/lookup", { userCode: code }, tr)
+    if (!body.ok || !body.request) {
+      setMessage(body.error?.message ?? (tr ? "Bu kodla bekleyen bir giriş isteği yok." : "No pending login request has this code."))
+      setStatus("enter")
+      return
+    }
+    setUserCode(code)
+    setRequest(body.request)
+    setClientName(body.request.clientName)
+    setStatus("ready")
+  }
 
   async function submit(decision: "approve" | "deny") {
     if (!userCode || status === "approving" || status === "denying") return
@@ -86,7 +106,7 @@ export function DeviceLogin() {
     }
   }
 
-  const busy = status === "checking" || status === "approving" || status === "denying"
+  const busy = status === "checking" || status === "looking" || status === "approving" || status === "denying"
   const complete = status === "approved" || status === "denied"
 
   return (
@@ -103,12 +123,67 @@ export function DeviceLogin() {
           {tr ? "Bu terminali yetkilendirin." : "Authorize this terminal."}
         </h1>
         <p className="marketing-lede" style={{ fontSize: 16, marginBottom: 24 }}>
-          {complete ? (tr ? "Terminalinize dönebilirsiniz." : "You can return to your terminal.") : (tr ? "Tarayıcınızdaki kodun Aurict CLI'ın gösterdiği kodla eşleştiğini doğrulayın." : "Confirm that the code in your browser matches the code shown by Aurict CLI.")}
+          {complete
+            ? (tr ? "Terminalinize dönebilirsiniz." : "You can return to your terminal.")
+            : (tr ? "Yalnızca kendi terminalinizde başlattığınız bir girişi onaylayın. Kodu terminalden okuyup buraya yazın." : "Only approve a login you started in your own terminal. Type the code it shows.")}
         </p>
 
-        <div className="auth-device-code" aria-label={tr ? "CLI giriş kodu" : "CLI login code"}>
-          {userCode || (tr ? "KOD YOK" : "NO CODE")}
-        </div>
+        {(status === "enter" || status === "looking") && (
+          <form onSubmit={lookup} style={{ display: "grid", gap: 14, marginBottom: 16 }}>
+            <label className="auth-label">
+              {tr ? "terminaldeki kod" : "code from your terminal"}
+              <span className="auth-input-wrap">
+                <Terminal aria-hidden="true" size={16} />
+                <input
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  autoFocus
+                  className="auth-input mono"
+                  maxLength={32}
+                  onChange={(event) => setCodeInput(event.target.value)}
+                  placeholder="ABCD-EFGH"
+                  required
+                  spellCheck={false}
+                  value={codeInput}
+                />
+              </span>
+            </label>
+            <button className="landing-button-primary mono" disabled={busy || !codeInput.trim()} type="submit">
+              {status === "looking" ? <LoaderCircle className="auth-spin" size={16} /> : null}
+              {tr ? "devam" : "continue"}
+            </button>
+          </form>
+        )}
+
+        {userCode && (
+          <div className="auth-device-code" aria-label={tr ? "CLI giriş kodu" : "CLI login code"}>
+            {userCode}
+          </div>
+        )}
+
+        {request && !complete && (
+          <>
+            <div className="auth-device-meta">
+              <span>{tr ? "istemci" : "client"}</span>
+              <strong>{request.clientName}</strong>
+            </div>
+            <div className="auth-device-meta">
+              <span>{tr ? "başlatıldığı yer" : "started from"}</span>
+              <strong>{[request.network, request.country].filter(Boolean).join(" · ") || (tr ? "bilinmiyor" : "unknown")}</strong>
+            </div>
+            <div className="auth-device-meta">
+              <span>{tr ? "zaman" : "time"}</span>
+              <strong>{new Date(request.createdAt).toLocaleString(tr ? "tr-TR" : "en-US")}</strong>
+            </div>
+            {!request.sameNetworkAsYou && (
+              <div className="auth-device-status auth-device-status-error" role="alert">
+                {tr
+                  ? "Bu istek sizinkinden farklı bir ağdan geldi. Kendiniz başlatmadıysanız reddedin: onaylarsanız o terminal hesabınıza erişir."
+                  : "This request came from a different network than yours. If you did not start it, deny it: approving gives that terminal access to your account."}
+              </div>
+            )}
+          </>
+        )}
 
         {user && (
           <div className="auth-device-meta">
@@ -122,7 +197,7 @@ export function DeviceLogin() {
           {message ?? statusLabel(status, clientName, tr)}
         </div>
 
-        {!complete && status !== "error" && (
+        {request && !complete && status !== "error" && (
           <div className="auth-device-actions">
             <button
               className="landing-button-primary mono"
@@ -188,12 +263,13 @@ function currentPath() {
 }
 
 function nextHref(path: string, nextPath: string) {
-  const safeNext = nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/"
+  const safeNext = sanitizeNextPath(nextPath)
   return safeNext === "/" ? path : `${path}?next=${encodeURIComponent(safeNext)}`
 }
 
 function statusLabel(status: DeviceStatus, clientName: string, tr: boolean) {
   if (status === "checking") return tr ? "Oturumunuz denetleniyor..." : "Checking your session..."
+  if (status === "enter" || status === "looking") return tr ? "Terminalinizdeki kodu girin." : "Enter the code from your terminal."
   if (status === "approving") return tr ? "CLI girişi onaylanıyor..." : "Approving CLI login..."
   if (status === "denying") return tr ? "CLI girişi reddediliyor..." : "Denying CLI login..."
   if (status === "approved") return tr ? `${clientName} yetkilendirildi.` : `${clientName} is authorized.`

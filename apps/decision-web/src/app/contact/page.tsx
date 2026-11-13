@@ -19,17 +19,23 @@ function ContactForm() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setState("sending");
-    const response = await fetch(`${API_URL}/api/sales/contact`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type,
-        ...form,
-        requirements: { notes: form.requirements },
-        website: "",
-      }),
-    });
-    setState(response.ok ? "sent" : "error");
+    try {
+      const response = await fetch(`${API_URL}/api/sales/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          ...form,
+          requirements: { notes: form.requirements },
+          website: "",
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      setState(response.ok ? "sent" : "error");
+    } catch {
+      // Network errors and timeouts must not leave the form stuck on "sending".
+      setState("error");
+    }
   };
 
   return (
@@ -55,7 +61,7 @@ function ContactForm() {
             <input placeholder={tr ? "Aylık tahmini event/decision hacmi" : "Estimated monthly event/decision volume"} value={form.estimatedVolume} onChange={(event) => setForm({ ...form, estimatedVolume: event.target.value })} />
             <input placeholder={tr ? "Docker, Kubernetes, air-gap veya dedicated" : "Docker, Kubernetes, air-gap or dedicated"} value={form.deploymentPreference} onChange={(event) => setForm({ ...form, deploymentPreference: event.target.value })} />
             <textarea rows={6} placeholder={tr ? "SSO, region, SLA ve connector ihtiyaçları" : "SSO, region, SLA and connector requirements"} value={form.requirements} onChange={(event) => setForm({ ...form, requirements: event.target.value })} />
-            {state === "error" && <p style={{ color: "var(--error)" }}>{tr ? "Talep gönderilemedi. Lütfen tekrar deneyin." : "Request could not be submitted. Please retry."}</p>}
+            {state === "error" && <p style={{ color: "var(--error)" }}>{tr ? "Talep gönderilemedi. Lütfen contact@aurict.com adresine e-posta gönderin." : "Request could not be submitted. Please email contact@aurict.com instead."}</p>}
             <button disabled={state === "sending"} className="aur-button aur-button-primary">{state === "sending" ? "…" : (tr ? "Görüşme Talebi Gönder" : "Request a Meeting")}</button>
           </form>
         )}

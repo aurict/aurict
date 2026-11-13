@@ -115,7 +115,7 @@ export default async function RoadmapPage() {
   const signals = tr ? [["Şimdi", "Web, CLI ve mobil tek bir marka sistemi altında yakınsıyor."], ["Sırada", "Mobil kimlik doğrulama, anahtar yönetimi ve tarayıcı giriş akışları sağlamlaştırılıyor."], ["Sonrasında", "Aurict Decision ve yeni dikeyler Aurict operasyon beynine bağlanıyor."]] : englishSignals
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }} />
       <Nav />
       <main className={`marketing-main ${styles.roadmap}`}>
         <Breadcrumb items={[{ label: tr ? "Ana sayfa" : "Home", href: "/" }, { label: tr ? "Yol haritası" : "Roadmap", href: "/roadmap" }]} />

@@ -71,7 +71,7 @@ export default async function AboutPage() {
   ] : englishEcosystem
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }} />
       <Nav />
       <main className={`marketing-main ${styles.about}`}>
         <Breadcrumb items={[{ label: tr ? "Ana sayfa" : "Home", href: "/" }, { label: tr ? "Hakkında" : "About", href: "/about" }]} />
