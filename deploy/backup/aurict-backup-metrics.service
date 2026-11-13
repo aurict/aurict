@@ -1,0 +1,14 @@
+# Serves ~/backups/aurict/metrics read-only to the monitoring server over the private network.
+# Set BIND to this machine's tailnet address with `systemctl --user edit aurict-backup-metrics`.
+[Unit]
+Description=aurict backup metrics (read-only, private network)
+After=network-online.target
+
+[Service]
+Environment=BIND=127.0.0.1
+ExecStart=/usr/bin/python3 -I -m http.server 9110 --bind ${BIND} --directory %h/backups/aurict/metrics
+Restart=on-failure
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

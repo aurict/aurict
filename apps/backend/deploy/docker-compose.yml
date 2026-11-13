@@ -78,7 +78,8 @@ services:
   backend:
     <<: *hardening
     image: ${AURICT_BACKEND_IMAGE:?AURICT_BACKEND_IMAGE is required}
-    env_file: [./.env]
+    # Only the backend's own settings: the schema owner's and Redis's passwords are not in it.
+    env_file: [./backend.env]
     environment:
       NODE_ENV: production
       PORT: 8787

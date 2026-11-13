@@ -1,0 +1,73 @@
+# Alert rules for aurict, loaded by Prometheus on the monitoring server (rules/aurict.yml).
+groups:
+  - name: aurict
+    rules:
+      - alert: AurictPushMissing
+        expr: absent_over_time(up{system="aurict"}[10m])
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "No metrics from aurict for 10 minutes (collector or server down)"}
+      - alert: AurictSiteDown
+        expr: probe_success{system="aurict"} == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "{{ $labels.job }} is not answering 200 through Cloudflare"}
+      - alert: AurictTunnelDown
+        expr: max(cloudflared_tunnel_ha_connections{system="aurict"}) < 1 or absent(cloudflared_tunnel_ha_connections{system="aurict"})
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "The aurict Cloudflare tunnel has no connection to the edge"}
+      - alert: AurictBackend5xx
+        expr: sum(rate(aurict_http_requests_total{system="aurict",status="5xx"}[10m])) / clamp_min(sum(rate(aurict_http_requests_total{system="aurict"}[10m])), 1e-9) > 0.02
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "More than 2 % of api.aurict.com requests fail with 5xx"}
+      - alert: AurictBackendSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(aurict_http_request_duration_seconds_bucket{system="aurict"}[10m]))) > 1
+        for: 15m
+        labels: {severity: warning}
+        annotations: {summary: "api.aurict.com p95 latency above 1 s"}
+      - alert: AurictContainerRestarting
+        expr: changes(container_start_time_seconds{system="aurict"}[30m]) > 2
+        labels: {severity: warning}
+        annotations: {summary: "aurict container {{ $labels.name }} restarted more than twice in 30 minutes"}
+      - alert: AurictContainerOOM
+        expr: increase(container_oom_events_total{system="aurict"}[30m]) > 0
+        labels: {severity: warning}
+        annotations: {summary: "aurict container {{ $labels.name }} was killed for memory"}
+      - alert: AurictDeployFailed
+        expr: increase(aurict_deploy_failures_total{system="aurict"}[1h]) > 0
+        labels: {severity: critical}
+        annotations: {summary: "An aurict release was refused or rolled back (check aurict-deploy.service)"}
+      - alert: AurictDeployCheckStale
+        expr: time() - max(aurict_deploy_last_success_timestamp_seconds{system="aurict"}) > 1800
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "The aurict deploy check has not succeeded for 30 minutes"}
+      - alert: AurictBackupStale
+        expr: time() - max(aurict_backup_last_success_timestamp_seconds) > 26 * 3600 or absent(aurict_backup_last_success_timestamp_seconds)
+        for: 30m
+        labels: {severity: critical}
+        annotations: {summary: "No verified aurict database backup for more than 26 hours"}
+      - alert: AurictRestoreTestStale
+        expr: time() - max(aurict_backup_restore_test_timestamp_seconds) > 35 * 86400
+        for: 1h
+        labels: {severity: warning}
+        annotations: {summary: "The aurict monthly restore test has not passed for 35 days"}
+      - alert: AurictRefreshTokenReuse
+        expr: increase(aurict_security_events_total{system="aurict",event="refresh_reuse_detected"}[15m]) > 0
+        labels: {severity: warning}
+        annotations: {summary: "A refresh token was replayed (possible token theft); the family was revoked"}
+      - alert: AurictSignatureRejected
+        expr: sum(increase(aurict_security_events_total{system="aurict",event=~"device_signature_invalid|remote_signature_invalid|remote_fingerprint_mismatch|trust_grant_invalid|sender_signature_invalid|claim_signature_invalid|fingerprint_mismatch"}[15m])) > 0
+        labels: {severity: warning}
+        annotations: {summary: "Requests with invalid device signatures or fingerprints were rejected"}
+      - alert: AurictLoginFailuresSpike
+        expr: sum(increase(aurict_security_events_total{system="aurict",event="invalid_credentials"}[10m])) > 50
+        labels: {severity: warning}
+        annotations: {summary: "More than 50 failed logins in 10 minutes"}
+      - alert: AurictRateLimitStoreDown
+        expr: increase(aurict_security_events_total{system="aurict",event="rate_limit_store_unavailable"}[10m]) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Redis is unavailable; rate limits fall back to the in-process limiter"}

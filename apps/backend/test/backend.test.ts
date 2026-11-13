@@ -1507,6 +1507,21 @@ describe("device login approval details", () => {
   })
 })
 
+describe("prometheus metrics", () => {
+  test("expose route-pattern request counters, latency histograms and security events", async () => {
+    const { createMemoryMetrics } = await import("../src/observability/metrics")
+    const metrics = createMemoryMetrics()
+    const app = createApp({ env, store: createMemoryStore(), metrics })
+    await register(app)
+    await app.request("/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "user@example.com", password: "definitely wrong" }) })
+    const text = metrics.prometheus()
+    expect(text).toContain('aurict_http_requests_total{method="POST",route="/auth/login",status="4xx"} 1')
+    expect(text).toContain('aurict_http_request_duration_seconds_count{method="POST",route="/auth/register"} 1')
+    expect(text).toMatch(/aurict_security_events_total\{event="invalid_credentials"\} [1-9]/)
+    expect(text).not.toContain("user@example.com")
+  })
+})
+
 describe("ed25519 access tokens", () => {
   const { generateKeyPairSync } = require("node:crypto") as typeof import("node:crypto")
   const pair = generateKeyPairSync("ed25519")

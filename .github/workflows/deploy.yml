@@ -1,73 +1,77 @@
 name: Deploy
 
+# Promotes a build to production. The server never accepts a connection from CI: it polls the
+# "production" tag of each image and runs a new digest only after verifying its build
+# attestation (deploy/aurict/bin/aurict-deploy). This workflow just moves that tag, and it can
+# only do so through the "production" environment (required reviewer, main branch only).
+#
+# Runs after "Images" succeeds on main, or by hand for a chosen commit (e.g. a rollback).
 on:
-  push:
+  workflow_run:
+    workflows: [Images]
+    types: [completed]
     branches: [main]
-    paths:
-      - "apps/web/**"
-      - "apps/mobile-web/**"
-      - "apps/decision-web/**"
-      - ".github/workflows/deploy.yml"
   workflow_dispatch:
-
-# Every app deploys from the same server checkout, so runs queue instead of racing.
-concurrency:
-  group: deploy-server
-  cancel-in-progress: false
+    inputs:
+      commit:
+        description: "Full commit SHA on main whose images to release (default: latest main)"
+        required: false
 
 permissions:
   contents: read
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
-  plan:
-    name: Pick apps to deploy
+  promote:
+    name: Release to production
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.plan.outputs.matrix }}
+    environment: production
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          fetch-depth: 0
-      - id: plan
-        name: Build the deploy matrix
+      - name: Pick the commit
+        id: commit
         env:
-          BEFORE: ${{ github.event.before }}
-          EVENT: ${{ github.event_name }}
+          INPUT_COMMIT: ${{ github.event.inputs.commit }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          FALLBACK_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          all='[{"app":"web","pm2":"aurict-web","port":3376},{"app":"mobile-web","pm2":"mobile-aurict-web","port":3377},{"app":"decision-web","pm2":"decision-aurict-web","port":3211}]'
-          if [ "$EVENT" != "push" ] || [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null \
-            || git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -qx ".github/workflows/deploy.yml"; then
-            echo "matrix=$all" >> "$GITHUB_OUTPUT"
-            exit 0
+          sha="${INPUT_COMMIT:-${RUN_SHA:-$FALLBACK_SHA}}"
+          if ! printf '%s' "$sha" | grep -Eqx '[0-9a-f]{40}'; then
+            echo "Commit must be a full 40-character SHA, got '$sha'." >&2
+            exit 1
           fi
-          changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
-          matrix=$(jq -c --arg changed "$changed" '[.[] | select(. as $a | $changed | split("\n") | any(startswith("apps/" + $a.app + "/")))]' <<<"$all")
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
-          echo "Deploying: $matrix"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-  deploy:
-    name: Deploy ${{ matrix.app }}
-    needs: plan
-    if: needs.plan.outputs.matrix != '[]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      max-parallel: 1
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
-    steps:
-      - name: Build and restart on the server
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          host: ${{ secrets.DEPLOY_SSH_HOST }}
-          username: ${{ secrets.DEPLOY_SSH_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT }}
-          fingerprint: ${{ secrets.DEPLOY_SSH_FINGERPRINT }}
-          command_timeout: 15m
-          # The deploy key is restricted on the server to /home/admin/bin/aurict-github-gate, which
-          # builds and restarts the app as the unprivileged `aurictweb` user (fetch origin/main,
-          # bun install, bun run build, pm2 restart, health check). See SERVER-RULES.md on the server.
-          script: /home/admin/bin/aurict-github-gate deploy-web ${{ matrix.app }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify and tag the images
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for service in backend web mobile-web decision-web quaera-web; do
+            image="ghcr.io/${OWNER}/aurict-${service}"
+            digest=$(docker buildx imagetools inspect "${image}:sha-${SHA}" --format '{{json .Manifest}}' | jq -r .digest)
+            # The same check the server runs; failing here stops a bad tag from ever being set.
+            gh attestation verify "oci://${image}@${digest}" --repo "$REPO" \
+              --signer-workflow "${REPO}/.github/workflows/images.yml" --source-ref refs/heads/main \
+              --deny-self-hosted-runners
+            docker buildx imagetools create -t "${image}:production" "${image}@${digest}"
+            echo "${service}: ${image}@${digest}" >> "$GITHUB_STEP_SUMMARY"
+          done

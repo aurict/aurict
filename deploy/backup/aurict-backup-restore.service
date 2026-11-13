@@ -1,0 +1,11 @@
+[Unit]
+Description=aurict monthly restore test
+After=aurict-backup.service
+
+[Service]
+Type=oneshot
+Environment=BACKUP_DIR=%h/backups/aurict
+ExecStart=%h/backups/aurict/aurict-backup-restore-check.sh
+ExecStartPost=%h/backups/aurict/aurict-backup-pull.sh
+Nice=10
+TimeoutStartSec=1h

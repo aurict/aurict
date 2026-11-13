@@ -1,0 +1,201 @@
+// ── aurict ───────────────────────────────────────────────────────────────────────────────
+// Appended to the host's Alloy config (stack/monitoring-agent/config.alloy). Everything here is
+// pushed with system="aurict" and its own ingest credential (AURICT_INGEST_PASSWORD).
+
+prometheus.remote_write "aurict" {
+  endpoint {
+    url = "https://charon.tailb52a08.ts.net:9095/api/v1/write"
+    basic_auth {
+      username = "aurict"
+      password = sys.env("AURICT_INGEST_PASSWORD")
+    }
+  }
+  external_labels = { system = "aurict", host = "thelothe" }
+}
+
+loki.write "aurict" {
+  endpoint {
+    url = "https://charon.tailb52a08.ts.net:9095/loki/api/v1/push"
+    basic_auth {
+      username = "aurict"
+      password = sys.env("AURICT_INGEST_PASSWORD")
+    }
+  }
+  external_labels = { system = "aurict", host = "thelothe" }
+}
+
+// Container metrics of the aurict compose project only.
+prometheus.scrape "aurict_containers" {
+  targets         = [{ __address__ = "127.0.0.1:18080" }]
+  job_name        = "aurict-cadvisor"
+  scrape_interval = "30s"
+  forward_to      = [prometheus.relabel.aurict_containers.receiver]
+}
+prometheus.relabel "aurict_containers" {
+  forward_to = [prometheus.remote_write.aurict.receiver]
+  rule {
+    source_labels = ["container_label_com_docker_compose_project"]
+    regex         = "aurict"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__name__"]
+    regex         = "container_(cpu_usage_seconds_total|memory_working_set_bytes|spec_memory_limit_bytes|network_receive_bytes_total|network_transmit_bytes_total|start_time_seconds|oom_events_total|last_seen)"
+    action        = "keep"
+  }
+}
+
+// Backend application metrics: the private metrics port (9464) on the edge network, never
+// routed by the tunnel. cloudflared's own metrics (2000) the same way.
+discovery.relabel "aurict_app" {
+  targets = discovery.docker.local.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "aurict"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_network_name"]
+    regex         = "aurict_edge"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "backend|cloudflared"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__meta_docker_network_ip", "service"]
+    regex         = "(.+);backend"
+    target_label  = "__address__"
+    replacement   = "$1:9464"
+  }
+  rule {
+    source_labels = ["__meta_docker_network_ip", "service"]
+    regex         = "(.+);cloudflared"
+    target_label  = "__address__"
+    replacement   = "$1:2000"
+  }
+}
+prometheus.scrape "aurict_app" {
+  targets         = discovery.relabel.aurict_app.output
+  job_name        = "aurict-app"
+  scrape_interval = "30s"
+  forward_to      = [prometheus.relabel.aurict_app.receiver]
+}
+// cloudflared exposes many Go and QUIC series; keep the ones the dashboard uses.
+prometheus.relabel "aurict_app" {
+  forward_to = [prometheus.remote_write.aurict.receiver]
+  rule {
+    source_labels = ["__name__"]
+    regex         = "up|aurict_.*|process_.*|cloudflared_tunnel_(total_requests|request_errors|ha_connections|response_by_code)"
+    action        = "keep"
+  }
+}
+
+// Deploy results written by bin/aurict-deploy.
+prometheus.exporter.unix "aurict_files" {
+  set_collectors = ["textfile"]
+  textfile {
+    directory = "/host/root/var/lib/aurict/metrics"
+  }
+}
+prometheus.scrape "aurict_files" {
+  targets         = prometheus.exporter.unix.aurict_files.targets
+  job_name        = "aurict-files"
+  scrape_interval = "60s"
+  forward_to      = [prometheus.relabel.aurict_files.receiver]
+}
+prometheus.relabel "aurict_files" {
+  forward_to = [prometheus.remote_write.aurict.receiver]
+  rule {
+    source_labels = ["__name__"]
+    regex         = "aurict_.*"
+    action        = "keep"
+  }
+}
+
+// Public endpoints, checked from this host through Cloudflare.
+prometheus.exporter.blackbox "aurict" {
+  config = "{ modules: { https: { prober: http, timeout: 10s, http: { preferred_ip_protocol: ip4, valid_status_codes: [200] } } } }"
+  target {
+    name    = "aurict.com"
+    address = "https://aurict.com/"
+    module  = "https"
+  }
+  target {
+    name    = "mobile.aurict.com"
+    address = "https://mobile.aurict.com/"
+    module  = "https"
+  }
+  target {
+    name    = "decision.aurict.com"
+    address = "https://decision.aurict.com/"
+    module  = "https"
+  }
+  target {
+    name    = "quaera.aurict.com"
+    address = "https://quaera.aurict.com/"
+    module  = "https"
+  }
+  target {
+    name    = "api.aurict.com"
+    address = "https://api.aurict.com/ready"
+    module  = "https"
+  }
+}
+prometheus.scrape "aurict_probes" {
+  targets         = prometheus.exporter.blackbox.aurict.targets
+  job_name        = "aurict-probe"
+  scrape_interval = "60s"
+  forward_to      = [prometheus.remote_write.aurict.receiver]
+}
+
+// Logs of the aurict containers. Request logs carry no IPs or bodies; anything that looks like
+// an email address, IP address or token is masked before it leaves the host.
+discovery.relabel "aurict_logs" {
+  targets = discovery.docker.local.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "aurict"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+}
+loki.source.docker "aurict" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.aurict_logs.output
+  forward_to = [loki.process.aurict.receiver]
+}
+loki.process "aurict" {
+  forward_to = [loki.write.aurict.receiver]
+  stage.replace {
+    expression = "([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})"
+    replace    = "<email>"
+  }
+  stage.replace {
+    expression = "\\b((?:\\d{1,3}\\.){3}\\d{1,3})\\b"
+    replace    = "<ip>"
+  }
+  stage.replace {
+    expression = "(?i)((?:bearer|token|secret|password|authorization)[\"'=: ]+)[A-Za-z0-9._~+/=-]{8,}"
+    replace    = "${1}<redacted>"
+  }
+  stage.replace {
+    expression = "(eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+)"
+    replace    = "<jwt>"
+  }
+  stage.json {
+    expressions = { level = "level", event = "event" }
+  }
+  stage.labels {
+    values = { level = "", event = "" }
+  }
+}

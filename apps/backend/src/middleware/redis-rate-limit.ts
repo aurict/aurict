@@ -1,5 +1,6 @@
 import net from "node:net"
 import type { BackendEnv } from "../env"
+import { countEvent } from "../observability/metrics"
 import { createMemoryRateLimiter, type RateLimitDecision, type RateLimiter } from "./rate-limit"
 
 type RedisValue = string | number | null | RedisValue[]
@@ -25,6 +26,7 @@ export function createRedisRateLimiter(env: BackendEnv): RateLimiter | undefined
       if (result === "timeout" || result === "error") {
         // Keys contain client addresses; log only which limit was affected.
         console.error(`[redis-rate-limit] Redis ${result === "timeout" ? `timed out after ${CHECK_TIMEOUT_MS}ms` : "failed"} for ${key.split(":")[0]}; using the in-process limiter.`)
+        countEvent("rate_limit_store_unavailable")
         return await fallback.check(key, limit, windowMs)
       }
       return result

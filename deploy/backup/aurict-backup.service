@@ -1,0 +1,14 @@
+# Backup machine, user unit. Install: copy the scripts to ~/backups/aurict/ and the units to
+# ~/.config/systemd/user/, then `systemctl --user enable --now aurict-backup.timer aurict-backup-restore.timer`.
+[Unit]
+Description=aurict database backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=BACKUP_DIR=%h/backups/aurict
+ExecStart=%h/backups/aurict/aurict-backup-pull.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=1h
