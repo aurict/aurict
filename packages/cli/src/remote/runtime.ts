@@ -147,7 +147,9 @@ export class CliRemoteRuntime {
   }
 
   private handleRawMessage(raw: string): void {
-    this.incoming = this.incoming.then(() => this.processRawMessage(raw)).catch(() => {})
+    // Keep the chain alive if a listener throws, so one failing handler cannot stall every
+    // later event. Verification itself never throws (invalid input returns false).
+    this.incoming = this.incoming.then(() => this.processRawMessage(raw)).catch(() => undefined)
   }
 
   /**
