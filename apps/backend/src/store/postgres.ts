@@ -1,4 +1,4 @@
-import { and, count, eq, gt, isNotNull, isNull, lte, ne, or } from "drizzle-orm"
+import { and, count, eq, gt, isNotNull, isNull, lt, lte, ne, or } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import * as schema from "../db/schema"
 import type {
@@ -417,6 +417,9 @@ export function createPostgresRepository(db: Db): BackendRepository {
     },
     async createFeedbackReport(report) {
       await db.insert(schema.feedbackReports).values(toFeedbackReportInsert(report))
+    },
+    async purgeFeedbackReports(before) {
+      await db.delete(schema.feedbackReports).where(lt(schema.feedbackReports.createdAt, before))
     },
   }
 }

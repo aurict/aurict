@@ -47,6 +47,7 @@ export function createApp(options: CreateAppOptions = {}) {
   }
   const app = new Hono<AppBindings>()
   let lastExpirySweepAt = 0
+  let lastRetentionSweepAt = 0
 
   app.onError((error, c) => errorResponse(c, error))
   app.use("*", requestContext)
@@ -63,6 +64,10 @@ export function createApp(options: CreateAppOptions = {}) {
       lastExpirySweepAt = timestamp
       await repo.markExpiredRemoteSessions(new Date(timestamp))
       await repo.purgeSecretCiphertexts(new Date(timestamp))
+    }
+    if (timestamp - lastRetentionSweepAt > 60 * 60_000) {
+      lastRetentionSweepAt = timestamp
+      await repo.purgeFeedbackReports(new Date(timestamp - env.FEEDBACK_RETENTION_DAYS * 24 * 60 * 60_000))
     }
     await next()
   })

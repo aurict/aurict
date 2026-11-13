@@ -44,6 +44,8 @@ const envSchema = z.object({
   REQUIRE_DEVICE_VERIFICATION: booleanString.default(true),
   FIREBASE_PROJECT_ID: optionalString(z.string().min(1)),
   // Transactional email (verification, password reset) through Resend's HTTP API.
+  // Feedback reports can include up to 24 KB of conversation text; they are deleted after this.
+  FEEDBACK_RETENTION_DAYS: z.coerce.number().int().positive().max(3650).default(90),
   RESEND_API_KEY: optionalString(z.string().min(10)),
   EMAIL_FROM: z.string().min(3).default("Aurict <no-reply@aurict.com>"),
   // Links in emails point at the web app, which owns the verify and reset pages.

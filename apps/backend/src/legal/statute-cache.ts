@@ -1,3 +1,4 @@
+import { ApiError } from "../middleware/errors"
 import { and, desc, eq } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { newId, now } from "../crypto/ids"
@@ -36,7 +37,40 @@ export async function getOrFetchStatute(
     return { document: cached, units }
   }
 
-  return fetchAndPersistStatute(db, adapter, identifier)
+  // Fetching downloads and parses a PDF of up to 25 MB. Concurrent requests for the same statute
+  // share one fetch, and at most MAX_CONCURRENT_FETCHES run at once across the process.
+  const key = `${adapter.jurisdiction}:${identifier}`
+  let pending = inFlight.get(key)
+  if (!pending) {
+    pending = withFetchSlot(() => fetchAndPersistStatute(db, adapter, identifier)).finally(() => inFlight.delete(key))
+    inFlight.set(key, pending)
+  }
+  return pending
+}
+
+const MAX_CONCURRENT_FETCHES = 2
+const MAX_QUEUED_FETCHES = 20
+const inFlight = new Map<string, Promise<CachedStatute>>()
+let activeFetches = 0
+const waiting: Array<() => void> = []
+
+export async function withFetchSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (activeFetches < MAX_CONCURRENT_FETCHES) {
+    activeFetches += 1
+  } else {
+    if (waiting.length >= MAX_QUEUED_FETCHES) {
+      throw new ApiError(503, "Too many statute fetches in progress. Try again shortly.", "fetch_busy")
+    }
+    // The finishing task hands its slot over directly, so the count never exceeds the cap.
+    await new Promise<void>((resolve) => waiting.push(resolve))
+  }
+  try {
+    return await task()
+  } finally {
+    const next = waiting.shift()
+    if (next) next()
+    else activeFetches -= 1
+  }
 }
 
 /** Cache'i yok sayıp her zaman yeniden çeker ve yeni bir version_date satırı olarak kaydeder. */

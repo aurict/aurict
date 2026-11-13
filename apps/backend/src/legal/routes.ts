@@ -29,6 +29,7 @@ export function escapeLikePattern(value: string): string {
 export const legalRoutes = new Hono<AppBindings>()
   .use("/legal/*", requireAuth)
   .use("/legal/statute/*", rateLimit(30, 60_000, "legal-statute"))
+  .use("/legal/statute/*", rateLimit(20, 60_000, "legal-statute-user", { by: "user" }))
   .use("/legal/unit/*", rateLimit(120, 60_000, "legal-unit"))
   .use("/legal/search", rateLimit(60, 60_000, "legal-search"))
   .get("/legal/statute/:jurisdiction/:identifier", async (c) => {
@@ -46,7 +47,10 @@ export const legalRoutes = new Hono<AppBindings>()
       const roots = units.filter((u) => u.parentId === null)
       return c.json({ ok: true, document, units: roots })
     } catch (error) {
-      throw new ApiError(502, error instanceof Error ? error.message : "Statute fetch failed.", "fetch_failed")
+      if (error instanceof ApiError) throw error
+      // Upstream errors can carry URLs and response details; log them, return a generic error.
+      console.error(`[legal] statute fetch failed for ${jurisdiction}/${identifier}:`, error instanceof Error ? error.message : "unknown error")
+      throw new ApiError(502, "The statute could not be fetched from its source.", "fetch_failed")
     }
   })
   .get("/legal/unit/:id", async (c) => {
