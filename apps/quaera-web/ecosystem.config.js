@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "quaera-aurict-web",
       script: "bun",
-      args: "run start",
+      args: "run start --hostname 127.0.0.1",
       cwd: "./",
       env: {
         NODE_ENV: "production",
