@@ -35,7 +35,7 @@
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.3.0",
     "electron": "43.0.0",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
