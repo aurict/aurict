@@ -241,6 +241,9 @@ export const authRoutes = new Hono<AppBindings>()
     if (record?.revokedAt) {
       const detectedAt = now()
       await repo.revokeRefreshTokenFamily(record.userId, record.familyId, detectedAt, detectedAt)
+      // A replayed refresh token means one was stolen; the thief may already hold an access
+      // token from it, so cut every access token off. Other sessions just refresh again.
+      await invalidateAccessTokens(c, record.userId, detectedAt)
       const log: AuditLog = {
         id: newId("aud"),
         userId: record.userId,
@@ -291,7 +294,9 @@ export const authRoutes = new Hono<AppBindings>()
   })
   .post("/auth/logout-all", requireAuth, async (c) => {
     const user = c.get("user")!
-    await c.get("repo").revokeUserRefreshTokens(user.id, now())
+    const revokedAt = now()
+    await c.get("repo").revokeUserRefreshTokens(user.id, revokedAt)
+    await invalidateAccessTokens(c, user.id, revokedAt)
     return c.json({ ok: true })
   })
   .get("/auth/sessions", requireAuth, async (c) => {
@@ -359,7 +364,11 @@ export const authRoutes = new Hono<AppBindings>()
     const token = await consumeAuthActionToken(c, body.token, "password_reset")
     if (!token) throw new ApiError(400, "Password reset token is invalid or expired.", "invalid_reset_token")
     await c.get("repo").updatePasswordIdentity(token.userId, await hashPassword(body.password))
-    await c.get("repo").revokeUserRefreshTokens(token.userId, now())
+    const resetAt = now()
+    await c.get("repo").revokeUserRefreshTokens(token.userId, resetAt)
+    await invalidateAccessTokens(c, token.userId, resetAt)
+    // Other reset links sent earlier must not work after the password has been changed.
+    await c.get("repo").consumeUserAuthTokens(token.userId, "password_reset", resetAt)
     await c.get("repo").addAuditLog({
       id: newId("aud"),
       userId: token.userId,
@@ -453,6 +462,13 @@ async function createAuthActionToken(c: Context<AppBindings>, userId: string, pu
     createdAt,
   })
   return { plaintext, expiresAt }
+}
+
+async function invalidateAccessTokens(c: Context<AppBindings>, userId: string, at: Date) {
+  const user = await c.get("repo").getUser(userId)
+  if (!user) return
+  user.tokensValidAfter = at
+  await c.get("repo").updateUser(user)
 }
 
 async function consumeAuthActionToken(c: Context<AppBindings>, plaintext: string, purpose: "email_verification" | "password_reset") {

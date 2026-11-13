@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   emailVerifiedAt: timestamp("email_verified_at"),
   createdAt: timestamp("created_at").notNull(),
   disabledAt: timestamp("disabled_at"),
+  tokensValidAfter: timestamp("tokens_valid_after"),
 }, (table) => ({
   emailIdx: uniqueIndex("users_email_idx").on(table.email),
 }))

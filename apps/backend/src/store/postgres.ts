@@ -190,6 +190,11 @@ export function createPostgresRepository(db: Db): BackendRepository {
         .returning({ id: schema.authTokens.id })
       return !!updated[0]
     },
+    async consumeUserAuthTokens(userId, purpose, consumedAt) {
+      await db.update(schema.authTokens)
+        .set({ consumedAt })
+        .where(and(eq(schema.authTokens.userId, userId), eq(schema.authTokens.purpose, purpose), isNull(schema.authTokens.consumedAt)))
+    },
     async createDeviceLoginFlow(record) {
       await db.insert(schema.deviceLoginFlows).values(toDeviceLoginFlowInsert(record))
     },
@@ -420,6 +425,7 @@ function toUser(row: typeof schema.users.$inferSelect): User {
   const user: User = { id: row.id, email: row.email, createdAt: row.createdAt }
   if (row.emailVerifiedAt) user.emailVerifiedAt = row.emailVerifiedAt
   if (row.disabledAt) user.disabledAt = row.disabledAt
+  if (row.tokensValidAfter) user.tokensValidAfter = row.tokensValidAfter
   return user
 }
 
@@ -430,6 +436,7 @@ function toUserInsert(user: User): typeof schema.users.$inferInsert {
     emailVerifiedAt: user.emailVerifiedAt ?? null,
     createdAt: user.createdAt,
     disabledAt: user.disabledAt ?? null,
+    tokensValidAfter: user.tokensValidAfter ?? null,
   }
 }
 

@@ -4,6 +4,8 @@ export type User = {
   emailVerifiedAt?: Date
   createdAt: Date
   disabledAt?: Date
+  /** Access tokens issued (iat) before this instant are rejected. */
+  tokensValidAfter?: Date
 }
 
 export type AuthProvider = "password" | "firebase" | "google" | "apple"
