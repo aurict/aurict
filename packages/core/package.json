@@ -36,17 +36,17 @@
     "@ai-sdk/openai": "^1.1.5",
     "@ai-sdk/openai-compatible": "0.2.16",
     "@ai-sdk/xai": "^3.0.93",
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "ai": "^4.3.16",
     "decimal.js": "^10.6.0",
-    "drizzle-orm": "^0.40.0",
-    "hono": "^4.7.0",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.17",
     "js-tiktoken": "^1.0.16",
     "pptxgenjs": "^4.0.1",
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@types/bun": "1.3.12",
+    "@types/bun": "1.4.4",
     "@types/node": "^22.10.0",
     "typescript": "^5.8.0"
   },
