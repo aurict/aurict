@@ -8,8 +8,8 @@
  * pinned key. A stolen access token or a compromised backend therefore cannot
  * add a controller: it would need this machine's device key and this local file.
  *
- * The trust-grant payload must match the backend's `trustGrantPayload`
- * (apps/backend/src/crypto/signatures.ts) byte for byte.
+ * The fingerprint, safety code and trust-grant formats come from packages/backend-contract,
+ * which the backend imports too.
  */
 
 import { backendRequest, RemoteApiError } from "./backend-client.js"
@@ -17,6 +17,7 @@ import { ensureAccessToken } from "./auth.js"
 import { ensureDeviceIdentity, signWithStoredIdentity } from "./identity.js"
 import { readSecureJson, writeSecureJson } from "./secure-store.js"
 import { readStoredTokens } from "./session-store.js"
+import { deviceKeyFingerprint as fingerprintOfKey, trustGrantPayload } from "../../../backend-contract/src/signing"
 
 const PEERS_FILE = "paired-phones.json"
 
@@ -41,16 +42,7 @@ export interface AccountDevice {
   createdAt:             string
 }
 
-export async function fingerprintOfKey(signingPublicKey: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signingPublicKey))
-  return `fp_${Buffer.from(digest).toString("base64url")}`
-}
-
-/** A short, human-comparable code for a fingerprint, e.g. "K3QF-9XAP-2MZD". */
-export function safetyCode(fingerprint: string): string {
-  const body = fingerprint.replace(/^fp_/, "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 12)
-  return body.match(/.{1,4}/g)?.join("-") ?? body
-}
+export { deviceKeyFingerprint as fingerprintOfKey, safetyCode, trustGrantPayload } from "../../../backend-contract/src/signing"
 
 export function listPairedPhones(): PairedPhone[] {
   const userId = readStoredTokens()?.userId
@@ -77,20 +69,6 @@ export async function listAccountPhones(): Promise<AccountDevice[]> {
     phones.push(device)
   }
   return phones
-}
-
-export function trustGrantPayload(grant: {
-  userId:            string
-  sourceDeviceId:    string
-  sourceFingerprint: string
-  targetDeviceId:    string
-  targetFingerprint: string
-  scope:             string
-  issuedAt:          string
-}): string {
-  const fields = [grant.userId, grant.sourceDeviceId, grant.sourceFingerprint, grant.targetDeviceId, grant.targetFingerprint, grant.scope, grant.issuedAt]
-  if (fields.some((field) => field.includes("\n"))) throw new Error("Signed fields must not contain newlines.")
-  return ["aurict.trust-grant.v1", ...fields].join("\n")
 }
 
 /**

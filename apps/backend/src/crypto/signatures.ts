@@ -1,3 +1,6 @@
+// The fingerprint and the signed payload formats are shared with the clients byte for byte.
+export { deviceKeyFingerprint, secretClaimPayload, secretTransferPayload, trustGrantPayload } from "../../../../packages/backend-contract/src/signing"
+
 const encoder = new TextEncoder()
 
 export type SignatureAlgorithm = "ed25519" | "ecdsa-p256-sha256"
@@ -29,12 +32,6 @@ export function parseDevicePublicKey(value: string): { jwk: PublicJwk; algorithm
   return undefined
 }
 
-/** `fp_` + base64url(sha256(utf8(signingPublicKey))): the same derivation the CLI and mobile clients use. */
-export async function deviceKeyFingerprint(signingPublicKey: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(signingPublicKey))
-  return `fp_${Buffer.from(digest).toString("base64url")}`
-}
-
 /** Verifies `signature` (base64url, raw Ed25519 or IEEE-P1363 ECDSA) over the UTF-8 bytes of `payload`. */
 export async function verifyDeviceSignature(signingPublicKey: string, payload: string, signature: string): Promise<boolean> {
   const key = parseDevicePublicKey(signingPublicKey)
@@ -51,64 +48,6 @@ export async function verifyDeviceSignature(signingPublicKey: string, payload: s
   } catch {
     return false
   }
-}
-
-/**
- * Canonical payloads that devices sign. Fields are joined with "\n" and every field is
- * validated by the caller to contain no newline, so two different inputs never produce the
- * same bytes. The leading tag binds a signature to one purpose and protocol version.
- */
-export function trustGrantPayload(grant: {
-  userId: string
-  sourceDeviceId: string
-  sourceFingerprint: string
-  targetDeviceId: string
-  targetFingerprint: string
-  scope: string
-  issuedAt: string
-}): string {
-  return canonical("aurict.trust-grant.v1", [
-    grant.userId,
-    grant.sourceDeviceId,
-    grant.sourceFingerprint,
-    grant.targetDeviceId,
-    grant.targetFingerprint,
-    grant.scope,
-    grant.issuedAt,
-  ])
-}
-
-export function secretTransferPayload(transfer: {
-  senderDeviceId: string
-  recipientDeviceId: string
-  provider: string
-  algorithm: string
-  nonce: string
-  ciphertext: string
-  senderKeyFingerprint: string
-  recipientKeyFingerprint: string
-}): string {
-  return canonical("aurict.secret-transfer.v1", [
-    transfer.senderDeviceId,
-    transfer.recipientDeviceId,
-    transfer.provider,
-    transfer.algorithm,
-    transfer.nonce,
-    transfer.ciphertext,
-    transfer.senderKeyFingerprint,
-    transfer.recipientKeyFingerprint,
-  ])
-}
-
-export function secretClaimPayload(claim: { transferId: string; recipientDeviceId: string; issuedAt: string }): string {
-  return canonical("aurict.secret-claim.v1", [claim.transferId, claim.recipientDeviceId, claim.issuedAt])
-}
-
-function canonical(tag: string, fields: string[]): string {
-  for (const field of fields) {
-    if (field.includes("\n")) throw new Error("Signed fields must not contain newlines.")
-  }
-  return [tag, ...fields].join("\n")
 }
 
 function isBase64Url(value: unknown, length: number): value is string {

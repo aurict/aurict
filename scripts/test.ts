@@ -7,7 +7,7 @@ type SuiteName = "core" | "cli" | "desktop" | "integration"
 
 const SUITES: Record<SuiteName, string[]> = {
   core: ["packages/core/test/"],
-  cli: ["packages/cli/test/"],
+  cli: ["packages/cli/test/", "packages/backend-contract/test/"],
   desktop: ["apps/desktop/test/"],
   integration: ["packages/cli/test/remote-webrtc-transport.test.ts"],
 }
