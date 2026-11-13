@@ -1,0 +1,16 @@
+# Build context is the repository root; send only what the web image needs.
+*
+!package.json
+!bun.lock
+!bunfig.toml
+!tsconfig.base.json
+!patches/**
+!packages/*/package.json
+!apps/desktop/package.json
+!apps/web/**
+!packages/core/src/marketing/**
+apps/web/node_modules
+apps/web/.next
+apps/web/.env*
+apps/web/test
+apps/web/deploy

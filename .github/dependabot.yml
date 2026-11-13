@@ -23,7 +23,11 @@ updates:
 
   - package-ecosystem: docker
     directories:
+      - /apps/backend
       - /apps/web
+      - /apps/mobile-web
+      - /apps/decision-web
+      - /apps/quaera-web
       - /docker/security-lite
       - /docker/security-kali-full
     schedule:

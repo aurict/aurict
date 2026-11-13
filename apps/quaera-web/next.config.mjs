@@ -16,6 +16,8 @@ const contentSecurityPolicy = [
 ].join("; ")
 
 const nextConfig = {
+  // Container builds (Dockerfile sets DOCKER_BUILD) ship the self-contained server.
+  output: process.env.DOCKER_BUILD ? "standalone" : undefined,
   reactStrictMode: true,
   poweredByHeader: false,
   images: { qualities: [75, 95] },
