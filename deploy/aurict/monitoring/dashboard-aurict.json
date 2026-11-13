@@ -6,7 +6,7 @@
  ],
  "timezone": "browser",
  "schemaVersion": 41,
- "version": 1,
+ "version": 2,
  "refresh": "1m",
  "time": {
   "from": "now-6h",
@@ -64,8 +64,8 @@
       "type": "prometheus",
       "uid": "prom"
      },
-     "expr": "probe_success{system=\"aurict\"}",
-     "legendFormat": "{{job}}",
+     "expr": "label_replace(probe_success{system=\"aurict\"}, \"site\", \"$1\", \"job\", \"integrations/blackbox/(.*)\")",
+     "legendFormat": "{{site}}",
      "instant": true
     }
    ],
@@ -112,7 +112,7 @@
     },
     "colorMode": "background",
     "graphMode": "none",
-    "textMode": "value_and_name"
+    "textMode": "name"
    }
   },
   {
@@ -251,7 +251,7 @@
       "type": "prometheus",
       "uid": "prom"
      },
-     "expr": "sum(rate(aurict_http_requests_total{system=\"aurict\",status=\"5xx\"}[10m])) / clamp_min(sum(rate(aurict_http_requests_total{system=\"aurict\"}[10m])),1e-9)",
+     "expr": "(sum(rate(aurict_http_requests_total{system=\"aurict\",status=\"5xx\"}[10m])) or vector(0)) / clamp_min(sum(rate(aurict_http_requests_total{system=\"aurict\"}[10m])),1e-9)",
      "legendFormat": "",
      "instant": true
     }
@@ -530,7 +530,7 @@
   },
   {
    "type": "timeseries",
-   "title": "Security events (per 10 min)",
+   "title": "Security events (per 10 min, 0 = none)",
    "id": 11,
    "datasource": {
     "type": "prometheus",
@@ -549,7 +549,7 @@
       "type": "prometheus",
       "uid": "prom"
      },
-     "expr": "sum by (event) (increase(aurict_security_events_total{system=\"aurict\"}[10m])) > 0",
+     "expr": "sum by (event) (increase(aurict_security_events_total{system=\"aurict\"}[10m]))",
      "legendFormat": "{{event}}"
     }
    ],
@@ -801,8 +801,8 @@
       "type": "prometheus",
       "uid": "prom"
      },
-     "expr": "probe_duration_seconds{system=\"aurict\"}",
-     "legendFormat": "{{job}}"
+     "expr": "label_replace(probe_duration_seconds{system=\"aurict\"}, \"site\", \"$1\", \"job\", \"integrations/blackbox/(.*)\")",
+     "legendFormat": "{{site}}"
     }
    ],
    "fieldConfig": {
