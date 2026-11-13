@@ -23,6 +23,10 @@ const envSchema = z.object({
   JWT_PRIVATE_KEY: optionalString(z.string().min(32)),
   JWT_PUBLIC_KEY: optionalString(z.string().min(32)),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  // Bound into every access token and checked on verification, so a token minted by another
+  // service that shares the signing key is not accepted here.
+  JWT_ISSUER: z.string().min(1).default("aurict-backend"),
+  JWT_AUDIENCE: z.string().min(1).default("aurict-api"),
   REFRESH_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 24 * 30),
   DEVICE_LOGIN_TTL_SECONDS: z.coerce.number().int().positive().max(1800).default(600),
   DEVICE_LOGIN_POLL_INTERVAL_SECONDS: z.coerce.number().int().positive().max(30).default(5),

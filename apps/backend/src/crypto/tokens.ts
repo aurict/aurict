@@ -4,6 +4,8 @@ import { addSeconds, newId, now } from "./ids"
 export type AccessTokenClaims = {
   sub: string
   typ: "access"
+  iss: string
+  aud: string
   iat: number
   exp: number
 }
@@ -36,6 +38,8 @@ export async function signAccessToken(userId: string, env: BackendEnv): Promise<
   const claims: AccessTokenClaims = {
     sub: userId,
     typ: "access",
+    iss: env.JWT_ISSUER,
+    aud: env.JWT_AUDIENCE,
     iat: issuedAt,
     exp: issuedAt + env.ACCESS_TOKEN_TTL_SECONDS,
   }
@@ -81,7 +85,9 @@ export async function verifyAccessToken(token: string, env: BackendEnv): Promise
   } else {
     return null
   }
-  if (claims.typ !== "access" || claims.exp < Math.floor(Date.now() / 1000)) return null
+  if (claims.typ !== "access" || claims.iss !== env.JWT_ISSUER || claims.aud !== env.JWT_AUDIENCE) return null
+  if (typeof claims.sub !== "string" || typeof claims.iat !== "number" || typeof claims.exp !== "number") return null
+  if (claims.exp < Math.floor(Date.now() / 1000)) return null
   return claims
 }
 

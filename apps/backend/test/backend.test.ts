@@ -1425,6 +1425,54 @@ describe("device signatures and trust (remote control)", () => {
   })
 })
 
+describe("access token revocation", () => {
+  const authed = (token: string) => ({ "content-type": "application/json", authorization: `Bearer ${token}` })
+  const me = (app: ReturnType<typeof createApp>, token: string) => app.request("/auth/me", { headers: { authorization: `Bearer ${token}` } })
+  // iat has one-second resolution; wait past the second the token was issued in.
+  const nextSecond = () => new Promise((resolve) => setTimeout(resolve, 1100))
+
+  test("logout-all cuts off access tokens immediately", async () => {
+    const { app } = testApp()
+    const auth = await register(app)
+    await nextSecond()
+    expect((await app.request("/auth/logout-all", { method: "POST", headers: authed(auth.accessToken) })).status).toBe(200)
+    expect((await me(app, auth.accessToken)).status).toBe(401)
+    const login = await app.request("/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "user@example.com", password: "correct horse battery" }) })
+    expect((await me(app, (await json(login)).accessToken)).status).toBe(200)
+  })
+
+  test("password reset revokes access tokens and every other reset link", async () => {
+    const { app } = testApp()
+    const auth = await register(app)
+    const request = () => app.request("/auth/password-reset/request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "user@example.com" }) })
+    const first = (await json(await request())).token
+    const second = (await json(await request())).token
+    await nextSecond()
+    const confirm = (token: string, password: string) => app.request("/auth/password-reset/confirm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, password }) })
+    expect((await confirm(first, "a new strong passphrase")).status).toBe(200)
+    expect((await me(app, auth.accessToken)).status).toBe(401)
+    expect((await confirm(second, "attacker chosen passphrase")).status).toBe(400)
+  })
+
+  test("refresh token reuse cuts off access tokens", async () => {
+    const { app } = testApp()
+    const auth = await register(app)
+    const refresh = (token: string) => app.request("/auth/refresh", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ refreshToken: token }) })
+    expect((await refresh(auth.refreshToken)).status).toBe(200)
+    await nextSecond()
+    expect((await refresh(auth.refreshToken)).status).toBe(401)
+    expect((await me(app, auth.accessToken)).status).toBe(401)
+  })
+
+  test("tokens for another issuer or audience are rejected", async () => {
+    const { signAccessToken, verifyAccessToken } = await import("../src/crypto/tokens")
+    const other = loadEnv({ NODE_ENV: "test", JWT_SECRET: "test-secret-test-secret-test-secret-test-secret", JWT_AUDIENCE: "aurict-gateway" })
+    const token = await signAccessToken("usr_1", other)
+    expect(await verifyAccessToken(token, other)).not.toBeNull()
+    expect(await verifyAccessToken(token, env)).toBeNull()
+  })
+})
+
 describe("ed25519 access tokens", () => {
   const { generateKeyPairSync } = require("node:crypto") as typeof import("node:crypto")
   const pair = generateKeyPairSync("ed25519")

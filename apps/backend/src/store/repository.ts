@@ -47,6 +47,8 @@ export type BackendRepository = {
   createAuthToken(record: AuthTokenRecord): Promise<void>
   getAuthTokenByHash(hash: string, purpose: AuthTokenPurpose): Promise<AuthTokenRecord | undefined>
   consumeAuthToken(id: string, consumedAt: Date): Promise<boolean>
+  /** Marks every still-unused token of this purpose for the user as consumed. */
+  consumeUserAuthTokens(userId: string, purpose: AuthTokenPurpose, consumedAt: Date): Promise<void>
 
   createDeviceLoginFlow(record: DeviceLoginFlow): Promise<void>
   getDeviceLoginFlowByUserCodeHash(hash: string): Promise<DeviceLoginFlow | undefined>
@@ -266,6 +268,11 @@ export function createMemoryRepository(store: BackendStore): BackendRepository {
       if (!token || token.consumedAt || token.expiresAt <= consumedAt) return false
       token.consumedAt = consumedAt
       return true
+    },
+    async consumeUserAuthTokens(userId, purpose, consumedAt) {
+      for (const token of store.authTokens.values()) {
+        if (token.userId === userId && token.purpose === purpose && !token.consumedAt) token.consumedAt = consumedAt
+      }
     },
     async createDeviceLoginFlow(record) {
       store.deviceLoginFlows.set(record.id, record)
