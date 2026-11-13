@@ -39,7 +39,7 @@ const claimSchema = z.object({
 
 export const secretRoutes = new Hono<AppBindings>()
   .use("/secrets/*", requireAuth)
-  .post("/secrets/transfers", rateLimit(20, 60_000, "secret-create"), async (c) => {
+  .post("/secrets/transfers", rateLimit(20, 60_000, "secret-create"), rateLimit(60, 60 * 60_000, "secret-create-user", { by: "user" }), async (c) => {
     const raw = await c.req.json()
     if (containsPlaintextSecret(raw)) {
       throw new ApiError(400, "Secret transfers accept ciphertext only.", "plaintext_secret_rejected")

@@ -7,10 +7,13 @@ import { hashPassword, verifyPassword } from "../crypto/password"
 import { createRefreshToken, refreshTokenHash, signAccessToken } from "../crypto/tokens"
 import { requireAuth } from "../middleware/auth"
 import { ApiError } from "../middleware/errors"
-import { rateLimit } from "../middleware/rate-limit"
+import { enforceRateLimit, rateLimit } from "../middleware/rate-limit"
 import { normalizeEmail } from "../store/policy"
 import type { AuditLog, RefreshTokenRecord, User } from "../store/types"
 import type { AppBindings } from "../types"
+
+// Account deletion with a Firebase token needs a sign-in no older than this.
+const REAUTH_MAX_AGE_SECONDS = 5 * 60
 
 const authSchema = z.object({
   email: z.string().email(),
@@ -58,10 +61,16 @@ export const authRoutes = new Hono<AppBindings>()
   .post("/auth/login", rateLimit(20, 60_000, "login"), async (c) => {
     const body = authSchema.parse(await c.req.json())
     const email = normalizeEmail(body.email)
+    // Per-account limit on top of the per-IP one, so rotating addresses does not allow an
+    // unlimited password guessing run against one account.
+    await enforceRateLimit(c, `login-email:${await emailKey(email)}`, 10, 15 * 60_000)
     const repo = c.get("repo")
     const user = await repo.getUserByEmail(email)
     const identity = user ? await repo.getPasswordIdentity(user.id) : undefined
-    if (!user || !identity?.passwordHash || !(await verifyPassword(body.password, identity.passwordHash))) {
+    // Always run one password hash check so the response time does not reveal whether the
+    // email has an account.
+    const passwordOk = await verifyPassword(body.password, identity?.passwordHash ?? await dummyPasswordHash())
+    if (!user || !identity?.passwordHash || !passwordOk) {
       throw new ApiError(401, "Invalid email or password.", "invalid_credentials")
     }
     await repo.addAuditLog({ id: newId("aud"), userId: user.id, event: "auth.login.success", metadataJson: "{}", createdAt: now() })
@@ -314,10 +323,21 @@ export const authRoutes = new Hono<AppBindings>()
       })),
     })
   })
-  .post("/auth/email-verification/request", requireAuth, async (c) => {
+  .post("/auth/email-verification/request", requireAuth, rateLimit(5, 60 * 60_000, "email-verification", { by: "user" }), async (c) => {
     const user = c.get("user")!
     if (user.emailVerifiedAt) return c.json({ ok: true, alreadyVerified: true })
+    const mailer = c.get("mailer")
+    if (!mailer.configured && c.get("env").NODE_ENV === "production") {
+      throw new ApiError(503, "Email delivery is not configured.", "email_not_configured")
+    }
     const issued = await createAuthActionToken(c, user.id, "email_verification", 60 * 60)
+    if (mailer.configured) {
+      await mailer.send({
+        to: user.email,
+        subject: "Confirm your Aurict email address",
+        text: `Confirm your email address for Aurict by opening this link within an hour:\n\n${emailLink(c, "/auth/verify-email", issued.plaintext)}\n\nIf you did not create an Aurict account, ignore this email.`,
+      })
+    }
     await c.get("repo").addAuditLog({
       id: newId("aud"),
       userId: user.id,
@@ -348,6 +368,21 @@ export const authRoutes = new Hono<AppBindings>()
     const user = await c.get("repo").getUserByEmail(normalizeEmail(body.email))
     if (!user || user.disabledAt) return c.json({ ok: true })
     const issued = await createAuthActionToken(c, user.id, "password_reset", 60 * 30)
+    const mailer = c.get("mailer")
+    if (mailer.configured) {
+      try {
+        await mailer.send({
+          to: user.email,
+          subject: "Reset your Aurict password",
+          text: `Someone asked to reset the password of your Aurict account. Open this link within 30 minutes to choose a new one:\n\n${emailLink(c, "/auth/reset-password", issued.plaintext)}\n\nIf this was not you, ignore this email; your password stays the same.`,
+        })
+      } catch (error) {
+        // Respond as usual: an error here must not reveal that the email has an account.
+        console.error("[auth] password reset email could not be sent:", error instanceof Error ? error.message : "unknown error")
+      }
+    } else if (c.get("env").NODE_ENV === "production") {
+      console.error("[auth] password reset requested but email delivery is not configured")
+    }
     await c.get("repo").addAuditLog({
       id: newId("aud"),
       userId: user.id,
@@ -436,6 +471,12 @@ async function authorizeAccountDeletion(c: Context<AppBindings>, user: User, bod
   const firebaseIdentity = identities.find((identity) => identity.provider === "firebase" && identity.providerSubject)
   if (body.firebaseIdToken && firebaseIdentity?.providerSubject) {
     const token = await verifyFirebaseIdToken(body.firebaseIdToken, c.get("env"))
+    // A Firebase ID token stays valid for an hour and refreshes silently, so require that
+    // the user actually signed in within the last few minutes before deleting the account.
+    const signedInSecondsAgo = token.authTime ? Math.floor(Date.now() / 1000) - token.authTime : Infinity
+    if (signedInSecondsAgo > REAUTH_MAX_AGE_SECONDS || signedInSecondsAgo < -60) {
+      throw new ApiError(401, "Sign in again to confirm account deletion.", "reauthentication_required")
+    }
     if (token.uid === firebaseIdentity.providerSubject && normalizeEmail(token.email) === user.email) return
     throw new ApiError(401, "Firebase re-authentication does not match this account.", "invalid_reauthentication")
   }
@@ -462,6 +503,22 @@ async function createAuthActionToken(c: Context<AppBindings>, userId: string, pu
     createdAt,
   })
   return { plaintext, expiresAt }
+}
+
+/** Links carry the token in the fragment, which browsers never send to servers or in Referer. */
+function emailLink(c: Context<AppBindings>, path: string, token: string) {
+  return `${c.get("env").EMAIL_LINK_BASE_URL.replace(/\/$/, "")}${path}#token=${encodeURIComponent(token)}`
+}
+
+async function emailKey(email: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email))
+  return Buffer.from(digest).toString("base64url").slice(0, 32)
+}
+
+let dummyHash: Promise<string> | undefined
+function dummyPasswordHash() {
+  dummyHash ??= hashPassword(crypto.randomUUID())
+  return dummyHash
 }
 
 async function invalidateAccessTokens(c: Context<AppBindings>, userId: string, at: Date) {

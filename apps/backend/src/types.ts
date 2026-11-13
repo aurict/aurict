@@ -1,3 +1,4 @@
+import type { Mailer } from "./email/mailer"
 import type { BackendEnv } from "./env"
 import type { BackendDb } from "./db/client"
 import type { RateLimiter } from "./middleware/rate-limit"
@@ -12,6 +13,7 @@ export type AppBindings = {
     repo: BackendRepository
     rateLimiter: RateLimiter
     metrics: MetricsSink
+    mailer: Mailer
     db?: BackendDb
     requestId: string
     user?: User

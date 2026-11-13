@@ -4,6 +4,7 @@ import { addSeconds, newId, now } from "../crypto/ids"
 import { deviceKeyFingerprint, parseDevicePublicKey, verifyDeviceSignature } from "../crypto/signatures"
 import { requireAuth } from "../middleware/auth"
 import { ApiError } from "../middleware/errors"
+import { rateLimit } from "../middleware/rate-limit"
 import { isDeviceActive, publicDevice } from "../store/policy"
 import type { AppBindings } from "../types"
 
@@ -15,6 +16,9 @@ const deviceSchema = z.object({
   signingKeyFingerprint: z.string().min(16).max(128),
 }).strict()
 
+// Active (unrevoked) devices one account may hold; registration fails beyond it.
+const MAX_ACTIVE_DEVICES = 25
+
 const verifyDeviceSchema = z.object({
   challenge: z.string().min(16).max(256),
   signature: z.string().min(32).max(4096),
@@ -23,7 +27,7 @@ const verifyDeviceSchema = z.object({
 
 export const deviceRoutes = new Hono<AppBindings>()
   .use("/devices/*", requireAuth)
-  .post("/devices/register", async (c) => {
+  .post("/devices/register", rateLimit(10, 60 * 60_000, "device-register", { by: "user" }), async (c) => {
     const body = deviceSchema.parse(await c.req.json())
     const user = c.get("user")!
     const repo = c.get("repo")
@@ -34,6 +38,9 @@ export const deviceRoutes = new Hono<AppBindings>()
     }
     if (body.signingKeyFingerprint !== await deviceKeyFingerprint(body.signingPublicKey)) {
       throw new ApiError(400, "Signing key fingerprint does not match the signing key.", "fingerprint_mismatch")
+    }
+    if ((await repo.listDevices(user.id)).filter(isDeviceActive).length >= MAX_ACTIVE_DEVICES) {
+      throw new ApiError(409, "Too many devices on this account. Revoke unused devices first.", "device_limit")
     }
     if (await repo.findActiveDeviceByFingerprint(body.signingKeyFingerprint)) {
       throw new ApiError(409, "Device signing key is already registered.", "device_exists")
@@ -74,26 +81,26 @@ export const deviceRoutes = new Hono<AppBindings>()
     return c.json({ ok: true, devices })
   })
   .get("/devices/:id", async (c) => {
-    const device = await ownedDevice(c, c.req.param("id"))
+    const device = await ownedDevice(c, c.req.param("id") ?? "")
     return c.json({ ok: true, device: publicDevice(device) })
   })
-  .post("/devices/:id/heartbeat", async (c) => {
-    const device = await ownedDevice(c, c.req.param("id"))
+  .post("/devices/:id/heartbeat", rateLimit(120, 60_000, "device-heartbeat", { by: "user" }), async (c) => {
+    const device = await ownedDevice(c, c.req.param("id") ?? "")
     device.lastSeenAt = now()
     await c.get("repo").updateDevice(device)
     await c.get("repo").touchUserPresence(c.get("user")!.id, device.lastSeenAt)
     return c.json({ ok: true, device: publicDevice(device) })
   })
-  .post("/devices/:id/rename", async (c) => {
+  .post("/devices/:id/rename", rateLimit(30, 60_000, "device-rename", { by: "user" }), async (c) => {
     const body = z.object({ name: z.string().min(1).max(80) }).strict().parse(await c.req.json())
-    const device = await ownedDevice(c, c.req.param("id"))
+    const device = await ownedDevice(c, c.req.param("id") ?? "")
     device.name = body.name
     await c.get("repo").updateDevice(device)
     return c.json({ ok: true, device: publicDevice(device) })
   })
-  .post("/devices/:id/verify", async (c) => {
+  .post("/devices/:id/verify", rateLimit(30, 60_000, "device-verify", { by: "user" }), async (c) => {
     const body = verifyDeviceSchema.parse(await c.req.json())
-    const device = await ownedDevice(c, c.req.param("id"))
+    const device = await ownedDevice(c, c.req.param("id") ?? "")
     if (device.verifiedAt) return c.json({ ok: true, device: publicDevice(device) })
     if (!device.registrationChallenge || !device.registrationChallengeExpiresAt) {
       throw new ApiError(409, "Device has no pending verification challenge.", "device_no_challenge")
@@ -121,7 +128,7 @@ export const deviceRoutes = new Hono<AppBindings>()
     return c.json({ ok: true, device: publicDevice(device) })
   })
   .post("/devices/:id/revoke", async (c) => {
-    const device = await ownedDevice(c, c.req.param("id"))
+    const device = await ownedDevice(c, c.req.param("id") ?? "")
     device.revokedAt = now()
     await c.get("repo").revokeDeviceAndTrusts(c.get("user")!.id, device.id, device.revokedAt)
     return c.json({ ok: true })

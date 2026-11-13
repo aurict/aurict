@@ -33,6 +33,8 @@ const envSchema = z.object({
   DEVICE_LOGIN_VERIFICATION_URI: z.string().url().default("https://aurict.com/auth/device"),
   CORS_ORIGINS: z.string().default(""),
   TRUST_PROXY_HEADERS: booleanString.default(false),
+  // Shared with the web app so it can pass the end user's IP for rate limiting (x-aurict-client-ip).
+  TRUSTED_PROXY_SECRET: optionalString(z.string().min(32)),
   REQUEST_BODY_LIMIT_BYTES: z.coerce.number().int().positive().max(10_000_000).default(1_000_000),
   REQUEST_LOGS: booleanString.default(false),
   METRICS_TOKEN: optionalString(z.string().min(24)),
@@ -41,6 +43,11 @@ const envSchema = z.object({
   PUBLIC_OPENAPI: booleanString.default(false),
   REQUIRE_DEVICE_VERIFICATION: booleanString.default(true),
   FIREBASE_PROJECT_ID: optionalString(z.string().min(1)),
+  // Transactional email (verification, password reset) through Resend's HTTP API.
+  RESEND_API_KEY: optionalString(z.string().min(10)),
+  EMAIL_FROM: z.string().min(3).default("Aurict <no-reply@aurict.com>"),
+  // Links in emails point at the web app, which owns the verify and reset pages.
+  EMAIL_LINK_BASE_URL: z.string().url().default("https://aurict.com"),
   REMOTE_MAX_ACTIVE_SESSIONS: z.coerce.number().int().positive().max(10).default(1),
   REMOTE_MAX_TTL_SECONDS: z.coerce.number().int().positive().max(900).default(300),
   REMOTE_MAX_IDLE_SECONDS: z.coerce.number().int().positive().max(300).default(90),

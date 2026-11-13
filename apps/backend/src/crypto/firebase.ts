@@ -13,6 +13,7 @@ type FirebaseClaims = {
   sub?: string
   exp?: number
   iat?: number
+  auth_time?: number
   email?: string
   email_verified?: boolean
   firebase?: {
@@ -26,6 +27,8 @@ export type VerifiedFirebaseToken = {
   email: string
   emailVerified: boolean
   signInProvider?: string
+  /** When the user last actually signed in (seconds); refreshed ID tokens keep the old value. */
+  authTime?: number
 }
 
 type FirebaseJwk = {
@@ -90,6 +93,7 @@ export async function verifyFirebaseIdToken(idToken: string, env: BackendEnv): P
     emailVerified: claims.email_verified === true,
   }
   if (claims.firebase?.sign_in_provider) verified.signInProvider = claims.firebase.sign_in_provider
+  if (typeof claims.auth_time === "number") verified.authTime = claims.auth_time
   return verified
 }
 
@@ -103,6 +107,7 @@ function parseTestFirebaseToken(idToken: string): VerifiedFirebaseToken {
       emailVerified: claims.emailVerified === true,
     }
     if (claims.signInProvider) verified.signInProvider = claims.signInProvider
+    if (typeof claims.authTime === "number") verified.authTime = claims.authTime
     return verified
   } catch {
     throw new ApiError(401, "Firebase test token is malformed.", "invalid_firebase_token")

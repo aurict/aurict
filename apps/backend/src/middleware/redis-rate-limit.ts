@@ -1,6 +1,6 @@
 import net from "node:net"
 import type { BackendEnv } from "../env"
-import type { RateLimitDecision, RateLimiter } from "./rate-limit"
+import { createMemoryRateLimiter, type RateLimitDecision, type RateLimiter } from "./rate-limit"
 
 type RedisValue = string | number | null | RedisValue[]
 type PendingCommand = {
@@ -16,20 +16,23 @@ const CHECK_TIMEOUT_MS = 500
 export function createRedisRateLimiter(env: BackendEnv): RateLimiter | undefined {
   if (!env.REDIS_URL) return undefined
   const client = new MinimalRedisClient(env.REDIS_URL, env.REDIS_CONNECT_TIMEOUT_SECONDS * 1000)
+  // When Redis is unreachable the limits still apply, per process, instead of being dropped.
+  const fallback = createMemoryRateLimiter()
   return {
     async check(key, limit, windowMs): Promise<RateLimitDecision> {
       const timeout = new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), CHECK_TIMEOUT_MS))
       const result = await Promise.race([performCheck(client, key, limit, windowMs), timeout])
-      if (result === "timeout") {
-        console.error(`[redis-rate-limit] check() timed out after ${CHECK_TIMEOUT_MS}ms for key=${key}; failing open.`)
-        return { allowed: true, remaining: limit, resetAt: Date.now() + windowMs }
+      if (result === "timeout" || result === "error") {
+        // Keys contain client addresses; log only which limit was affected.
+        console.error(`[redis-rate-limit] Redis ${result === "timeout" ? `timed out after ${CHECK_TIMEOUT_MS}ms` : "failed"} for ${key.split(":")[0]}; using the in-process limiter.`)
+        return await fallback.check(key, limit, windowMs)
       }
       return result
     },
   }
 }
 
-async function performCheck(client: MinimalRedisClient, key: string, limit: number, windowMs: number): Promise<RateLimitDecision> {
+async function performCheck(client: MinimalRedisClient, key: string, limit: number, windowMs: number): Promise<RateLimitDecision | "error"> {
   try {
     const redisKey = `aurict:rl:${key}`
     const count = await client.integer(["INCR", redisKey])
@@ -43,9 +46,8 @@ async function performCheck(client: MinimalRedisClient, key: string, limit: numb
       remaining: Math.max(0, limit - count),
       resetAt,
     }
-  } catch (error) {
-    console.error(`[redis-rate-limit] check() failed for key=${key}; failing open.`, error)
-    return { allowed: true, remaining: limit, resetAt: Date.now() + windowMs }
+  } catch {
+    return "error"
   }
 }
 
