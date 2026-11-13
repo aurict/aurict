@@ -1,0 +1,12 @@
+# Changes to these paths need a review from a code owner.
+# CI, release and deploy automation can reach secrets and production.
+/.github/                     @mikailustuner
+/scripts/                     @mikailustuner
+/docker/                      @mikailustuner
+/deploy/                      @mikailustuner
+/apps/backend/                @mikailustuner
+/packages/backend-contract/   @mikailustuner
+/packages/cli/src/remote/     @mikailustuner
+/apps/web/src/lib/auth/       @mikailustuner
+/apps/web/src/app/api/        @mikailustuner
+/SECURITY.md                  @mikailustuner
