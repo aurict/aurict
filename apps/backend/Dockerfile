@@ -3,17 +3,19 @@
 # Base images are pinned by digest; plain FROM lines let Dependabot update them.
 
 FROM oven/bun:1.3.14-slim@sha256:d56a2534ffd262e92c12fd3249d3924d296d97086da773f821d7d0477435ea04 AS deps
-WORKDIR /app
+WORKDIR /app/apps/backend
 COPY apps/backend/package.json apps/backend/bun.lock ./
 RUN bun install --production --frozen-lockfile
 
 FROM oven/bun:1.3.14-slim@sha256:d56a2534ffd262e92c12fd3249d3924d296d97086da773f821d7d0477435ea04 AS runtime
-WORKDIR /app
+# Same layout as the repository, so the relative import of packages/backend-contract resolves.
+WORKDIR /app/apps/backend
 ENV NODE_ENV=production
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/backend/node_modules ./node_modules
 COPY apps/backend/package.json ./
 COPY apps/backend/src ./src
 COPY apps/backend/drizzle ./drizzle
+COPY packages/backend-contract/src /app/packages/backend-contract/src
 # Runs as the image's unprivileged "bun" user; the app writes nothing to disk, so the
 # container can run with a read-only root filesystem.
 USER bun

@@ -7,7 +7,7 @@
  *   - encryptionPublicKey: same as signingPublicKey for now (the backend expects this too)
  *   - signature: base64url(ed25519_sign(utf8(payload))) — a raw Ed25519 signature, not JWS
  *
- * The backend (`apps/backend/src/crypto/signatures.ts`) parses and verifies
+ * The backend (`apps/backend/src/crypto/signatures.ts`) derives the same fingerprint, and parses and verifies
  * `signingPublicKey` directly via `crypto.subtle.importKey("jwk", ...)` — so
  * the JWK generated here is produced/stored/signed with the same WebCrypto
  * (Bun) the backend runs on. Verified via an Ed25519
@@ -18,6 +18,7 @@ import { backendRequest, RemoteApiError } from "./backend-client.js"
 import { ensureAccessToken } from "./auth.js"
 import { readStoredTokens } from "./session-store.js"
 import { readSecureJson, writeSecureJson, deleteSecureFile } from "./secure-store.js"
+import { deviceKeyFingerprint } from "../../../backend-contract/src/signing"
 
 const IDENTITY_FILE = "device.json"
 
@@ -62,10 +63,8 @@ function toWireJwk(x: string): string {
   return JSON.stringify({ kty: "OKP", crv: "Ed25519", x, ext: true, key_ops: ["verify"] })
 }
 
-async function fingerprintOf(wireJwkStr: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(wireJwkStr))
-  return `fp_${Buffer.from(digest).toString("base64url")}`
-}
+// Same derivation the backend applies at registration (packages/backend-contract).
+const fingerprintOf = deviceKeyFingerprint
 
 async function generateKeyMaterial(): Promise<KeyMaterial> {
   const keyPair    = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]) as CryptoKeyPair

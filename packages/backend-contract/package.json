@@ -1,0 +1,8 @@
+{
+  "name": "@aurict/backend-contract",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Byte-exact formats shared by the Aurict backend and its clients. Source-only; imported by relative path.",
+  "type": "module"
+}

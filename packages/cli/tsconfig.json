@@ -10,5 +10,5 @@
       "@aurict/core/storage/paths": ["../core/src/storage/paths.ts"]
     }
   },
-  "include": ["src/**/*", "../core/src/**/*"]
+  "include": ["src/**/*", "../core/src/**/*", "../backend-contract/src/**/*"]
 }
