@@ -1,3 +1,4 @@
+# Local development stack. Build context is the repository root.
 services:
   postgres:
     image: postgres:16-alpine
@@ -17,8 +18,8 @@ services:
 
   migrate:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,8 +36,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy

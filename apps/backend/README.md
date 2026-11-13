@@ -1,143 +1,108 @@
 # Aurict Backend
 
-Aurict Backend is the account, device-trust, encrypted-secret relay, and remote-signaling control plane.
+The account, device-trust, encrypted secret relay and remote-signaling service behind `api.aurict.com`. Licensed under AGPL-3.0 with the rest of this repository: if you run a modified version as a network service, you must offer its source to its users.
 
-It intentionally does **not** proxy LLM traffic, store provider API keys in plaintext, or carry remote-control prompts, commands, terminal output, tool results, or file contents.
+It does **not** proxy LLM traffic, store provider API keys in plaintext, or carry remote-control prompts, terminal output, tool results or file contents. The one place user-written text is stored is a feedback report the user chooses to send (see [Data the backend stores](#data-the-backend-stores)).
 
-## Scope
+## What it does
 
-- Auth: email/password register, login, Firebase-backed Google/GitHub sign-in, browser-based CLI device login, refresh, logout.
-- Auth hardening: refresh token rotation, family reuse detection, and family revocation on replay.
-- Auth UX: email verification, password reset, account export, account disable, and session listing.
-- Devices: same-account device registry, challenge verification, and revocation.
-- Trust: scoped trust between devices with audit events.
-- Secret relay: ciphertext-only, short-lived, one-time E2E encrypted transfer records.
-- Secret relay contract: strict encrypted envelope with algorithm allowlist, sender signature, and device fingerprints.
-- Remote signaling: short-lived signed offer/answer envelope metadata only, with TURN credential minting, resume token, heartbeat sequence, and idle timeout policy.
-- API safety: security headers, allowlisted CORS, strict JSON schemas, and expired-record enforcement.
-- Abuse protection: injectable rate limiter with local in-memory implementation and production-ready interface.
-- Observability: opt-in structured request logs, in-memory metrics snapshot, and request ids across errors.
-- API contract: `/openapi.json` and a small typed fetch client in `src/client.ts`.
+- **Accounts:** email and password (argon2id), Google and GitHub through Firebase Auth, browser-based CLI login, email verification, password reset, sessions, export, account deletion.
+- **Tokens:** short-lived access tokens (Ed25519 or HS256, bound to an issuer and audience) and single-use rotating refresh tokens with family revocation on reuse.
+- **Devices and trust:** each device registers an Ed25519 or P-256 public key and proves it by signing a challenge. Trust between two devices is created only with a grant signed by the target device.
+- **Secret relay:** ciphertext-only, signed, one-time transfers between trusted devices of one account.
+- **Remote signaling:** signed WebRTC offers and answers, TURN credentials, heartbeats and resume. The data channel is peer to peer; the backend never sees it.
+- **Legal:** cached statute texts and citations (`/legal/*`).
 
-## Non-Goals
+## Security model
 
-- No provider API key plaintext.
-- No LLM proxy.
-- No remote command/event data plane.
-- No document or chat content storage.
+These are enforced in code and covered by tests in `test/`.
 
-## Environment
+- **Device keys.** The fingerprint is derived on the server as `fp_` + base64url(sha256(signingPublicKey)); a client-chosen fingerprint is rejected. Only public Ed25519 or P-256 JWKs are accepted.
+- **Signatures.** Remote offers and answers, secret transfer envelopes and secret claims must be signed by the named device's registered key. Signed payloads are canonical (see `src/crypto/signatures.ts`) and carry a purpose tag, so a signature for one purpose cannot be reused for another.
+- **Trust.** `POST /devices/:id/trust` needs a grant signed by device `:id` and issued in the last five minutes. A stolen access token alone cannot make a desktop trust a new phone. The desktop also pins paired phones locally and verifies every answer and data-channel event against the pinned key (`packages/cli/src/remote/peer-trust.ts`), so a compromised backend cannot add a controller either.
+- **Secret transfers.** Ciphertext is returned only by the recipient's signed claim, exactly once, and is wiped in the same transaction. Claimed, revoked and expired ciphertext is purged.
+- **Tokens.** Password reset, `logout-all` and refresh token reuse move `users.tokens_valid_after`, so earlier access tokens stop working immediately. A password reset also invalidates every other reset link. Deleting a Firebase account needs a sign-in from the last five minutes.
+- **Rate limits.** Requests are limited per client address and, for writes, per account. Login is also limited per email address. The client address is the web app's forwarded address when it carries `TRUSTED_PROXY_SECRET`, then `CF-Connecting-IP` when `TRUST_PROXY_HEADERS=true`, then the socket address. IPv6 is grouped by /64. When Redis fails, limits fall back to an in-process limiter instead of turning off.
+- **CLI login.** The approval page shows where the login started (network /24 or /64, country, time) through `POST /auth/device/lookup`, so a user can spot a code someone else sent them.
+- **Input.** Strict zod schemas, a streaming body-size limit, JSON parse errors as 400, generic 500 messages in production, metrics labelled by route pattern rather than raw path.
+- **Fail closed.** `NODE_ENV` defaults to `production`; production refuses to start without `JWT_SECRET`, `DATABASE_URL` and `CORS_ORIGINS`. Test-only shortcuts (test Firebase tokens, echoed action tokens) are off in production.
 
-- `NODE_ENV`: `development`, `test`, or `production`.
-- `PORT`: HTTP port. Defaults to `8787`.
-- `JWT_SECRET`: HMAC secret for access tokens. Production rejects the development default.
-- `DATABASE_URL`: required in production; enables the Postgres-backed repository.
-- `CORS_ORIGINS`: comma-separated list of allowed browser/mobile web origins.
-- `ACCESS_TOKEN_TTL_SECONDS`: short-lived access token TTL. Defaults to 15 minutes.
-- `REFRESH_TOKEN_TTL_SECONDS`: refresh token TTL. Defaults to 30 days.
-- `DEVICE_LOGIN_TTL_SECONDS`: browser-based CLI login lifetime. Defaults to 10 minutes.
-- `DEVICE_LOGIN_POLL_INTERVAL_SECONDS`: suggested CLI polling interval. Defaults to 5 seconds.
-- `DEVICE_LOGIN_VERIFICATION_URI`: web activation page, usually `https://aurict.com/activate`.
-- `FIREBASE_PROJECT_ID`: enables `POST /auth/firebase` for Firebase Auth ID tokens from Google/GitHub/mobile clients.
-- `REQUEST_BODY_LIMIT_BYTES`: maximum request body size accepted from `content-length`.
-- `REQUEST_LOGS`: opt-in structured request logs. Defaults to `false`.
-- `TRUST_PROXY_HEADERS`: set to `true` only when Apache/Cloudflare forwards trusted client IP headers.
-- `METRICS_TOKEN`: optional bearer token for `/metrics`; production hides metrics without it.
-- `ACTIVE_USERS_ADMIN_TOKEN`: 32+ character operator token required by `GET /internal/active-users`.
-- `ACTIVE_USERS_WINDOW_SECONDS`: presence freshness window. Defaults to 90 seconds.
-- `PUBLIC_OPENAPI`: production exposes `/openapi.json` only when explicitly set to `true`.
+Report vulnerabilities privately; see [SECURITY.md](../../SECURITY.md).
 
-Remote sessions and secret transfers are TTL-bound. Expired remote sessions are marked `expired` and cannot be accepted or heartbeated; expired secret transfers cannot be claimed.
+## Data the backend stores
+
+- Account: email, password hash, linked provider ids, sessions (hashed refresh tokens), audit events.
+- Devices: name, platform, public keys, fingerprint, last-seen time, trust relations.
+- Secret transfers: envelope metadata; ciphertext only until it is claimed or expires.
+- Remote sessions: signed offer/answer (SDP), status, sequence numbers.
+- CLI login requests: client name, coarse network and country, for ten minutes.
+- Feedback reports: what the user submits, which can include the conversation excerpt they chose to attach (up to 24 KB). Deleted after `FEEDBACK_RETENTION_DAYS` (default 90).
+
+## Configuration
+
+All settings are environment variables, validated in `src/env.ts`. The production template with every variable and its meaning is [`deploy/.env.example`](deploy/.env.example). The most important ones:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Postgres connection; without it the app uses an in-memory store (development and tests only). |
+| `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` | Ed25519 signing keys from `bun run scripts/generate-jwt-keys.ts`. Preferred over `JWT_SECRET`. |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | Bound into access tokens; tokens for another issuer or audience are rejected. |
+| `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API. |
+| `TRUST_PROXY_HEADERS` | Use `CF-Connecting-IP` for rate limits. Enable only when the origin is reachable through Cloudflare alone. |
+| `TRUSTED_PROXY_SECRET` | Lets the web app forward visitor addresses (`x-aurict-client-ip`). |
+| `REDIS_URL` | Shared rate-limit store. |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_LINK_BASE_URL` | Verification and reset emails. Without a key, production refuses verification requests and logs reset requests. |
+| `FIREBASE_PROJECT_ID` | Enables `POST /auth/firebase`. |
+| `TURN_URIS`, `TURN_SHARED_SECRET` | Short-lived TURN credentials for remote sessions. |
+| `METRICS_TOKEN`, `PUBLIC_OPENAPI` | `/metrics` and `/openapi.json` are hidden in production unless configured. |
+
+## Running it
+
+Development, with an in-memory store:
+
+```bash
+cd apps/backend
+bun install
+bun run dev            # http://localhost:8787
+```
+
+With Postgres, from the repository root:
+
+```bash
+docker compose -f apps/backend/docker-compose.yml up --build
+```
+
+### Self-hosting
+
+1. Build the image from the repository root, or pull the signed one CI publishes:
+   `docker build -f apps/backend/Dockerfile -t aurict-backend .`
+2. Copy `deploy/docker-compose.yml` and `deploy/postgres/` to the server, fill in `deploy/.env.example` as `.env` (mode 0600), and create the shared networks once:
+   `docker network create aurict_app && docker network create aurict_edge`
+3. `docker compose up -d`. Migrations run first as the schema owner; the app then connects as a role that can read and write data but cannot change the schema.
+
+The compose file runs every container with a read-only root filesystem, no Linux capabilities, `no-new-privileges` and memory and process limits. Postgres and Redis sit on an internal network with no route out and no published ports. Put a TLS-terminating proxy or a Cloudflare Tunnel on the `aurict_edge` network in front of `backend:8787`. Set `TRUST_PROXY_HEADERS=true` only if every request reaches the origin through Cloudflare.
+
+If you run TURN (coturn) for remote sessions, deny relaying to private ranges (`denied-peer-ip`) so it cannot be used to reach your internal network.
 
 ## Database
 
-Backend persistence is PostgreSQL-first through Drizzle.
+- Generate a migration after changing `src/db/schema.ts`: `bun run db:generate`.
+- Apply migrations: `DATABASE_URL=postgres://... bun run db:migrate`.
+- Migrations are forward-only. Never edit one that has been applied.
+- `/ready` pings the database; `/health` only reports that the process is up.
 
-- Generate migrations: `bun run db:generate` from `apps/backend`.
-- Apply migrations: `DATABASE_URL=postgres://... bun run db:migrate` from `apps/backend`.
-- Readiness: `/ready` returns `db: "disabled"` when no `DATABASE_URL` is configured, and pings Postgres when DB is enabled.
-- Runtime persistence: with `DATABASE_URL`, the app uses the Postgres-backed repository; without it, tests and local development use the in-memory repository.
+## Google and GitHub sign-in
 
-The database stores account, device, trust, encrypted secret-transfer metadata, and remote signaling metadata only. It must not store provider API keys in plaintext or remote-control commands, prompts, terminal output, tool results, or file contents.
-
-## Active User Count
-
-Authenticated clients should call `POST /presence/heartbeat` while open; existing device and remote
-heartbeats update the same signal automatically. The backend stores only a user id and its latest
-heartbeat, then `GET /internal/active-users` returns only the unique count within
-`ACTIVE_USERS_WINDOW_SECONDS`. It never returns a user list, email, device, IP, or history.
-
-```bash
-curl -fsS -H "X-Aurict-Admin-Token: $ACTIVE_USERS_ADMIN_TOKEN" \
-  https://api.aurict.com/internal/active-users
-```
-
-## Security Contracts
-
-- Refresh tokens are single-use. Reusing a revoked token revokes the whole token family and emits `refresh.reuse_detected`.
-- Firebase auth accepts only verified Firebase ID tokens for `FIREBASE_PROJECT_ID`. Existing password accounts are linked only when Firebase reports a verified email.
-- Browser-based CLI login uses a high-entropy device code for CLI polling and a short user code approved by an already authenticated web/mobile session. The CLI never sees Google/GitHub tokens or user passwords.
-- Device registration returns a short-lived verification challenge. Clients must call `/devices/:id/verify` with the challenge signature before treating the device as trusted locally.
-- Trust and untrust actions are audited with source/target device ids, fingerprints, and scope.
-- Secret transfers require envelope `version: 1`, allowlisted algorithms, nonce, ciphertext, recipient fingerprint, sender fingerprint, and sender signature.
-- Remote sessions require signed signaling envelopes for `offer` and `answer`; transport must match the session connection mode.
-- Remote control data-plane is peer-to-peer. Backend rejects prompt, command, terminal output, tool result, message, and file-content payload fields.
-- Remote offer/answer fingerprints must match the registered device signing key fingerprint.
-- Remote sessions enforce max active sessions per CLI device, bounded TTL, idle timeout, monotonic heartbeat sequence, and content-free resume token validation.
-- TURN credentials are minted only for authenticated verified devices and are short-lived.
-- Rate limiting uses an injectable `RateLimiter` interface. The default implementation is in-memory and intended for local/test; production should provide a shared Redis/KV-backed implementation.
-- Password reset and email verification action tokens are stored hashed. In production responses do not include plaintext action tokens; an email delivery provider should deliver them out-of-band.
-- Account deletion currently disables the account and revokes sessions. Hard-delete/data-erasure jobs can be added later if policy requires physical deletion.
-- The current device verification endpoint validates the challenge envelope and records the signature algorithm. Full cryptographic signature verification should be enabled once CLI/mobile public key formats are finalized.
-
-## Deployment
-
-- Build image from the repo root: `docker build -f apps/backend/Dockerfile -t aurict-backend .`
-- Optional local stack: `docker compose -f docker-compose.backend.yml up --build`.
-- Production deploy flow should run migrations before starting the app: `DATABASE_URL=postgres://... bun run --cwd apps/backend db:migrate`.
-
-The compose file is for local/dev validation. It binds the backend to `127.0.0.1:8787` so Apache can terminate TLS and proxy `https://api.aurict.com` to the local container without exposing the app port publicly.
-
-Recommended Apache vhost shape:
-
-```apache
-<VirtualHost *:443>
-  ServerName api.aurict.com
-  ProxyPreserveHost On
-  ProxyPass / http://127.0.0.1:8787/
-  ProxyPassReverse / http://127.0.0.1:8787/
-  RequestHeader set X-Forwarded-Proto "https"
-  RequestHeader set X-Forwarded-Host "api.aurict.com"
-</VirtualHost>
-```
-
-Production should provide a managed or backed-up Postgres URL, a non-default `JWT_SECRET`, `FIREBASE_PROJECT_ID`, and an explicit `CORS_ORIGINS` allowlist such as `https://aurict.com,https://www.aurict.com`. Keep `TRUST_PROXY_HEADERS=false` unless Apache/Cloudflare forwarding is configured intentionally.
-
-## Google and GitHub Sign-In
-
-The backend expects mobile/web clients to use Firebase Auth for Google and GitHub sign-in, then send the Firebase ID token to `POST /auth/firebase`.
-
-```json
-{ "idToken": "<firebase-id-token>" }
-```
-
-Backend behavior:
-
-- Verifies the token signature against Google's Firebase securetoken certificates.
-- Checks issuer, audience, expiration, issued-at time, subject length, and email.
-- Creates a new Aurict account only when Firebase reports `email_verified=true`.
-- Links an existing password account only when the Firebase email is verified.
-- Issues normal Aurict access/refresh tokens after successful verification.
-
-Firebase console requirements:
-
-- Enable Google provider.
-- Enable GitHub provider and configure the GitHub OAuth App client id/secret in Firebase.
-- Configure iOS bundle id, Android package/SHA fingerprints, and authorized domains.
-- Mobile clients must never send Google/GitHub raw profile ids as proof of login; send Firebase ID tokens only.
+Clients sign in with Firebase Auth and send the Firebase ID token to `POST /auth/firebase`. The backend verifies the RS256 signature against Google's certificates and checks issuer, audience, expiry and email. It creates or links an account only when Firebase reports a verified email. In the Firebase console, restrict the web API key to your domains and to the Identity Toolkit API, and keep the authorized domains list short.
 
 ## Tests
 
-- Memory/unit tests: `bun run test:backend`.
-- Integration tests: `DATABASE_URL=postgres://... bun run test:backend:integration`.
-- If `DATABASE_URL` is missing, integration tests skip cleanly. CI runs them with a Postgres service container.
+```bash
+cd apps/backend
+bun test                         # unit and route tests, in-memory store
+DATABASE_URL=postgres://... bun test test/integration.test.ts
+REDIS_URL=redis://... bun test test/redis-rate-limit.test.ts
+bun run typecheck
+```
+
+Integration and Redis tests skip when their URL is not set; CI runs them against service containers.

@@ -1,90 +1,106 @@
+# Production stack for the backend. The image is built and signed by CI
+# (.github/workflows/images.yml) and pulled by digest; nothing is built on the server.
+#
+#   AURICT_BACKEND_IMAGE=ghcr.io/aurict/aurict-backend@sha256:... docker compose up -d
+#
+# Secrets live in ./.env (see .env.example), owned by root with mode 0600.
 name: aurict-backend
+
+x-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
 
 services:
   redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "no", "--save", "", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    <<: *hardening
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    # Rate-limit counters only: no persistence, bounded memory, password required.
+    command: ["sh", "-c", 'exec redis-server --appendonly no --save "" --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass "$$REDIS_PASSWORD"']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
       interval: 5s
       timeout: 3s
       retries: 30
-    volumes:
-      - redis_data:/data
-    networks:
-      - backend
+    tmpfs: ["/data"]
+    mem_limit: 320m
+    pids_limit: 64
+    networks: [data]
 
   postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
+    <<: *hardening
+    image: postgres:17-alpine@sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065
+    # The entrypoint has to switch to the postgres user and fix data-dir ownership.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-aurict}
+      # Owner role: owns the schema and runs migrations. The app connects as AURICT_APP_DB_USER.
       POSTGRES_USER: ${POSTGRES_USER:-aurict}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      AURICT_APP_DB_USER: ${AURICT_APP_DB_USER:-aurict_app}
+      AURICT_APP_DB_PASSWORD: ${AURICT_APP_DB_PASSWORD:?AURICT_APP_DB_PASSWORD is required}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aurict} -d ${POSTGRES_DB:-aurict}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 30
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - backend
+      - ./postgres/init-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    tmpfs: ["/var/run/postgresql", "/tmp"]
+    shm_size: 128m
+    mem_limit: 1g
+    pids_limit: 200
+    networks: [data]
 
   migrate:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    env_file:
-      - ./.env
+    <<: *hardening
+    image: ${AURICT_BACKEND_IMAGE:?AURICT_BACKEND_IMAGE is required}
+    restart: "no"
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      # Migrations run as the schema owner; the running app never gets DDL rights.
+      DATABASE_URL: postgres://${POSTGRES_USER:-aurict}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aurict}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
     command: ["bun", "run", "src/db/migrate.ts"]
-    restart: "no"
-    networks:
-      - backend
+    depends_on:
+      postgres: { condition: service_healthy }
+    mem_limit: 256m
+    networks: [data]
 
   backend:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file:
-      - ./.env
+    <<: *hardening
+    image: ${AURICT_BACKEND_IMAGE:?AURICT_BACKEND_IMAGE is required}
+    env_file: [./.env]
     environment:
       NODE_ENV: production
       PORT: 8787
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
-      TRUST_PROXY_HEADERS: "true"
+      DATABASE_URL: postgres://${AURICT_APP_DB_USER:-aurict_app}:${AURICT_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-aurict}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
     depends_on:
-      postgres:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "bun", "--eval", "fetch('http://127.0.0.1:8787/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      start_period: 15s
-      retries: 3
-    ports:
-      - "127.0.0.1:${AURICT_BACKEND_HOST_PORT:-3077}:8787"
-    networks:
-      - backend
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    # Only reachable through the edge network (Cloudflare Tunnel) and from the web apps.
+    expose: ["8787"]
+    mem_limit: 768m
+    pids_limit: 256
+    networks: [data, app, edge]
 
 volumes:
   postgres_data:
-  redis_data:
 
 networks:
-  backend:
-    driver: bridge
+  # Postgres and Redis have no route out and no published ports.
+  data: { internal: true }
+  # Shared with the web containers, which call the backend directly.
+  app: { name: aurict_app, external: true }
+  # Shared with cloudflared.
+  edge: { name: aurict_edge, external: true }

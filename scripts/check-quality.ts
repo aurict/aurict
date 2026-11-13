@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 
 const ROOT = join(import.meta.dir, "..")
-const SOURCE_ROOTS = ["packages/core/src", "packages/cli/src", "apps/desktop/src", "scripts"]
+const SOURCE_ROOTS = ["packages/core/src", "packages/cli/src", "apps/desktop/src", "apps/backend/src", "scripts"]
 const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs", ".yml", ".yaml"])
 
 function extension(path: string): string {

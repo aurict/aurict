@@ -1,12 +1,8 @@
-.git
-.aurict
-node_modules
-dist
-coverage
-*.db
-*.db-shm
-*.db-wal
-.env
-.env.local
-deploy/.env
-deploy/**/*.log
+# The build context is the repository root. Send only what the image needs, so local
+# secrets (.env files, keys) and unrelated apps can never end up in a layer.
+*
+!apps/backend/package.json
+!apps/backend/bun.lock
+!apps/backend/src/**
+!apps/backend/drizzle/**
+apps/backend/src/**/test/**
