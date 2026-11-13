@@ -41,8 +41,7 @@ reviews:
     - "!packages/*/node_modules/**"
     - "!packages/*/tsconfig.tsbuildinfo"
     - "!bun.lock"
-    # Backend prototype & mobile artifacts (kept out of public repo)
-    - "!apps/backend/**"
+    # Mobile build artifacts
     - "!mobile/build/**"
     - "!mobile/.dart_tool/**"
     - "!mobile/android/app/google-services.json"
@@ -125,7 +124,7 @@ reviews:
 
     - path: "apps/web/**"
       instructions: |
-        Web surface (docs/landing). Avoid leaking private backend code here.
+        Web surface (docs/landing) and the auth proxy in front of apps/backend.
 
     - path: "mobile/**"
       instructions: |

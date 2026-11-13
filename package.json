@@ -31,6 +31,8 @@
     "test:cli": "bun run scripts/test.ts cli",
     "test:desktop": "bun run scripts/test.ts desktop",
     "test:integration": "bun run scripts/test.ts integration",
+    "test:backend": "bun run --cwd apps/backend test",
+    "typecheck:backend": "bun run --cwd apps/backend typecheck",
     "test:pty": "bun run scripts/pty-matrix.ts",
     "test:coverage": "bun run scripts/test.ts core --coverage --coverage-reporter=lcov --coverage-dir=reports/coverage/core && bun run scripts/test.ts cli --coverage --coverage-reporter=lcov --coverage-dir=reports/coverage/cli",
     "test:stability": "bun run scripts/test.ts core --randomize --seed=20260807 --rerun-each=2 && bun run scripts/test.ts cli --randomize --seed=20260807 --rerun-each=2 && bun run scripts/test.ts desktop --randomize --seed=20260807 --rerun-each=2",
