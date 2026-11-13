@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { sanitizeNextPath } from "@/lib/auth/safe-redirect"
 import { useLocale } from "next-intl"
 import { Link } from "@/i18n/navigation"
 import { useSearchParams } from "next/navigation"
@@ -128,6 +129,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             </span>
           </label>
 
+          {!isRegister && (
+            <Link className="auth-muted-link mono" href="/auth/reset-password" style={{ justifySelf: "end", marginTop: -6 }}>
+              {tr ? "parolanızı mı unuttunuz?" : "forgot password?"}
+            </Link>
+          )}
+
           {error && <div className="auth-error">{error}</div>}
 
           <button className="landing-button-primary mono" disabled={loading !== null} style={{ justifyContent: "center", marginTop: 4 }} type="submit">
@@ -195,10 +202,6 @@ async function postAuth(path: string, body: unknown, tr: boolean) {
   return json as { ok: boolean; error?: { message?: string } }
 }
 
-function sanitizeNextPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/"
-  return value
-}
 
 function nextHref(path: string, nextPath: string) {
   return nextPath === "/" ? path : `${path}?next=${encodeURIComponent(nextPath)}`

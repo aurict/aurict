@@ -3,7 +3,11 @@ module.exports = {
     {
       name: "aurict-web",
       script: "bun",
-      args: "run start --hostname 127.0.0.1",
+      // Do not pass --hostname 127.0.0.1 here: the locale proxy (src/proxy.ts) rewrites to
+      // localhost, which Next then proxies and fails with 500 when the server is bound to
+      // 127.0.0.1 only. Keep the port closed with the firewall, or run it in a container that
+      // publishes the port on 127.0.0.1.
+      args: "run start",
       cwd: "./",
       env: {
         NODE_ENV: "production",

@@ -211,6 +211,9 @@ jobs:
       - name: Lint web
         run: bun run --cwd apps/web lint
 
+      - name: Test web
+        run: bun test apps/web/test
+
       - name: Build web
         run: bun run --cwd apps/web build
 
