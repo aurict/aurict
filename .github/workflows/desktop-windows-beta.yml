@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: desktop-beta-release-${{ github.ref }}
@@ -20,10 +20,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.12
 
@@ -46,10 +46,10 @@ jobs:
       AURICT_WINDOWS_SIGNING: self-signed
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.12
 
@@ -108,7 +108,7 @@ jobs:
           Set-Content -LiteralPath artifacts/windows/Hoprel-Beta-Setup.exe.sha256 -Value "$hash  Hoprel-Beta-Setup.exe" -NoNewline
 
       - name: Upload beta artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: hoprel-windows-beta
           if-no-files-found: error
@@ -123,10 +123,10 @@ jobs:
       AURICT_SIDECAR_TARGET: bun-linux-x64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.12
 
@@ -150,7 +150,7 @@ jobs:
           sha256sum artifacts/debian/Hoprel-Beta-amd64.deb > artifacts/debian/Hoprel-Beta-amd64.deb.sha256
 
       - name: Upload Debian beta artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: hoprel-debian-beta
           if-no-files-found: error
@@ -184,15 +184,15 @@ jobs:
       MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node.js for Electron Forge
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.12
 
@@ -278,7 +278,7 @@ jobs:
           )
 
       - name: Upload macOS beta artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: hoprel-macos-${{ matrix.architecture }}-beta
           if-no-files-found: error
@@ -297,34 +297,37 @@ jobs:
     if: github.ref_type == 'tag'
     needs: [build-self-signed-beta, build-debian-beta, build-macos-beta]
     runs-on: ubuntu-latest
+    # Only the release job writes to the repository.
+    permissions:
+      contents: write
 
     steps:
       - name: Download Windows beta artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: hoprel-windows-beta
           path: artifacts
 
       - name: Download Debian beta artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: hoprel-debian-beta
           path: artifacts
 
       - name: Download macOS Intel beta artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: hoprel-macos-x64-beta
           path: artifacts
 
       - name: Download macOS Apple Silicon beta artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: hoprel-macos-arm64-beta
           path: artifacts
 
       - name: Publish GitHub beta release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           name: Hoprel by Aurict Beta ${{ github.ref_name }}
           prerelease: true

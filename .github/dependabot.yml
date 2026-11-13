@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: bun
+    directories:
+      - /
+      - /apps/mobile-web
+      - /apps/decision-web
+      - /apps/quaera-web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories:
+      - /apps/web
+      - /docker/security-lite
+      - /docker/security-kali-full
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pub
+    directory: /mobile
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
