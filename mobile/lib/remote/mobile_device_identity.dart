@@ -207,3 +207,18 @@ final class _StorageKeys {
 
   static const all = [seed, deviceId, signingPublicKey, signingKeyFingerprint];
 }
+
+/// Short code a person compares between the phone and the desktop before pairing.
+/// Must match `safetyCode` in packages/cli/src/remote/peer-trust.ts.
+String remoteSafetyCode(String fingerprint) {
+  final body = fingerprint
+      .replaceFirst(RegExp(r'^fp_'), '')
+      .replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+      .toUpperCase();
+  final short = body.length > 12 ? body.substring(0, 12) : body;
+  final groups = <String>[];
+  for (var i = 0; i < short.length; i += 4) {
+    groups.add(short.substring(i, i + 4 > short.length ? short.length : i + 4));
+  }
+  return groups.join('-');
+}

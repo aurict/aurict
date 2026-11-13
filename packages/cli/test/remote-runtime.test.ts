@@ -14,7 +14,8 @@ mock.module("../src/remote/browser.js", () => ({ openInBrowser: () => {} }))
 import { writeStoredTokens, clearStoredTokens } from "../src/remote/session-store.js"
 import { RemoteEventLedger, signingPayload, RemoteEventTypes, type RemoteEvent } from "../src/remote/event-codec.js"
 import { MockCliRemoteTransport, type CliRemoteTransport, type SignalEnvelope, type IceServer } from "../src/remote/transport.js"
-import { CliRemoteRuntime, type CliRemoteIdentity, type RemoteSessionPublic, type CliRemoteStatus } from "../src/remote/runtime.js"
+import { CliRemoteRuntime, type CliPairedPhones, type CliRemoteIdentity, type RemoteSessionPublic, type CliRemoteStatus } from "../src/remote/runtime.js"
+import { fingerprintOfKey, verifyPhoneSignature, type PairedPhone } from "../src/remote/peer-trust.js"
 import { RemoteApiError } from "../src/remote/backend-client.js"
 
 // ── Test helpers ──────────────────────────────────────────────────────────────
@@ -58,12 +59,40 @@ const testIdentity: CliRemoteIdentity = {
   signWithStoredIdentity: async (payload: string) => `sig(${payload.length})`,
 }
 
-function createRuntime(transport: CliRemoteTransport): CliRemoteRuntime {
-  return new CliRemoteRuntime({ transport, identity: testIdentity })
+// A real Ed25519 key for the paired phone, so the runtime's signature checks run for real.
+async function phoneKey() {
+  const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]) as unknown as CryptoKeyPair
+  const x = (await crypto.subtle.exportKey("jwk", pair.publicKey)).x!
+  const signingPublicKey = JSON.stringify({ kty: "OKP", crv: "Ed25519", x, ext: true, key_ops: ["verify"] })
+  const sign = async (payload: string) =>
+    Buffer.from(await crypto.subtle.sign({ name: "Ed25519" }, pair.privateKey, new TextEncoder().encode(payload))).toString("base64url")
+  return { signingPublicKey, fingerprint: await fingerprintOfKey(signingPublicKey), sign }
+}
+
+const phoneKeys = await phoneKey()
+const strangerKeys = await phoneKey()
+
+const PAIRED_PHONE: PairedPhone = {
+  deviceId: "dev_mobile_1", name: "Test phone", signingPublicKey: phoneKeys.signingPublicKey,
+  fingerprint: phoneKeys.fingerprint, userId: "usr_1", pairedAt: new Date().toISOString(),
+}
+
+function pairedPhones(phones: PairedPhone[] = [PAIRED_PHONE]): CliPairedPhones {
+  return { list: () => phones, find: (id) => phones.find((p) => p.deviceId === id), verify: verifyPhoneSignature }
+}
+
+function createRuntime(transport: CliRemoteTransport, phones: CliPairedPhones = pairedPhones()): CliRemoteRuntime {
+  return new CliRemoteRuntime({ transport, identity: testIdentity, phones })
+}
+
+const ANSWER_PAYLOAD = JSON.stringify({ kind: "test-answer" })
+const SIGNED_ANSWER: SignalEnvelope = {
+  version: 1, sessionProtocolVersion: 1, type: "answer", transport: "webrtc", payload: ANSWER_PAYLOAD,
+  signingKeyFingerprint: phoneKeys.fingerprint, signature: await phoneKeys.sign(ANSWER_PAYLOAD),
 }
 
 function fakeAnswer(): SignalEnvelope {
-  return { version: 1, sessionProtocolVersion: 1, type: "answer", transport: "webrtc", payload: "{}", signingKeyFingerprint: "fp_mobile", signature: "sig" }
+  return { ...SIGNED_ANSWER }
 }
 
 function baseSession(overrides: Partial<RemoteSessionPublic> = {}): RemoteSessionPublic {
@@ -75,6 +104,7 @@ function baseSession(overrides: Partial<RemoteSessionPublic> = {}): RemoteSessio
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
     lastHeartbeatAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
+    ...(overrides.status === "accepted" ? { acceptedByDeviceId: "dev_mobile_1" } : {}),
     ...overrides,
   }
 }
@@ -393,6 +423,45 @@ describe("CliRemoteRuntime.heartbeat / close", () => {
   })
 })
 
+describe("CliRemoteRuntime — paired phone enforcement", () => {
+  it("refuses to start when no phone is paired", async () => {
+    const runtime = createRuntime(new SpyTransport(), pairedPhones([]))
+    await expect(runtime.start({ pollIntervalMs: 5 })).rejects.toMatchObject({ code: "remote_no_paired_phone" })
+  })
+
+  it("closes the session when a phone that is not paired accepts it", async () => {
+    let closed = false
+    const restore = acceptingBackend({ acceptedByDeviceId: "dev_attacker", onClose: () => { closed = true } })
+    const transport = new SpyTransport()
+    const runtime = createRuntime(transport)
+    try {
+      await expect(runtime.start({ pollIntervalMs: 5 })).rejects.toMatchObject({ code: "remote_peer_not_trusted" })
+      expect(transport.appliedAnswers.length).toBe(0)
+      expect(closed).toBe(true)
+      expect(runtime.getStatus()).toBe("error")
+    } finally { restore() }
+  }, 10_000)
+
+  it("closes the session when the answer is not signed by the paired phone's key", async () => {
+    const forged = { ...SIGNED_ANSWER, signature: await strangerKeys.sign(ANSWER_PAYLOAD) }
+    const restore = acceptingBackend({ signedAnswer: forged })
+    const transport = new SpyTransport()
+    const runtime = createRuntime(transport)
+    try {
+      await expect(runtime.start({ pollIntervalMs: 5 })).rejects.toMatchObject({ code: "remote_peer_not_trusted" })
+      expect(transport.appliedAnswers.length).toBe(0)
+    } finally { restore() }
+  }, 10_000)
+
+  it("closes the session when the answer names a different key than the pinned one", async () => {
+    const restore = acceptingBackend({ signedAnswer: { ...SIGNED_ANSWER, signingKeyFingerprint: strangerKeys.fingerprint } })
+    const runtime = createRuntime(new SpyTransport())
+    try {
+      await expect(runtime.start({ pollIntervalMs: 5 })).rejects.toMatchObject({ code: "remote_peer_not_trusted" })
+    } finally { restore() }
+  }, 10_000)
+})
+
 describe("CliRemoteRuntime — agent event bridge (publish/onEvent)", () => {
   it("publish() is a no-op when not connected (no session/deviceId yet)", async () => {
     const transport = new SpyTransport()
@@ -423,25 +492,44 @@ describe("CliRemoteRuntime — agent event bridge (publish/onEvent)", () => {
     expect(second.seq).toBe(2)  // monotonic increase
   })
 
-  it("onEvent() delivers incoming transport messages and rejects replayed sequences", () => {
+  it("onEvent() delivers only events signed by the paired phone, in order, without replays", async () => {
+    const restore = acceptingBackend()
     const transport = new SpyTransport()
     const runtime = createRuntime(transport)
-    const received: Array<{ type: string }> = []
+    const received: RemoteEvent[] = []
     runtime.onEvent((e) => received.push(e))
+    try {
+      await runtime.start({ pollIntervalMs: 5 })
 
-    const event = {
-      sessionId: "s1", seq: 1, timestamp: new Date().toISOString(),
-      senderDeviceId: "dev_mobile_1", type: "prompt.submit", payload: { prompt: "hi" }, signature: "sig",
+      const valid = await signedEvent(phoneKeys, { seq: 1 })
+      transport.simulateMessage(JSON.stringify(valid))
+      transport.simulateMessage(JSON.stringify(valid))  // replay
+      transport.simulateMessage("not-json{{{")  // malformed
+      transport.simulateMessage(JSON.stringify(await signedEvent(strangerKeys, { seq: 2 })))  // signed by another key
+      transport.simulateMessage(JSON.stringify({ ...(await signedEvent(phoneKeys, { seq: 3 })), signature: "forged" }))
+      transport.simulateMessage(JSON.stringify(await signedEvent(phoneKeys, { seq: 4, sessionId: "rmt_other" })))  // other session
+      transport.simulateMessage(JSON.stringify(await signedEvent(phoneKeys, { seq: 5, senderDeviceId: "dev_other" })))  // other sender
+      const tampered = await signedEvent(phoneKeys, { seq: 6 })
+      transport.simulateMessage(JSON.stringify({ ...tampered, payload: { prompt: "rm -rf ~" } }))  // payload changed after signing
+      transport.simulateMessage(JSON.stringify(await signedEvent(phoneKeys, { seq: 7 })))
+      await flush()
+
+      expect(received.map((e) => e.seq)).toEqual([1, 7])
+      expect(received[0]!.type).toBe("prompt.submit")
+    } finally {
+      restore()
+      clearInterval((runtime as any).heartbeatTimer)
     }
-    transport.simulateMessage(JSON.stringify(event))
-    expect(received.length).toBe(1)
-    expect(received[0]!.type).toBe("prompt.submit")
+  }, 10_000)
 
-    transport.simulateMessage(JSON.stringify(event))  // replay — should be rejected
-    expect(received.length).toBe(1)
-
-    transport.simulateMessage("not-json{{{")  // malformed message — should be swallowed silently, no crash
-    expect(received.length).toBe(1)
+  it("ignores events while not connected", async () => {
+    const transport = new SpyTransport()
+    const runtime = createRuntime(transport)
+    const received: unknown[] = []
+    runtime.onEvent((e) => received.push(e))
+    transport.simulateMessage(JSON.stringify(await signedEvent(phoneKeys, { seq: 1 })))
+    await flush()
+    expect(received.length).toBe(0)
   })
 
   it("the unsubscribe function returned by onEvent() stops further delivery", () => {
@@ -457,3 +545,32 @@ describe("CliRemoteRuntime — agent event bridge (publish/onEvent)", () => {
     expect(received.length).toBe(0)
   })
 })
+
+function flush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 30))
+}
+
+async function signedEvent(keys: { sign: (payload: string) => Promise<string> }, overrides: Partial<RemoteEvent> & { seq: number }): Promise<RemoteEvent> {
+  const unsigned = {
+    sessionId: overrides.sessionId ?? "rmt_1",
+    seq: overrides.seq,
+    timestamp: new Date().toISOString(),
+    senderDeviceId: overrides.senderDeviceId ?? "dev_mobile_1",
+    type: overrides.type ?? "prompt.submit",
+    payload: overrides.payload ?? { prompt: "hi" },
+  }
+  return { ...unsigned, signature: await keys.sign(signingPayload(unsigned)) }
+}
+
+/** Backend mock where the session is accepted on the first poll. */
+function acceptingBackend(opts: { acceptedByDeviceId?: string; signedAnswer?: SignalEnvelope; onClose?: () => void } = {}) {
+  return installRemoteBackendMock({
+    createSession: () => ({ status: 201, body: { ok: true, session: baseSession() } }),
+    getSession: () => ({
+      status: 200,
+      body: { ok: true, session: baseSession({ status: "accepted", acceptedByDeviceId: opts.acceptedByDeviceId ?? "dev_mobile_1", signedAnswer: opts.signedAnswer ?? fakeAnswer() }) },
+    }),
+    heartbeat: () => ({ status: 200, body: { ok: true, session: baseSession({ status: "accepted" }) } }),
+    close: () => { opts.onClose?.(); return { status: 200, body: { ok: true } } },
+  })
+}
