@@ -35,7 +35,7 @@
     "@ai-sdk/google": "^1.1.5",
     "@ai-sdk/openai": "^1.1.5",
     "@ai-sdk/openai-compatible": "0.2.16",
-    "@ai-sdk/xai": "^3.0.93",
+    "@ai-sdk/xai": "^5.0.40",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "ai": "^4.3.16",
     "decimal.js": "^10.6.0",
