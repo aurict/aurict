@@ -24,6 +24,7 @@ import 'design/aurict_typography.dart';
 import 'design/platform_blur.dart';
 import 'remote/mobile_remote_event_codec.dart';
 import 'remote/mobile_backend_client.dart';
+import 'remote/mobile_device_identity.dart';
 import 'remote/mobile_remote_models.dart';
 import 'remote/mobile_remote_runtime.dart';
 
@@ -6415,8 +6416,8 @@ class RemoteControlStatusCard extends StatelessWidget {
             ),
             SettingsRow(
               icon: CupertinoIcons.signature,
-              title: 'Signing key',
-              value: _shortFingerprint(identity.signingKeyFingerprint),
+              title: 'Safety code',
+              value: remoteSafetyCode(identity.signingKeyFingerprint),
             ),
           ],
           const SizedBox(height: 14),
@@ -6608,11 +6609,6 @@ Color _remoteStatusColor(BuildContext context, MobileRemoteStatus status) {
 String _shortDeviceId(String value) {
   if (value.length <= 14) return value;
   return '${value.substring(0, 8)}…${value.substring(value.length - 4)}';
-}
-
-String _shortFingerprint(String value) {
-  if (value.length <= 18) return value;
-  return '${value.substring(0, 10)}…${value.substring(value.length - 6)}';
 }
 
 String _relativeTime(DateTime value) {
