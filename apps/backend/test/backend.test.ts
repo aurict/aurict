@@ -5,6 +5,7 @@ import { loadEnv } from "../src/env"
 import { createMemoryStore } from "../src/store/memory"
 import { createMemoryRepository } from "../src/store/repository"
 import { createMemoryRateLimiter } from "../src/middleware/rate-limit"
+import { deviceKeyFingerprint, secretClaimPayload, secretTransferPayload, trustGrantPayload } from "../src/crypto/signatures"
 
 const env = loadEnv({
   NODE_ENV: "test",
@@ -54,27 +55,49 @@ function firebaseToken(claims: { uid: string; email: string; emailVerified: bool
   return `test.${Buffer.from(JSON.stringify(claims)).toString("base64url")}`
 }
 
+const deviceKeys = new Map<string, CryptoKey>()
+
+async function deviceKeyMaterial() {
+  const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]) as unknown as CryptoKeyPair
+  const exported = await crypto.subtle.exportKey("jwk", pair.publicKey)
+  const publicJwk = JSON.stringify({ kty: "OKP", crv: "Ed25519", x: exported.x, ext: true, key_ops: ["verify"] })
+  return { privateKey: pair.privateKey, publicJwk, fingerprint: await deviceKeyFingerprint(publicJwk) }
+}
+
+async function signWith(privateKey: CryptoKey, payload: string) {
+  const sig = await crypto.subtle.sign({ name: "Ed25519" }, privateKey, new TextEncoder().encode(payload))
+  return Buffer.from(sig).toString("base64url")
+}
+
+async function signAs(device: Record<string, any>, payload: string) {
+  const key = deviceKeys.get(device.id)
+  if (!key) throw new Error(`No test key for device ${device.id}`)
+  return await signWith(key, payload)
+}
+
 async function addDevice(app: ReturnType<typeof createApp>, token: string, platform: "mobile" | "cli", name: string, verify = true) {
+  const keys = await deviceKeyMaterial()
   const res = await app.request("/devices/register", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify({
       name,
       platform,
-      encryptionPublicKey: `enc_${name}_${"x".repeat(40)}`,
-      signingPublicKey: `sig_${name}_${"y".repeat(40)}`,
-      signingKeyFingerprint: `fp_${name}_${"z".repeat(20)}`,
+      encryptionPublicKey: keys.publicJwk,
+      signingPublicKey: keys.publicJwk,
+      signingKeyFingerprint: keys.fingerprint,
     }),
   })
   expect(res.status).toBe(201)
   const body = await json(res)
+  deviceKeys.set(body.device.id, keys.privateKey)
   if (!verify) return body.device
   const verified = await app.request(`/devices/${body.device.id}/verify`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify({
       challenge: body.verification.challenge,
-      signature: "sig_" + "v".repeat(40),
+      signature: await signWith(keys.privateKey, body.verification.challenge),
       algorithm: "ed25519",
     }),
   })
@@ -82,37 +105,64 @@ async function addDevice(app: ReturnType<typeof createApp>, token: string, platf
   return (await json(verified)).device
 }
 
-function secretEnvelope(sender: Record<string, any>, recipient: Record<string, any>) {
-  return {
+async function userIdOf(app: ReturnType<typeof createApp>, token: string) {
+  const res = await app.request("/auth/me", { headers: { authorization: `Bearer ${token}` } })
+  return (await json(res)).user.id as string
+}
+
+/** Body for POST /devices/:target/trust, signed by the target device as the API requires. */
+async function trustBody(app: ReturnType<typeof createApp>, token: string, target: Record<string, any>, source: Record<string, any>, scope: string, issuedAt = new Date().toISOString()) {
+  const payload = trustGrantPayload({
+    userId: await userIdOf(app, token),
+    sourceDeviceId: source.id,
+    sourceFingerprint: source.signingKeyFingerprint,
+    targetDeviceId: target.id,
+    targetFingerprint: target.signingKeyFingerprint,
+    scope,
+    issuedAt,
+  })
+  return JSON.stringify({ sourceDeviceId: source.id, scope, grant: { issuedAt, signature: await signAs(target, payload) } })
+}
+
+async function claimBody(transferId: string, recipient: Record<string, any>, issuedAt = new Date().toISOString()) {
+  const signature = await signAs(recipient, secretClaimPayload({ transferId, recipientDeviceId: recipient.id, issuedAt }))
+  return JSON.stringify({ deviceId: recipient.id, issuedAt, signature })
+}
+
+async function secretEnvelope(sender: Record<string, any>, recipient: Record<string, any>, provider = "OpenCode") {
+  const envelope = {
     version: 1,
     algorithm: "xchacha20-poly1305",
     nonce: "nonce_nonce",
     ciphertext: "ciphertext_payload_payload",
     recipientKeyFingerprint: recipient.signingKeyFingerprint,
     senderKeyFingerprint: sender.signingKeyFingerprint,
-    senderSignature: "sig_" + "s".repeat(40),
   }
+  const signed = secretTransferPayload({ senderDeviceId: sender.id, recipientDeviceId: recipient.id, provider, ...envelope })
+  return { ...envelope, senderSignature: await signAs(sender, signed) }
 }
 
-function offerEnvelope(device: Record<string, any>, transport = "webrtc") {
+async function offerEnvelope(device: Record<string, any>, transport = "webrtc") {
+  const payload = "signed_offer_payload_payload"
   return {
     version: 1,
     type: "offer",
     transport,
-    payload: "signed_offer_payload_payload",
+    payload,
     signingKeyFingerprint: device.signingKeyFingerprint,
-    signature: "sig_" + "o".repeat(40),
+    signature: await signAs(device, payload),
   }
 }
 
-function answerEnvelope(device: Record<string, any>, suffix = "a", transport = "webrtc") {
+async function answerEnvelope(device: Record<string, any>, suffix = "a", transport = "webrtc") {
+  const payload = `signed_answer_payload_payload_${suffix}`
   return {
     version: 1,
     type: "answer",
     transport,
-    payload: `signed_answer_payload_payload_${suffix}`,
+    payload,
     signingKeyFingerprint: device.signingKeyFingerprint,
-    signature: "sig_" + suffix.repeat(40),
+    signature: await signAs(device, payload),
   }
 }
 
@@ -692,7 +742,7 @@ describe("devices trust and encrypted relay", () => {
     const trust = await app.request(`/devices/${mobile.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: cli.id, scope: "all" }),
+      body: await trustBody(app, auth.accessToken, mobile, cli, "all"),
     })
     expect(trust.status).toBe(201)
     expect(store.auditLogs.some((log) => log.event === "device.trust.created")).toBe(true)
@@ -708,7 +758,7 @@ describe("devices trust and encrypted relay", () => {
     await app.request(`/devices/${mobile.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: cli.id, scope: "all" }),
+      body: await trustBody(app, auth.accessToken, mobile, cli, "all"),
     })
 
     const rejected = await app.request("/secrets/transfers", {
@@ -719,7 +769,7 @@ describe("devices trust and encrypted relay", () => {
         recipientDeviceId: mobile.id,
         provider: "OpenCode",
         apiKey: "sk-plaintext-should-not-pass",
-        envelope: secretEnvelope(cli, mobile),
+        envelope: await secretEnvelope(cli, mobile),
       }),
     })
     expect(rejected.status).toBe(400)
@@ -731,7 +781,7 @@ describe("devices trust and encrypted relay", () => {
         senderDeviceId: cli.id,
         recipientDeviceId: mobile.id,
         provider: "OpenCode",
-        envelope: { ...secretEnvelope(cli, mobile), algorithm: "unsupported" },
+        envelope: { ...(await secretEnvelope(cli, mobile)), algorithm: "unsupported" },
       }),
     })
     expect(badEnvelope.status).toBe(400)
@@ -743,22 +793,39 @@ describe("devices trust and encrypted relay", () => {
         senderDeviceId: cli.id,
         recipientDeviceId: mobile.id,
         provider: "OpenCode",
-        envelope: secretEnvelope(cli, mobile),
+        envelope: await secretEnvelope(cli, mobile),
       }),
     })
     expect(created.status).toBe(201)
     const transfer = (await json(created)).transfer
-    expect(transfer.envelope.ciphertext).toBe("ciphertext_payload_payload")
+    // Ciphertext is only handed out by the claim, never by create, get or inbox.
+    expect(transfer.envelope.ciphertext).toBeUndefined()
+    const inbox = await json(await app.request(`/secrets/transfers/inbox?deviceId=${mobile.id}`, {
+      headers: { authorization: `Bearer ${auth.accessToken}` },
+    }))
+    expect(inbox.transfers[0].envelope.ciphertext).toBeUndefined()
+
+    // The sender cannot claim its own transfer, even with a valid signature of its own.
+    const wrongDevice = await app.request(`/secrets/transfers/${transfer.id}/claim`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
+      body: await claimBody(transfer.id, cli),
+    })
+    expect(wrongDevice.status).toBe(404)
 
     const claimed = await app.request(`/secrets/transfers/${transfer.id}/claim`, {
       method: "POST",
-      headers: { authorization: `Bearer ${auth.accessToken}` },
+      headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
+      body: await claimBody(transfer.id, mobile),
     })
     expect(claimed.status).toBe(200)
+    expect((await json(claimed)).transfer.envelope.ciphertext).toBe("ciphertext_payload_payload")
+    expect(store.secretTransfers.get(transfer.id)!.ciphertext).toBe("")
 
     const replay = await app.request(`/secrets/transfers/${transfer.id}/claim`, {
       method: "POST",
-      headers: { authorization: `Bearer ${auth.accessToken}` },
+      headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
+      body: await claimBody(transfer.id, mobile),
     })
     expect(replay.status).toBe(409)
   })
@@ -771,7 +838,7 @@ describe("devices trust and encrypted relay", () => {
     const trust = await app.request(`/devices/${mobile.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: cli.id, scope: "all" }),
+      body: await trustBody(app, auth.accessToken, mobile, cli, "all"),
     })
     expect(trust.status).toBe(403)
     expect((await json(trust)).error.code).toBe("device_not_verified")
@@ -795,12 +862,24 @@ describe("devices trust and encrypted relay", () => {
     })
     expect(mismatch.status).toBe(400)
 
-    const verified = await app.request(`/devices/${cli.id}/verify`, {
+    const forged = await app.request(`/devices/${cli.id}/verify`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
       body: JSON.stringify({
         challenge: rawDevice.registrationChallenge,
         signature: "sig_" + "x".repeat(40),
+        algorithm: "ed25519",
+      }),
+    })
+    expect(forged.status).toBe(400)
+    expect((await json(forged)).error.code).toBe("device_signature_invalid")
+
+    const verified = await app.request(`/devices/${cli.id}/verify`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
+      body: JSON.stringify({
+        challenge: rawDevice.registrationChallenge,
+        signature: await signAs(cli, rawDevice.registrationChallenge!),
         algorithm: "ed25519",
       }),
     })
@@ -819,7 +898,7 @@ describe("devices trust and encrypted relay", () => {
     await app.request(`/devices/${mobile.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: cli.id, scope: "secret_transfer" }),
+      body: await trustBody(app, auth.accessToken, mobile, cli, "secret_transfer"),
     })
 
     const created = await app.request("/secrets/transfers", {
@@ -829,7 +908,7 @@ describe("devices trust and encrypted relay", () => {
         senderDeviceId: cli.id,
         recipientDeviceId: mobile.id,
         provider: "OpenCode",
-        envelope: secretEnvelope(cli, mobile),
+        envelope: await secretEnvelope(cli, mobile),
       }),
     })
     const transfer = (await json(created)).transfer
@@ -842,7 +921,8 @@ describe("devices trust and encrypted relay", () => {
 
     const claimed = await app.request(`/secrets/transfers/${transfer.id}/claim`, {
       method: "POST",
-      headers: { authorization: `Bearer ${auth.accessToken}` },
+      headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
+      body: await claimBody(transfer.id, mobile),
     })
     expect(claimed.status).toBe(410)
   })
@@ -856,7 +936,7 @@ describe("devices trust and encrypted relay", () => {
     await app.request(`/devices/${mobile.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: cli.id, scope: "secret_transfer" }),
+      body: await trustBody(app, auth.accessToken, mobile, cli, "secret_transfer"),
     })
 
     const created = await app.request("/secrets/transfers", {
@@ -866,14 +946,14 @@ describe("devices trust and encrypted relay", () => {
         senderDeviceId: cli.id,
         recipientDeviceId: mobile.id,
         provider: "OpenCode",
-        envelope: secretEnvelope(cli, mobile),
+        envelope: await secretEnvelope(cli, mobile),
       }),
     })
     const transfer = (await json(created)).transfer
 
     const requests = await Promise.all([
-      app.request(`/secrets/transfers/${transfer.id}/claim`, { method: "POST", headers: { authorization: `Bearer ${auth.accessToken}` } }),
-      app.request(`/secrets/transfers/${transfer.id}/claim`, { method: "POST", headers: { authorization: `Bearer ${auth.accessToken}` } }),
+      app.request(`/secrets/transfers/${transfer.id}/claim`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` }, body: await claimBody(transfer.id, mobile) }),
+      app.request(`/secrets/transfers/${transfer.id}/claim`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` }, body: await claimBody(transfer.id, mobile) }),
     ])
     expect(requests.map((res) => res.status).sort()).toEqual([200, 409])
   })
@@ -887,7 +967,7 @@ describe("devices trust and encrypted relay", () => {
     await app.request(`/devices/${cli.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: mobile.id, scope: "remote" }),
+      body: await trustBody(app, auth.accessToken, cli, mobile, "remote"),
     })
 
     const rejected = await app.request("/remote/sessions", {
@@ -908,7 +988,7 @@ describe("devices trust and encrypted relay", () => {
       body: JSON.stringify({
         desktopDeviceId: cli.id,
         connectionMode: "webrtc",
-        signedOffer: offerEnvelope(cli),
+        signedOffer: await offerEnvelope(cli),
       }),
     })
     expect(created.status).toBe(201)
@@ -921,7 +1001,7 @@ describe("devices trust and encrypted relay", () => {
       body: JSON.stringify({
         desktopDeviceId: cli.id,
         connectionMode: "webrtc",
-        signedOffer: offerEnvelope(cli, "tunnel"),
+        signedOffer: await offerEnvelope(cli, "tunnel"),
       }),
     })
     expect(mismatch.status).toBe(400)
@@ -931,7 +1011,7 @@ describe("devices trust and encrypted relay", () => {
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
       body: JSON.stringify({
         mobileDeviceId: mobile.id,
-        signedAnswer: answerEnvelope(mobile),
+        signedAnswer: await answerEnvelope(mobile),
       }),
     })
     expect(accepted.status).toBe(200)
@@ -952,7 +1032,7 @@ describe("devices trust and encrypted relay", () => {
     await app.request(`/devices/${cli.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: mobile.id, scope: "remote" }),
+      body: await trustBody(app, auth.accessToken, cli, mobile, "remote"),
     })
 
     const protocol = await app.request("/remote/protocol", {
@@ -967,7 +1047,7 @@ describe("devices trust and encrypted relay", () => {
       body: JSON.stringify({
         desktopDeviceId: cli.id,
         connectionMode: "webrtc",
-        signedOffer: { ...offerEnvelope(cli), signingKeyFingerprint: "wrong_fingerprint_value" },
+        signedOffer: { ...(await offerEnvelope(cli)), signingKeyFingerprint: "wrong_fingerprint_value" },
       }),
     })
     expect(badFingerprint.status).toBe(400)
@@ -979,7 +1059,7 @@ describe("devices trust and encrypted relay", () => {
       body: JSON.stringify({
         desktopDeviceId: cli.id,
         connectionMode: "webrtc",
-        signedOffer: offerEnvelope(cli),
+        signedOffer: await offerEnvelope(cli),
       }),
     })
     expect(created.status).toBe(201)
@@ -993,7 +1073,7 @@ describe("devices trust and encrypted relay", () => {
       body: JSON.stringify({
         desktopDeviceId: cli.id,
         connectionMode: "webrtc",
-        signedOffer: offerEnvelope(cli),
+        signedOffer: await offerEnvelope(cli),
       }),
     })
     expect(second.status).toBe(409)
@@ -1004,7 +1084,7 @@ describe("devices trust and encrypted relay", () => {
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
       body: JSON.stringify({
         mobileDeviceId: mobile.id,
-        signedAnswer: answerEnvelope(mobile),
+        signedAnswer: await answerEnvelope(mobile),
       }),
     })
     expect(accepted.status).toBe(200)
@@ -1071,7 +1151,7 @@ describe("devices trust and encrypted relay", () => {
     await app.request(`/devices/${cli.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: mobile.id, scope: "remote" }),
+      body: await trustBody(app, auth.accessToken, cli, mobile, "remote"),
     })
 
     const created = await app.request("/remote/sessions", {
@@ -1080,7 +1160,7 @@ describe("devices trust and encrypted relay", () => {
       body: JSON.stringify({
         desktopDeviceId: cli.id,
         connectionMode: "webrtc",
-        signedOffer: offerEnvelope(cli),
+        signedOffer: await offerEnvelope(cli),
       }),
     })
     const session = (await json(created)).session
@@ -1096,7 +1176,7 @@ describe("devices trust and encrypted relay", () => {
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
       body: JSON.stringify({
         mobileDeviceId: mobile.id,
-        signedAnswer: answerEnvelope(mobile),
+        signedAnswer: await answerEnvelope(mobile),
       }),
     })
     expect(accepted.status).toBe(410)
@@ -1112,7 +1192,7 @@ describe("devices trust and encrypted relay", () => {
     await app.request(`/devices/${cli.id}/trust`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-      body: JSON.stringify({ sourceDeviceId: mobile.id, scope: "remote" }),
+      body: await trustBody(app, auth.accessToken, cli, mobile, "remote"),
     })
 
     const created = await app.request("/remote/sessions", {
@@ -1121,7 +1201,7 @@ describe("devices trust and encrypted relay", () => {
       body: JSON.stringify({
         desktopDeviceId: cli.id,
         connectionMode: "webrtc",
-        signedOffer: offerEnvelope(cli),
+        signedOffer: await offerEnvelope(cli),
       }),
     })
     const session = (await json(created)).session
@@ -1130,15 +1210,218 @@ describe("devices trust and encrypted relay", () => {
       app.request(`/remote/sessions/${session.id}/accept`, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-        body: JSON.stringify({ mobileDeviceId: mobile.id, signedAnswer: answerEnvelope(mobile, "a") }),
+        body: JSON.stringify({ mobileDeviceId: mobile.id, signedAnswer: await answerEnvelope(mobile, "a") }),
       }),
       app.request(`/remote/sessions/${session.id}/accept`, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
-        body: JSON.stringify({ mobileDeviceId: mobile.id, signedAnswer: answerEnvelope(mobile, "b") }),
+        body: JSON.stringify({ mobileDeviceId: mobile.id, signedAnswer: await answerEnvelope(mobile, "b") }),
       }),
     ])
     expect(requests.map((res) => res.status).sort()).toEqual([200, 409])
+  })
+})
+
+describe("device signatures and trust (remote control)", () => {
+  function authed(token: string) {
+    return { "content-type": "application/json", authorization: `Bearer ${token}` }
+  }
+
+  test("registration derives the fingerprint from the key and rejects non-JWK keys", async () => {
+    const { app } = testApp()
+    const auth = await register(app)
+    const keys = await deviceKeyMaterial()
+    const other = await deviceKeyMaterial()
+
+    const spoofed = await app.request("/devices/register", {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ name: "spoof", platform: "mobile", encryptionPublicKey: keys.publicJwk, signingPublicKey: keys.publicJwk, signingKeyFingerprint: other.fingerprint }),
+    })
+    expect(spoofed.status).toBe(400)
+    expect((await json(spoofed)).error.code).toBe("fingerprint_mismatch")
+
+    const notJwk = await app.request("/devices/register", {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ name: "raw", platform: "mobile", encryptionPublicKey: "x".repeat(40), signingPublicKey: "y".repeat(40), signingKeyFingerprint: "fp_" + "z".repeat(20) }),
+    })
+    expect(notJwk.status).toBe(400)
+    expect((await json(notJwk)).error.code).toBe("invalid_signing_key")
+
+    const privateJwk = JSON.stringify({ ...JSON.parse(keys.publicJwk), d: "A".repeat(43) })
+    const withPrivate = await app.request("/devices/register", {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ name: "leak", platform: "mobile", encryptionPublicKey: privateJwk, signingPublicKey: privateJwk, signingKeyFingerprint: await deviceKeyFingerprint(privateJwk) }),
+    })
+    expect(withPrivate.status).toBe(400)
+  })
+
+  test("a bearer token alone cannot make the desktop trust an attacker device", async () => {
+    const { app } = testApp()
+    const auth = await register(app)
+    const desktop = await addDevice(app, auth.accessToken, "cli", "desktop")
+    // An attacker with a stolen access token registers a phone with their own key.
+    const attacker = await addDevice(app, auth.accessToken, "mobile", "attacker")
+
+    const unsigned = await app.request(`/devices/${desktop.id}/trust`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ sourceDeviceId: attacker.id, scope: "remote" }),
+    })
+    expect(unsigned.status).toBe(400)
+
+    // Signing the grant with the attacker's own key does not help: the target must sign.
+    const issuedAt = new Date().toISOString()
+    const payload = trustGrantPayload({
+      userId: await userIdOf(app, auth.accessToken),
+      sourceDeviceId: attacker.id,
+      sourceFingerprint: attacker.signingKeyFingerprint,
+      targetDeviceId: desktop.id,
+      targetFingerprint: desktop.signingKeyFingerprint,
+      scope: "remote",
+      issuedAt,
+    })
+    const selfSigned = await app.request(`/devices/${desktop.id}/trust`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ sourceDeviceId: attacker.id, scope: "remote", grant: { issuedAt, signature: await signAs(attacker, payload) } }),
+    })
+    expect(selfSigned.status).toBe(403)
+    expect((await json(selfSigned)).error.code).toBe("trust_grant_invalid")
+
+    // A genuine grant for one scope cannot be replayed for a wider scope.
+    const remoteGrant = JSON.parse(await trustBody(app, auth.accessToken, desktop, attacker, "remote"))
+    const widened = await app.request(`/devices/${desktop.id}/trust`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ ...remoteGrant, scope: "all" }),
+    })
+    expect(widened.status).toBe(403)
+
+    const stale = await app.request(`/devices/${desktop.id}/trust`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: await trustBody(app, auth.accessToken, desktop, attacker, "remote", new Date(Date.now() - 10 * 60_000).toISOString()),
+    })
+    expect(stale.status).toBe(400)
+    expect((await json(stale)).error.code).toBe("trust_grant_expired")
+
+    // Without trust, the attacker phone cannot accept the desktop's session.
+    const created = await app.request("/remote/sessions", {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ desktopDeviceId: desktop.id, connectionMode: "webrtc", signedOffer: await offerEnvelope(desktop) }),
+    })
+    expect(created.status).toBe(201)
+    const session = (await json(created)).session
+    const accepted = await app.request(`/remote/sessions/${session.id}/accept`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ mobileDeviceId: attacker.id, signedAnswer: await answerEnvelope(attacker) }),
+    })
+    expect(accepted.status).toBe(403)
+    expect((await json(accepted)).error.code).toBe("device_not_trusted")
+  })
+
+  test("offers and answers must carry a valid signature from the named device", async () => {
+    const { app } = testAppWithEnv(remoteEnv)
+    const auth = await register(app)
+    const desktop = await addDevice(app, auth.accessToken, "cli", "desktop")
+    const phone = await addDevice(app, auth.accessToken, "mobile", "phone")
+    const attacker = await addDevice(app, auth.accessToken, "mobile", "attacker")
+    await app.request(`/devices/${desktop.id}/trust`, { method: "POST", headers: authed(auth.accessToken), body: await trustBody(app, auth.accessToken, desktop, phone, "remote") })
+
+    // An offer that names the desktop's fingerprint but is signed by another key is rejected.
+    const forgedOffer = { ...(await offerEnvelope(desktop)), signature: await signAs(attacker, "signed_offer_payload_payload") }
+    const rejectedOffer = await app.request("/remote/sessions", {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ desktopDeviceId: desktop.id, connectionMode: "webrtc", signedOffer: forgedOffer }),
+    })
+    expect(rejectedOffer.status).toBe(400)
+    expect((await json(rejectedOffer)).error.code).toBe("remote_signature_invalid")
+
+    const created = await app.request("/remote/sessions", {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ desktopDeviceId: desktop.id, connectionMode: "webrtc", signedOffer: await offerEnvelope(desktop) }),
+    })
+    const session = (await json(created)).session
+
+    // The trusted phone's id with an answer signed by the attacker is rejected.
+    const forgedAnswer = { ...(await answerEnvelope(phone)), signature: await signAs(attacker, "signed_answer_payload_payload_a") }
+    const rejectedAnswer = await app.request(`/remote/sessions/${session.id}/accept`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ mobileDeviceId: phone.id, signedAnswer: forgedAnswer }),
+    })
+    expect(rejectedAnswer.status).toBe(400)
+    expect((await json(rejectedAnswer)).error.code).toBe("remote_signature_invalid")
+
+    const accepted = await app.request(`/remote/sessions/${session.id}/accept`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ mobileDeviceId: phone.id, signedAnswer: await answerEnvelope(phone) }),
+    })
+    expect(accepted.status).toBe(200)
+
+    // Heartbeats must name a participating device.
+    const anonymous = await app.request(`/remote/sessions/${session.id}/heartbeat`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ lastSequence: Number.MAX_SAFE_INTEGER }),
+    })
+    expect(anonymous.status).toBe(400)
+    const outsider = await app.request(`/remote/sessions/${session.id}/heartbeat`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ deviceId: attacker.id, lastSequence: Number.MAX_SAFE_INTEGER }),
+    })
+    expect(outsider.status).toBe(403)
+  })
+
+  test("secret transfers need the sender's signature and a fresh claim from the recipient", async () => {
+    const { app } = testApp()
+    const auth = await register(app)
+    const cli = await addDevice(app, auth.accessToken, "cli", "desktop")
+    const mobile = await addDevice(app, auth.accessToken, "mobile", "phone")
+    await app.request(`/devices/${mobile.id}/trust`, { method: "POST", headers: authed(auth.accessToken), body: await trustBody(app, auth.accessToken, mobile, cli, "secret_transfer") })
+
+    const envelope = await secretEnvelope(cli, mobile)
+    const tampered = await app.request("/secrets/transfers", {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ senderDeviceId: cli.id, recipientDeviceId: mobile.id, provider: "OpenCode", envelope: { ...envelope, ciphertext: "attacker_chosen_ciphertext" } }),
+    })
+    expect(tampered.status).toBe(400)
+    expect((await json(tampered)).error.code).toBe("sender_signature_invalid")
+
+    const created = await app.request("/secrets/transfers", {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ senderDeviceId: cli.id, recipientDeviceId: mobile.id, provider: "OpenCode", envelope }),
+    })
+    expect(created.status).toBe(201)
+    const transfer = (await json(created)).transfer
+
+    const stale = await app.request(`/secrets/transfers/${transfer.id}/claim`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: await claimBody(transfer.id, mobile, new Date(Date.now() - 10 * 60_000).toISOString()),
+    })
+    expect(stale.status).toBe(400)
+
+    // A claim naming the recipient but signed by another device is rejected.
+    const issuedAt = new Date().toISOString()
+    const forged = await app.request(`/secrets/transfers/${transfer.id}/claim`, {
+      method: "POST",
+      headers: authed(auth.accessToken),
+      body: JSON.stringify({ deviceId: mobile.id, issuedAt, signature: await signAs(cli, secretClaimPayload({ transferId: transfer.id, recipientDeviceId: mobile.id, issuedAt })) }),
+    })
+    expect(forged.status).toBe(403)
+    expect((await json(forged)).error.code).toBe("claim_signature_invalid")
   })
 })
 

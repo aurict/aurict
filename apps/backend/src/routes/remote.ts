@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { addSeconds, newId, now } from "../crypto/ids"
 import { refreshTokenHash } from "../crypto/tokens"
+import { verifyDeviceSignature } from "../crypto/signatures"
 import { createTurnCredential } from "../crypto/turn"
 import { requireAuth } from "../middleware/auth"
 import { ApiError } from "../middleware/errors"
@@ -36,7 +37,8 @@ const acceptRemoteSessionSchema = z.object({
 }).strict()
 
 const heartbeatSchema = z.object({
-  deviceId: z.string().min(1).optional(),
+  // Required so only a participant of the session can advance its sequence.
+  deviceId: z.string().min(1),
   lastSequence: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).default(0),
 }).strict()
 
@@ -81,7 +83,7 @@ export const remoteRoutes = new Hono<AppBindings>()
     const desktop = await ownedDevice(c, body.desktopDeviceId)
     assertVerifiedDevice(c, desktop)
     if (desktop.platform !== "cli" && desktop.platform !== "desktop") throw new ApiError(400, "Remote desktop device must be a CLI or desktop device.", "invalid_device")
-    assertSignalFingerprint(body.signedOffer, desktop.signingKeyFingerprint, "offer")
+    await assertSignedSignal(body.signedOffer, desktop, "offer")
     const createdAt = now()
     const openSessions = await c.get("repo").countOpenRemoteSessions(user.id, desktop.id, createdAt)
     if (openSessions >= c.get("env").REMOTE_MAX_ACTIVE_SESSIONS) {
@@ -126,7 +128,7 @@ export const remoteRoutes = new Hono<AppBindings>()
     if (body.signedAnswer.transport !== session.connectionMode) {
       throw new ApiError(400, "Signed answer transport must match session connection mode.", "transport_mismatch")
     }
-    assertSignalFingerprint(body.signedAnswer, mobile.signingKeyFingerprint, "answer")
+    await assertSignedSignal(body.signedAnswer, mobile, "answer")
     if (!(await c.get("repo").hasTrust(c.get("user")!.id, mobile.id, session.desktopDeviceId, "remote"))) {
       throw new ApiError(403, "Mobile device is not trusted for remote.", "device_not_trusted")
     }
@@ -169,11 +171,9 @@ export const remoteRoutes = new Hono<AppBindings>()
     const body = heartbeatSchema.parse(await readJsonOrEmpty(c))
     const session = await ownedRemoteSession(c, requiredParam(c.req.param("id")))
     await assertRemoteOpen(c, session)
-    if (body.deviceId) {
-      const device = await ownedDevice(c, body.deviceId)
-      assertVerifiedDevice(c, device)
-      assertDeviceParticipates(session, device.id)
-    }
+    const device = await ownedDevice(c, body.deviceId)
+    assertVerifiedDevice(c, device)
+    assertDeviceParticipates(session, device.id)
     if (body.lastSequence < session.lastSequence) {
       throw new ApiError(409, "Remote heartbeat sequence moved backwards.", "remote_sequence_replay")
     }
@@ -234,9 +234,17 @@ async function expireSession(c: any, session: RemoteSession) {
   await audit(c, "remote.session.expired", undefined, { sessionId: session.id })
 }
 
-function assertSignalFingerprint(envelope: z.infer<typeof signalEnvelopeSchema>, expected: string, kind: string) {
-  if (envelope.signingKeyFingerprint !== expected) {
+/** The envelope must name the device's own key and carry a valid signature over its payload. */
+async function assertSignedSignal(
+  envelope: z.infer<typeof signalEnvelopeSchema>,
+  device: { signingKeyFingerprint: string; signingPublicKey: string },
+  kind: string,
+) {
+  if (envelope.signingKeyFingerprint !== device.signingKeyFingerprint) {
     throw new ApiError(400, `Remote ${kind} signing key fingerprint mismatch.`, "remote_fingerprint_mismatch")
+  }
+  if (!(await verifyDeviceSignature(device.signingPublicKey, envelope.payload, envelope.signature))) {
+    throw new ApiError(400, `Remote ${kind} signature is invalid.`, "remote_signature_invalid")
   }
 }
 

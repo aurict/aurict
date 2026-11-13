@@ -70,7 +70,10 @@ export type BackendRepository = {
   listSecretInbox(userId: string, recipientDeviceId: string | undefined, at: Date): Promise<SecretTransfer[]>
   getSecretTransfer(userId: string, id: string): Promise<SecretTransfer | undefined>
   updateSecretTransfer(transfer: SecretTransfer): Promise<void>
-  claimSecretTransfer(userId: string, id: string, claimedAt: Date): Promise<SecretClaimResult>
+  /** Atomically marks the transfer claimed by its recipient and wipes the stored ciphertext; the result carries it once. */
+  claimSecretTransfer(userId: string, id: string, recipientDeviceId: string, claimedAt: Date): Promise<SecretClaimResult>
+  /** Wipes ciphertext of transfers that were claimed, revoked or expired. */
+  purgeSecretCiphertexts(at: Date): Promise<void>
 
   createRemoteSession(session: RemoteSession): Promise<void>
   countOpenRemoteSessions(userId: string, desktopDeviceId: string, at: Date): Promise<number>
@@ -367,14 +370,20 @@ export function createMemoryRepository(store: BackendStore): BackendRepository {
     async updateSecretTransfer(transfer) {
       store.secretTransfers.set(transfer.id, transfer)
     },
-    async claimSecretTransfer(userId, id, claimedAt) {
+    async claimSecretTransfer(userId, id, recipientDeviceId, claimedAt) {
       const transfer = store.secretTransfers.get(id)
-      if (!transfer || transfer.userId !== userId) return { status: "not_found" }
+      if (!transfer || transfer.userId !== userId || transfer.recipientDeviceId !== recipientDeviceId) return { status: "not_found" }
       if (transfer.revokedAt) return { status: "revoked" }
       if (transfer.claimedAt) return { status: "already_claimed" }
       if (transfer.expiresAt <= claimedAt) return { status: "expired" }
-      transfer.claimedAt = claimedAt
-      return { status: "claimed", transfer }
+      const claimed = { ...transfer, claimedAt }
+      store.secretTransfers.set(id, { ...claimed, ciphertext: "" })
+      return { status: "claimed", transfer: claimed }
+    },
+    async purgeSecretCiphertexts(at) {
+      for (const transfer of store.secretTransfers.values()) {
+        if (transfer.ciphertext && (transfer.claimedAt || transfer.revokedAt || transfer.expiresAt <= at)) transfer.ciphertext = ""
+      }
     },
     async createRemoteSession(session) {
       store.remoteSessions.set(session.id, session)
