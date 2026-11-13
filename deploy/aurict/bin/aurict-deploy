@@ -59,7 +59,7 @@ verify() {  # verify <image@digest>
   # The attestation bundle comes from GitHub's public API, so the server needs no token. gh checks
   # it against Sigstore's trust root: signed by images.yml on main of aurict/aurict, for this digest.
   local bundle digest="${1##*@}"
-  bundle="$(mktemp)"
+  bundle="$(mktemp --suffix=.jsonl)"
   if ! curl -fsS -m 30 "https://api.github.com/repos/${REPO}/attestations/${digest}" \
       | jq -ce '.attestations[].bundle' > "$bundle"; then
     rm -f "$bundle"
@@ -72,10 +72,12 @@ verify() {  # verify <image@digest>
   return "$status"
 }
 
+compose() { docker compose --env-file .env --env-file images.env "$@"; }
+
 healthy() {  # healthy <service>: wait until the container reports healthy
   local id status deadline=$(( $(date +%s) + HEALTH_TIMEOUT_SECONDS ))
   while [ "$(date +%s)" -lt "$deadline" ]; do
-    id="$(docker compose ps -q "$1")"
+    id="$(compose ps -q "$1")"
     status="$( [ -n "$id" ] && docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id" || echo missing)"
     [ "$status" = healthy ] && return 0
     sleep 3
@@ -120,12 +122,14 @@ fi
 
 install -m 600 "$next" images.env
 log "deploying: ${changed[*]:-all (forced)}"
-compose() { docker compose --env-file .env --env-file images.env "$@"; }
-
 rollback() {
-  log "rolling back to the previous images"
   cp images.env.previous images.env
-  compose up -d --remove-orphans || true
+  if [ -s images.env ]; then
+    log "rolling back to the previous images"
+    compose up -d --remove-orphans || true
+  else
+    log "first deploy failed; there is no previous release to roll back to"
+  fi
   write_metric 0
   exit 1
 }
