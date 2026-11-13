@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { newId, now } from "../crypto/ids"
 import { requireAuth } from "../middleware/auth"
+import { rateLimit } from "../middleware/rate-limit"
 import type { AppBindings } from "../types"
 import type { FeedbackReport, FeedbackReportReason } from "../store/types"
 
@@ -35,7 +36,8 @@ const createReportSchema = z.object({
 
 export const feedbackRoutes = new Hono<AppBindings>()
   .use("/feedback/*", requireAuth)
-  .post("/feedback/reports", async (c) => {
+  // Reports can include up to 24 KB of conversation text, so cap how many one account can file.
+  .post("/feedback/reports", rateLimit(10, 60 * 60_000, "feedback", { by: "user" }), async (c) => {
     const body = createReportSchema.parse(await c.req.json())
     const user = c.get("user")!
     const createdAt = now()

@@ -167,7 +167,7 @@ export const remoteRoutes = new Hono<AppBindings>()
     await audit(c, "remote.session.resumed", device.id, { sessionId: session.id, lastSequence: session.lastSequence })
     return c.json({ ok: true, session: publicRemoteSession(session), protocol: remoteProtocol() })
   })
-  .post("/remote/sessions/:id/heartbeat", async (c) => {
+  .post("/remote/sessions/:id/heartbeat", rateLimit(120, 60_000, "remote-heartbeat", { by: "user" }), async (c) => {
     const body = heartbeatSchema.parse(await readJsonOrEmpty(c))
     const session = await ownedRemoteSession(c, requiredParam(c.req.param("id")))
     await assertRemoteOpen(c, session)

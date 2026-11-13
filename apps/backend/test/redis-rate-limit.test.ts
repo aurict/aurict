@@ -36,13 +36,14 @@ if (!redisUrl) {
       expect(decision.resetAt).toBeLessThanOrEqual(before + 10_000 + 1000)
     })
 
-    test("fails open when Redis is unreachable", async () => {
+    test("keeps limiting in-process when Redis is unreachable", async () => {
       const badEnv = loadEnv({ NODE_ENV: "test", REDIS_URL: "redis://127.0.0.1:1/0" })
       const limiter = createRedisRateLimiter(badEnv)!
       const start = Date.now()
-      const decision = await limiter.check("unreachable-key", 5, 60_000)
-      expect(decision.allowed).toBe(true)
-      expect(Date.now() - start).toBeLessThan(2000)
+      const decisions = []
+      for (let i = 0; i < 3; i++) decisions.push(await limiter.check("unreachable-key", 2, 60_000))
+      expect(decisions.map((d) => d.allowed)).toEqual([true, true, false])
+      expect(Date.now() - start).toBeLessThan(5000)
     })
   })
 }

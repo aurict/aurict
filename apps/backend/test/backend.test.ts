@@ -51,8 +51,9 @@ async function register(app: ReturnType<typeof createApp>) {
   return json(res)
 }
 
-function firebaseToken(claims: { uid: string; email: string; emailVerified: boolean; signInProvider?: string }) {
-  return `test.${Buffer.from(JSON.stringify(claims)).toString("base64url")}`
+function firebaseToken(claims: { uid: string; email: string; emailVerified: boolean; signInProvider?: string; authTime?: number }) {
+  const withAuthTime = { authTime: Math.floor(Date.now() / 1000), ...claims }
+  return `test.${Buffer.from(JSON.stringify(withAuthTime)).toString("base64url")}`
 }
 
 const deviceKeys = new Map<string, CryptoKey>()
@@ -1470,6 +1471,91 @@ describe("access token revocation", () => {
     const token = await signAccessToken("usr_1", other)
     expect(await verifyAccessToken(token, other)).not.toBeNull()
     expect(await verifyAccessToken(token, env)).toBeNull()
+  })
+})
+
+describe("email, login and limits", () => {
+  test("verification and reset emails link to the web app with the token in the fragment", async () => {
+    const { createRecordingMailer } = await import("../src/email/mailer")
+    const mailer = createRecordingMailer()
+    const app = createApp({ env, store: createMemoryStore(), mailer })
+    const auth = await register(app)
+    await app.request("/auth/email-verification/request", { method: "POST", headers: { authorization: `Bearer ${auth.accessToken}` } })
+    await app.request("/auth/password-reset/request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "user@example.com" }) })
+    expect(mailer.sent.map((m) => m.to)).toEqual(["user@example.com", "user@example.com"])
+    expect(mailer.sent[0]!.text).toMatch(/https:\/\/aurict\.com\/auth\/verify-email#token=act_/)
+    expect(mailer.sent[1]!.text).toMatch(/https:\/\/aurict\.com\/auth\/reset-password#token=act_/)
+    const unknown = await app.request("/auth/password-reset/request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "nobody@example.com" }) })
+    expect(unknown.status).toBe(200)
+    expect(mailer.sent.length).toBe(2)
+  })
+
+  test("verification email needs a configured provider in production", async () => {
+    const prod = loadEnv({ NODE_ENV: "production", JWT_SECRET: "prod-like-secret-prod-like-secret-prod-like", DATABASE_URL: "postgres://u:p@localhost:5432/db", CORS_ORIGINS: "https://aurict.com" })
+    const store = createMemoryStore()
+    const app = createApp({ env: prod, store, repo: createMemoryRepository(store), rateLimiter: createMemoryRateLimiter() })
+    const auth = await register(app)
+    const res = await app.request("/auth/email-verification/request", { method: "POST", headers: { authorization: `Bearer ${auth.accessToken}` } })
+    expect(res.status).toBe(503)
+    expect((await json(res)).error.code).toBe("email_not_configured")
+  })
+
+  test("login is limited per account even across client addresses", async () => {
+    const { app } = testApp()
+    await register(app)
+    const statuses: number[] = []
+    for (let i = 0; i < 11; i++) {
+      const res = await app.request("/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json", "cf-connecting-ip": `203.0.113.${i}` },
+        body: JSON.stringify({ email: "user@example.com", password: "wrong password here" }),
+      })
+      statuses.push(res.status)
+    }
+    expect(statuses.slice(0, 10).every((s) => s === 401)).toBe(true)
+    expect(statuses[10]).toBe(429)
+  })
+
+  test("firebase re-authentication for deletion must be recent", async () => {
+    const { app } = testAppWithEnv(firebaseEnv)
+    const login = await app.request("/auth/firebase", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ idToken: firebaseToken({ uid: "fb-old-user-".repeat(8), email: "old@example.com", emailVerified: true }) }),
+    })
+    const auth = await json(login)
+    const stale = await app.request("/auth/account", {
+      method: "DELETE",
+      headers: { "content-type": "application/json", authorization: `Bearer ${auth.accessToken}` },
+      body: JSON.stringify({ confirmation: "old@example.com", firebaseIdToken: firebaseToken({ uid: "fb-old-user-".repeat(8), email: "old@example.com", emailVerified: true, authTime: Math.floor(Date.now() / 1000) - 3600 }) }),
+    })
+    expect(stale.status).toBe(401)
+    expect((await json(stale)).error.code).toBe("reauthentication_required")
+  })
+})
+
+describe("client address for rate limits", () => {
+  test("normalises IPv6 to its /64 and unwraps IPv4-mapped addresses", async () => {
+    const { normalizeIp } = await import("../src/middleware/rate-limit")
+    expect(normalizeIp("2001:db8:1:2:aaaa::1")).toBe(normalizeIp("2001:db8:1:2:ffff:ffff:ffff:ffff"))
+    expect(normalizeIp("2001:db8:1:2::1")).not.toBe(normalizeIp("2001:db8:1:3::1"))
+    expect(normalizeIp("::ffff:198.51.100.7")).toBe("198.51.100.7")
+  })
+
+  test("the web app's forwarded address is trusted only with the shared secret", async () => {
+    const secret = "proxy-secret-proxy-secret-proxy-secret-1"
+    const proxied = loadEnv({ NODE_ENV: "test", JWT_SECRET: "test-secret-test-secret-test-secret-test-secret", TRUSTED_PROXY_SECRET: secret })
+    const app = createApp({ env: proxied, store: createMemoryStore() })
+    const attempt = (headers: Record<string, string>) => app.request("/auth/password-reset/request", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify({ email: "x@example.com" }),
+    })
+    // Spoofed header without the secret: every request lands in the same bucket.
+    for (let i = 0; i < 10; i++) expect((await attempt({ "x-aurict-client-ip": `198.51.100.${i}` })).status).toBe(200)
+    expect((await attempt({ "x-aurict-client-ip": "198.51.100.99" })).status).toBe(429)
+    // With the secret, each end user gets their own bucket.
+    expect((await attempt({ "x-aurict-client-ip": "198.51.100.200", "x-aurict-proxy-secret": secret })).status).toBe(200)
   })
 })
 

@@ -1,3 +1,4 @@
+import { createMailer, type Mailer } from "./email/mailer"
 import { Hono } from "hono"
 import { createDbClient, type BackendDb } from "./db/client"
 import { loadEnv, type BackendEnv } from "./env"
@@ -30,6 +31,7 @@ export type CreateAppOptions = {
   repo?: BackendRepository
   rateLimiter?: RateLimiter
   metrics?: MetricsSink
+  mailer?: Mailer
 }
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -39,6 +41,10 @@ export function createApp(options: CreateAppOptions = {}) {
   const repo = options.repo ?? (db ? createPostgresRepository(db.db) : createMemoryRepository(store))
   const rateLimiter = options.rateLimiter ?? createRedisRateLimiter(env) ?? (db ? createPostgresRateLimiter(db) : createMemoryRateLimiter())
   const metrics = options.metrics ?? createMemoryMetrics()
+  const mailer = options.mailer ?? createMailer(env)
+  if (env.NODE_ENV === "production" && !mailer.configured) {
+    console.warn("RESEND_API_KEY is not set: email verification and password reset emails will not be delivered.")
+  }
   const app = new Hono<AppBindings>()
   let lastExpirySweepAt = 0
 
@@ -50,6 +56,7 @@ export function createApp(options: CreateAppOptions = {}) {
     c.set("repo", repo)
     c.set("rateLimiter", rateLimiter)
     c.set("metrics", metrics)
+    c.set("mailer", mailer)
     if (db) c.set("db", db)
     const timestamp = Date.now()
     if (timestamp - lastExpirySweepAt > 30_000) {
