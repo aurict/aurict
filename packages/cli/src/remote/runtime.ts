@@ -19,7 +19,8 @@ import { backendRequest, RemoteApiError } from "./backend-client.js"
 import { ensureAccessToken } from "./auth.js"
 import { ensureDeviceIdentity, signWithStoredIdentity, type DeviceIdentity } from "./identity.js"
 import { type CliRemoteTransport, type SignalEnvelope, type IceServer, MockCliRemoteTransport } from "./transport.js"
-import { RemoteEventLedger, type RemoteEvent } from "./event-codec.js"
+import { RemoteEventLedger, signingPayload, type RemoteEvent } from "./event-codec.js"
+import { findPairedPhone, listPairedPhones, verifyPhoneSignature, type PairedPhone } from "./peer-trust.js"
 
 interface TurnCredential {
   urls:        string[]
@@ -76,6 +77,15 @@ export interface CliRemoteIdentity {
 
 const defaultIdentity: CliRemoteIdentity = { ensureDeviceIdentity, signWithStoredIdentity }
 
+/** Phones this desktop has paired with (see peer-trust.ts); injectable for tests. */
+export interface CliPairedPhones {
+  list(): PairedPhone[]
+  find(deviceId: string): PairedPhone | undefined
+  verify(phone: PairedPhone, payload: string, signature: string): Promise<boolean>
+}
+
+const defaultPairedPhones: CliPairedPhones = { list: listPairedPhones, find: findPairedPhone, verify: verifyPhoneSignature }
+
 const DEFAULT_TTL_SECONDS      = 300
 const DEFAULT_POLL_INTERVAL_MS = 3000
 const HEARTBEAT_INTERVAL_MS    = 20_000
@@ -91,6 +101,11 @@ function isSessionExpired(session: RemoteSessionPublic): boolean {
 export class CliRemoteRuntime {
   private readonly transport: CliRemoteTransport
   private readonly identity: CliRemoteIdentity
+  private readonly phones: CliPairedPhones
+  /** The pinned phone that accepted the session; every incoming event must be signed by it. */
+  private peer: PairedPhone | null = null
+  /** Incoming events are verified asynchronously but delivered strictly in arrival order. */
+  private incoming: Promise<void> = Promise.resolve()
   private status: CliRemoteStatus = "signedOut"
   private session: RemoteSessionPublic | null = null
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
@@ -103,9 +118,10 @@ export class CliRemoteRuntime {
   private deviceId: string | null = null
   private readonly eventListeners = new Set<(event: RemoteEvent) => void>()
 
-  constructor(opts?: { transport?: CliRemoteTransport; identity?: CliRemoteIdentity }) {
+  constructor(opts?: { transport?: CliRemoteTransport; identity?: CliRemoteIdentity; phones?: CliPairedPhones }) {
     this.transport = opts?.transport ?? new MockCliRemoteTransport()
     this.identity = opts?.identity ?? defaultIdentity
+    this.phones = opts?.phones ?? defaultPairedPhones
     this.transport.onMessage((raw) => this.handleRawMessage(raw))
   }
 
@@ -131,13 +147,31 @@ export class CliRemoteRuntime {
   }
 
   private handleRawMessage(raw: string): void {
+    // Keep the chain alive if a listener throws, so one failing handler cannot stall every
+    // later event. Verification itself never throws (invalid input returns false).
+    this.incoming = this.incoming.then(() => this.processRawMessage(raw)).catch(() => undefined)
+  }
+
+  /**
+   * Delivers an event only if it is well-formed, belongs to this session, comes from the
+   * paired phone that accepted it, carries that phone's valid signature and has a new
+   * sequence number. Anything else is dropped: these events can submit prompts and answer
+   * permission requests, so an unsigned or foreign one must never reach the agent.
+   */
+  private async processRawMessage(raw: string): Promise<void> {
     let event: RemoteEvent
     try {
       event = JSON.parse(raw) as RemoteEvent
     } catch {
-      return  // malformed message — the P2P app-layer is free-form and the backend doesn't validate it anyway, swallow silently
+      return
     }
-    if (!this.ledger.acceptIncoming(event)) return  // replay/stale sequence — swallow
+    const peer = this.peer
+    const session = this.session
+    if (!peer || !session || this.status !== "connected") return
+    if (!isRemoteEvent(event)) return
+    if (event.sessionId !== session.id || event.senderDeviceId !== peer.deviceId) return
+    if (!(await this.phones.verify(peer, signingPayload(event), event.signature))) return
+    if (!this.ledger.acceptIncoming(event)) return  // replay/stale sequence
     for (const fn of this.eventListeners) fn(event)
   }
 
@@ -166,6 +200,9 @@ export class CliRemoteRuntime {
    */
   async start(opts: StartOptions = {}): Promise<RemoteSessionPublic> {
     this.cancelled = false
+    if (this.phones.list().length === 0) {
+      throw new RemoteApiError("remote_no_paired_phone", "No phone is paired with this desktop yet. Run /remote pair to pair one.", "client")
+    }
     this.setStatus("registeringDevice")
     const identity = await this.identity.ensureDeviceIdentity()
     this.deviceId = identity.deviceId
@@ -195,10 +232,34 @@ export class CliRemoteRuntime {
 
     const accepted = await this.pollUntilAccepted(created.session.id, opts.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS)
     this.session = accepted
+    const peer = await this.verifyAcceptingPhone(accepted)
+    this.peer = peer
     await this.transport.applyAnswer(accepted.signedAnswer!)
     this.setStatus("connected")
     this.startHeartbeat(identity.deviceId)
     return accepted
+  }
+
+  /**
+   * The answer must come from a phone this desktop paired with, name that phone's pinned
+   * key and carry its valid signature. The backend checks the same, but the desktop does
+   * not rely on it: otherwise a stolen token or a compromised backend could connect a
+   * controller. On failure the session is closed before any transport is set up.
+   */
+  private async verifyAcceptingPhone(session: RemoteSessionPublic): Promise<PairedPhone> {
+    const answer = session.signedAnswer
+    const peer = session.acceptedByDeviceId ? this.phones.find(session.acceptedByDeviceId) : undefined
+    const valid = !!answer && !!peer &&
+      answer.signingKeyFingerprint === peer.fingerprint &&
+      await this.phones.verify(peer, answer.payload, answer.signature)
+    if (valid) return peer!
+    await this.close()
+    this.setStatus("error")
+    throw new RemoteApiError(
+      "remote_peer_not_trusted",
+      peer ? "The phone's answer is not signed by its paired key. Session closed." : "The session was accepted by a phone that is not paired with this desktop. Session closed.",
+      "client",
+    )
   }
 
   /**
@@ -297,6 +358,19 @@ export class CliRemoteRuntime {
     await this.transport.close()
     this.session = null
     this.deviceId = null
+    this.peer = null
     this.setStatus("closed")
   }
+}
+
+function isRemoteEvent(value: unknown): value is RemoteEvent {
+  if (!value || typeof value !== "object") return false
+  const event = value as Record<string, unknown>
+  return typeof event["sessionId"] === "string" &&
+    typeof event["seq"] === "number" && Number.isSafeInteger(event["seq"]) &&
+    typeof event["timestamp"] === "string" &&
+    typeof event["senderDeviceId"] === "string" &&
+    typeof event["type"] === "string" &&
+    !!event["payload"] && typeof event["payload"] === "object" && !Array.isArray(event["payload"]) &&
+    typeof event["signature"] === "string"
 }

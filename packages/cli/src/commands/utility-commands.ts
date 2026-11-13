@@ -317,7 +317,7 @@ export const utilityCommands: CommandDef[] = [
   {
     name:        "remote",
     description: "Sign in and connect a phone for mobile remote control (real WebRTC session)",
-    usage:       "/remote login | status | device | start | stop | logout",
+    usage:       "/remote login | status | device | pair [id code] | unpair <id> | start | stop | logout",
     handler: async (args, ctx): Promise<CommandResult> => {
       const sub = (args[0] ?? "status").toLowerCase()
       const remote   = await import("../remote/auth.js")
@@ -361,6 +361,57 @@ export const utilityCommands: CommandDef[] = [
         }
       }
 
+      // Pairing decides which phones may control this machine, so it only happens here,
+      // on the desktop, and needs the phone's safety code typed back as confirmation.
+      if (sub === "pair") {
+        const peers = await import("../remote/peer-trust.js")
+        try {
+          const status = await remote.getAuthStatus()
+          if (!status.signedIn) return { type: "error", message: "Not signed in. Run /remote login first." }
+          const phones = await peers.listAccountPhones()
+          const pairedIds = new Set(peers.listPairedPhones().map((p) => p.deviceId))
+          const [, id, code] = args
+          if (!id) {
+            const candidates = phones.filter((p) => !pairedIds.has(p.id))
+            if (candidates.length === 0) {
+              return { type: "text", content: "No unpaired phone on this account. Sign in on the Aurict mobile app first, then run /remote pair again." }
+            }
+            const lines = candidates.map((p) => `  ${p.id}  ${p.name}  safety code ${peers.safetyCode(p.signingKeyFingerprint)}  (registered ${new Date(p.createdAt).toLocaleString()})`)
+            return {
+              type: "text",
+              content: `Phones on your account that are not paired with this desktop:\n${lines.join("\n")}\n\n` +
+                "Only pair a phone you recognise and registered yourself; a paired phone can send prompts and approve tool permissions here.\n" +
+                "Check that the safety code matches the one shown in the phone's Remote screen, then confirm with:\n  /remote pair <id> <safety code>",
+            }
+          }
+          const phone = phones.find((p) => p.id === id)
+          if (!phone) return { type: "error", message: `No verified phone with id ${id} on this account. Run /remote pair to list phones.` }
+          const expected = peers.safetyCode(phone.signingKeyFingerprint)
+          if (!code || code.toUpperCase() !== expected) {
+            return { type: "error", message: `Safety code does not match. To pair ${phone.name}, type its safety code: /remote pair ${phone.id} <safety code>` }
+          }
+          const paired = await peers.pairPhone(phone.id)
+          return { type: "text", content: `✓ Paired ${paired.name} (${expected}). It can now accept remote sessions from this desktop. Remove it with /remote unpair ${paired.deviceId}.` }
+        } catch (err) {
+          return { type: "error", message: `Pairing failed: ${err instanceof Error ? err.message : String(err)}` }
+        }
+      }
+
+      if (sub === "unpair") {
+        const peers = await import("../remote/peer-trust.js")
+        const id = args[1]
+        if (!id) {
+          const paired = peers.listPairedPhones()
+          if (paired.length === 0) return { type: "text", content: "No paired phones." }
+          return { type: "text", content: `Paired phones:\n${paired.map((p) => `  ${p.deviceId}  ${p.name}  ${peers.safetyCode(p.fingerprint)}`).join("\n")}\n\nRemove one with /remote unpair <id>.` }
+        }
+        if (ctx.remoteConnected) ctx.stopRemoteSession()
+        const removed = await peers.unpairPhone(id)
+        return removed
+          ? { type: "text", content: `Unpaired ${id}. It can no longer control this desktop.` }
+          : { type: "error", message: `${id} is not paired with this desktop.` }
+      }
+
       if (sub === "logout") {
         if (ctx.remoteConnected) ctx.stopRemoteSession()
         await remote.logout()
@@ -396,7 +447,7 @@ export const utilityCommands: CommandDef[] = [
         }
       }
 
-      return { type: "error", message: `Unknown /remote subcommand: ${sub}. Use login, status, device, start, stop, or logout.` }
+      return { type: "error", message: `Unknown /remote subcommand: ${sub}. Use login, status, device, pair, unpair, start, stop, or logout.` }
     },
   },
 ]
