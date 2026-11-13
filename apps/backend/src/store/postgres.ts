@@ -328,24 +328,32 @@ export function createPostgresRepository(db: Db): BackendRepository {
     async updateSecretTransfer(transfer) {
       await db.update(schema.secretTransfers).set(toSecretInsert(transfer)).where(eq(schema.secretTransfers.id, transfer.id))
     },
-    async claimSecretTransfer(userId, id, claimedAt) {
-      const updated = await db.update(schema.secretTransfers)
-        .set({ claimedAt })
+    async claimSecretTransfer(userId, id, recipientDeviceId, claimedAt) {
+      return await db.transaction(async (tx) => {
+        const [row] = await tx.select().from(schema.secretTransfers)
+          .where(and(
+            eq(schema.secretTransfers.userId, userId),
+            eq(schema.secretTransfers.id, id),
+            eq(schema.secretTransfers.recipientDeviceId, recipientDeviceId),
+          ))
+          .for("update")
+        if (!row) return { status: "not_found" as const }
+        if (row.revokedAt) return { status: "revoked" as const }
+        if (row.claimedAt) return { status: "already_claimed" as const }
+        if (row.expiresAt <= claimedAt) return { status: "expired" as const }
+        await tx.update(schema.secretTransfers)
+          .set({ claimedAt, ciphertext: "" })
+          .where(eq(schema.secretTransfers.id, id))
+        return { status: "claimed" as const, transfer: toSecret({ ...row, claimedAt }) }
+      })
+    },
+    async purgeSecretCiphertexts(at) {
+      await db.update(schema.secretTransfers)
+        .set({ ciphertext: "" })
         .where(and(
-          eq(schema.secretTransfers.userId, userId),
-          eq(schema.secretTransfers.id, id),
-          isNull(schema.secretTransfers.revokedAt),
-          isNull(schema.secretTransfers.claimedAt),
-          gt(schema.secretTransfers.expiresAt, claimedAt),
+          ne(schema.secretTransfers.ciphertext, ""),
+          or(isNotNull(schema.secretTransfers.claimedAt), isNotNull(schema.secretTransfers.revokedAt), lte(schema.secretTransfers.expiresAt, at)),
         ))
-        .returning()
-      if (updated[0]) return { status: "claimed", transfer: toSecret(updated[0]) }
-
-      const existing = await this.getSecretTransfer(userId, id)
-      if (!existing) return { status: "not_found" }
-      if (existing.revokedAt) return { status: "revoked" }
-      if (existing.claimedAt) return { status: "already_claimed" }
-      return { status: "expired" }
     },
     async createRemoteSession(session) {
       await db.insert(schema.remoteSessions).values(toRemoteInsert(session))

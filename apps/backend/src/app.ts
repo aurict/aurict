@@ -55,6 +55,7 @@ export function createApp(options: CreateAppOptions = {}) {
     if (timestamp - lastExpirySweepAt > 30_000) {
       lastExpirySweepAt = timestamp
       await repo.markExpiredRemoteSessions(new Date(timestamp))
+      await repo.purgeSecretCiphertexts(new Date(timestamp))
     }
     await next()
   })

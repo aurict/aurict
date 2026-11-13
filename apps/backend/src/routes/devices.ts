@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { z } from "zod"
 import { addSeconds, newId, now } from "../crypto/ids"
-import { verifyDeviceSignature } from "../crypto/signatures"
+import { deviceKeyFingerprint, parseDevicePublicKey, verifyDeviceSignature } from "../crypto/signatures"
 import { requireAuth } from "../middleware/auth"
 import { ApiError } from "../middleware/errors"
 import { isDeviceActive, publicDevice } from "../store/policy"
@@ -27,6 +27,14 @@ export const deviceRoutes = new Hono<AppBindings>()
     const body = deviceSchema.parse(await c.req.json())
     const user = c.get("user")!
     const repo = c.get("repo")
+    // The fingerprint is derived from the key, never taken on the client's word: peers and the
+    // server compare fingerprints, so a client-chosen one would let a device impersonate another.
+    if (!parseDevicePublicKey(body.signingPublicKey)) {
+      throw new ApiError(400, "Signing key must be an Ed25519 or P-256 public JWK.", "invalid_signing_key")
+    }
+    if (body.signingKeyFingerprint !== await deviceKeyFingerprint(body.signingPublicKey)) {
+      throw new ApiError(400, "Signing key fingerprint does not match the signing key.", "fingerprint_mismatch")
+    }
     if (await repo.findActiveDeviceByFingerprint(body.signingKeyFingerprint)) {
       throw new ApiError(409, "Device signing key is already registered.", "device_exists")
     }
@@ -96,13 +104,7 @@ export const deviceRoutes = new Hono<AppBindings>()
     if (body.challenge !== device.registrationChallenge) {
       throw new ApiError(400, "Device verification challenge mismatch.", "device_challenge_mismatch")
     }
-    const signatureValid = await verifyDeviceSignature(
-      device.signingPublicKey,
-      body.challenge,
-      body.signature,
-      body.algorithm,
-      c.get("env").NODE_ENV === "production",
-    )
+    const signatureValid = await verifyDeviceSignature(device.signingPublicKey, body.challenge, body.signature)
     if (!signatureValid) throw new ApiError(400, "Device verification signature is invalid.", "device_signature_invalid")
     device.verifiedAt = now()
     delete device.registrationChallenge
@@ -113,7 +115,7 @@ export const deviceRoutes = new Hono<AppBindings>()
       userId: c.get("user")!.id,
       deviceId: device.id,
       event: "device.verified",
-      metadataJson: JSON.stringify({ algorithm: body.algorithm, signingKeyFingerprint: device.signingKeyFingerprint }),
+      metadataJson: JSON.stringify({ algorithm: parseDevicePublicKey(device.signingPublicKey)?.algorithm, signingKeyFingerprint: device.signingKeyFingerprint }),
       createdAt: device.verifiedAt,
     })
     return c.json({ ok: true, device: publicDevice(device) })
