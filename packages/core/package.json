@@ -29,7 +29,7 @@
     "test": "bun test ../../packages/core/test/"
   },
   "dependencies": {
-    "@ai-sdk/amazon-bedrock": "^4.0.113",
+    "@ai-sdk/amazon-bedrock": "^5.0.135",
     "@ai-sdk/anthropic": "^1.1.5",
     "@ai-sdk/azure": "^3.0.70",
     "@ai-sdk/google": "^1.1.5",
