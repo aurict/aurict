@@ -3,11 +3,12 @@ module.exports = {
     {
       name: "mobile-aurict-web",
       script: "bun",
-      args: "run start",
+      args: "run start --hostname 127.0.0.1",
       cwd: "./",
       env: {
         NODE_ENV: "production",
         PORT: 3377,
+        HOSTNAME: "127.0.0.1",
       },
       instances: 1,
       autorestart: true,
