@@ -86,6 +86,8 @@ export type BackendRepository = {
   markExpiredRemoteSessions(at: Date): Promise<void>
 
   createFeedbackReport(report: FeedbackReport): Promise<void>
+  /** Deletes feedback reports created before `before` (they can contain conversation text). */
+  purgeFeedbackReports(before: Date): Promise<void>
 }
 
 export type SecretClaimResult =
@@ -439,6 +441,9 @@ export function createMemoryRepository(store: BackendStore): BackendRepository {
           session.closedAt ??= at
         }
       }
+    },
+    async purgeFeedbackReports(before) {
+      for (const [id, report] of store.feedbackReports) if (report.createdAt < before) store.feedbackReports.delete(id)
     },
     async createFeedbackReport(report) {
       store.feedbackReports.set(report.id, report)

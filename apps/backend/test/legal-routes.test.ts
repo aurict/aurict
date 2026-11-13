@@ -165,3 +165,27 @@ if (!databaseUrl) {
     })
   })
 }
+
+describe("statute fetch slots", () => {
+  test("never run more than two upstream fetches at once and reject a long queue", async () => {
+    const { withFetchSlot } = await import("../src/legal/statute-cache")
+    let running = 0
+    let peak = 0
+    const releases: Array<() => void> = []
+    const task = () => withFetchSlot(async () => {
+      running += 1
+      peak = Math.max(peak, running)
+      await new Promise<void>((resolve) => releases.push(resolve))
+      running -= 1
+    })
+    const tasks = Array.from({ length: 22 }, task)
+    const overflow = withFetchSlot(async () => {})
+    await expect(overflow).rejects.toMatchObject({ code: "fetch_busy" })
+    while (releases.length || running) {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+      releases.shift()?.()
+    }
+    await Promise.all(tasks)
+    expect(peak).toBe(2)
+  })
+})
