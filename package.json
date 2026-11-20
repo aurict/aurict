@@ -50,9 +50,9 @@
     "quality": "bun run check:quality && bun run typecheck && bun run check:version && bun run test"
   },
   "devDependencies": {
-    "@types/bun": "1.3.12",
+    "@types/bun": "1.4.4",
     "@xterm/headless": "^6.0.0",
-    "drizzle-kit": "^0.29.0",
+    "drizzle-kit": "^0.31.11",
     "electron-winstaller": "5.4.4",
     "typescript": "^5.8.0"
   },
